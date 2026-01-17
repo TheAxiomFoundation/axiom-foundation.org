@@ -670,8 +670,8 @@ export default function LandingPage() {
           </div>
 
           <h1 className={styles.heroTitle}>
-            Encode every rule from{' '}
-            <span className={styles.heroTitleAccent}>every jurisdiction</span>
+            Encoding the{' '}
+            <span className={styles.heroTitleAccent}>world's rules</span>
           </h1>
 
           <p className={styles.heroSubtitle}>
@@ -1320,7 +1320,7 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
         <div className={styles.ctaContent}>
           <h2 className={styles.ctaTitle}>Get involved</h2>
           <p className={styles.ctaSubtitle}>
-            Help us encode every rule from every jurisdiction.
+            Help us encode the world's rules.
             Contribute encodings, validate implementations, or fund the mission.
           </p>
 

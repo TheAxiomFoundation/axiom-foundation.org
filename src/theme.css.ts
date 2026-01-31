@@ -1,7 +1,7 @@
 import { createGlobalThemeContract, createGlobalTheme, globalStyle } from '@vanilla-extract/css';
 
 /**
- * RAC Foundation Design Tokens
+ * Rules Foundation Design Tokens
  *
  * Monumental Infrastructure aesthetic: courthouse meets circuit board
  * Typography: Instrument Serif + IBM Plex Sans + JetBrains Mono

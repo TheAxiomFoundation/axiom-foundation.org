@@ -42,7 +42,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
     <header className={styles.header}>
       <div className={styles.headerContent}>
         <Link to="/" className={styles.logo}>
-          <img src="/logos/rac-foundation.svg" alt="RAC Foundation" className={styles.logoImage} />
+          <img src="/logos/rules-foundation.svg" alt="Rules Foundation" className={styles.logoImage} />
         </Link>
         <nav className={styles.nav}>
           <NavLink href="#about">About</NavLink>
@@ -50,7 +50,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           <NavLink href="#autorac">AutoRAC</NavLink>
           <NavLink href="/lab">Lab</NavLink>
           <NavLink href="#spec">Spec</NavLink>
-          <a href="https://github.com/rac-foundation" className={styles.navLink} target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/rules-foundation" className={styles.navLink} target="_blank" rel="noopener noreferrer">
             <GitHubIcon className={styles.icon} />
           </a>
         </nav>

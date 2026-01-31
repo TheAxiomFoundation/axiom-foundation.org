@@ -1,5 +1,5 @@
 {
-  "name": "rac-foundation",
+  "name": "rules-foundation",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "deploy": "bun run build && wrangler pages deploy dist --project-name=rac-foundation"
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",

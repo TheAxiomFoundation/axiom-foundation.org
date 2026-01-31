@@ -1,1 +1,6 @@
+# Redirect old domains to rules.foundation
+https://rac.foundation/* https://rules.foundation/:splat 301!
+https://rulesfoundation.org/* https://rules.foundation/:splat 301!
+
+# SPA fallback
 /*    /index.html   200

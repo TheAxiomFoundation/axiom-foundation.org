@@ -675,7 +675,7 @@ export default function LandingPage() {
           </h1>
 
           <p className={styles.heroSubtitle}>
-            The RAC Foundation builds open, machine-readable encodings of statutes, regulations, and policy rules.
+            The Rules Foundation builds open, machine-readable encodings of statutes, regulations, and policy rules.
             Ground truth for AI systems. Verifiable by design.
           </p>
 
@@ -684,7 +684,7 @@ export default function LandingPage() {
               Learn More
               <ArrowRightIcon className={styles.icon} />
             </a>
-            <a href="https://github.com/rac-foundation/rac" className={styles.btnSecondary}>
+            <a href="https://github.com/rules-foundation/rac" className={styles.btnSecondary}>
               <GitHubIcon className={styles.icon} />
               View on GitHub
             </a>
@@ -1325,11 +1325,11 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
           </p>
 
           <div className={styles.ctaActions}>
-            <a href="https://github.com/rac-foundation" className={styles.btnPrimary}>
+            <a href="https://github.com/rules-foundation" className={styles.btnPrimary}>
               <GitHubIcon className={styles.icon} />
               Contribute on GitHub
             </a>
-            <a href="mailto:hello@rac.foundation" className={styles.btnSecondary}>
+            <a href="mailto:hello@rules.foundation" className={styles.btnSecondary}>
               Contact Us
             </a>
           </div>
@@ -1338,10 +1338,10 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
             <a href="#spec">
               RAC specification
             </a>
-            <a href="https://github.com/rac-foundation/autorac">
+            <a href="https://github.com/rules-foundation/autorac">
               AutoRAC repository
             </a>
-            <a href="https://github.com/rac-foundation/rac-us">
+            <a href="https://github.com/rules-foundation/rac-us">
               US jurisdiction models
             </a>
           </div>
@@ -1352,15 +1352,15 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div className={styles.footerLogo}>
-            <span className={styles.logoMark}>RAC</span>
+            <span className={styles.logoMark}>RULES</span>
             <span className={styles.logoText}>Foundation</span>
           </div>
           <p className={styles.footerText}>
             Open infrastructure for encoded law.
           </p>
           <div className={styles.footerLinks}>
-            <a href="https://github.com/rac-foundation">GitHub</a>
-            <a href="mailto:hello@rac.foundation">Contact</a>
+            <a href="https://github.com/rules-foundation">GitHub</a>
+            <a href="mailto:hello@rules.foundation">Contact</a>
             <a href="/privacy">Privacy</a>
           </div>
         </div>

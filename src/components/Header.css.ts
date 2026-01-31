@@ -7,7 +7,7 @@ export const header = style({
   left: 0,
   right: 0,
   zIndex: 100,
-  padding: `${vars.space.lg} 0`,
+  padding: `${vars.space.xl} 0`,
   background: `linear-gradient(to bottom, ${vars.color.void} 0%, transparent 100%)`,
   backdropFilter: 'blur(8px)',
 })
@@ -44,7 +44,7 @@ export const logoText = style({
 })
 
 export const logoImage = style({
-  height: '32px',
+  height: '44px',
   width: 'auto',
 })
 

@@ -613,13 +613,68 @@ export default function LandingPage() {
           </p>
 
           <div className={styles.heroActions}>
-            <a href="#about" className={styles.btnPrimary}>
+            <a href="#arch" className={styles.btnPrimary}>
               Learn More
               <ArrowRightIcon className={styles.icon} />
             </a>
-            <a href="https://github.com/RulesFoundation/rac" className={styles.btnSecondary}>
+            <a href="https://github.com/RulesFoundation" className={styles.btnSecondary}>
               <GitHubIcon className={styles.icon} />
               View on GitHub
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Arch Section - The foundation: raw source files */}
+      <section id="arch" className={styles.section}>
+        <div className={styles.sectionContent}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Foundation</span>
+            <h2 className={styles.sectionTitle}>Arch</h2>
+            <p className={styles.sectionSubtitle}>
+              It all starts here. A unified archive of raw government source files —
+              statutes, regulations, IRS guidance, and microdata. The source of truth.
+            </p>
+          </div>
+
+          <div className={styles.archGrid}>
+            <div className={styles.archCard}>
+              <h4>Federal statutes</h4>
+              <p>All 54 titles of the US Code from official USLM XML</p>
+            </div>
+            <div className={styles.archCard}>
+              <h4>IRS guidance</h4>
+              <p>Revenue Procedures, Rulings, Notices — 570+ documents</p>
+            </div>
+            <div className={styles.archCard}>
+              <h4>State codes</h4>
+              <p>NY Open Legislation API, more states coming</p>
+            </div>
+            <div className={styles.archCard}>
+              <h4>Microdata</h4>
+              <p>CPS ASEC, IRS PUF, SIPP via microplex integration</p>
+            </div>
+          </div>
+
+          <div className={styles.archFeatures}>
+            <div className={styles.autoracFeature}>
+              <CheckIcon className={styles.iconSmall} />
+              <span>Provenance tracking — fetch date, source URL, checksums</span>
+            </div>
+            <div className={styles.autoracFeature}>
+              <CheckIcon className={styles.iconSmall} />
+              <span>REST API — query by citation, keyword, or path</span>
+            </div>
+            <div className={styles.autoracFeature}>
+              <CheckIcon className={styles.iconSmall} />
+              <span>Change detection — know when upstream sources update</span>
+            </div>
+          </div>
+
+          <div className={styles.archCta}>
+            <a href="https://github.com/RulesFoundation/arch" className={styles.btnSecondary}>
+              <GitHubIcon className={styles.icon} />
+              View Arch on GitHub
             </a>
           </div>
         </div>
@@ -940,61 +995,6 @@ export default function LandingPage() {
               <CheckIcon className={styles.iconSmall} />
               <span>Parallel batch encoding via Agent SDK</span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Arch Section */}
-      <section id="arch" className={styles.sectionAlt}>
-        <div className={styles.sectionContent}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionLabel}>Data layer</span>
-            <h2 className={styles.sectionTitle}>Arch</h2>
-            <p className={styles.sectionSubtitle}>
-              Foundational archive of raw government source files.
-              The unified source of truth for statutes, regulations, IRS guidance, and microdata.
-            </p>
-          </div>
-
-          <div className={styles.archGrid}>
-            <div className={styles.archCard}>
-              <h4>Federal statutes</h4>
-              <p>All 54 titles of the US Code from official USLM XML</p>
-            </div>
-            <div className={styles.archCard}>
-              <h4>IRS guidance</h4>
-              <p>Revenue Procedures, Rulings, Notices — 570+ documents</p>
-            </div>
-            <div className={styles.archCard}>
-              <h4>State codes</h4>
-              <p>NY Open Legislation API, more states coming</p>
-            </div>
-            <div className={styles.archCard}>
-              <h4>Microdata</h4>
-              <p>CPS ASEC, IRS PUF, SIPP via microplex integration</p>
-            </div>
-          </div>
-
-          <div className={styles.archFeatures}>
-            <div className={styles.autoracFeature}>
-              <CheckIcon className={styles.iconSmall} />
-              <span>Provenance tracking — fetch date, source URL, checksums</span>
-            </div>
-            <div className={styles.autoracFeature}>
-              <CheckIcon className={styles.iconSmall} />
-              <span>REST API — query by citation, keyword, or path</span>
-            </div>
-            <div className={styles.autoracFeature}>
-              <CheckIcon className={styles.iconSmall} />
-              <span>Change detection — know when upstream sources update</span>
-            </div>
-          </div>
-
-          <div className={styles.archCta}>
-            <a href="https://github.com/RulesFoundation/arch" className={styles.btnSecondary}>
-              <GitHubIcon className={styles.icon} />
-              View Arch on GitHub
-            </a>
           </div>
         </div>
       </section>
@@ -1321,11 +1321,11 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
           </div>
 
           <div className={styles.ctaLinks}>
-            <a href="#spec">
-              RAC specification
-            </a>
             <a href="https://github.com/RulesFoundation/arch">
               Arch archive
+            </a>
+            <a href="#spec">
+              RAC specification
             </a>
             <a href="https://github.com/RulesFoundation/autorac">
               AutoRAC encoder

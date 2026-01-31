@@ -613,7 +613,7 @@ export default function LandingPage() {
           </p>
 
           <div className={styles.heroActions}>
-            <a href="#archive" className={styles.btnPrimary}>
+            <a href="#atlas" className={styles.btnPrimary}>
               Learn More
               <ArrowRightIcon className={styles.icon} />
             </a>
@@ -625,14 +625,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Archive Section - The foundation: raw legal source files */}
-      <section id="archive" className={styles.section}>
+      {/* Atlas Section - The foundation: raw legal source files */}
+      <section id="atlas" className={styles.section}>
         <div className={styles.sectionContent}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionLabel}>Foundation</span>
-            <h2 className={styles.sectionTitle}>Archive</h2>
+            <h2 className={styles.sectionTitle}>Atlas</h2>
             <p className={styles.sectionSubtitle}>
-              It all starts here. A unified archive of raw government source files —
+              It all starts here. A comprehensive map of government source files —
               statutes, regulations, IRS guidance, and state codes. The legal source of truth.
             </p>
           </div>
@@ -672,9 +672,9 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.archCta}>
-            <a href="https://github.com/RulesFoundation/archive" className={styles.btnSecondary}>
+            <a href="https://github.com/RulesFoundation/atlas" className={styles.btnSecondary}>
               <GitHubIcon className={styles.icon} />
-              View Archive on GitHub
+              View Atlas on GitHub
             </a>
           </div>
         </div>
@@ -1321,8 +1321,8 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
           </div>
 
           <div className={styles.ctaLinks}>
-            <a href="https://github.com/RulesFoundation/archive">
-              Archive
+            <a href="https://github.com/RulesFoundation/atlas">
+              Atlas
             </a>
             <a href="#spec">
               RAC specification

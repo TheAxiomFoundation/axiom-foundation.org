@@ -45,7 +45,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           <img src="/logos/rules-foundation.svg" alt="Rules Foundation" className={styles.logoImage} />
         </Link>
         <nav className={styles.nav}>
-          <NavLink href="#arch">Arch</NavLink>
+          <NavLink href="#archive">Archive</NavLink>
           <NavLink href="#format">.rac</NavLink>
           <NavLink href="#autorac">AutoRAC</NavLink>
           <NavLink href="/lab">Lab</NavLink>

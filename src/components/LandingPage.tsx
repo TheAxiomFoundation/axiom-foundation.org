@@ -613,7 +613,7 @@ export default function LandingPage() {
           </p>
 
           <div className={styles.heroActions}>
-            <a href="#arch" className={styles.btnPrimary}>
+            <a href="#archive" className={styles.btnPrimary}>
               Learn More
               <ArrowRightIcon className={styles.icon} />
             </a>
@@ -625,15 +625,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Arch Section - The foundation: raw source files */}
-      <section id="arch" className={styles.section}>
+      {/* Archive Section - The foundation: raw legal source files */}
+      <section id="archive" className={styles.section}>
         <div className={styles.sectionContent}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionLabel}>Foundation</span>
-            <h2 className={styles.sectionTitle}>Arch</h2>
+            <h2 className={styles.sectionTitle}>Archive</h2>
             <p className={styles.sectionSubtitle}>
               It all starts here. A unified archive of raw government source files —
-              statutes, regulations, IRS guidance, and microdata. The source of truth.
+              statutes, regulations, IRS guidance, and state codes. The legal source of truth.
             </p>
           </div>
 
@@ -672,9 +672,9 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.archCta}>
-            <a href="https://github.com/RulesFoundation/arch" className={styles.btnSecondary}>
+            <a href="https://github.com/RulesFoundation/archive" className={styles.btnSecondary}>
               <GitHubIcon className={styles.icon} />
-              View Arch on GitHub
+              View Archive on GitHub
             </a>
           </div>
         </div>
@@ -1321,8 +1321,8 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
           </div>
 
           <div className={styles.ctaLinks}>
-            <a href="https://github.com/RulesFoundation/arch">
-              Arch archive
+            <a href="https://github.com/RulesFoundation/archive">
+              Archive
             </a>
             <a href="#spec">
               RAC specification

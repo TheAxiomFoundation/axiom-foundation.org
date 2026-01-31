@@ -1,0 +1,37 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "rac.foundation"
+        }
+      ],
+      "destination": "https://rules.foundation/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "rulesfoundation.org"
+        }
+      ],
+      "destination": "https://rules.foundation/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.rules.foundation"
+        }
+      ],
+      "destination": "https://rules.foundation/:path*",
+      "permanent": true
+    }
+  ]
+}

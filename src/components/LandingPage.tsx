@@ -658,8 +658,8 @@ export default function LandingPage() {
               <p>48 states archived • NY, CA, DC with full section data</p>
             </div>
             <div className={styles.archCard}>
-              <h4>RAC encodings</h4>
-              <p>44 .rac files • Federal + CA + NY tax code • Canada benefits</p>
+              <h4>Regulations</h4>
+              <p>CFR titles, Treasury regulations, agency rules — coming soon</p>
             </div>
           </div>
 

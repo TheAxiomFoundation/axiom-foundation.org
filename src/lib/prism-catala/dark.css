@@ -1,0 +1,119 @@
+/**
+ * Catala Dark Theme for Prism.js
+ * Literate legal programming language
+ * https://catala-lang.org
+ */
+
+code[class*="language-catala"],
+pre[class*="language-catala"] {
+  color: #e2e8f0;
+  background: none;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", "Monaco", "Andale Mono", monospace;
+  font-size: 0.9em;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.6;
+  tab-size: 2;
+  hyphens: none;
+}
+
+pre[class*="language-catala"] {
+  padding: 1.25em;
+  margin: 0.5em 0;
+  overflow: auto;
+  border-radius: 0.5em;
+  background: #0f172a;
+}
+
+:not(pre) > code[class*="language-catala"] {
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  white-space: normal;
+  background: #1e293b;
+}
+
+/* ─── Comments ──────────────────────────────────────────────────────────────── */
+.token.comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ─── Document titles (@@Title@@) ───────────────────────────────────────────── */
+.token.catala-title {
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+/* ─── Document sections (@Section@) ─────────────────────────────────────────── */
+.token.catala-section {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* ─── Scope names (IncomeTax, TaxComputation, etc.) ─────────────────────────── */
+.token.scope-name {
+  color: #f59e0b;
+}
+
+/* ─── Type names (money, decimal, integer, etc.) ────────────────────────────── */
+.token.type-name {
+  color: #38bdf8;
+}
+
+/* ─── Keywords (scope, definition, rule, etc.) ──────────────────────────────── */
+.token.keyword {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* ─── Strings ──────────────────────────────────────────────────────────────── */
+.token.string {
+  color: #10b981;
+}
+
+/* ─── Numbers ──────────────────────────────────────────────────────────────── */
+.token.number {
+  color: #f59e0b;
+}
+
+/* ─── Operators ────────────────────────────────────────────────────────────── */
+.token.operator {
+  color: #94a3b8;
+}
+
+/* ─── Punctuation ──────────────────────────────────────────────────────────── */
+.token.punctuation {
+  color: #64748b;
+}
+
+/* ─── Selection ────────────────────────────────────────────────────────────── */
+code[class*="language-catala"]::selection,
+code[class*="language-catala"] *::selection,
+pre[class*="language-catala"]::selection,
+pre[class*="language-catala"] *::selection {
+  background: #334155;
+}
+
+/* ─── Line numbers (if using line-numbers plugin) ──────────────────────────── */
+pre[class*="language-catala"].line-numbers {
+  position: relative;
+  padding-left: 3.8em;
+  counter-reset: linenumber;
+}
+
+pre[class*="language-catala"].line-numbers > code {
+  position: relative;
+  white-space: inherit;
+}
+
+.line-numbers .line-numbers-rows {
+  border-right-color: #1e293b;
+}
+
+.line-numbers-rows > span::before {
+  color: #475569;
+}

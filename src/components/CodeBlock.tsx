@@ -2,10 +2,10 @@ import Prism from 'prismjs'
 import 'prismjs/components/prism-python'
 import 'prismjs/components/prism-markup'
 import 'prismjs/components/prism-yaml'
-import 'prism-rac' // Registers Prism.languages.rac
-import 'prism-rac/themes/dark.css'
-import 'prism-catala' // Registers Prism.languages.catala
-import 'prism-catala/themes/dark.css'
+import '../lib/prism-rac' // Registers Prism.languages.rac
+import '../lib/prism-rac/dark.css'
+import '../lib/prism-catala' // Registers Prism.languages.catala
+import '../lib/prism-catala/dark.css'
 
 type Language = 'rac' | 'xml' | 'python' | 'yaml' | 'catala' | 'plain'
 

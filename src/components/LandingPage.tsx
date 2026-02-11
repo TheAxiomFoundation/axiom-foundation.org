@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as styles from './LandingPage.css'
 import Header from './Header'
 import CodeBlock from './CodeBlock'
@@ -582,6 +582,178 @@ function TabbedCodeExamples() {
 }
 
 // ============================================
+// AUTORAC TERMINAL
+// ============================================
+
+interface TerminalLine {
+  content: React.ReactNode
+  delay: number
+}
+
+function AutoRACTerminal() {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.2 },
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  const lines: TerminalLine[] = [
+    { delay: 0, content: (
+      <>
+        <span className={styles.terminalPrompt}>$ </span>
+        <span className={styles.terminalCommand}>autorac encode &quot;26 USC 32&quot;</span>
+      </>
+    )},
+    { delay: 0.4, content: <span className={styles.terminalDim}>&nbsp;</span> },
+    { delay: 0.6, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalMuted}> Loading 26 USC 32...</span>
+        <span className={styles.terminalHighlight}> 81,247 characters</span>
+      </>
+    )},
+    { delay: 0.9, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalMuted}> Parsing subsection tree...</span>
+      </>
+    )},
+    { delay: 1.2, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalDim}>   (a) Allowance of credit </span>
+        <span className={styles.terminalMuted}>           2,341 chars</span>
+      </>
+    )},
+    { delay: 1.35, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalDim}>   (b) Percentages and amounts </span>
+        <span className={styles.terminalMuted}>       4,892 chars</span>
+      </>
+    )},
+    { delay: 1.5, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalDim}>   (c) Definitions and special rules </span>
+        <span className={styles.terminalMuted}> 5,675 chars</span>
+      </>
+    )},
+    { delay: 1.65, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalDim}>   ...</span>
+      </>
+    )},
+    { delay: 1.8, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalDim}>   (n) Supplemental child credit </span>
+        <span className={styles.terminalMuted}>     1,203 chars</span>
+      </>
+    )},
+    { delay: 2.0, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelAtlas}`}>[atlas]</span>
+        <span className={styles.terminalHighlight}> 14 subsections extracted</span>
+      </>
+    )},
+    { delay: 2.3, content: <span className={styles.terminalDim}>&nbsp;</span> },
+    { delay: 2.5, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelEncode}`}>[encode]</span>
+        <span className={styles.terminalMuted}> Wave 1: </span>
+        <span className={styles.terminalDim}>(a), (b), (c), (d), (f), (h), (i), (j), (m), (n)</span>
+      </>
+    )},
+    { delay: 2.8, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelEncode}`}>[encode]</span>
+        <span className={styles.terminalMuted}> Wave 2: </span>
+        <span className={styles.terminalDim}>(e), (g), (k), (l)</span>
+        <span className={styles.terminalMuted}> — depends on wave 1</span>
+      </>
+    )},
+    { delay: 3.2, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelEncode}`}>[encode]</span>
+        <span className={styles.terminalProgressBar}> ████████████████████</span>
+        <span className={styles.terminalHighlight}> 14/14 complete</span>
+      </>
+    )},
+    { delay: 3.6, content: <span className={styles.terminalDim}>&nbsp;</span> },
+    { delay: 3.8, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelValidate}`}>[validate]</span>
+        <span className={styles.terminalMuted}> CI:           </span>
+        <span className={styles.terminalSuccess}>14/14 passed</span>
+      </>
+    )},
+    { delay: 4.1, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelValidate}`}>[validate]</span>
+        <span className={styles.terminalMuted}> PolicyEngine: </span>
+        <span className={styles.terminalSuccess}>12/14 match</span>
+        <span className={styles.terminalDim}>  ✓</span>
+      </>
+    )},
+    { delay: 4.4, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelValidate}`}>[validate]</span>
+        <span className={styles.terminalMuted}> TAXSIM:       </span>
+        <span className={styles.terminalSuccess}>11/14 match</span>
+        <span className={styles.terminalDim}>  ✓</span>
+      </>
+    )},
+    { delay: 4.7, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelValidate}`}>[validate]</span>
+        <span className={styles.terminalMuted}> LLM review:   </span>
+        <span className={styles.terminalHighlight}>2 issues flagged → auto-fixing</span>
+      </>
+    )},
+    { delay: 5.1, content: <span className={styles.terminalDim}>&nbsp;</span> },
+    { delay: 5.3, content: (
+      <>
+        <span className={`${styles.terminalLabel} ${styles.terminalLabelDone}`}>[done]</span>
+        <span className={styles.terminalSuccess}> 14 .rac files written to </span>
+        <span className={styles.terminalHighlight}>statute/26/32/</span>
+      </>
+    )},
+  ]
+
+  return (
+    <div className={styles.terminalContainer} ref={ref}>
+      <div className={styles.terminal}>
+        <div className={styles.terminalHeader}>
+          <span className={`${styles.terminalDot} ${styles.terminalDotRed}`} />
+          <span className={`${styles.terminalDot} ${styles.terminalDotYellow}`} />
+          <span className={`${styles.terminalDot} ${styles.terminalDotGreen}`} />
+          <span className={styles.terminalTitle}>autorac — zsh</span>
+        </div>
+        <div className={styles.terminalBody}>
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              className={styles.terminalLine}
+              style={visible ? { animationDelay: `${line.delay}s` } : { animation: 'none' }}
+            >
+              {line.content}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -898,45 +1070,11 @@ export default function LandingPage() {
             <span className={styles.sectionLabel}>AI encoding</span>
             <h2 className={styles.sectionTitle}>AutoRAC</h2>
             <p className={styles.sectionSubtitle}>
-              Point it at a statute. Get validated RAC. Here's what happens when you
-              run <code>autorac encode "26 USC 32"</code> — the Earned Income Tax Credit,
-              81,000 characters across 14 subsections.
+              Point it at a statute. Get validated RAC.
             </p>
           </div>
 
-          <div className={styles.autoracPipeline}>
-            <div className={styles.pipelineStep}>
-              <div className={styles.pipelineStepNumber}>1</div>
-              <div className={styles.pipelineStepContent}>
-                <h4>Split</h4>
-                <p>Atlas breaks the statute into its subsection tree — (a) through (n). Each subsection gets extracted with its full text, not a truncated excerpt.</p>
-              </div>
-            </div>
-            <div className={styles.pipelineConnector} />
-            <div className={styles.pipelineStep}>
-              <div className={styles.pipelineStepNumber}>2</div>
-              <div className={styles.pipelineStepContent}>
-                <h4>Encode</h4>
-                <p>14 AI agents launch in parallel. Each one reads its subsection and writes a .rac file — focused context means better output.</p>
-              </div>
-            </div>
-            <div className={styles.pipelineConnector} />
-            <div className={styles.pipelineStep}>
-              <div className={styles.pipelineStepNumber}>3</div>
-              <div className={styles.pipelineStepContent}>
-                <h4>Validate</h4>
-                <p>Each encoding is tested: syntax checks first, then comparison against PolicyEngine and TAXSIM, then AI reviewers diagnose any gaps.</p>
-              </div>
-            </div>
-            <div className={styles.pipelineConnector} />
-            <div className={styles.pipelineStep}>
-              <div className={styles.pipelineStepNumber}>4</div>
-              <div className={styles.pipelineStepContent}>
-                <h4>Learn</h4>
-                <p>Results feed back. What worked, what broke, what to try differently — each run improves the next.</p>
-              </div>
-            </div>
-          </div>
+          <AutoRACTerminal />
 
           {/* 3-Tier Validation */}
           <div className={styles.validationSection}>

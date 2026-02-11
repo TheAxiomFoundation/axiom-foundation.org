@@ -504,7 +504,7 @@ export const featureDesc = style({
 });
 
 // ============================================
-// AUTORAC PIPELINE
+// AUTORAC PIPELINE (legacy — kept for reference)
 // ============================================
 
 export const autoracPipeline = style({
@@ -572,6 +572,123 @@ export const pipelineConnector = style({
       background: `linear-gradient(180deg, ${vars.color.border}, ${vars.color.precision})`,
     },
   },
+});
+
+// ============================================
+// AUTORAC TERMINAL
+// ============================================
+
+const terminalReveal = keyframes({
+  '0%': { opacity: 0, transform: 'translateY(4px)' },
+  '100%': { opacity: 1, transform: 'translateY(0)' },
+});
+
+export const terminalContainer = style({
+  marginBottom: vars.space['3xl'],
+  maxWidth: '760px',
+  marginLeft: 'auto',
+  marginRight: 'auto',
+});
+
+export const terminal = style({
+  background: '#0c0c0c',
+  borderRadius: vars.radius.xl,
+  border: `1px solid ${vars.color.border}`,
+  overflow: 'hidden',
+  boxShadow: `0 24px 80px rgba(0, 0, 0, 0.5), ${vars.shadow.glow}`,
+});
+
+export const terminalHeader = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: vars.space.sm,
+  padding: `${vars.space.sm} ${vars.space.lg}`,
+  background: 'rgba(255, 255, 255, 0.03)',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+});
+
+export const terminalDot = style({
+  width: '10px',
+  height: '10px',
+  borderRadius: '50%',
+  background: 'rgba(255, 255, 255, 0.15)',
+});
+
+export const terminalDotRed = style({ background: '#ff5f57' });
+export const terminalDotYellow = style({ background: '#febc2e' });
+export const terminalDotGreen = style({ background: '#28c840' });
+
+export const terminalTitle = style({
+  fontFamily: vars.font.mono,
+  fontSize: '0.7rem',
+  color: 'rgba(255, 255, 255, 0.3)',
+  marginLeft: vars.space.sm,
+});
+
+export const terminalBody = style({
+  padding: `${vars.space.lg} ${vars.space.xl}`,
+  fontFamily: vars.font.mono,
+  fontSize: '0.82rem',
+  lineHeight: 1.8,
+  overflowX: 'auto',
+  minHeight: '320px',
+});
+
+export const terminalLine = style({
+  opacity: 0,
+  whiteSpace: 'pre',
+  animation: `${terminalReveal} 0.3s ${vars.ease.out} forwards`,
+});
+
+export const terminalPrompt = style({
+  color: vars.color.success,
+});
+
+export const terminalCommand = style({
+  color: vars.color.text,
+  fontWeight: 500,
+});
+
+export const terminalLabel = style({
+  fontWeight: 600,
+});
+
+export const terminalLabelAtlas = style({
+  color: vars.color.warmth,
+});
+
+export const terminalLabelEncode = style({
+  color: vars.color.precision,
+});
+
+export const terminalLabelValidate = style({
+  color: '#a78bfa',
+});
+
+export const terminalLabelDone = style({
+  color: vars.color.success,
+});
+
+export const terminalDim = style({
+  color: 'rgba(255, 255, 255, 0.35)',
+});
+
+export const terminalMuted = style({
+  color: vars.color.textTertiary,
+});
+
+export const terminalSuccess = style({
+  color: vars.color.success,
+});
+
+export const terminalProgressBar = style({
+  display: 'inline-block',
+  color: vars.color.precision,
+});
+
+export const terminalHighlight = style({
+  color: vars.color.text,
+  fontWeight: 500,
 });
 
 export const autoracFeatures = style({

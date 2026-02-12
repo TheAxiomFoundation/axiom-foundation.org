@@ -69,18 +69,8 @@ pre[class*="language-rac"] {
   color: #8b5cf6;
 }
 
-/* ─── Entity types (Person, TaxUnit, Household, etc.) ──────────────────────── */
-.token.entity-type {
-  color: #38bdf8;
-}
-
-/* ─── Period types (Year, Month, Day, Instant) ─────────────────────────────── */
-.token.period-type {
-  color: #38bdf8;
-}
-
-/* ─── Data types (Money, Rate, Boolean, Integer, etc.) ─────────────────────── */
-.token.dtype {
+/* ─── Type keywords (Person, TaxUnit, Year, Money, etc.) ───────────────────── */
+.token.type-keyword {
   color: #38bdf8;
 }
 

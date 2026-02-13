@@ -72,7 +72,7 @@ const getFilename = (example: ExampleType, format: FormatTab): string => {
 
 const getNote = (format: FormatTab): string => {
   const notes: Record<FormatTab, string> = {
-    rac: 'Single file, tests alongside',
+    rac: 'Single self-contained file',
     dmn: 'XML + FEEL expression language',
     openfisca: 'Python + YAML (3 files)',
     catala: 'Literate programming',
@@ -83,91 +83,89 @@ const getNote = (format: FormatTab): string => {
 // RAC code examples
 const RacCode = ({ example }: { example: ExampleType }) => {
   const racExamples: Record<ExampleType, string> = {
-    'niit': `# 26 USC § 1411(a) - Net Investment Income Tax
+    'niit': `# 26 USC 1411(a) - Net Investment Income Tax
 
-"""
-(a) In general.— There is hereby imposed a tax equal to 3.8 percent
-of the lesser of— (1) net investment income, or (2) modified AGI
-in excess of the threshold amount.
-"""
+# (a) In general.— There is hereby imposed a tax equal
+# to 3.8 percent of the lesser of— (1) net investment
+# income, or (2) modified AGI in excess of the
+# threshold amount.
 
-niit_rate:
-  description: "Tax rate on net investment income"
-  unit: rate
-  from 2013-01-01: 0.038
+# "3.8 percent"
+variable niit_rate:
+    from 2013-01-01: 0.038
 
-net_investment_income_tax:
-  imports:
-    - 26/1411/c#net_investment_income
-    - 26/1411/b#threshold_amount
-  entity: TaxUnit
-  period: Year
-  dtype: Money
-  from 2013-01-01:
-    excess_magi = max(0, modified_agi - threshold_amount)
-    return niit_rate * min(net_investment_income, excess_magi)`,
-    'aca-ptc': `# 26 USC § 36B(b)(3)(A) - ACA Premium Tax Credit
+variable modified_agi:
+    entity: taxunit
+    from 2024-01-01: 0
 
-"""
-The applicable percentage for any taxpayer whose household
-income is within an income tier shall increase, on a
-sliding scale... from the initial percentage to the final
-percentage for such income tier.
-"""
+# Lesser of NII or excess MAGI over threshold
+variable excess_magi:
+    entity: taxunit
+    from 2013-01-01: max(0, modified_agi - threshold_amount)
 
-ptc_applicable_pct:
-  description: "Premium contribution % by FPL tier"
-  from 2021-01-01:  # ARPA temporary rates
-    150: [0.00, 0.00]  # up to 150% FPL
-    200: [0.00, 0.02]  # 150-200% FPL
-    250: [0.02, 0.04]
-    300: [0.04, 0.06]
-    400: [0.06, 0.085]
+variable net_investment_income_tax:
+    entity: taxunit
+    from 2013-01-01: niit_rate * min(net_investment_income, excess_magi)`,
+    'aca-ptc': `# 26 USC 36B(b)(3) - Applicable percentage
 
-applicable_percentage:
-  imports: [26/36B/d#household_income_pct_fpl]
-  entity: TaxUnit
-  dtype: Rate
-  from 2021-01-01:
-    # Linear interpolation within tier
-    return interpolate(ptc_applicable_pct, household_income_pct_fpl)`,
-    'std-ded': `# 26 USC § 63(c)(2)(A) - Standard deduction (joint)
+# (iii) Temporary percentages for 2021 through 2025
+# Up to 150%:     Initial: 0.0   Final: 0.0
+# 150% to 200%:   Initial: 0.0   Final: 2.0
+# 200% to 250%:   Initial: 2.0   Final: 4.0
+# 250% to 300%:   Initial: 4.0   Final: 6.0
+# 300% to 400%:   Initial: 6.0   Final: 8.5
 
-"""
-(A) 200 percent of the dollar amount in effect under
-subparagraph (C) for the taxable year in the case of—
-(i) a joint return, or (ii) a surviving spouse
-"""
+# IRA temporary table tier thresholds
+variable ira_tier_1_threshold:
+    from 2021-01-01: 0
 
-joint_multiplier:
-  description: "Multiplier for joint returns"
-  from 1988-01-01: 2  # "200 percent"
+variable ira_tier_2_threshold:
+    from 2021-01-01: 1.50
 
-basic_std_ded_joint:
-  imports: [26/63/c/2/C#basic_std_ded_other]
-  entity: TaxUnit
-  dtype: Money
-  from 1988-01-01:
-    return basic_std_ded_other * joint_multiplier`,
-    'ny-eitc': `# NY Tax Law § 606(d) - NY Earned Income Credit
+variable ira_tier_3_threshold:
+    from 2021-01-01: 2.00
 
-"""
-§ 606(d) For taxable years beginning after 2002, a resident
-individual who is allowed the earned income credit under
-section 32 of the IRC shall be allowed a credit equal to
-thirty percent of such federal credit.
-"""
+# Initial premium percentages
+variable ira_initial_1:
+    from 2021-01-01: 0.0
 
-ny_eitc_rate:
-  description: "NY EITC as % of federal"
-  from 2003-01-01: 0.30  # "thirty percent"
+variable ira_initial_2:
+    from 2021-01-01: 0.0
 
-ny_eitc:
-  imports: [26/32#eitc as federal_eitc]
-  entity: TaxUnit
-  dtype: Money
-  from 2003-01-01:
-    return federal_eitc * ny_eitc_rate`,
+variable ira_initial_3:
+    from 2021-01-01: 0.02
+
+# Computed: applicable percentage
+variable applicable_percentage:
+    entity: taxunit
+    from 2014-01-01: applicable_percentage_base`,
+    'std-ded': `# 26 USC 63(c)(2)(A) - Standard deduction (joint)
+
+# (A) 200 percent of the dollar amount in effect under
+# subparagraph (C) for the taxable year in the case of—
+# (i) a joint return, or (ii) a surviving spouse
+
+# "200 percent"
+variable joint_multiplier:
+    from 1988-01-01: 2
+
+variable basic_std_ded_joint:
+    entity: taxunit
+    from 1988-01-01: basic_std_ded_other * joint_multiplier`,
+    'ny-eitc': `# NY Tax Law 606(d) - NY Earned Income Credit
+
+# 606(d) For taxable years beginning after 2002, a
+# resident individual who is allowed the earned income
+# credit under section 32 of the IRC shall be allowed
+# a credit equal to thirty percent of such federal credit.
+
+# "thirty percent"
+variable ny_eitc_rate:
+    from 2003-01-01: 0.30
+
+variable ny_eitc:
+    entity: taxunit
+    from 2003-01-01: federal_eitc * ny_eitc_rate`,
   }
 
   return (
@@ -480,12 +478,13 @@ of the lesser of net investment
 income or modified AGI in excess
 of the threshold amount.`
 
-  const racCode = `niit_rate:
-  from 2013-01-01: 0.038
+  const racCode = `variable niit_rate:
+    from 2013-01-01: 0.038
 
-niit:
-  from 2013-01-01:
-    niit_rate * min(nii, excess_magi)`
+variable niit:
+    entity: taxunit
+    from 2013-01-01:
+        niit_rate * min(nii, excess_magi)`
 
   return (
     <div className={styles.codeTransform} onClick={handleClick} style={{ cursor: 'pointer' }} title="Click to advance">
@@ -869,8 +868,8 @@ export default function LandingPage() {
               </div>
               <h3 className={styles.featureTitle}>Self-contained</h3>
               <p className={styles.featureDesc}>
-                One file captures everything: statute text, parameters, and formulas.
-                No scattered dependencies.
+                One file captures statute text (as comments), parameters, and formulas.
+                No scattered dependencies across multiple files.
               </p>
             </div>
 
@@ -891,8 +890,8 @@ export default function LandingPage() {
               </div>
               <h3 className={styles.featureTitle}>Temporal versioning</h3>
               <p className={styles.featureDesc}>
-                Track how law changes over time. Parameters and formulas version
-                automatically with effective dates.
+                Track how law changes over time. Every variable uses
+                <code>from</code> clauses with effective dates.
               </p>
             </div>
           </div>
@@ -907,7 +906,7 @@ export default function LandingPage() {
             <h2 className={styles.sectionTitle}>.rac</h2>
             <p className={styles.sectionSubtitle}>
               Self-contained statute encoding format. One file captures the law:
-              text, parameters, and formulas.
+              statute text, parameters, and computed variables.
             </p>
           </div>
 
@@ -951,14 +950,14 @@ export default function LandingPage() {
                     <td className={styles.neutralSupport}>FEEL</td>
                     <td className={styles.hasSupport}>Python</td>
                     <td className={styles.neutralSupport}>Custom</td>
-                    <td className={styles.hasSupport}>Python</td>
+                    <td className={styles.hasSupport}>Python-like</td>
                   </tr>
                   <tr>
                     <td>File format</td>
                     <td className={styles.noSupport}>XML</td>
                     <td className={styles.neutralSupport}>Py + YAML</td>
                     <td className={styles.neutralSupport}>Custom</td>
-                    <td className={styles.hasSupport}>YAML</td>
+                    <td className={styles.hasSupport}>Custom DSL</td>
                   </tr>
                   <tr>
                     <td>Self-contained</td>
@@ -968,9 +967,9 @@ export default function LandingPage() {
                     <td className={styles.hasSupport}><CheckIcon className={styles.iconSmall} /></td>
                   </tr>
                   <tr>
-                    <td>Companion tests</td>
+                    <td>Reform modeling</td>
                     <td className={styles.noSupport}><XIcon className={styles.iconSmall} /></td>
-                    <td className={styles.noSupport}><XIcon className={styles.iconSmall} /></td>
+                    <td className={styles.hasSupport}><CheckIcon className={styles.iconSmall} /></td>
                     <td className={styles.noSupport}><XIcon className={styles.iconSmall} /></td>
                     <td className={styles.hasSupport}><CheckIcon className={styles.iconSmall} /></td>
                   </tr>
@@ -1006,10 +1005,10 @@ export default function LandingPage() {
 
             <div className={styles.featureCard}>
               <div className={styles.featureCardIcon}><ParameterIcon className={styles.iconMedium} /></div>
-              <h3>Time-varying parameters</h3>
+              <h3>Time-varying values</h3>
               <p>
-                Policy values change over time. Parameters track every historical value
-                with effective dates.
+                Policy values change over time. Variables track every historical value
+                with <code>from</code> effective dates.
               </p>
             </div>
 
@@ -1018,7 +1017,7 @@ export default function LandingPage() {
               <h3>No magic numbers</h3>
               <p>
                 Only small integers (-1 to 3) allowed in formulas. All policy values
-                must come from parameters with citations.
+                must come from named variables with statute citations.
               </p>
             </div>
 
@@ -1026,17 +1025,17 @@ export default function LandingPage() {
               <div className={styles.featureCardIcon}><ImportIcon className={styles.iconMedium} /></div>
               <h3>Cross-references</h3>
               <p>
-                Import variables from other statutes using <code>path#variable</code> syntax.
-                Dependencies are explicit.
+                Variables from other files are in scope by name. Dependencies between
+                statute sections are explicit and trackable.
               </p>
             </div>
 
             <div className={styles.featureCard}>
               <div className={styles.featureCardIcon}><TestIcon className={styles.iconMedium} /></div>
-              <h3>Companion tests</h3>
+              <h3>Reform modeling</h3>
               <p>
-                Test cases live in <code>.rac.test</code> files alongside the code. Verify against
-                official calculators and real-world examples.
+                The <code>amend</code> keyword overrides any variable with new values.
+                Model policy reforms without touching enacted statute files.
               </p>
             </div>
 
@@ -1044,8 +1043,8 @@ export default function LandingPage() {
               <div className={styles.featureCardIcon}><VersionIcon className={styles.iconMedium} /></div>
               <h3>Temporal formulas</h3>
               <p>
-                When laws change, track different formula versions with effective dates
-                and sunset provisions.
+                When laws change, track different formula versions with
+                <code>from</code> effective dates and sunset provisions.
               </p>
             </div>
           </div>
@@ -1167,144 +1166,95 @@ Self-contained statute encoding format for tax and benefit rules.
 
 ## File Structure
 
-\`\`\`yaml
+\`\`\`
 # path/to/section.rac - Title
 
-"""
-Statute text here...
-"""
+# Statute text in comments
+# (a) In general.— ...
 
-param_name:
-  description: "..."
-  unit: USD
-  source: "..."
-  from 2024-01-01: 100
-  from 2023-01-01: 95
+variable param_name:
+    from 2024-01-01: 100
+    from 2023-01-01: 95
 
-var_name:
-  imports: [path#var, path#var2 as alias]
-  entity: Household
-  period: Month
-  dtype: Money
-  from 2024-01-01:
-    ...formula code...
+variable var_name:
+    entity: taxunit
+    from 2024-01-01: param_name * input_value
 \`\`\`
-
-Tests live in separate \`.rac.test\` files.
 
 ## Top-Level Declarations
 
 | Declaration | Syntax | Purpose |
 |-------------|--------|---------|
-| Statute text | \`"""..."""\` | Verbatim statute text |
-| Named definition | \`name:\` | Parameter, variable, or computed value |
-| \`input\` | \`input name:\` | User-provided input |
-| \`enum\` | \`enum name:\` | Enumeration type |
-| \`function\` | \`function name:\` | Helper function |
+| Comment | \`# ...\` | Statute text, section headers |
+| \`variable\` | \`variable name:\` | Parameter or computed value |
+| \`entity\` | \`entity name:\` | Entity type with fields |
+| \`amend\` | \`amend path:\` | Override for reform modeling |
 
-## Parameters (time-varying values)
+## Variables (parameters and computed values)
 
-\`\`\`yaml
-contribution_rate:
-  description: "Household contribution as share of net income"
-  unit: USD           # Optional: USD, rate, years, months, persons
-  source: "USDA FNS"  # Optional: data source
-  reference: "7 USC 2017(a)"  # Optional: legal citation
-  from 2024-01-01: 0.30
-  from 2023-01-01: 0.30
+All declarations use the \`variable\` keyword. Parameters are
+variables without an \`entity:\` field (pure scalar values).
+Variables with \`entity:\` are computed per-entity.
+
+\`\`\`
+# Parameter: "30 per centum of household income"
+variable income_contribution_rate:
+    from 1977-10-01: 0.30
+
+# Computed variable
+variable snap_allotment:
+    entity: household
+    from 1977-10-01:
+        max(0, thrifty_food_plan_cost -
+            snap_net_income * income_contribution_rate)
 \`\`\`
 
-Parameters are in scope for all definitions in the file.
+Variables earlier in a file are in scope for later variables.
 
-## Variables (computed values)
+## Temporal Values
 
-\`\`\`yaml
-snap_allotment:
-  imports: [7/2014#household_size, 7/2014/a#snap_eligible]
-  entity: Household       # Required: Person, TaxUnit, Household, Family
-  period: Month           # Required: Year, Month, Day
-  dtype: Money            # Required: Money, Rate, Boolean, Integer, Enum[...]
-  unit: "USD"             # Optional
-  label: "SNAP Benefit"   # Optional
-  description: "..."      # Optional
-  default: 0              # Optional
-  from 2024-01-01:
-    if not snap_eligible:
-      return 0
-    return max_allotment - net_income * contribution_rate
+Use \`from YYYY-MM-DD:\` for effective dates:
+
+\`\`\`
+variable ctc_base_amount:
+    from 1998-01-01: 400
+    from 1999-01-01: 500
+    from 2001-01-01: 600
+    from 2003-01-01: 1000
+    from 2018-01-01: 2000  # TCJA
+    from 2025-01-01: 2200  # P.L. 119-21
 \`\`\`
 
-## Import Syntax
-
-\`\`\`yaml
-imports:
-  - 7/2014#household_size           # Import as-is
-  - 7/2014/e#snap_net_income        # From nested path
-  - 26/32#earned_income as ei       # With alias
-\`\`\`
-
-Path format: \`title/section/subsection#variable_name\`
-
-## Scoping Rules
-
-| Source | In Scope For |
-|--------|--------------|
-| Same-file parameter | All definitions in file |
-| Same-file variable | Later definitions (dependency order) |
-| Imported variable | That definition's formula only |
-
-## Formula Syntax
+## Expression Syntax
 
 Python-like with restrictions:
-- Keywords: \`if\`, \`else\`, \`return\`, \`for\`, \`break\`, \`and\`, \`or\`, \`not\`, \`in\`
-- Built-ins: \`max\`, \`min\`, \`abs\`, \`round\`, \`sum\`, \`len\`
-- **No numeric literals** except -1, 0, 1, 2, 3 (use parameters)
+- Keywords: \`if\`, \`else\`, \`match\`, \`and\`, \`or\`, \`not\`
+- Built-ins: \`max\`, \`min\`, \`abs\`, \`round\`, \`sum\`, \`len\`, \`clip\`
+- **No magic numbers** — only -1, 0, 1, 2, 3 allowed in formulas
+- All policy values come from named variables
 
-\`\`\`yaml
-from 2024-01-01:
-  if household_size <= minimum_benefit_max_size:
-    return minimum_benefit
-  return 0
+\`\`\`
+variable eitc:
+    entity: taxunit
+    from 2013-01-01:
+        min(credit_before_limitation,
+            credit_after_limitation)
 \`\`\`
 
-## Test Files (.rac.test)
+## Amendments (Reform Modeling)
 
-Tests live in separate files alongside \`.rac\` files:
-
-\`\`\`yaml
-# path/to/section.rac.test
-- name: "Family of 4"           # Optional name
-  period: 2024-01               # Optional: defaults to current
-  inputs:
-    household_size: 4
-    snap_net_income: 500
-    snap_eligible: true
-  expect: 823                   # Expected output value
 \`\`\`
-
-## Temporal Versioning
-
-Parameters and formulas use \`from\` with effective dates:
-
-\`\`\`yaml
-additional_ctc:
-  entity: TaxUnit
-  period: Year
-  dtype: Money
-  from 2018-01-01:
-    enacted_by: "P.L. 115-97 § 11022"
-    ...TCJA formula...
-  from 2026-01-01:
-    enacted_by: "P.L. 115-97 sunset"
-    reverts_to: 2001-01-01
+amend gov/tax/personal_allowance:
+    from 2025-04-06: 15000
 \`\`\`
 
 ## File Naming
 
 Filepath = legal citation:
 \`\`\`
-statute/7/2017/a.rac      → 7 USC § 2017(a)
-statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
+statute/7/2017/a.rac      -> 7 USC 2017(a)
+statute/26/24/d/1/B.rac   -> 26 USC 24(d)(1)(B)
+statute/26/32/b.rac       -> 26 USC 32(b)
 \`\`\``} language="rac" className={styles.specPre} />
             </div>
           </div>
@@ -1378,7 +1328,7 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
               </div>
               <h3>Federal (rac-us)</h3>
               <p>
-                14 .rac files • IRC §1(j) tax tables • §63 standard deduction • TCJA provisions
+                74 .rac files • EITC • CTC • ACA PTC • standard deduction • SNAP • education credits
               </p>
             </div>
 
@@ -1406,7 +1356,7 @@ statute/26/24/d/1/B.rac   → 26 USC § 24(d)(1)(B)
           <div className={styles.autoracFeatures}>
             <div className={styles.autoracFeature}>
               <CheckIcon className={styles.iconSmall} />
-              <span>44 total .rac files across 3 US jurisdictions</span>
+              <span>100+ total .rac files across 3 US jurisdictions</span>
             </div>
             <div className={styles.autoracFeature}>
               <CheckIcon className={styles.iconSmall} />

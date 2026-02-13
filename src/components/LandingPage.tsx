@@ -95,16 +95,16 @@ variable niit_rate:
     from 2013-01-01: 0.038
 
 variable modified_agi:
-    entity: taxunit
+    entity: TaxUnit
     from 2024-01-01: 0
 
 # Lesser of NII or excess MAGI over threshold
 variable excess_magi:
-    entity: taxunit
+    entity: TaxUnit
     from 2013-01-01: max(0, modified_agi - threshold_amount)
 
 variable net_investment_income_tax:
-    entity: taxunit
+    entity: TaxUnit
     from 2013-01-01: niit_rate * min(net_investment_income, excess_magi)`,
     'aca-ptc': `# 26 USC 36B(b)(3) - Applicable percentage
 
@@ -137,7 +137,7 @@ variable ira_initial_3:
 
 # Computed: applicable percentage
 variable applicable_percentage:
-    entity: taxunit
+    entity: TaxUnit
     from 2014-01-01: applicable_percentage_base`,
     'std-ded': `# 26 USC 63(c)(2)(A) - Standard deduction (joint)
 
@@ -150,7 +150,7 @@ variable joint_multiplier:
     from 1988-01-01: 2
 
 variable basic_std_ded_joint:
-    entity: taxunit
+    entity: TaxUnit
     from 1988-01-01: basic_std_ded_other * joint_multiplier`,
     'ny-eitc': `# NY Tax Law 606(d) - NY Earned Income Credit
 
@@ -164,7 +164,7 @@ variable ny_eitc_rate:
     from 2003-01-01: 0.30
 
 variable ny_eitc:
-    entity: taxunit
+    entity: TaxUnit
     from 2003-01-01: federal_eitc * ny_eitc_rate`,
   }
 
@@ -482,7 +482,7 @@ of the threshold amount.`
     from 2013-01-01: 0.038
 
 variable niit:
-    entity: taxunit
+    entity: TaxUnit
     from 2013-01-01:
         niit_rate * min(nii, excess_magi)`
 
@@ -869,7 +869,7 @@ export default function LandingPage() {
               <h3 className={styles.featureTitle}>Self-contained</h3>
               <p className={styles.featureDesc}>
                 One file captures statute text (as comments), parameters, and formulas.
-                No scattered dependencies across multiple files.
+                Parsed into a typed AST, compiled to IR, executed or compiled to native Rust.
               </p>
             </div>
 
@@ -1025,8 +1025,8 @@ export default function LandingPage() {
               <div className={styles.featureCardIcon}><ImportIcon className={styles.iconMedium} /></div>
               <h3>Cross-references</h3>
               <p>
-                Variables from other files are in scope by name. Dependencies between
-                statute sections are explicit and trackable.
+                Statute sections reference each other by variable name. The compiler
+                resolves dependencies via topological sort.
               </p>
             </div>
 
@@ -1163,6 +1163,7 @@ export default function LandingPage() {
               <CodeBlock code={`# RAC file specification
 
 Self-contained statute encoding format for tax and benefit rules.
+Parsed by a recursive descent parser into a typed AST.
 
 ## File Structure
 
@@ -1177,7 +1178,7 @@ variable param_name:
     from 2023-01-01: 95
 
 variable var_name:
-    entity: taxunit
+    entity: TaxUnit
     from 2024-01-01: param_name * input_value
 \`\`\`
 
@@ -1190,11 +1191,27 @@ variable var_name:
 | \`entity\` | \`entity name:\` | Entity type with fields |
 | \`amend\` | \`amend path:\` | Override for reform modeling |
 
+## Entity Declarations
+
+Define entity types with typed fields and relationships:
+
+\`\`\`
+entity Person:
+    age: int
+    income: float
+    tax_unit: -> TaxUnit
+
+entity TaxUnit:
+    members: [Person]
+\`\`\`
+
 ## Variables (parameters and computed values)
 
 All declarations use the \`variable\` keyword. Parameters are
 variables without an \`entity:\` field (pure scalar values).
 Variables with \`entity:\` are computed per-entity.
+
+Optional metadata fields: \`source\`, \`label\`, \`description\`, \`unit\`.
 
 \`\`\`
 # Parameter: "30 per centum of household income"
@@ -1203,7 +1220,7 @@ variable income_contribution_rate:
 
 # Computed variable
 variable snap_allotment:
-    entity: household
+    entity: Household
     from 1977-10-01:
         max(0, thrifty_food_plan_cost -
             snap_net_income * income_contribution_rate)
@@ -1213,7 +1230,8 @@ Variables earlier in a file are in scope for later variables.
 
 ## Temporal Values
 
-Use \`from YYYY-MM-DD:\` for effective dates:
+Use \`from YYYY-MM-DD:\` for effective dates.
+Use \`from DATE to DATE:\` for sunset provisions:
 
 \`\`\`
 variable ctc_base_amount:
@@ -1223,22 +1241,34 @@ variable ctc_base_amount:
     from 2003-01-01: 1000
     from 2018-01-01: 2000  # TCJA
     from 2025-01-01: 2200  # P.L. 119-21
+
+# Sunset clause
+variable arpa_bonus:
+    from 2021-01-01 to 2025-12-31: 1600
 \`\`\`
 
 ## Expression Syntax
 
 Python-like with restrictions:
-- Keywords: \`if\`, \`else\`, \`match\`, \`and\`, \`or\`, \`not\`
+- Conditionals: \`if cond: expr else: expr\`
+- Pattern matching: \`match expr: pattern => result\`
+- Logic: \`and\`, \`or\`, \`not\`
 - Built-ins: \`max\`, \`min\`, \`abs\`, \`round\`, \`sum\`, \`len\`, \`clip\`
-- **No magic numbers** — only -1, 0, 1, 2, 3 allowed in formulas
-- All policy values come from named variables
+- Field access: \`person.income\`
+- **No magic numbers** — only -1, 0, 1, 2, 3 in formulas
 
 \`\`\`
-variable eitc:
-    entity: taxunit
-    from 2013-01-01:
-        min(credit_before_limitation,
-            credit_after_limitation)
+variable applicable_percentage:
+    entity: TaxUnit
+    from 2026-01-01:
+        if is_joint_return: joint_rate else: single_rate
+
+variable threshold:
+    entity: TaxUnit
+    from 2026-01-01:
+        match filing_status:
+            "SINGLE" => single_threshold
+            "JOINT" => joint_threshold
 \`\`\`
 
 ## Amendments (Reform Modeling)
@@ -1391,10 +1421,10 @@ statute/26/32/b.rac       -> 26 USC 32(b)
               <h3>Encoding runs</h3>
               <p>
                 Track every statute encoding attempt. See iteration counts,
-                duration, reviewer scores, and validation results.
+                oracle match rates, and reviewer verdicts.
               </p>
               <div className={styles.labCardMeta}>
-                <span>Scores: RAC, Formula, Parameter, Integration</span>
+                <span>PASS/FAIL: RAC, Formula, Parameter, Integration</span>
               </div>
             </a>
 

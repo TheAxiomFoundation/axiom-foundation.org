@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/proposal/:path*", "destination": "https://proposal.rules.foundation/:path*" },
+    { "source": "/proposal/:path*", "destination": "https://nextladder-proposal-policy-engine.vercel.app/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "redirects": [

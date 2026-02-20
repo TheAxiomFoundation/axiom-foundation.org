@@ -266,6 +266,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         stop_reason: string
       }
 
+      console.log(`Iteration ${i}: stop_reason=${data.stop_reason}, blocks=${data.content.map(b => b.type).join(',')}`)
+
       // If Claude wants to use tools, execute them and continue the loop
       if (data.stop_reason === 'tool_use') {
         // Add Claude's response (with tool_use blocks) to messages
@@ -281,6 +283,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         for (const block of data.content) {
           if (block.type === 'tool_use' && block.id && block.name && block.input) {
             const result = await executeTool(block.name, block.input)
+            console.log(`Tool ${block.name}(${JSON.stringify(block.input).slice(0, 200)}): ${result.slice(0, 200)}`)
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,

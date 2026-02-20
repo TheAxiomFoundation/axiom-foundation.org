@@ -95,41 +95,6 @@ export const metaValue = style({
 })
 
 // ============================================
-// TABS
-// ============================================
-
-export const tabs = style({
-  display: 'flex',
-  gap: vars.space.xs,
-  marginBottom: vars.space['2xl'],
-  borderBottom: `1px solid ${vars.color.borderSubtle}`,
-  overflowX: 'auto',
-})
-
-export const tab = style({
-  padding: `${vars.space.md} ${vars.space.xl}`,
-  background: 'transparent',
-  border: 'none',
-  borderBottom: '2px solid transparent',
-  fontFamily: vars.font.body,
-  fontSize: '0.9rem',
-  fontWeight: 500,
-  color: vars.color.textSecondary,
-  cursor: 'pointer',
-  transition: `all ${vars.duration.fast}`,
-  whiteSpace: 'nowrap',
-  ':hover': {
-    color: vars.color.text,
-    background: 'rgba(59, 130, 246, 0.05)',
-  },
-})
-
-export const tabActive = style({
-  color: vars.color.precision,
-  borderBottomColor: vars.color.precision,
-})
-
-// ============================================
 // DATA STATUS BANNERS
 // ============================================
 
@@ -150,45 +115,6 @@ export const statusBannerLoading = style({
   color: 'white',
 })
 
-export const statusBannerMock = style({
-  background: 'linear-gradient(135deg, #ff4466 0%, #ff6b35 100%)',
-  color: 'white',
-  boxShadow: '0 4px 20px rgba(255, 68, 102, 0.4)',
-  border: '2px solid rgba(255, 255, 255, 0.3)',
-})
-
-export const statusBannerWarning = style({
-  background: 'linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)',
-  color: vars.color.void,
-  boxShadow: '0 4px 20px rgba(255, 170, 0, 0.3)',
-  border: '2px solid rgba(255, 255, 255, 0.3)',
-})
-
-export const statusBannerSuccess = style({
-  background: 'linear-gradient(135deg, #00ff88 0%, #00cc66 100%)',
-  color: vars.color.void,
-  padding: `${vars.space.md} ${vars.space.lg}`,
-  fontSize: '0.85rem',
-})
-
-export const dataNote = style({
-  padding: vars.space.lg,
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: `1px solid ${vars.color.borderSubtle}`,
-  borderRadius: vars.radius.md,
-  marginBottom: vars.space['2xl'],
-  fontFamily: vars.font.body,
-  fontSize: '0.85rem',
-  color: vars.color.textSecondary,
-  lineHeight: 1.6,
-})
-
-export const dataNoteBold = style({
-  fontWeight: 600,
-  color: vars.color.text,
-  marginRight: vars.space.sm,
-})
-
 // ============================================
 // TABLE SECTION
 // ============================================
@@ -197,140 +123,8 @@ export const tableSection = style({
   marginBottom: vars.space['3xl'],
 })
 
-export const sectionTitle = style({
-  display: 'flex',
-  alignItems: 'center',
-  gap: vars.space.md,
-  fontFamily: vars.font.display,
-  fontSize: '1.5rem',
-  color: vars.color.text,
-  marginBottom: vars.space.xl,
-})
-
-export const sectionCount = style({
-  padding: `${vars.space.xs} ${vars.space.md}`,
-  background: 'rgba(59, 130, 246, 0.1)',
-  borderRadius: '100px',
-  fontFamily: vars.font.mono,
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: vars.color.precision,
-})
-
-export const table = style({
-  width: '100%',
-  borderCollapse: 'collapse',
-  background: 'rgba(255, 255, 255, 0.01)',
-  border: `1px solid ${vars.color.borderSubtle}`,
-  borderRadius: vars.radius.lg,
-  overflow: 'hidden',
-})
-
-globalStyle(`${table} th`, {
-  padding: `${vars.space.md} ${vars.space.lg}`,
-  textAlign: 'left',
-  fontFamily: vars.font.body,
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  color: vars.color.textTertiary,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  background: 'rgba(255, 255, 255, 0.02)',
-  borderBottom: `1px solid ${vars.color.borderSubtle}`,
-})
-
-globalStyle(`${table} td`, {
-  padding: `${vars.space.md} ${vars.space.lg}`,
-  fontFamily: vars.font.body,
-  fontSize: '0.9rem',
-  color: vars.color.textSecondary,
-  borderBottom: `1px solid ${vars.color.borderSubtle}`,
-})
-
-globalStyle(`${table} tr:hover`, {
-  background: 'rgba(59, 130, 246, 0.03)',
-})
-
-globalStyle(`${table} tr:last-child td`, {
-  borderBottom: 'none',
-})
-
-export const citationCell = style({
-  fontWeight: 500,
-  color: `${vars.color.text} !important`,
-})
-
-export const timestampCell = style({
-  fontFamily: vars.font.mono,
-  fontSize: '0.8rem !important',
-  color: `${vars.color.textTertiary} !important`,
-})
-
-export const durationCell = style({
-  fontFamily: vars.font.mono,
-  fontSize: '0.8rem !important',
-})
-
-export const scoreCell = style({
-  fontFamily: vars.font.mono,
-  fontWeight: 600,
-  textAlign: 'center !important' as 'center',
-})
-
-export const scoreGood = style({
-  color: '#00ff88 !important',
-})
-
-export const scoreWarn = style({
-  color: '#ffaa00 !important',
-})
-
-export const scoreBad = style({
-  color: '#ff4466 !important',
-})
-
-export const iterationBadge = style({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: vars.space.xs,
-  padding: `2px ${vars.space.sm}`,
-  borderRadius: vars.radius.sm,
-  fontFamily: vars.font.mono,
-  fontSize: '0.75rem',
-  fontWeight: 600,
-})
-
-export const iterationSuccess = style({
-  background: 'rgba(0, 255, 136, 0.15)',
-  color: '#00ff88',
-})
-
-export const iterationFailed = style({
-  background: 'rgba(255, 68, 102, 0.15)',
-  color: '#ff4466',
-})
-
-export const errorTag = style({
-  display: 'inline-block',
-  padding: `2px ${vars.space.sm}`,
-  background: 'rgba(255, 68, 102, 0.15)',
-  borderRadius: vars.radius.sm,
-  fontFamily: vars.font.mono,
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  color: '#ff4466',
-})
-
-export const sourceBadge = style({
-  display: 'inline-block',
-  padding: `2px ${vars.space.sm}`,
-  borderRadius: vars.radius.sm,
-  fontSize: '0.7rem',
-  fontWeight: 600,
-})
-
 // ============================================
-// DETAIL PANEL (inline expanded row)
+// DETAIL PANEL
 // ============================================
 
 export const detailPanel = style({
@@ -338,15 +132,6 @@ export const detailPanel = style({
   border: `1px solid rgba(0, 212, 255, 0.2)`,
   borderRadius: vars.radius.lg,
   overflow: 'hidden',
-})
-
-export const detailHeader = style({
-  padding: `${vars.space.lg} ${vars.space.xl}`,
-  background: 'rgba(0, 212, 255, 0.08)',
-  borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
 })
 
 export const detailSection = style({
@@ -362,140 +147,6 @@ export const detailSectionTitle = style({
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: vars.space.md,
-})
-
-export const scoresGrid = style({
-  display: 'flex',
-  gap: vars.space.xl,
-})
-
-export const scoreItem = style({
-  textAlign: 'center' as const,
-})
-
-export const scoreValue = style({
-  fontFamily: vars.font.mono,
-  fontSize: '1.5rem',
-  fontWeight: 700,
-})
-
-export const scoreLabel = style({
-  fontFamily: vars.font.body,
-  fontSize: '0.7rem',
-  color: vars.color.textTertiary,
-  textTransform: 'uppercase',
-})
-
-export const metaGrid = style({
-  display: 'flex',
-  gap: vars.space['2xl'],
-  flexWrap: 'wrap',
-})
-
-export const metaBlock = style({})
-
-globalStyle(`${metaBlock} > div:first-child`, {
-  fontFamily: vars.font.body,
-  fontSize: '0.7rem',
-  color: vars.color.textTertiary,
-  textTransform: 'uppercase',
-  marginBottom: vars.space.xs,
-})
-
-globalStyle(`${metaBlock} > div:last-child`, {
-  fontFamily: vars.font.mono,
-  fontSize: '0.9rem',
-  fontWeight: 600,
-})
-
-// ============================================
-// TRANSCRIPTS
-// ============================================
-
-export const transcriptList = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: vars.space.lg,
-})
-
-export const transcriptCard = style({
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: `1px solid ${vars.color.borderSubtle}`,
-  borderRadius: vars.radius.lg,
-  overflow: 'hidden',
-})
-
-export const transcriptHeader = style({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: vars.space.lg,
-  cursor: 'pointer',
-  transition: `background ${vars.duration.fast}`,
-  ':hover': {
-    background: 'rgba(0, 212, 255, 0.03)',
-  },
-})
-
-export const transcriptHeaderExpanded = style({
-  background: 'rgba(0, 212, 255, 0.05)',
-})
-
-export const transcriptBadge = style({
-  padding: `${vars.space.xs} ${vars.space.md}`,
-  background: 'rgba(0, 212, 255, 0.15)',
-  borderRadius: vars.radius.sm,
-  fontFamily: vars.font.mono,
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  color: '#00d4ff',
-})
-
-export const transcriptMeta = style({
-  display: 'flex',
-  alignItems: 'center',
-  gap: vars.space.lg,
-})
-
-export const transcriptContent = style({
-  borderTop: `1px solid ${vars.color.borderSubtle}`,
-})
-
-export const orchestratorThinking = style({
-  padding: vars.space.lg,
-  background: 'rgba(139, 92, 246, 0.05)',
-  borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-})
-
-export const timelineControls = style({
-  padding: `${vars.space.md} ${vars.space.lg}`,
-  borderBottom: `1px solid ${vars.color.borderSubtle}`,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-})
-
-export const timeline = style({
-  padding: vars.space.lg,
-  maxHeight: '600px',
-  overflow: 'auto',
-})
-
-export const timelineEvent = style({
-  marginBottom: vars.space.md,
-  borderRadius: vars.radius.md,
-  overflow: 'hidden',
-})
-
-export const timelineEventHeader = style({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: `${vars.space.sm} ${vars.space.md}`,
-})
-
-export const timelineEventContent = style({
-  padding: `${vars.space.sm} ${vars.space.md}`,
 })
 
 // ============================================
@@ -581,146 +232,6 @@ globalStyle(`${sessionStat} > div:last-child`, {
 })
 
 // ============================================
-// PLUGIN CONTENT
-// ============================================
-
-export const pluginGrid = style({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-  gap: vars.space.xl,
-})
-
-export const pluginCategory = style({
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: `1px solid ${vars.color.borderSubtle}`,
-  borderRadius: vars.radius.xl,
-  padding: vars.space.xl,
-})
-
-export const pluginCategoryTitle = style({
-  display: 'flex',
-  alignItems: 'center',
-  gap: vars.space.sm,
-  fontFamily: vars.font.display,
-  fontSize: '1.1rem',
-  color: vars.color.text,
-  marginBottom: vars.space.lg,
-  paddingBottom: vars.space.md,
-  borderBottom: `1px solid ${vars.color.borderSubtle}`,
-})
-
-export const pluginItem = style({
-  padding: vars.space.md,
-  marginBottom: vars.space.sm,
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: `1px solid ${vars.color.borderSubtle}`,
-  borderRadius: vars.radius.md,
-  cursor: 'pointer',
-  transition: `all ${vars.duration.fast}`,
-  ':hover': {
-    borderColor: vars.color.border,
-    background: 'rgba(59, 130, 246, 0.05)',
-  },
-})
-
-export const pluginItemHeader = style({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: vars.space.xs,
-})
-
-export const pluginItemName = style({
-  fontFamily: vars.font.mono,
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  color: vars.color.text,
-})
-
-export const pluginItemLines = style({
-  fontFamily: vars.font.mono,
-  fontSize: '0.75rem',
-  color: vars.color.textTertiary,
-})
-
-export const pluginItemDesc = style({
-  fontFamily: vars.font.body,
-  fontSize: '0.8rem',
-  color: vars.color.textSecondary,
-  lineHeight: 1.5,
-})
-
-export const pluginItemExpanded = style({
-  marginTop: vars.space.md,
-  padding: vars.space.md,
-  background: vars.color.void,
-  borderRadius: vars.radius.md,
-  border: `1px solid ${vars.color.borderSubtle}`,
-})
-
-// ============================================
-// KNOWN ISSUES
-// ============================================
-
-export const issuesList = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: vars.space.lg,
-})
-
-export const issueCard = style({
-  background: 'rgba(255, 170, 0, 0.03)',
-  border: '1px solid rgba(255, 170, 0, 0.2)',
-  borderRadius: vars.radius.xl,
-  overflow: 'hidden',
-})
-
-export const issueHeader = style({
-  display: 'flex',
-  alignItems: 'center',
-  gap: vars.space.md,
-  padding: `${vars.space.lg} ${vars.space.xl}`,
-  background: 'rgba(255, 170, 0, 0.08)',
-  borderBottom: '1px solid rgba(255, 170, 0, 0.15)',
-})
-
-export const issueIcon = style({
-  fontSize: '1.25rem',
-})
-
-export const issueTitle = style({
-  fontFamily: vars.font.display,
-  fontSize: '1rem',
-  fontWeight: 500,
-  color: '#ffaa00',
-})
-
-export const issueContent = style({
-  padding: vars.space.xl,
-})
-
-globalStyle(`${issueContent} p`, {
-  fontFamily: vars.font.body,
-  fontSize: '0.95rem',
-  color: vars.color.textSecondary,
-  lineHeight: 1.6,
-  margin: 0,
-})
-
-globalStyle(`${issueContent} strong`, {
-  color: vars.color.text,
-})
-
-globalStyle(`${issueContent} code`, {
-  fontFamily: vars.font.mono,
-  fontSize: '0.85rem',
-  padding: '2px 6px',
-  background: 'rgba(255, 170, 0, 0.15)',
-  borderRadius: '4px',
-  color: '#ffaa00',
-})
-
-// ============================================
 // EMPTY STATE
 // ============================================
 
@@ -749,4 +260,103 @@ export const emptyStateDesc = style({
   fontFamily: vars.font.body,
   fontSize: '0.9rem',
   color: vars.color.textTertiary,
+})
+
+// ============================================
+// SESSION CARD TITLE
+// ============================================
+
+export const sessionTitle = style({
+  fontFamily: vars.font.display,
+  fontSize: '1.1rem',
+  color: vars.color.text,
+  marginBottom: vars.space.xs,
+})
+
+export const sessionIdSecondary = style({
+  fontFamily: vars.font.mono,
+  fontSize: '0.75rem',
+  color: vars.color.textTertiary,
+})
+
+// ============================================
+// EVENT TIMELINE
+// ============================================
+
+export const timelineContainer = style({
+  maxHeight: '400px',
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+})
+
+export const timelineEvent = style({
+  display: 'grid',
+  gridTemplateColumns: '40px 100px 120px 1fr',
+  gap: vars.space.sm,
+  alignItems: 'start',
+  padding: `${vars.space.sm} ${vars.space.md}`,
+  borderRadius: vars.radius.sm,
+  fontSize: '0.8rem',
+  cursor: 'pointer',
+  transition: `background ${vars.duration.fast}`,
+  ':hover': {
+    background: 'rgba(255, 255, 255, 0.04)',
+  },
+})
+
+export const timelineSeq = style({
+  fontFamily: vars.font.mono,
+  fontSize: '0.7rem',
+  color: vars.color.textTertiary,
+  textAlign: 'right' as const,
+})
+
+export const timelineBadge = style({
+  fontFamily: vars.font.mono,
+  fontSize: '0.7rem',
+  fontWeight: 600,
+  padding: `1px ${vars.space.sm}`,
+  borderRadius: vars.radius.sm,
+  display: 'inline-block',
+  textAlign: 'center' as const,
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+})
+
+export const timelineTime = style({
+  fontFamily: vars.font.mono,
+  fontSize: '0.7rem',
+  color: vars.color.textTertiary,
+})
+
+export const timelineContent = style({
+  fontSize: '0.8rem',
+  color: vars.color.textSecondary,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap' as const,
+})
+
+export const timelineContentExpanded = style({
+  fontSize: '0.8rem',
+  color: vars.color.textSecondary,
+  whiteSpace: 'pre-wrap' as const,
+  wordBreak: 'break-word' as const,
+})
+
+export const timelineShowMore = style({
+  padding: `${vars.space.md} ${vars.space.lg}`,
+  textAlign: 'center' as const,
+  color: vars.color.precision,
+  fontFamily: vars.font.mono,
+  fontSize: '0.8rem',
+  cursor: 'pointer',
+  borderRadius: vars.radius.md,
+  transition: `background ${vars.duration.fast}`,
+  ':hover': {
+    background: 'rgba(59, 130, 246, 0.1)',
+  },
 })

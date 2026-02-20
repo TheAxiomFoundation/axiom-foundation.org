@@ -7,6 +7,7 @@ import {
 import {
   getSDKSessions,
   getSDKSessionEvents,
+  getSDKSessionMeta,
   SDKSession,
   SDKSessionEvent,
 } from '../lib/supabase'
@@ -17,6 +18,9 @@ export default function LabPage() {
   const [sdkSessionEvents, setSdkSessionEvents] = useState<SDKSessionEvent[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [sessionMeta, setSessionMeta] = useState<Record<string, { title: string; lastEventAt: string | null }>>({})
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
+  const [timelineLimit, setTimelineLimit] = useState(50)
 
   useEffect(() => {
     async function fetchData() {
@@ -24,6 +28,10 @@ export default function LabPage() {
       try {
         const sessions = await getSDKSessions(50)
         setSdkSessions(sessions)
+        if (sessions.length > 0) {
+          const meta = await getSDKSessionMeta(sessions.map(s => s.id))
+          setSessionMeta(meta)
+        }
       } catch (err) {
         console.error('Failed to fetch sessions:', err)
       } finally {
@@ -42,6 +50,8 @@ export default function LabPage() {
     setSelectedSDKSession(session)
     setSdkSessionEvents([])
     setLoadingEvents(true)
+    setExpandedEvents(new Set())
+    setTimelineLimit(50)
     const events = await getSDKSessionEvents(session.id, 2000)
     setSdkSessionEvents(events)
     setLoadingEvents(false)
@@ -98,7 +108,9 @@ export default function LabPage() {
             ) : (
               <div className={styles.sessionList}>
                 {sdkSessions.map((session) => {
-                  const duration = session.ended_at ? Math.round((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 1000) : null
+                  const meta = sessionMeta[session.id]
+                  const endTime = session.ended_at || meta?.lastEventAt
+                  const duration = endTime ? Math.round((new Date(endTime).getTime() - new Date(session.started_at).getTime()) / 1000) : null
                   const isSelected = selectedSDKSession?.id === session.id
 
                   const agentPhases = isSelected ? sdkSessionEvents.filter(e => e.event_type === 'agent_start') : []
@@ -118,9 +130,18 @@ export default function LabPage() {
                       }}>
                         <div className={styles.sessionGlow} />
                         <div className={styles.sessionHeader}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span className={styles.sessionBadge}>Mission</span>
-                            <code className={styles.sessionId}>{session.id}</code>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <span className={styles.sessionBadge}>Mission</span>
+                              {meta?.title ? (
+                                <span className={styles.sessionTitle}>{meta.title}</span>
+                              ) : (
+                                <code className={styles.sessionId}>{session.id}</code>
+                              )}
+                            </div>
+                            {meta?.title && (
+                              <code className={styles.sessionIdSecondary}>{session.id}</code>
+                            )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ textAlign: 'right' }}>
@@ -245,7 +266,7 @@ export default function LabPage() {
                               )}
 
                               {/* Session metadata */}
-                              <div className={styles.detailSection} style={{ borderBottom: 'none' }}>
+                              <div className={styles.detailSection}>
                                 <div className={styles.detailSectionTitle}>Session info</div>
                                 <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '0.85rem' }}>
                                   {session.model && (
@@ -259,6 +280,84 @@ export default function LabPage() {
                                   <div><span style={{ color: '#888' }}>Events loaded: </span><span style={{ color: '#ccc' }}>{sdkSessionEvents.length} of {session.event_count}</span></div>
                                 </div>
                               </div>
+
+                              {/* Event timeline */}
+                              {sdkSessionEvents.length > 0 && (
+                                <div className={styles.detailSection} style={{ borderBottom: 'none' }}>
+                                  <div className={styles.detailSectionTitle}>Event timeline ({sdkSessionEvents.length})</div>
+                                  <div className={styles.timelineContainer}>
+                                    {sdkSessionEvents.slice(0, timelineLimit).map((event) => {
+                                      const sessionStart = new Date(session.started_at).getTime()
+                                      const eventTime = new Date(event.timestamp).getTime()
+                                      const offsetSec = Math.max(0, Math.round((eventTime - sessionStart) / 1000))
+                                      const minutes = Math.floor(offsetSec / 60)
+                                      const seconds = offsetSec % 60
+                                      const relTime = `+${minutes}m ${String(seconds).padStart(2, '0')}s`
+
+                                      const isExpanded = expandedEvents.has(event.id)
+
+                                      const badgeColors: Record<string, { bg: string; fg: string }> = {
+                                        agent_start: { bg: 'rgba(0, 212, 255, 0.15)', fg: '#00d4ff' },
+                                        agent_end: { bg: 'rgba(0, 212, 255, 0.1)', fg: '#0099bb' },
+                                        tool_use: { bg: 'rgba(167, 139, 250, 0.15)', fg: '#a78bfa' },
+                                        tool_result: { bg: 'rgba(167, 139, 250, 0.1)', fg: '#8b6fd4' },
+                                        message: { bg: 'rgba(0, 255, 136, 0.12)', fg: '#00ff88' },
+                                        thinking: { bg: 'rgba(255, 107, 53, 0.12)', fg: '#ff6b35' },
+                                      }
+                                      const colors = badgeColors[event.event_type] || { bg: 'rgba(255, 255, 255, 0.08)', fg: '#888' }
+
+                                      const label = event.tool_name
+                                        ? `${event.event_type}:${event.tool_name}`
+                                        : event.event_type
+
+                                      const contentText = event.content || ''
+
+                                      return (
+                                        <div
+                                          key={event.id}
+                                          className={styles.timelineEvent}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setExpandedEvents(prev => {
+                                              const next = new Set(prev)
+                                              if (next.has(event.id)) next.delete(event.id)
+                                              else next.add(event.id)
+                                              return next
+                                            })
+                                          }}
+                                        >
+                                          <span className={styles.timelineSeq}>#{event.sequence}</span>
+                                          <span
+                                            className={styles.timelineBadge}
+                                            style={{ background: colors.bg, color: colors.fg }}
+                                          >
+                                            {label}
+                                          </span>
+                                          <span className={styles.timelineTime}>{relTime}</span>
+                                          {contentText ? (
+                                            <span className={isExpanded ? styles.timelineContentExpanded : styles.timelineContent}>
+                                              {isExpanded ? contentText : contentText.slice(0, 120) + (contentText.length > 120 ? '...' : '')}
+                                            </span>
+                                          ) : (
+                                            <span className={styles.timelineContent} style={{ color: '#555' }}>--</span>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                  {sdkSessionEvents.length > timelineLimit && (
+                                    <div
+                                      className={styles.timelineShowMore}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setTimelineLimit(prev => prev + 50)
+                                      }}
+                                    >
+                                      Show more ({sdkSessionEvents.length - timelineLimit} remaining)
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </>
                           )}
                         </div>

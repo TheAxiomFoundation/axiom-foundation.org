@@ -164,6 +164,60 @@ export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
   return (data || []) as SDKSession[]
 }
 
+// Fetch session metadata (title from first agent_start, last event timestamp) for multiple sessions
+export async function getSDKSessionMeta(
+  sessionIds: string[]
+): Promise<Record<string, { title: string; lastEventAt: string | null }>> {
+  if (sessionIds.length === 0) return {}
+
+  // Get first agent_start events for titles
+  const { data: startEvents } = await supabase
+    .from('sdk_session_events')
+    .select('session_id, content')
+    .in('session_id', sessionIds)
+    .eq('event_type', 'agent_start')
+    .order('sequence', { ascending: true })
+
+  // Get last event timestamp per session (ordered descending so first per session is latest)
+  const { data: lastEvents } = await supabase
+    .from('sdk_session_events')
+    .select('session_id, timestamp')
+    .in('session_id', sessionIds)
+    .order('sequence', { ascending: false })
+
+  const meta: Record<string, { title: string; lastEventAt: string | null }> = {}
+
+  // Extract titles from first agent_start per session
+  if (startEvents) {
+    for (const row of startEvents) {
+      if (!meta[row.session_id] && row.content) {
+        const match = row.content.match(/(?:Analyze|Encode)\s+(.+?)(?:\s+subsection|\s*$)/i)
+        meta[row.session_id] = {
+          title: match ? match[1].trim() : row.content.slice(0, 60),
+          lastEventAt: null,
+        }
+      }
+    }
+  }
+
+  // Extract last event timestamp per session
+  if (lastEvents) {
+    const seen = new Set<string>()
+    for (const row of lastEvents) {
+      if (!seen.has(row.session_id)) {
+        seen.add(row.session_id)
+        if (meta[row.session_id]) {
+          meta[row.session_id].lastEventAt = row.timestamp
+        } else {
+          meta[row.session_id] = { title: '', lastEventAt: row.timestamp }
+        }
+      }
+    }
+  }
+
+  return meta
+}
+
 // Fetch events for a specific SDK session
 export async function getSDKSessionEvents(sessionId: string, limit = 2000): Promise<SDKSessionEvent[]> {
   const { data, error } = await supabase

@@ -1,9 +1,9 @@
 {
   "/_not-found/page": "/_not-found",
-  "/atlas/page": "/atlas",
-  "/page": "/",
-  "/privacy/page": "/privacy",
   "/about/page": "/about",
+  "/page": "/",
+  "/atlas/page": "/atlas",
+  "/privacy/page": "/privacy",
   "/atlas/[ruleId]/page": "/atlas/[ruleId]",
   "/lab/page": "/lab"
 }

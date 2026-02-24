@@ -31,7 +31,7 @@ export function LabPreview() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             Experiment lab
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             Live experiment tracking, agent transcripts, and calibration data.
             See what AutoRAC is working on in real time.
           </p>
@@ -47,13 +47,13 @@ export function LabPreview() {
               <div className="w-14 h-14 flex items-center justify-center bg-[var(--color-void)] border border-[var(--color-border)] rounded-xl text-[var(--color-precision)] mb-6">
                 {card.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-[1.35rem] text-[var(--color-text)] mb-4">
+              <h3 className="font-display text-[1.35rem] text-[var(--color-text)] mb-4">
                 {card.title}
               </h3>
-              <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
+              <p className="text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
                 {card.desc}
               </p>
-              <div className="px-4 py-2 bg-[rgba(59,130,246,0.1)] rounded font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)]">
+              <div className="px-4 py-2 bg-[rgba(59,130,246,0.1)] rounded font-mono text-xs text-[var(--color-text-muted)]">
                 <span>{card.meta}</span>
               </div>
             </Link>

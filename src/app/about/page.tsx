@@ -9,7 +9,7 @@ export default function AboutPage() {
           <h1 className="heading-page text-[var(--color-text)] mb-6">
             About the Rules Foundation
           </h1>
-          <p className="font-[family-name:var(--f-body)] text-xl font-light text-[var(--color-text-secondary)] leading-relaxed max-w-[600px] mx-auto">
+          <p className="text-xl font-light text-[var(--color-text-secondary)] leading-relaxed max-w-[600px] mx-auto">
             Open infrastructure for encoded law. We build machine-readable
             encodings of statutes, regulations, and policy rules to serve as
             ground truth for AI systems.
@@ -20,7 +20,7 @@ export default function AboutPage() {
           <h2 className="heading-sub text-[var(--color-text)] mb-4">
             Our mission
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
+          <p className="text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
             Rules Foundation builds open infrastructure for encoded law. Our
             mission is to make legal rules machine-readable, verifiable, and
             accessible to everyone. We&apos;re a fiscally sponsored project of
@@ -59,10 +59,10 @@ export default function AboutPage() {
                 key={card.title}
                 className="p-6 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-xl"
               >
-                <h3 className="font-[family-name:var(--f-display)] text-lg text-[var(--color-text)] mb-2">
+                <h3 className="font-display text-lg text-[var(--color-text)] mb-2">
                   {card.title}
                 </h3>
-                <p className="font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
                   {card.desc}
                 </p>
               </div>
@@ -81,7 +81,7 @@ export default function AboutPage() {
               className="rounded-full shrink-0"
             />
             <div>
-              <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
+              <p className="text-[1rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
                 The Rules Foundation is led by{" "}
                 <a
                   href="https://maxghenis.com"
@@ -96,7 +96,7 @@ export default function AboutPage() {
                 anyone passionate about making rules more transparent and
                 accessible.
               </p>
-              <div className="flex items-center gap-2 font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)]">
+              <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
                 <CheckIcon className="w-4 h-4 text-[var(--color-success)]" />
                 <span>
                   Join us on{" "}
@@ -116,14 +116,14 @@ export default function AboutPage() {
           <h2 className="heading-sub text-[var(--color-text)] mb-4">
             Contact
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
+          <p className="text-[1rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
             Have questions or want to get involved? We&apos;d love to hear from
             you.
           </p>
           <div className="inline-block px-6 py-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg">
             <a
               href="mailto:hello@rules.foundation"
-              className="font-[family-name:var(--f-mono)] text-[var(--color-precision)] text-[0.95rem]"
+              className="font-mono text-[var(--color-precision)] text-[0.95rem]"
             >
               hello@rules.foundation
             </a>

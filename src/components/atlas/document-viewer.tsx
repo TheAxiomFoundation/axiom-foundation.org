@@ -2,22 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-
-interface Subsection {
-  id: string;
-  text: string;
-}
-
-interface ViewerDocument {
-  citation: string;
-  title: string;
-  subsections: Subsection[];
-  hasRac: boolean;
-  jurisdiction: string;
-  archPath: string | null;
-}
-
-type ViewMode = "statute" | "split";
+import type { ViewerDocument } from "@/lib/atlas-utils";
 
 export function DocumentViewer({
   document,
@@ -29,7 +14,6 @@ export function DocumentViewer({
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null
   );
-  const [viewMode] = useState<ViewMode>("statute");
 
   const handleSectionHover = useCallback((sectionId: string | null) => {
     setHighlightedSection(sectionId);
@@ -63,17 +47,17 @@ export function DocumentViewer({
               ←
             </button>
           )}
-          <span className="font-[family-name:var(--f-mono)] text-sm text-[var(--color-text)]">
+          <span className="font-mono text-sm text-[var(--color-text)]">
             Atlas
           </span>
         </div>
 
-        <div className="font-[family-name:var(--f-mono)] text-sm text-[var(--color-text-secondary)]">
+        <div className="font-mono text-sm text-[var(--color-text-secondary)]">
           {document.citation}
         </div>
 
         <span
-          className="font-[family-name:var(--f-mono)] text-xs font-semibold text-[var(--color-precision)]"
+          className="font-mono text-xs font-semibold text-[var(--color-precision)]"
         >
           {getJurisdictionLabel()}
         </span>
@@ -82,52 +66,49 @@ export function DocumentViewer({
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-8">
         <AnimatePresence mode="wait">
-          {/* v8 ignore next -- viewMode is always "statute", split is future */}
-          {(viewMode === "statute" || viewMode === "split") && (
-            <motion.div
-              key="statute-panel"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-[800px] mx-auto"
-            >
-              <h1 className="font-[family-name:var(--f-display)] text-2xl text-[var(--color-text)] mb-8">
-                {document.title}
-              </h1>
+          <motion.div
+            key="statute-panel"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="max-w-[800px] mx-auto"
+          >
+            <h1 className="font-display text-2xl text-[var(--color-text)] mb-8">
+              {document.title}
+            </h1>
 
-              {document.subsections.map((subsection) => (
-                <div
-                  key={subsection.id}
-                  className={`flex gap-4 p-4 rounded-lg mb-3 transition-colors duration-150 cursor-default ${
-                    highlightedSection === subsection.id
-                      ? "bg-[rgba(59,130,246,0.08)]"
-                      : "hover:bg-[rgba(255,255,255,0.02)]"
-                  }`}
-                  onMouseEnter={() => handleSectionHover(subsection.id)}
-                  onMouseLeave={() => handleSectionHover(null)}
-                >
-                  <span className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-precision)] pt-1 shrink-0">
-                    ({subsection.id})
-                  </span>
-                  <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">
-                    {subsection.text}
-                  </p>
-                </div>
-              ))}
+            {document.subsections.map((subsection) => (
+              <div
+                key={subsection.id}
+                className={`flex gap-4 p-4 rounded-lg mb-3 transition-colors duration-150 cursor-default ${
+                  highlightedSection === subsection.id
+                    ? "bg-[rgba(59,130,246,0.08)]"
+                    : "hover:bg-[rgba(255,255,255,0.02)]"
+                }`}
+                onMouseEnter={() => handleSectionHover(subsection.id)}
+                onMouseLeave={() => handleSectionHover(null)}
+              >
+                <span className="font-mono text-xs text-[var(--color-precision)] pt-1 shrink-0">
+                  ({subsection.id})
+                </span>
+                <p className="text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">
+                  {subsection.text}
+                </p>
+              </div>
+            ))}
 
-              {document.archPath && (
-                <div className="mt-8 pt-4 border-t border-[var(--color-border-subtle)]">
-                  <span className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)]">
-                    Source:{" "}
-                  </span>
-                  <code className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-precision)]">
-                    {document.archPath}
-                  </code>
-                </div>
-              )}
-            </motion.div>
-          )}
+            {document.archPath && (
+              <div className="mt-8 pt-4 border-t border-[var(--color-border-subtle)]">
+                <span className="font-mono text-xs text-[var(--color-text-muted)]">
+                  Source:{" "}
+                </span>
+                <code className="font-mono text-xs text-[var(--color-precision)]">
+                  {document.archPath}
+                </code>
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
       </main>
 

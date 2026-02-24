@@ -375,7 +375,7 @@ function TabbedCodeExamples() {
         {(Object.keys(examples) as ExampleType[]).map((ex) => (
           <button
             key={ex}
-            className={`px-4 py-1.5 rounded-full font-[family-name:var(--f-mono)] text-xs transition-all duration-150 border ${
+            className={`px-4 py-1.5 rounded-full font-mono text-xs transition-all duration-150 border ${
               activeExample === ex
                 ? "bg-[rgba(59,130,246,0.15)] border-[var(--color-precision)] text-[var(--color-precision)]"
                 : "bg-transparent border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:text-[var(--color-text-secondary)]"
@@ -392,7 +392,7 @@ function TabbedCodeExamples() {
         {(["rac", "dmn", "openfisca", "catala"] as FormatTab[]).map((tab) => (
           <button
             key={tab}
-            className={`px-5 py-3 font-[family-name:var(--f-mono)] text-xs font-medium border-b-2 transition-colors duration-150 bg-transparent ${
+            className={`px-5 py-3 font-mono text-xs font-medium border-b-2 transition-colors duration-150 bg-transparent ${
               activeTab === tab
                 ? "border-[var(--color-precision)] text-[var(--color-precision)]"
                 : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
@@ -407,11 +407,11 @@ function TabbedCodeExamples() {
       {/* Code block */}
       <div className="bg-[var(--color-bg)] border border-[var(--color-border-subtle)] border-t-0 rounded-b-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-[rgba(255,255,255,0.02)] border-b border-[var(--color-border-subtle)]">
-          <span className="flex items-center gap-2 font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)]">
+          <span className="flex items-center gap-2 font-mono text-xs text-[var(--color-text-muted)]">
             <FileIcon className="w-3.5 h-3.5" />
             {filename}
           </span>
-          <span className="font-[family-name:var(--f-mono)] text-[0.7rem] text-[var(--color-text-muted)]">
+          <span className="font-mono text-[0.7rem] text-[var(--color-text-muted)]">
             {getNote(activeTab)}
           </span>
         </div>
@@ -419,7 +419,7 @@ function TabbedCodeExamples() {
           <CodeBlock
             code={getCodeContent(activeTab, activeExample)}
             language={getCodeLanguage(activeTab)}
-            className="m-0 p-6 font-[family-name:var(--f-mono)] text-[0.8rem] leading-relaxed whitespace-pre-wrap border-0 rounded-none bg-transparent"
+            className="m-0 p-6 font-mono text-[0.8rem] leading-relaxed whitespace-pre-wrap border-0 rounded-none bg-transparent"
           />
         </div>
       </div>
@@ -443,7 +443,7 @@ export function RacFormat() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             .rac
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             Self-contained statute encoding format. One file captures the law:
             statute text, parameters, and computed values.
           </p>
@@ -453,16 +453,16 @@ export function RacFormat() {
 
         {/* Format comparison table */}
         <div className="mt-16 mb-16">
-          <h3 className="font-[family-name:var(--f-display)] text-2xl text-[var(--color-text)] text-center mb-2">
+          <h3 className="font-display text-2xl text-[var(--color-text)] text-center mb-2">
             Format comparison
           </h3>
-          <p className="font-[family-name:var(--f-body)] text-base text-[var(--color-text-secondary)] text-center mb-8">
+          <p className="text-base text-[var(--color-text-secondary)] text-center mb-8">
             RAC is purpose-built for encoding law with auditability and temporal
             accuracy.
           </p>
 
           <div className="overflow-x-auto rounded-lg border border-[var(--color-border-subtle)]">
-            <table className="w-full border-collapse font-[family-name:var(--f-body)] text-[0.9rem]">
+            <table className="w-full border-collapse text-[0.9rem]">
               <thead>
                 <tr>
                   <th className="px-5 py-3 text-left font-semibold text-[var(--color-text)] bg-[rgba(255,255,255,0.02)] border-b border-[var(--color-border-subtle)]">
@@ -533,7 +533,7 @@ export function RacFormat() {
               desc: (
                 <>
                   Filepath mirrors statute citation.{" "}
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     26/24/d/1/B.rac
                   </code>{" "}
                   encodes 26 USC &sect; 24(d)(1)(B).
@@ -547,7 +547,7 @@ export function RacFormat() {
                 <>
                   Policy values change over time. Definitions track every
                   historical value with{" "}
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     from
                   </code>{" "}
                   effective dates.
@@ -570,7 +570,7 @@ export function RacFormat() {
               desc: (
                 <>
                   The{" "}
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     amend
                   </code>{" "}
                   keyword overrides any definition with new values. Model policy
@@ -584,7 +584,7 @@ export function RacFormat() {
               desc: (
                 <>
                   When laws change, track different formula versions with{" "}
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     from
                   </code>{" "}
                   effective dates and sunset provisions.
@@ -599,10 +599,10 @@ export function RacFormat() {
               <div className="w-12 h-12 flex items-center justify-center bg-[rgba(59,130,246,0.1)] rounded-[10px] text-[var(--color-precision)] mb-5">
                 {f.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+              <h3 className="font-display text-[1.1rem] text-[var(--color-text)] mb-2">
                 {f.title}
               </h3>
-              <p className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)] leading-relaxed">
+              <p className="text-[0.9rem] text-[var(--color-text-secondary)] leading-relaxed">
                 {f.desc}
               </p>
             </div>

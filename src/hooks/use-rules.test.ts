@@ -169,6 +169,35 @@ describe('useRules', () => {
     expect(result.current.rules).toEqual([])
   })
 
+  it('handles null data in append (loadMore) path', async () => {
+    // First page returns real data so hasMore is true
+    mockRange.mockResolvedValue({
+      data: Array.from({ length: 50 }, (_, i) => ({ id: `r${i}` })),
+      error: null,
+      count: 100,
+    })
+
+    const { result } = renderHook(() => useRules())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.hasMore).toBe(true)
+
+    // Second page returns null data — exercises the `data || []` in append path
+    mockRange.mockResolvedValue({ data: null, error: null, count: 100 })
+
+    result.current.loadMore()
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    // Original 50 items should still be there (appended with empty array)
+    expect(result.current.rules.length).toBe(50)
+  })
+
   it('handles Error instance in fetch catch', async () => {
     mockRange.mockRejectedValue(new Error('Network timeout'))
 
@@ -315,5 +344,24 @@ describe('useRule', () => {
     })
 
     expect(result.current.error).toBe('Network timeout')
+  })
+
+  it('handles null children data with defensive coalescing', async () => {
+    const mockRule = { id: 'r1', heading: 'Title 26', jurisdiction: 'us' }
+    mockSingle.mockResolvedValue({ data: mockRule, error: null })
+    // Children query returns null data (exercises `childrenData || []`)
+    mockOrder.mockResolvedValue({ data: null, error: null })
+    mockFrom.mockReturnValue({ select: mockSelect })
+    mockSelect.mockReturnValue({ eq: mockEq })
+    mockEq.mockReturnValue({ single: mockSingle, order: mockOrder })
+
+    const { result } = renderHook(() => useRule('r1'))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.rule).toEqual(mockRule)
+    expect(result.current.children).toEqual([])
   })
 })

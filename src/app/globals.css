@@ -274,3 +274,9 @@ pre {
   background: linear-gradient(to bottom, var(--color-void) 0%, transparent 100%);
   backdrop-filter: blur(8px);
 }
+
+.nav-mobile {
+  background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(16px);
+  border-color: var(--color-border-subtle);
+}

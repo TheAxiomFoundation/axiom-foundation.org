@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabaseArch, type Rule } from "@/lib/supabase";
 
-/* v8 ignore start -- color helper used in v8-ignored render block */
 function getJurisdictionColor(jurisdiction: string): string {
   switch (jurisdiction) {
     case "us":
@@ -17,7 +16,6 @@ function getJurisdictionColor(jurisdiction: string): string {
       return "var(--color-text-muted)";
   }
 }
-/* v8 ignore stop */
 
 function RuleTreeNode({
   rule,
@@ -33,7 +31,6 @@ function RuleTreeNode({
   const [loading, setLoading] = useState(false);
   const [hasChildren, setHasChildren] = useState<boolean | null>(null);
 
-  /* v8 ignore start -- async Supabase calls tested via integration/e2e */
   const toggleExpand = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -68,7 +65,8 @@ function RuleTreeNode({
   );
 
   // Lazy check for children on mount
-  useState(() => {
+  useEffect(() => {
+    let cancelled = false;
     (async () => {
       if (hasChildren !== null) return;
       try {
@@ -77,15 +75,14 @@ function RuleTreeNode({
           .select("*", { count: "exact", head: true })
           .eq("parent_id", rule.id)
           .limit(1);
-        setHasChildren((count || 0) > 0);
+        if (!cancelled) setHasChildren((count || 0) > 0);
       } catch {
-        setHasChildren(false);
+        if (!cancelled) setHasChildren(false);
       }
     })();
-  });
-  /* v8 ignore stop */
+    return () => { cancelled = true; };
+  }, [rule.id, hasChildren]);
 
-  /* v8 ignore start -- render JSX verified via atlas.test.tsx, v8 can't instrument through mocked motion */
   return (
     <div>
       <motion.div
@@ -110,13 +107,13 @@ function RuleTreeNode({
         </button>
 
         <span
-          className="font-[family-name:var(--f-mono)] text-[0.65rem] font-semibold uppercase tracking-wider"
+          className="font-mono text-[0.65rem] font-semibold uppercase tracking-wider"
           style={{ color: getJurisdictionColor(rule.jurisdiction) }}
         >
           {rule.jurisdiction.toUpperCase()}
         </span>
 
-        <span className="font-[family-name:var(--f-mono)] text-[0.8rem] text-[var(--color-text-muted)] shrink-0">
+        <span className="font-mono text-[0.8rem] text-[var(--color-text-muted)] shrink-0">
           {rule.source_path || rule.id.slice(0, 8)}
         </span>
 
@@ -147,7 +144,6 @@ function RuleTreeNode({
       </AnimatePresence>
     </div>
   );
-  /* v8 ignore stop */
 }
 
 export function RuleTree({
@@ -158,7 +154,7 @@ export function RuleTree({
   onSelect: (rule: Rule) => void;
 }) {
   return (
-    <div className="font-[family-name:var(--f-body)]">
+    <div>
       {rules.map((rule) => (
         <RuleTreeNode key={rule.id} rule={rule} depth={0} onSelect={onSelect} />
       ))}

@@ -44,14 +44,14 @@ of the threshold amount.`;
       >
         <div className="flex items-center gap-2 px-4 py-2 bg-[rgba(255,255,255,0.02)] border-b border-[var(--color-border-subtle)]">
           <span className="w-2 h-2 bg-[var(--color-warmth)] rounded-full" />
-          <span className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)]">
+          <span className="font-mono text-xs text-[var(--color-text-muted)]">
             26 USC &sect; 1411(a)
           </span>
         </div>
         <CodeBlock
           code={statuteText}
           language="plain"
-          className="p-6 font-[family-name:var(--f-mono)] text-[0.8rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap m-0 min-h-[180px]"
+          className="p-6 font-mono text-[0.8rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap m-0 min-h-[180px]"
         />
       </div>
 
@@ -65,7 +65,7 @@ of the threshold amount.`;
           }`}
         />
         <span
-          className={`font-[family-name:var(--f-mono)] text-[0.7rem] uppercase tracking-[0.1em] transition-colors duration-200 ${
+          className={`font-mono text-[0.7rem] uppercase tracking-[0.1em] transition-colors duration-200 ${
             phase === 1
               ? "text-[var(--color-precision)]"
               : "text-[var(--color-text-muted)]"
@@ -85,14 +85,14 @@ of the threshold amount.`;
       >
         <div className="flex items-center gap-2 px-4 py-2 bg-[rgba(59,130,246,0.1)] border-b border-[var(--color-border-subtle)]">
           <span className="w-2 h-2 bg-[var(--color-precision)] rounded-full" />
-          <span className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)]">
+          <span className="font-mono text-xs text-[var(--color-text-muted)]">
             statute/26/1411/a.rac
           </span>
         </div>
         <CodeBlock
           code={heroRacCode}
           language="rac"
-          className="p-6 font-[family-name:var(--f-mono)] text-[0.8rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap m-0 min-h-[180px]"
+          className="p-6 font-mono text-[0.8rem] text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap m-0 min-h-[180px]"
         />
       </div>
     </div>
@@ -108,7 +108,7 @@ export function RacSection() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             Rules as Code
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             A domain-specific language for encoding rules with auditability,
             temporal versioning, and legal citations built in.
           </p>
@@ -134,7 +134,7 @@ export function RacSection() {
               desc: (
                 <>
                   Track how law changes over time. Every definition uses{" "}
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     from
                   </code>{" "}
                   clauses with effective dates.
@@ -149,10 +149,10 @@ export function RacSection() {
               <div className="w-12 h-12 flex items-center justify-center bg-[rgba(59,130,246,0.1)] rounded-[10px] text-[var(--color-precision)] mb-6">
                 {f.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-xl text-[var(--color-text)] mb-2">
+              <h3 className="font-display text-xl text-[var(--color-text)] mb-2">
                 {f.title}
               </h3>
-              <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">
+              <p className="text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">
                 {f.desc}
               </p>
             </div>

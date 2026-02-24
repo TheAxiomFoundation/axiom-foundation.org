@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
 const mockUsePathname = vi.fn()
@@ -88,5 +88,82 @@ describe('Nav', () => {
     render(<Nav />)
     const browseLink = screen.getByText('Browse')
     expect(browseLink.closest('a')).toHaveAttribute('href', '/atlas')
+  })
+
+  it('toggles mobile menu on hamburger click', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+    const hamburger = screen.getByLabelText('Toggle menu')
+
+    // Menu should not be visible initially
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+
+    // Open menu
+    fireEvent.click(hamburger)
+    expect(screen.getByText('GitHub')).toBeInTheDocument()
+
+    // Close menu (X icon shown)
+    fireEvent.click(hamburger)
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+  })
+
+  it('closes mobile menu when a link is clicked', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+
+    // Open menu
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    expect(screen.getByText('GitHub')).toBeInTheDocument()
+
+    // Click a link in the mobile menu — find the Docs link in mobile menu
+    const mobileLinks = screen.getAllByText('Docs')
+    fireEvent.click(mobileLinks[mobileLinks.length - 1])
+
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+  })
+
+  it('closes mobile menu when GitHub link is clicked', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    fireEvent.click(screen.getByText('GitHub'))
+
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+  })
+
+  it('closes mobile menu when a nav link is clicked on landing page', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    // Mobile menu should have anchor links since we're on /
+    const mobileAtlasLinks = screen.getAllByText('Atlas')
+    fireEvent.click(mobileAtlasLinks[mobileAtlasLinks.length - 1])
+
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+  })
+
+  it('closes mobile menu when a nav link is clicked on non-landing page', () => {
+    mockUsePathname.mockReturnValue('/lab')
+    render(<Nav />)
+
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    // On non-/ pages, anchor links render as Link with /#
+    const mobileAtlasLinks = screen.getAllByText('Atlas')
+    fireEvent.click(mobileAtlasLinks[mobileAtlasLinks.length - 1])
+
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
+  })
+
+  it('closes mobile menu when Browse link is clicked', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    const browseLinks = screen.getAllByText('Browse')
+    fireEvent.click(browseLinks[browseLinks.length - 1])
+
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
   })
 })

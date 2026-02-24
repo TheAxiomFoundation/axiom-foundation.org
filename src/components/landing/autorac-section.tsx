@@ -215,11 +215,11 @@ function AutoRACTerminal() {
           <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-          <span className="font-[family-name:var(--f-mono)] text-[0.7rem] text-[rgba(255,255,255,0.3)] ml-2">
+          <span className="font-mono text-[0.7rem] text-[rgba(255,255,255,0.3)] ml-2">
             autorac — zsh
           </span>
         </div>
-        <div className="px-5 py-4 font-[family-name:var(--f-mono)] text-[0.82rem] leading-[1.8] overflow-x-auto min-h-[320px]">
+        <div className="px-5 py-4 font-mono text-[0.82rem] leading-[1.8] overflow-x-auto min-h-[320px]">
           {lines.map((line, i) => (
             <div
               key={i}
@@ -251,7 +251,7 @@ export function AutoracSection() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             AutoRAC
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             Point it at a statute. Get validated RAC.
           </p>
         </div>
@@ -260,34 +260,34 @@ export function AutoracSection() {
 
         {/* 3-tier validation pipeline */}
         <div className="mt-12 mb-12">
-          <h3 className="font-[family-name:var(--f-display)] text-2xl text-[var(--color-text)] text-center mb-8">
+          <h3 className="font-display text-2xl text-[var(--color-text)] text-center mb-8">
             3-tier validation pipeline
           </h3>
 
           <div className="flex flex-col gap-4 max-w-[700px] mx-auto">
             {/* Tier 1 */}
             <div className="flex gap-4 p-6 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg">
-              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-[family-name:var(--f-mono)] text-base font-semibold rounded-full shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-mono text-base font-semibold rounded-full shrink-0">
                 1
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-display text-[1.1rem] text-[var(--color-text)] mb-2">
                   CI validation
                 </h4>
-                <p className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)] mb-2">
-                  <code className="font-[family-name:var(--f-mono)] text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
+                <p className="text-[0.9rem] text-[var(--color-text-secondary)] mb-2">
+                  <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[rgba(59,130,246,0.1)] rounded text-[var(--color-precision)]">
                     rac pytest
                   </code>{" "}
                   &mdash; instant, free
                 </p>
-                <p className="font-[family-name:var(--f-body)] text-[0.85rem] text-[var(--color-text-muted)]">
+                <p className="text-[0.85rem] text-[var(--color-text-muted)]">
                   Catches syntax errors, format issues, missing imports
                 </p>
                 <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
-                  <span className="flex items-center gap-2 font-[family-name:var(--f-mono)] text-[0.8rem] text-[#ff6b6b]">
+                  <span className="flex items-center gap-2 font-mono text-[0.8rem] text-[#ff6b6b]">
                     <XIcon className="w-3.5 h-3.5" /> Fail - Fix errors, retry (max 3)
                   </span>
-                  <span className="flex items-center gap-2 font-[family-name:var(--f-mono)] text-[0.8rem] text-[var(--color-success)]">
+                  <span className="flex items-center gap-2 font-mono text-[0.8rem] text-[var(--color-success)]">
                     <CheckIcon className="w-3.5 h-3.5" /> Pass - Proceed to oracles
                   </span>
                 </div>
@@ -298,28 +298,28 @@ export function AutoracSection() {
 
             {/* Tier 2 */}
             <div className="flex gap-4 p-6 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg">
-              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-[family-name:var(--f-mono)] text-base font-semibold rounded-full shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-mono text-base font-semibold rounded-full shrink-0">
                 2
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-display text-[1.1rem] text-[var(--color-text)] mb-2">
                   External oracles
                 </h4>
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className="px-2 py-1 bg-[rgba(59,130,246,0.15)] rounded font-[family-name:var(--f-mono)] text-[0.75rem] font-semibold text-[var(--color-precision)]">
+                  <span className="px-2 py-1 bg-[rgba(59,130,246,0.15)] rounded font-mono text-[0.75rem] font-semibold text-[var(--color-precision)]">
                     PE
                   </span>
-                  <span className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)]">
+                  <span className="text-[0.9rem] text-[var(--color-text-secondary)]">
                     PolicyEngine
                   </span>
-                  <span className="px-2 py-1 bg-[rgba(59,130,246,0.15)] rounded font-[family-name:var(--f-mono)] text-[0.75rem] font-semibold text-[var(--color-precision)]">
+                  <span className="px-2 py-1 bg-[rgba(59,130,246,0.15)] rounded font-mono text-[0.75rem] font-semibold text-[var(--color-precision)]">
                     TX
                   </span>
-                  <span className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)]">
+                  <span className="text-[0.9rem] text-[var(--color-text-secondary)]">
                     TAXSIM
                   </span>
                 </div>
-                <p className="font-[family-name:var(--f-body)] text-[0.85rem] text-[var(--color-text-muted)]">
+                <p className="text-[0.85rem] text-[var(--color-text-muted)]">
                   Fast (~10s), free &mdash; generates comparison data for LLM reviewers
                 </p>
               </div>
@@ -329,24 +329,24 @@ export function AutoracSection() {
 
             {/* Tier 3 */}
             <div className="flex gap-4 p-6 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg">
-              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-[family-name:var(--f-mono)] text-base font-semibold rounded-full shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center bg-[var(--color-precision)] text-white font-mono text-base font-semibold rounded-full shrink-0">
                 3
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-display text-[1.1rem] text-[var(--color-text)] mb-2">
                   LLM reviewers
                 </h4>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {["RAC Reviewer", "Formula Reviewer", "Parameter Reviewer", "Integration Reviewer"].map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 bg-[rgba(255,255,255,0.05)] border border-[var(--color-border-subtle)] rounded font-[family-name:var(--f-mono)] text-[0.75rem] text-[var(--color-text-secondary)]"
+                      className="px-2 py-1 bg-[rgba(255,255,255,0.05)] border border-[var(--color-border-subtle)] rounded font-mono text-[0.75rem] text-[var(--color-text-secondary)]"
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
-                <p className="font-[family-name:var(--f-body)] text-[0.85rem] text-[var(--color-text-muted)]">
+                <p className="text-[0.85rem] text-[var(--color-text-muted)]">
                   Receive oracle comparison data to diagnose WHY discrepancies exist
                 </p>
               </div>
@@ -363,7 +363,7 @@ export function AutoracSection() {
           ].map((text) => (
             <div
               key={text}
-              className="flex items-center gap-2 font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)]"
+              className="flex items-center gap-2 text-[0.9rem] text-[var(--color-text-secondary)]"
             >
               <CheckIcon className="w-4 h-4 text-[var(--color-success)]" />
               <span>{text}</span>

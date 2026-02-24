@@ -74,7 +74,6 @@ export function useRules(options: {
 
         if (fetchError) throw fetchError;
 
-        /* v8 ignore next -- defensive null coalescing for Supabase data */
         setRules(append ? (prev) => [...prev, ...(data || [])] : data || []);
         setTotalCount(count || 0);
         setPage(pageNum);
@@ -145,7 +144,6 @@ export function useRule(id: string | null) {
           .order("ordinal");
 
         if (childrenError) throw childrenError;
-        /* v8 ignore next -- defensive null coalescing */
         setChildren(childrenData || []);
       } catch (err) {
         const message =

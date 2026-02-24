@@ -9,7 +9,7 @@ export function AtlasSection() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             Atlas
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             It all starts here. A comprehensive map of government source files
             &mdash; statutes, regulations, IRS guidance, and state codes. The
             legal source of truth.
@@ -40,10 +40,10 @@ export function AtlasSection() {
               className="bg-gradient-to-br from-[var(--color-bg)] to-[var(--color-void)] border border-[var(--color-border)] rounded-xl p-8 transition-all duration-200 hover:border-[var(--color-precision)] hover:-translate-y-0.5"
               style={{ transitionTimingFunction: "var(--ease-out)" }}
             >
-              <h4 className="font-[family-name:var(--f-display)] text-lg text-[var(--color-text)] mb-2">
+              <h4 className="font-display text-lg text-[var(--color-text)] mb-2">
                 {item.title}
               </h4>
-              <p className="font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)] leading-normal m-0">
+              <p className="text-sm text-[var(--color-text-secondary)] leading-normal m-0">
                 {item.desc}
               </p>
             </div>
@@ -58,7 +58,7 @@ export function AtlasSection() {
           ].map((text) => (
             <div
               key={text}
-              className="flex items-center gap-2 font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)]"
+              className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]"
             >
               <CheckIcon className="w-4 h-4 text-[var(--color-success)]" />
               <span>{text}</span>

@@ -9,7 +9,7 @@ export function GroundTruthSection() {
           <h2 className="heading-section text-[var(--color-text)] mb-6">
             Verifiable rewards
           </h2>
-          <p className="font-[family-name:var(--f-body)] text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
+          <p className="text-lg font-light text-[var(--color-text-secondary)] max-w-[600px] mx-auto leading-relaxed">
             AI systems answering questions about policy rules need ground truth.
             RAC encodings provide verifiable correctness signals for training.
           </p>
@@ -40,10 +40,10 @@ export function GroundTruthSection() {
               <div className="w-14 h-14 flex items-center justify-center bg-[var(--color-void)] border border-[var(--color-border)] rounded-xl text-[var(--color-precision)] mb-6">
                 {card.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-[1.35rem] text-[var(--color-text)] mb-4">
+              <h3 className="font-display text-[1.35rem] text-[var(--color-text)] mb-4">
                 {card.title}
               </h3>
-              <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">
+              <p className="text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">
                 {card.desc}
               </p>
             </div>

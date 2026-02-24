@@ -12,9 +12,9 @@
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-ebd51be49873d76c.js",
       "static/chunks/main-app-eea32435660ae1d5.js",
-      "static/css/634ff0beff5ad152.css",
+      "static/css/c9cd9ceb51b4c211.css",
       "static/chunks/619-ba102abea3e3d0e4.js",
-      "static/chunks/app/layout-df2a4939dcc491d8.js"
+      "static/chunks/app/layout-ae79ae870651fc24.js"
     ],
     "/about/page": [
       "static/chunks/webpack-bd7f4aa2521a07b7.js",
@@ -23,24 +23,6 @@
       "static/chunks/main-app-eea32435660ae1d5.js",
       "static/chunks/356-0fb6e09298f23458.js",
       "static/chunks/app/about/page-6fbb5298834eab10.js"
-    ],
-    "/page": [
-      "static/chunks/webpack-bd7f4aa2521a07b7.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-ebd51be49873d76c.js",
-      "static/chunks/main-app-eea32435660ae1d5.js",
-      "static/chunks/619-ba102abea3e3d0e4.js",
-      "static/chunks/250-954f6f22d36d458a.js",
-      "static/chunks/app/page-249716739bc734fc.js"
-    ],
-    "/atlas/page": [
-      "static/chunks/webpack-bd7f4aa2521a07b7.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-ebd51be49873d76c.js",
-      "static/chunks/main-app-eea32435660ae1d5.js",
-      "static/chunks/373-b21e57c19d2428bb.js",
-      "static/chunks/756-67535d928febc02b.js",
-      "static/chunks/app/atlas/page-8b7fde0a811e2729.js"
     ],
     "/privacy/page": [
       "static/chunks/webpack-bd7f4aa2521a07b7.js",
@@ -54,9 +36,18 @@
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-ebd51be49873d76c.js",
       "static/chunks/main-app-eea32435660ae1d5.js",
+      "static/chunks/619-ba102abea3e3d0e4.js",
+      "static/chunks/756-67535d928febc02b.js",
+      "static/chunks/app/atlas/[ruleId]/page-d0a7aa2e3306cc47.js"
+    ],
+    "/atlas/page": [
+      "static/chunks/webpack-bd7f4aa2521a07b7.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-ebd51be49873d76c.js",
+      "static/chunks/main-app-eea32435660ae1d5.js",
       "static/chunks/373-b21e57c19d2428bb.js",
       "static/chunks/756-67535d928febc02b.js",
-      "static/chunks/app/atlas/[ruleId]/page-00d85e0567b61edf.js"
+      "static/chunks/app/atlas/page-923e568df79f04fc.js"
     ],
     "/lab/page": [
       "static/chunks/webpack-bd7f4aa2521a07b7.js",
@@ -64,7 +55,16 @@
       "static/chunks/255-ebd51be49873d76c.js",
       "static/chunks/main-app-eea32435660ae1d5.js",
       "static/chunks/373-b21e57c19d2428bb.js",
-      "static/chunks/app/lab/page-260835a83497d5c2.js"
+      "static/chunks/app/lab/page-ba9f2aad36eed23a.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-bd7f4aa2521a07b7.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-ebd51be49873d76c.js",
+      "static/chunks/main-app-eea32435660ae1d5.js",
+      "static/chunks/619-ba102abea3e3d0e4.js",
+      "static/chunks/250-954f6f22d36d458a.js",
+      "static/chunks/app/page-481af58a0ca78aef.js"
     ]
   }
 }

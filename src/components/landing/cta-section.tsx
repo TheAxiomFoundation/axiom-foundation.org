@@ -13,7 +13,7 @@ export function CtaSection() {
         <h2 className="heading-section text-[var(--color-text)] mb-6">
           Get involved
         </h2>
-        <p className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text-secondary)] leading-relaxed mb-12">
+        <p className="text-lg text-[var(--color-text-secondary)] leading-relaxed mb-12">
           Rules Foundation builds open infrastructure for AI safety in legal
           domains.
         </p>
@@ -57,7 +57,7 @@ export function CtaSection() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="font-[family-name:var(--f-mono)] text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-precision)] transition-colors duration-150"
+                className="font-mono text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-precision)] transition-colors duration-150"
               >
                 {link.label}
               </Link>
@@ -65,7 +65,7 @@ export function CtaSection() {
               <a
                 key={link.label}
                 href={link.href}
-                className="font-[family-name:var(--f-mono)] text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-precision)] transition-colors duration-150"
+                className="font-mono text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-precision)] transition-colors duration-150"
               >
                 {link.label}
               </a>

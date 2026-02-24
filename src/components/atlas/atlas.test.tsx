@@ -232,6 +232,234 @@ describe('RuleTree', () => {
     render(<RuleTree rules={rules} onSelect={vi.fn()} />)
     expect(screen.getByText('(no heading)')).toBeInTheDocument()
   })
+
+  it('renders canada jurisdiction color', () => {
+    const rules = [{
+      ...mockRules[0],
+      id: 'rule-ca',
+      jurisdiction: 'canada',
+      heading: 'Canada Income Tax Act',
+      source_path: 'statute/canada/ita',
+    }]
+    render(<RuleTree rules={rules} onSelect={vi.fn()} />)
+    expect(screen.getByText('CANADA')).toBeInTheDocument()
+    expect(screen.getByText('Canada Income Tax Act')).toBeInTheDocument()
+  })
+
+  it('renders default jurisdiction color for unknown jurisdiction', () => {
+    const rules = [{
+      ...mockRules[0],
+      id: 'rule-au',
+      jurisdiction: 'australia',
+      heading: 'Australian Tax Law',
+      source_path: 'statute/au/tax',
+    }]
+    render(<RuleTree rules={rules} onSelect={vi.fn()} />)
+    expect(screen.getByText('AUSTRALIA')).toBeInTheDocument()
+    expect(screen.getByText('Australian Tax Law')).toBeInTheDocument()
+  })
+
+  it('expands tree node to show children on click', async () => {
+    // Mock the lazy child count check to return hasChildren = true
+    // and then mock the expand click to return child rules
+    const childRules = [
+      {
+        ...mockRules[0],
+        id: 'rule-1-child',
+        parent_id: 'rule-1',
+        heading: 'Subtitle A',
+        source_path: 'statute/26/A',
+        level: 1,
+      },
+    ]
+
+    // The Supabase mock chain needs to handle:
+    // 1. The lazy child check (select with count, head: true)
+    // 2. The expand click (select with count, full data)
+    mockSelect.mockImplementation((...args: unknown[]) => {
+      const opts = args[1] as Record<string, unknown> | undefined
+      if (opts && opts.head) {
+        // Lazy child count check
+        return {
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: 1 }),
+          }),
+        }
+      }
+      // Full expand fetch
+      return {
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: childRules, count: 1 }),
+          }),
+        }),
+        order: mockOrder,
+        is: mockIs,
+        range: mockRange,
+        limit: mockLimit,
+      }
+    })
+
+    const onSelect = vi.fn()
+    render(<RuleTree rules={[mockRules[0]]} onSelect={onSelect} />)
+
+    // Wait for lazy child check to complete
+    await waitFor(() => {
+      const expandButtons = screen.getAllByRole('button')
+      // The expand button should show the expand arrow
+      expect(expandButtons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Find and click the expand button
+    const expandButtons = screen.getAllByRole('button')
+    fireEvent.click(expandButtons[0])
+
+    // Children should appear
+    await waitFor(() => {
+      expect(screen.getByText('Subtitle A')).toBeInTheDocument()
+    })
+
+    // Click expand again to collapse
+    fireEvent.click(expandButtons[0])
+
+    await waitFor(() => {
+      expect(screen.queryByText('Subtitle A')).not.toBeInTheDocument()
+    })
+  })
+
+  it('handles Supabase error on expand gracefully', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    // Mock lazy check to return hasChildren = true
+    // Mock expand to throw an error
+    let expandCallCount = 0
+    mockSelect.mockImplementation((...args: unknown[]) => {
+      const opts = args[1] as Record<string, unknown> | undefined
+      if (opts && opts.head) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: 1 }),
+          }),
+        }
+      }
+      expandCallCount++
+      // Full fetch throws
+      return {
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockRejectedValue(new Error('Fetch failed')),
+          }),
+        }),
+        order: mockOrder,
+        is: mockIs,
+        range: mockRange,
+        limit: mockLimit,
+      }
+    })
+
+    render(<RuleTree rules={[mockRules[0]]} onSelect={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(1)
+    })
+
+    const expandButtons = screen.getAllByRole('button')
+    fireEvent.click(expandButtons[0])
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch children:', expect.any(Error))
+    })
+
+    consoleSpy.mockRestore()
+  })
+
+  it('handles expand with null data and null count from Supabase', async () => {
+    // Mock lazy check to return hasChildren = true (count: 1)
+    // Mock expand to return null data and null count — exercises `data || []` and `(count || 0) > 0` fallbacks
+    mockSelect.mockImplementation((...args: unknown[]) => {
+      const opts = args[1] as Record<string, unknown> | undefined
+      if (opts && opts.head) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: 1 }),
+          }),
+        }
+      }
+      return {
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: null, count: null }),
+          }),
+        }),
+        order: mockOrder,
+        is: mockIs,
+        range: mockRange,
+        limit: mockLimit,
+      }
+    })
+
+    render(<RuleTree rules={[mockRules[0]]} onSelect={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(1)
+    })
+
+    const expandButtons = screen.getAllByRole('button')
+    fireEvent.click(expandButtons[0])
+
+    // With null data/count, no children appear but no error thrown
+    await waitFor(() => {
+      // hasChildren becomes false (since (null || 0) > 0 is false)
+      // The button should now show the disabled dot
+      expect(screen.getByText('·')).toBeInTheDocument()
+    })
+  })
+
+  it('handles lazy child check with null count (zero children)', async () => {
+    // Mock lazy check to return null count — exercises `(count || 0) > 0` fallback in useEffect
+    mockSelect.mockImplementation((...args: unknown[]) => {
+      const opts = args[1] as Record<string, unknown> | undefined
+      if (opts && opts.head) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ count: null }),
+          }),
+        }
+      }
+      return { order: mockOrder, eq: mockEq, is: mockIs, range: mockRange, limit: mockLimit }
+    })
+
+    render(<RuleTree rules={[mockRules[0]]} onSelect={vi.fn()} />)
+
+    // With null count, hasChildren should be false (shows dot)
+    await waitFor(() => {
+      expect(screen.getByText('·')).toBeInTheDocument()
+    })
+  })
+
+  it('handles lazy child check error gracefully', async () => {
+    // Mock lazy check to throw — exercises the catch branch on line 81-82
+    mockSelect.mockImplementation((...args: unknown[]) => {
+      const opts = args[1] as Record<string, unknown> | undefined
+      if (opts && opts.head) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockRejectedValue(new Error('Check failed')),
+          }),
+        }
+      }
+      return { order: mockOrder, eq: mockEq, is: mockIs, range: mockRange, limit: mockLimit }
+    })
+
+    render(<RuleTree rules={[mockRules[0]]} onSelect={vi.fn()} />)
+
+    // When the lazy check fails, hasChildren is set to false
+    // which means the expand button should be disabled (shows dot)
+    await waitFor(() => {
+      const dot = screen.getByText('·')
+      expect(dot).toBeInTheDocument()
+    })
+  })
 })
 
 describe('AtlasBrowser', () => {

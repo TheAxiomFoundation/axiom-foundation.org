@@ -3,56 +3,9 @@
 import { useState, useMemo, useCallback } from "react";
 import { supabaseArch, type Rule } from "@/lib/supabase";
 import { useRules, type RuleStats } from "@/hooks/use-rules";
+import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import { RuleTree } from "./rule-tree";
 import { DocumentViewer } from "./document-viewer";
-
-interface ViewerDocument {
-  citation: string;
-  title: string;
-  subsections: Array<{ id: string; text: string }>;
-  hasRac: boolean;
-  jurisdiction: string;
-  archPath: string | null;
-}
-
-/* v8 ignore start -- same logic tested via transformRuleToDoc in rule-page.test.tsx */
-function transformRuleToViewerDoc(
-  rule: Rule,
-  children: Rule[]
-): ViewerDocument {
-  const subsections = children.map((child, i) => ({
-    id: String.fromCharCode(97 + i),
-    text: child.body || child.heading || "",
-  }));
-
-  if (subsections.length === 0 && rule.body) {
-    const paragraphs = rule.body.split(/\n\n+/).filter(Boolean);
-    paragraphs.forEach((para, i) => {
-      subsections.push({
-        id: String.fromCharCode(97 + i),
-        text: para.trim(),
-      });
-    });
-  }
-
-  if (subsections.length === 0) {
-    subsections.push({
-      id: "a",
-      text: rule.heading || "No content available.",
-    });
-  }
-
-  return {
-    citation: rule.source_path || rule.id,
-    title: rule.heading || "Untitled",
-    subsections,
-    hasRac: rule.has_rac,
-    jurisdiction: rule.jurisdiction,
-    archPath: rule.source_path,
-  };
-}
-
-/* v8 ignore stop */
 
 function StatsBadge({ stats }: { stats: RuleStats[] }) {
   const total = stats.reduce((sum, s) => sum + s.count, 0);
@@ -88,7 +41,6 @@ export function AtlasBrowser() {
     search: search || undefined,
   });
 
-  /* v8 ignore start -- async Supabase calls tested via integration/e2e */
   const selectRule = useCallback(async (rule: Rule) => {
     setSelectedRule(rule);
     setShowBrowser(false);
@@ -106,9 +58,7 @@ export function AtlasBrowser() {
       setSelectedChildren([]);
     }
   }, []);
-  /* v8 ignore stop */
 
-  /* v8 ignore start -- requires async selectRule to complete first */
   const currentDoc = useMemo(
     () =>
       selectedRule
@@ -127,14 +77,13 @@ export function AtlasBrowser() {
       </div>
     );
   }
-  /* v8 ignore stop */
 
   return (
     <div className="max-w-[1280px] mx-auto">
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="heading-section text-[var(--color-text)] mb-4">Atlas</h1>
-        <p className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text-secondary)] max-w-[600px] mx-auto mb-6">
+        <p className="text-lg text-[var(--color-text-secondary)] max-w-[600px] mx-auto mb-6">
           Browse the legal document archive. Statutes, regulations, and IRS
           guidance across jurisdictions.
         </p>
@@ -148,7 +97,7 @@ export function AtlasBrowser() {
           placeholder="Search statutes..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] px-4 py-2.5 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg font-[family-name:var(--f-body)] text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-precision)] transition-colors"
+          className="flex-1 min-w-[200px] px-4 py-2.5 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-precision)] transition-colors"
         />
 
         <div className="flex gap-2">
@@ -160,7 +109,7 @@ export function AtlasBrowser() {
           ].map((opt) => (
             <button
               key={opt.label}
-              className={`px-4 py-2 rounded-lg font-[family-name:var(--f-mono)] text-xs font-medium border transition-colors duration-150 ${
+              className={`px-4 py-2 rounded-lg font-mono text-xs font-medium border transition-colors duration-150 ${
                 jurisdictionFilter === opt.value
                   ? "bg-[rgba(59,130,246,0.15)] border-[var(--color-precision)] text-[var(--color-precision)]"
                   : "bg-transparent border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:text-[var(--color-text-secondary)]"
@@ -196,7 +145,7 @@ export function AtlasBrowser() {
             {hasMore && (
               <div className="flex justify-center py-4 border-t border-[var(--color-border-subtle)]">
                 <button
-                  className="px-6 py-2 font-[family-name:var(--f-mono)] text-xs text-[var(--color-precision)] bg-transparent border border-[var(--color-border)] rounded-lg hover:bg-[rgba(59,130,246,0.1)] transition-colors"
+                  className="px-6 py-2 font-mono text-xs text-[var(--color-precision)] bg-transparent border border-[var(--color-border)] rounded-lg hover:bg-[rgba(59,130,246,0.1)] transition-colors"
                   onClick={loadMore}
                   disabled={loading}
                 >

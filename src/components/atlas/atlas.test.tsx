@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/browse",
+  usePathname: () => "/atlas",
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
@@ -24,7 +24,7 @@ vi.mock("@/hooks/use-tree-nodes", () => ({
     error: null,
     hasMore: false,
     loadMore: vi.fn(),
-    breadcrumbs: [{ label: "Browse", href: "/browse" }],
+    breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
     leafRule: null,
   }),
 }));
@@ -53,7 +53,7 @@ describe("AtlasBrowser integration", () => {
 
   it("renders Atlas header and description", () => {
     render(<AtlasBrowser segments={[]} />);
-    expect(screen.getByText("Atlas")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Atlas" })).toBeInTheDocument();
     expect(
       screen.getByText(/Explore encoded law/)
     ).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe("AtlasBrowser integration", () => {
       error: null,
       hasMore: false,
       loadMore: vi.fn(),
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -105,15 +105,17 @@ describe("AtlasBrowser integration", () => {
       hasMore: false,
       loadMore: vi.fn(),
       breadcrumbs: [
-        { label: "Browse", href: "/browse" },
-        { label: "United States", href: "/browse/us" },
-        { label: "Statutes", href: "/browse/us/statute" },
+        { label: "Atlas", href: "/atlas" },
+        { label: "United States", href: "/atlas/us" },
+        { label: "Statutes", href: "/atlas/us/statute" },
       ],
       leafRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "statute"]} />);
-    expect(screen.getByText("Browse")).toBeInTheDocument();
+    // "Atlas" appears in both breadcrumb and heading
+    const atlasElements = screen.getAllByText("Atlas");
+    expect(atlasElements.length).toBeGreaterThanOrEqual(1);
     // "United States" appears in both breadcrumb and possibly node list
     const usElements = screen.getAllByText("United States");
     expect(usElements.length).toBeGreaterThanOrEqual(1);
@@ -127,7 +129,7 @@ describe("AtlasBrowser integration", () => {
       error: null,
       hasMore: false,
       loadMore: vi.fn(),
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -150,7 +152,7 @@ describe("AtlasBrowser integration", () => {
       error: null,
       hasMore: true,
       loadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 

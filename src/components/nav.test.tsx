@@ -27,7 +27,7 @@ describe('Nav', () => {
   it('renders navigation links', () => {
     mockUsePathname.mockReturnValue('/')
     render(<Nav />)
-    expect(screen.getByText('Browser')).toBeInTheDocument()
+    expect(screen.getByText('Atlas')).toBeInTheDocument()
     expect(screen.getByText('.rac')).toBeInTheDocument()
     expect(screen.getByText('AutoRAC')).toBeInTheDocument()
     expect(screen.queryByText('Lab')).not.toBeInTheDocument()
@@ -51,11 +51,11 @@ describe('Nav', () => {
     expect(racLink.closest('a')).toHaveAttribute('href', '/#format')
   })
 
-  it('highlights active link on /browse', () => {
-    mockUsePathname.mockReturnValue('/browse')
+  it('highlights active link on /atlas', () => {
+    mockUsePathname.mockReturnValue('/atlas')
     render(<Nav />)
-    const browserLink = screen.getByText('Browser')
-    expect(browserLink.closest('a')).toHaveClass('text-[var(--color-text)]')
+    const atlasLink = screen.getByText('Atlas')
+    expect(atlasLink.closest('a')).toHaveClass('text-[var(--color-text)]')
   })
 
   it('highlights active link on /about', () => {
@@ -75,10 +75,10 @@ describe('Nav', () => {
     expect(githubLink).toBeInTheDocument()
   })
 
-  it('renders Browser link to /browse', () => {
+  it('renders Atlas link to /atlas', () => {
     mockUsePathname.mockReturnValue('/')
     render(<Nav />)
-    const browserLink = screen.getByText('Browser')
-    expect(browserLink.closest('a')).toHaveAttribute('href', '/browse')
+    const atlasLink = screen.getByText('Atlas')
+    expect(atlasLink.closest('a')).toHaveAttribute('href', '/atlas')
   })
 })

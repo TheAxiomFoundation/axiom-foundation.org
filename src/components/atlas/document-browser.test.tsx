@@ -5,7 +5,7 @@ const mockPush = vi.fn();
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/browse",
+  usePathname: () => "/atlas",
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
 }));
 
@@ -29,7 +29,7 @@ vi.mock("@/hooks/use-tree-nodes", () => ({
     error: null,
     hasMore: false,
     loadMore: mockLoadMore,
-    breadcrumbs: [{ label: "Browse", href: "/browse" }],
+    breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
     leafRule: null,
   }),
 }));
@@ -60,7 +60,7 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: false,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
   });
@@ -72,7 +72,7 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: false,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -87,7 +87,7 @@ describe("AtlasBrowser", () => {
       error: "Failed to connect",
       hasMore: false,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -115,7 +115,7 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: false,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -138,7 +138,7 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: true,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -163,7 +163,7 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: true,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
@@ -187,13 +187,13 @@ describe("AtlasBrowser", () => {
       error: null,
       hasMore: false,
       loadMore: mockLoadMore,
-      breadcrumbs: [{ label: "Browse", href: "/browse" }],
+      breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
       leafRule: null,
     });
 
     render(<AtlasBrowser segments={[]} />);
     fireEvent.click(screen.getByText("United States"));
-    expect(mockPush).toHaveBeenCalledWith("/browse/us");
+    expect(mockPush).toHaveBeenCalledWith("/atlas/us");
   });
 
   it("navigates with nested segments", () => {
@@ -211,16 +211,16 @@ describe("AtlasBrowser", () => {
       hasMore: false,
       loadMore: mockLoadMore,
       breadcrumbs: [
-        { label: "Browse", href: "/browse" },
-        { label: "US", href: "/browse/us" },
-        { label: "Statutes", href: "/browse/us/statute" },
+        { label: "Atlas", href: "/atlas" },
+        { label: "US", href: "/atlas/us" },
+        { label: "Statutes", href: "/atlas/us/statute" },
       ],
       leafRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "statute"]} />);
     fireEvent.click(screen.getByText("Title 26"));
-    expect(mockPush).toHaveBeenCalledWith("/browse/us/statute/26");
+    expect(mockPush).toHaveBeenCalledWith("/atlas/us/statute/26");
   });
 
   it("renders breadcrumbs", () => {
@@ -231,14 +231,16 @@ describe("AtlasBrowser", () => {
       hasMore: false,
       loadMore: mockLoadMore,
       breadcrumbs: [
-        { label: "Browse", href: "/browse" },
-        { label: "United States", href: "/browse/us" },
+        { label: "Atlas", href: "/atlas" },
+        { label: "United States", href: "/atlas/us" },
       ],
       leafRule: null,
     });
 
     render(<AtlasBrowser segments={["us"]} />);
-    expect(screen.getByText("Browse")).toBeInTheDocument();
+    // "Atlas" appears in both breadcrumb and heading
+    const atlasElements = screen.getAllByText("Atlas");
+    expect(atlasElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("United States")).toBeInTheDocument();
   });
 });

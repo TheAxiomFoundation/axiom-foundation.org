@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckIcon, GitHubIcon } from "@/components/icons";
 
 export function AtlasSection() {
@@ -66,13 +67,16 @@ export function AtlasSection() {
           ))}
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
+          <Link href="/atlas" className="btn-primary">
+            Explore Atlas
+          </Link>
           <a
             href="https://github.com/RulesFoundation/atlas"
             className="btn-outline"
           >
             <GitHubIcon className="w-5 h-5" />
-            View Atlas on GitHub
+            Archive on GitHub
           </a>
         </div>
       </div>

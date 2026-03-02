@@ -61,6 +61,11 @@ export function TreeNodeList({
           <span className="flex-1 text-sm text-[var(--color-text-secondary)] truncate">
             {node.label}
           </span>
+          {node.hasRac && (
+            <span className="font-[family-name:var(--f-mono)] text-[10px] text-[var(--color-precision)] border border-[var(--color-precision)] rounded px-1.5 py-0.5 uppercase tracking-wider shrink-0">
+              RAC
+            </span>
+          )}
           {node.childCount !== undefined && node.childCount > 0 && (
             <span className="font-[family-name:var(--f-mono)] text-xs text-[var(--color-text-muted)] shrink-0">
               {node.childCount.toLocaleString()}

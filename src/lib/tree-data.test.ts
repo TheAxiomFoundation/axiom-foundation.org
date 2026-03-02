@@ -42,27 +42,27 @@ describe("getJurisdiction", () => {
 });
 
 describe("buildBreadcrumbs", () => {
-  it("returns only Browse for empty segments", () => {
+  it("returns only Atlas for empty segments", () => {
     const crumbs = buildBreadcrumbs([]);
-    expect(crumbs).toEqual([{ label: "Browse", href: "/browse" }]);
+    expect(crumbs).toEqual([{ label: "Atlas", href: "/atlas" }]);
   });
 
   it("builds jurisdiction breadcrumb", () => {
     const crumbs = buildBreadcrumbs(["us"]);
     expect(crumbs).toEqual([
-      { label: "Browse", href: "/browse" },
-      { label: "United States", href: "/browse/us" },
+      { label: "Atlas", href: "/atlas" },
+      { label: "United States", href: "/atlas/us" },
     ]);
   });
 
   it("builds full path breadcrumb", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "1"]);
     expect(crumbs).toEqual([
-      { label: "Browse", href: "/browse" },
-      { label: "United States", href: "/browse/us" },
-      { label: "Statutes", href: "/browse/us/statute" },
-      { label: "Title 26", href: "/browse/us/statute/26" },
-      { label: "§ 1", href: "/browse/us/statute/26/1" },
+      { label: "Atlas", href: "/atlas" },
+      { label: "United States", href: "/atlas/us" },
+      { label: "Statutes", href: "/atlas/us/statute" },
+      { label: "Title 26", href: "/atlas/us/statute/26" },
+      { label: "§ 1", href: "/atlas/us/statute/26/1" },
     ]);
   });
 

@@ -10,6 +10,7 @@ import {
   getActNodes,
   getChildrenByParentId,
   getRuleById,
+  getEncodedPaths,
   buildBreadcrumbs,
   getJurisdiction,
   isUUID,
@@ -32,6 +33,7 @@ export function useTreeNodes(segments: string[]) {
 
   const pageRef = useRef(0);
   const cache = useRef<Map<string, CacheEntry>>(new Map());
+  const encodedPathsRef = useRef<Set<string> | null>(null);
 
   const segmentsKey = segments.join("/");
 
@@ -90,8 +92,21 @@ export function useTreeNodes(segments: string[]) {
             result = { nodes: fetched, hasMore: false };
           } else {
             const pathPrefix = segs.join("/");
-            const r: TreeResult = await getSectionNodes(pathPrefix, pageNum);
-            result = { nodes: r.nodes, hasMore: r.hasMore };
+            // Lazy-load encoded paths once for RAC badge indicators
+            if (!encodedPathsRef.current) {
+              encodedPathsRef.current = await getEncodedPaths();
+            }
+            const r: TreeResult = await getSectionNodes(
+              pathPrefix,
+              pageNum,
+              encodedPathsRef.current
+            );
+            if (r.leafRule) {
+              setLeafRule(r.leafRule);
+              result = { nodes: [], hasMore: false };
+            } else {
+              result = { nodes: r.nodes, hasMore: r.hasMore };
+            }
           }
         } else {
           const lastSegment = segs[segs.length - 1];

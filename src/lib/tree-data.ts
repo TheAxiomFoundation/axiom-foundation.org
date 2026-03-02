@@ -1,4 +1,4 @@
-import { supabaseArch, type Rule } from "@/lib/supabase";
+import { supabase, supabaseArch, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
 
 export type NodeType =
@@ -19,12 +19,16 @@ export interface TreeNode {
   /** The underlying DB rule, if this node maps to one */
   rule?: Rule;
   nodeType: NodeType;
+  /** Whether this node has a RAC encoding in encoding_runs */
+  hasRac?: boolean;
 }
 
 export interface TreeResult {
   nodes: TreeNode[];
   hasMore: boolean;
   total: number;
+  /** Set when a citation-path resolves to a rule with no children (leaf node) */
+  leafRule?: Rule;
 }
 
 // ---- Jurisdiction config ----
@@ -142,7 +146,8 @@ export async function getTitleNodes(
 
 export async function getSectionNodes(
   pathPrefix: string,
-  page: number = 0
+  page: number = 0,
+  encodedPaths?: Set<string>
 ): Promise<TreeResult> {
   const { data: parentRule } = await supabaseArch
     .from("rules")
@@ -163,8 +168,18 @@ export async function getSectionNodes(
     const rules = (data || []) as Rule[];
     const total = count || 0;
 
+    // Leaf node: parentRule exists but has no children
+    if (total === 0) {
+      return {
+        nodes: [],
+        hasMore: false,
+        total: 0,
+        leafRule: parentRule as Rule,
+      };
+    }
+
     return {
-      nodes: rules.map((r) => ruleToSectionNode(r)),
+      nodes: rules.map((r) => ruleToSectionNode(r, encodedPaths)),
       hasMore: hasNextPage(page, total),
       total,
     };
@@ -201,7 +216,28 @@ export async function getSectionNodes(
   };
 }
 
-function ruleToSectionNode(rule: Rule): TreeNode {
+/**
+ * Fetch all encoded file_paths from encoding_runs and convert to citation paths.
+ * e.g. "statute/26/1/j/2.rac" → "statute/26/1/j/2"
+ */
+export async function getEncodedPaths(): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("encoding_runs")
+    .select("file_path");
+
+  const paths = new Set<string>();
+  if (data) {
+    for (const row of data) {
+      if (row.file_path) {
+        // Strip .rac suffix
+        paths.add(row.file_path.replace(/\.rac$/, ""));
+      }
+    }
+  }
+  return paths;
+}
+
+function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
   const segment = rule.citation_path
     ? rule.citation_path.split("/").pop() || rule.id
     : rule.id;
@@ -210,12 +246,22 @@ function ruleToSectionNode(rule: Rule): TreeNode {
     ? `§ ${segment} — ${rule.heading}`
     : `§ ${segment}`;
 
+  // Check if this rule's citation_path (minus jurisdiction prefix) matches an encoded path
+  let hasRac = false;
+  if (encodedPaths && rule.citation_path) {
+    const parts = rule.citation_path.split("/");
+    // Strip jurisdiction prefix (e.g. "us/statute/26/1" → "statute/26/1")
+    const withoutJurisdiction = parts.slice(1).join("/");
+    hasRac = encodedPaths.has(withoutJurisdiction);
+  }
+
   return {
     segment,
     label,
     hasChildren: true,
     rule,
     nodeType: "section" as const,
+    ...(hasRac && { hasRac }),
   };
 }
 
@@ -301,10 +347,10 @@ export interface BreadcrumbItem {
 }
 
 export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = [{ label: "Browse", href: "/browse" }];
+  const items: BreadcrumbItem[] = [{ label: "Atlas", href: "/atlas" }];
 
   for (let i = 0; i < segments.length; i++) {
-    const href = "/browse/" + segments.slice(0, i + 1).join("/");
+    const href = "/atlas/" + segments.slice(0, i + 1).join("/");
     const label = formatSegmentLabel(segments, i);
     items.push({ label, href });
   }

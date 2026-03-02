@@ -1,10 +1,10 @@
+/* v8 ignore start -- Next.js async params wrapper */
 "use client";
 
 import { use } from "react";
 import { AtlasBrowser } from "@/components/atlas/document-browser";
 
-/* v8 ignore start -- Next.js async params wrapper */
-export default function BrowsePage({
+export default function AtlasPage({
   params,
 }: {
   params: Promise<{ segments?: string[] }>;

@@ -34,7 +34,7 @@ function UUIDRuleView({
           {error || "Rule not found."}
         </p>
         <button className="btn-outline" onClick={onBack}>
-          Back to Browser
+          Back to Atlas
         </button>
       </div>
     );
@@ -61,7 +61,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
     return (
       <UUIDRuleView
         ruleId={segments[0]}
-        onBack={() => router.push("/browse")}
+        onBack={() => router.push("/atlas")}
       />
     );
   }
@@ -80,7 +80,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
             rule={leafRule}
             onBack={() =>
               router.push(
-                breadcrumbs[breadcrumbs.length - 2]?.href ?? "/browse"
+                breadcrumbs[breadcrumbs.length - 2]?.href ?? "/atlas"
               )
             }
           />
@@ -91,7 +91,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   /* v8 ignore stop */
 
   const handleNavigate = (node: { segment: string }) => {
-    router.push(`/browse/${[...segments, node.segment].join("/")}`);
+    router.push(`/atlas/${[...segments, node.segment].join("/")}`);
   };
 
   return (

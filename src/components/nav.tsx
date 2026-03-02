@@ -8,7 +8,7 @@ export function Nav() {
   const pathname = usePathname();
 
   const navLinks = [
-    { href: "/browse", label: "Browser" },
+    { href: "/atlas", label: "Atlas" },
     { href: "/#format", label: ".rac" },
     { href: "/#autorac", label: "AutoRAC" },
     { href: "/#spec", label: "Spec" },

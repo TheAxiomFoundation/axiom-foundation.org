@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
-  usePathname: () => "/browse",
+  usePathname: () => "/atlas",
 }));
 
 // Mock next/link
@@ -24,7 +24,7 @@ vi.mock("@/hooks/use-tree-nodes", () => ({
     error: null,
     hasMore: false,
     loadMore: vi.fn(),
-    breadcrumbs: [{ label: "Browse", href: "/browse" }],
+    breadcrumbs: [{ label: "Atlas", href: "/atlas" }],
     leafRule: null,
   }),
 }));
@@ -48,7 +48,7 @@ import { AtlasBrowser } from "@/components/atlas/document-browser";
 describe("AtlasBrowser (tree-based)", () => {
   it("renders the Atlas heading and description", () => {
     render(<AtlasBrowser segments={[]} />);
-    expect(screen.getByText("Atlas")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Atlas" })).toBeInTheDocument();
     expect(
       screen.getByText(/Explore encoded law/)
     ).toBeInTheDocument();

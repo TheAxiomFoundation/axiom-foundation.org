@@ -138,6 +138,32 @@ describe("TreeNodeList", () => {
     expect(screen.getByText("\u00B7")).toBeInTheDocument();
   });
 
+  it("shows RAC badge for nodes with hasRac", () => {
+    const nodes = [makeNode({ hasRac: true })];
+    render(
+      <TreeNodeList
+        nodes={nodes}
+        onNavigate={vi.fn()}
+        loading={false}
+        error={null}
+      />
+    );
+    expect(screen.getByText("RAC")).toBeInTheDocument();
+  });
+
+  it("does not show RAC badge for nodes without hasRac", () => {
+    const nodes = [makeNode({ hasRac: false })];
+    render(
+      <TreeNodeList
+        nodes={nodes}
+        onNavigate={vi.fn()}
+        loading={false}
+        error={null}
+      />
+    );
+    expect(screen.queryByText("RAC")).not.toBeInTheDocument();
+  });
+
   it("handles keyboard navigation with Enter", () => {
     const onNavigate = vi.fn();
     const node = makeNode();

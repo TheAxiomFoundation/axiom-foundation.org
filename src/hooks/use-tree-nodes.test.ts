@@ -11,6 +11,7 @@ const mockGetSectionNodes = vi.fn();
 const mockGetActNodes = vi.fn();
 const mockGetChildrenByParentId = vi.fn();
 const mockGetRuleById = vi.fn();
+const mockGetEncodedPaths = vi.fn();
 const mockBuildBreadcrumbs = vi.fn();
 const mockGetJurisdiction = vi.fn();
 const mockIsUUID = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/lib/tree-data", () => ({
   getChildrenByParentId: (...args: unknown[]) =>
     mockGetChildrenByParentId(...args),
   getRuleById: (...args: unknown[]) => mockGetRuleById(...args),
+  getEncodedPaths: (...args: unknown[]) => mockGetEncodedPaths(...args),
   buildBreadcrumbs: (...args: unknown[]) => mockBuildBreadcrumbs(...args),
   getJurisdiction: (...args: unknown[]) => mockGetJurisdiction(...args),
   isUUID: (...args: unknown[]) => mockIsUUID(...args),
@@ -51,9 +53,10 @@ function makeNode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockBuildBreadcrumbs.mockReturnValue([{ label: "Browse", href: "/browse" }]);
+  mockBuildBreadcrumbs.mockReturnValue([{ label: "Atlas", href: "/atlas" }]);
   mockGetJurisdiction.mockReturnValue(undefined);
   mockIsUUID.mockReturnValue(false);
+  mockGetEncodedPaths.mockResolvedValue(new Set<string>());
 });
 
 describe("useTreeNodes", () => {
@@ -177,7 +180,11 @@ describe("useTreeNodes", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(mockGetSectionNodes).toHaveBeenCalledWith("us/statute/26", 0);
+      expect(mockGetSectionNodes).toHaveBeenCalledWith(
+        "us/statute/26",
+        0,
+        expect.any(Set)
+      );
       expect(result.current.nodes).toEqual(sectionNodes);
     });
   });
@@ -240,6 +247,38 @@ describe("useTreeNodes", () => {
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(mockGetRuleById).toHaveBeenCalledWith(SAMPLE_UUID);
+      expect(result.current.leafRule).toEqual(fakeRule);
+      expect(result.current.nodes).toEqual([]);
+    });
+  });
+
+  describe("citation-path leaf node (no children)", () => {
+    it("sets leafRule when getSectionNodes returns leafRule", async () => {
+      mockGetJurisdiction.mockReturnValue({
+        id: "us",
+        label: "United States",
+        hasCitationPaths: true,
+      });
+
+      const fakeRule = { id: "rule-leaf", heading: "Deputy Comptrollers" };
+      mockGetSectionNodes.mockResolvedValue({
+        nodes: [],
+        hasMore: false,
+        total: 0,
+        leafRule: fakeRule,
+      });
+
+      const { result } = renderHook(() =>
+        useTreeNodes(["us", "statute", "12", "4"])
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetSectionNodes).toHaveBeenCalledWith(
+        "us/statute/12/4",
+        0,
+        expect.any(Set)
+      );
       expect(result.current.leafRule).toEqual(fakeRule);
       expect(result.current.nodes).toEqual([]);
     });
@@ -386,8 +425,8 @@ describe("useTreeNodes", () => {
   describe("breadcrumbs", () => {
     it("returns breadcrumbs from buildBreadcrumbs", async () => {
       const crumbs = [
-        { label: "Browse", href: "/browse" },
-        { label: "United States", href: "/browse/us" },
+        { label: "Atlas", href: "/atlas" },
+        { label: "United States", href: "/atlas/us" },
       ];
       mockBuildBreadcrumbs.mockReturnValue(crumbs);
       mockGetJurisdiction.mockReturnValue({

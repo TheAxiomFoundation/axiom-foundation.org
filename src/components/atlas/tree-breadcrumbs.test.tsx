@@ -19,24 +19,24 @@ describe("TreeBreadcrumbs", () => {
 
   it("renders single item as non-link (current page)", () => {
     render(
-      <TreeBreadcrumbs items={[{ label: "Browse", href: "/browse" }]} />
+      <TreeBreadcrumbs items={[{ label: "Atlas", href: "/atlas" }]} />
     );
-    expect(screen.getByText("Browse")).toBeInTheDocument();
-    expect(screen.getByText("Browse").closest("a")).toBeNull();
+    expect(screen.getByText("Atlas")).toBeInTheDocument();
+    expect(screen.getByText("Atlas").closest("a")).toBeNull();
   });
 
-  it("renders Browse as a link when followed by other items", () => {
+  it("renders Atlas as a link when followed by other items", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Browse", href: "/browse" },
-          { label: "United States", href: "/browse/us" },
+          { label: "Atlas", href: "/atlas" },
+          { label: "United States", href: "/atlas/us" },
         ]}
       />
     );
-    const browseLink = screen.getByText("Browse").closest("a");
-    expect(browseLink).not.toBeNull();
-    expect(browseLink?.getAttribute("href")).toBe("/browse");
+    const atlasLink = screen.getByText("Atlas").closest("a");
+    expect(atlasLink).not.toBeNull();
+    expect(atlasLink?.getAttribute("href")).toBe("/atlas");
 
     // Last item is not a link
     expect(screen.getByText("United States").closest("a")).toBeNull();
@@ -46,9 +46,9 @@ describe("TreeBreadcrumbs", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Browse", href: "/browse" },
-          { label: "US", href: "/browse/us" },
-          { label: "Statutes", href: "/browse/us/statute" },
+          { label: "Atlas", href: "/atlas" },
+          { label: "US", href: "/atlas/us" },
+          { label: "Statutes", href: "/atlas/us/statute" },
         ]}
       />
     );
@@ -60,13 +60,13 @@ describe("TreeBreadcrumbs", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Browse", href: "/browse" },
-          { label: "US", href: "/browse/us" },
-          { label: "Title 26", href: "/browse/us/statute/26" },
+          { label: "Atlas", href: "/atlas" },
+          { label: "US", href: "/atlas/us" },
+          { label: "Title 26", href: "/atlas/us/statute/26" },
         ]}
       />
     );
-    expect(screen.getByText("Browse").closest("a")).not.toBeNull();
+    expect(screen.getByText("Atlas").closest("a")).not.toBeNull();
     expect(screen.getByText("US").closest("a")).not.toBeNull();
     expect(screen.getByText("Title 26").closest("a")).toBeNull();
   });

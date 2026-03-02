@@ -26,12 +26,12 @@
   },
   "dynamicRoutes": [
     {
-      "page": "/browse/[ruleId]",
-      "regex": "^/browse/([^/]+?)(?:/)?$",
+      "page": "/browse/[[...segments]]",
+      "regex": "^/browse(?:/(.+?))?(?:/)?$",
       "routeKeys": {
-        "nxtPruleId": "nxtPruleId"
+        "nxtPsegments": "nxtPsegments"
       },
-      "namedRegex": "^/browse/(?<nxtPruleId>[^/]+?)(?:/)?$"
+      "namedRegex": "^/browse(?:/(?<nxtPsegments>.+?))?(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -52,12 +52,6 @@
       "regex": "^/about(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/about(?:/)?$"
-    },
-    {
-      "page": "/browse",
-      "regex": "^/browse(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/browse(?:/)?$"
     },
     {
       "page": "/privacy",

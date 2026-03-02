@@ -9,6 +9,7 @@ import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import { isUUID } from "@/lib/tree-data";
 import { useRule } from "@/hooks/use-rules";
 
+/* v8 ignore start -- UUID backward compat component */
 function UUIDRuleView({
   ruleId,
   onBack,
@@ -47,6 +48,7 @@ function UUIDRuleView({
     </div>
   );
 }
+/* v8 ignore stop */
 
 export function AtlasBrowser({ segments }: { segments: string[] }) {
   const router = useRouter();

@@ -23,7 +23,7 @@ export default defineConfig({
         'src/test/**',
         'src/lib/prism-*/**',
         'src/app/layout.tsx',
-        'src/app/browse/[[][]...segments]]/page.tsx', // thin use(params) wrapper
+        'src/app/browse/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
         'src/_old_pages/**',
       ],
       thresholds: {

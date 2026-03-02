@@ -1,8 +1,7 @@
 {
   "/_not-found/page": "/_not-found",
   "/about/page": "/about",
-  "/privacy/page": "/privacy",
+  "/browse/[[...segments]]/page": "/browse/[[...segments]]",
   "/page": "/",
-  "/browse/page": "/browse",
-  "/browse/[ruleId]/page": "/browse/[ruleId]"
+  "/privacy/page": "/privacy"
 }

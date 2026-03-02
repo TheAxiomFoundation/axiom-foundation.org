@@ -1,8 +1,7 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/about/page": "app/about/page.js",
-  "/privacy/page": "app/privacy/page.js",
+  "/browse/[[...segments]]/page": "app/browse/[[...segments]]/page.js",
   "/page": "app/page.js",
-  "/browse/page": "app/browse/page.js",
-  "/browse/[ruleId]/page": "app/browse/[ruleId]/page.js"
+  "/privacy/page": "app/privacy/page.js"
 }

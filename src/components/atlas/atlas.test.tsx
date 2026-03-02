@@ -113,10 +113,14 @@ describe('RuleTree', () => {
     expect(screen.getByText('UK')).toBeInTheDocument()
   })
 
-  it('renders source paths', () => {
-    render(<RuleTree rules={mockRules} onSelect={vi.fn()} />)
-    expect(screen.getByText('statute/26')).toBeInTheDocument()
-    expect(screen.getByText('statute/ita2007')).toBeInTheDocument()
+  it('renders citation paths or truncated ids', () => {
+    const rulesWithCitation = [
+      { ...mockRules[0], citation_path: 'us/statute/26' },
+      mockRules[1], // citation_path: null, falls back to truncated id
+    ]
+    render(<RuleTree rules={rulesWithCitation} onSelect={vi.fn()} />)
+    expect(screen.getByText('us/statute/26')).toBeInTheDocument()
+    expect(screen.getByText('rule-2')).toBeInTheDocument() // truncated id (first 8 chars)
   })
 
   it('calls onSelect when a rule is clicked', () => {
@@ -126,10 +130,10 @@ describe('RuleTree', () => {
     expect(onSelect).toHaveBeenCalledWith(mockRules[0])
   })
 
-  it('renders truncated id when source_path is null', () => {
+  it('renders truncated id when citation_path is null', () => {
     const rules = [{
       ...mockRules[0],
-      source_path: null,
+      citation_path: null,
       id: 'abcdefghij',
     }]
     render(<RuleTree rules={rules} onSelect={vi.fn()} />)

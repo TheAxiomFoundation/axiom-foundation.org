@@ -35,7 +35,7 @@ export function RuleDetailPanel({
             </button>
           )}
           <div>
-            <h1 className="font-display text-lg text-[var(--color-text)] m-0">
+            <h1 className="font-heading text-lg text-[var(--color-text)] m-0">
               {document.title}
             </h1>
             <span className="font-mono text-xs text-[var(--color-text-muted)]">

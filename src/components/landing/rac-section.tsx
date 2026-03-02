@@ -149,7 +149,7 @@ export function RacSection() {
               <div className="w-12 h-12 flex items-center justify-center bg-[rgba(59,130,246,0.1)] rounded-[10px] text-[var(--color-precision)] mb-6">
                 {f.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-xl text-[var(--color-text)] mb-2">
+              <h3 className="font-[family-name:var(--f-body)] text-xl text-[var(--color-text)] mb-2">
                 {f.title}
               </h3>
               <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">

@@ -260,7 +260,7 @@ export function AutoracSection() {
 
         {/* 3-tier validation pipeline */}
         <div className="mt-12 mb-12">
-          <h3 className="font-[family-name:var(--f-display)] text-2xl text-[var(--color-text)] text-center mb-8">
+          <h3 className="font-[family-name:var(--f-body)] text-2xl text-[var(--color-text)] text-center mb-8">
             3-tier validation pipeline
           </h3>
 
@@ -271,7 +271,7 @@ export function AutoracSection() {
                 1
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-[family-name:var(--f-body)] text-[1.1rem] text-[var(--color-text)] mb-2">
                   CI validation
                 </h4>
                 <p className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)] mb-2">
@@ -302,7 +302,7 @@ export function AutoracSection() {
                 2
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-[family-name:var(--f-body)] text-[1.1rem] text-[var(--color-text)] mb-2">
                   External oracles
                 </h4>
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -333,7 +333,7 @@ export function AutoracSection() {
                 3
               </div>
               <div className="flex-1">
-                <h4 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+                <h4 className="font-[family-name:var(--f-body)] text-[1.1rem] text-[var(--color-text)] mb-2">
                   LLM reviewers
                 </h4>
                 <div className="flex flex-wrap gap-2 mb-2">

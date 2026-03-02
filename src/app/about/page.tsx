@@ -59,7 +59,7 @@ export default function AboutPage() {
                 key={card.title}
                 className="p-6 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-xl"
               >
-                <h3 className="font-[family-name:var(--f-display)] text-lg text-[var(--color-text)] mb-2">
+                <h3 className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text)] mb-2">
                   {card.title}
                 </h3>
                 <p className="font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)] leading-relaxed">

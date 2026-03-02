@@ -117,7 +117,7 @@ function RuleTreeNode({
         </span>
 
         <span className="font-[family-name:var(--f-mono)] text-[0.8rem] text-[var(--color-text-muted)] shrink-0">
-          {rule.source_path || rule.id.slice(0, 8)}
+          {rule.citation_path || rule.id.slice(0, 8)}
         </span>
 
         <span className="text-[0.85rem] text-[var(--color-text-secondary)] truncate">

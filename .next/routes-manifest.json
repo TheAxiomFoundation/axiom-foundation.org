@@ -26,12 +26,12 @@
   },
   "dynamicRoutes": [
     {
-      "page": "/atlas/[ruleId]",
-      "regex": "^/atlas/([^/]+?)(?:/)?$",
+      "page": "/browse/[ruleId]",
+      "regex": "^/browse/([^/]+?)(?:/)?$",
       "routeKeys": {
         "nxtPruleId": "nxtPruleId"
       },
-      "namedRegex": "^/atlas/(?<nxtPruleId>[^/]+?)(?:/)?$"
+      "namedRegex": "^/browse/(?<nxtPruleId>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -54,10 +54,10 @@
       "namedRegex": "^/about(?:/)?$"
     },
     {
-      "page": "/atlas",
-      "regex": "^/atlas(?:/)?$",
+      "page": "/browse",
+      "regex": "^/browse(?:/)?$",
       "routeKeys": {},
-      "namedRegex": "^/atlas(?:/)?$"
+      "namedRegex": "^/browse(?:/)?$"
     },
     {
       "page": "/privacy",

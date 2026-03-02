@@ -2,27 +2,29 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock Supabase with hoisted functions
-const { mockFrom, mockSelect, mockOrder, mockRange, mockEq, mockIs, mockSingle, mockLimit } = vi.hoisted(() => {
+const { mockFrom, mockSelect, mockOrder, mockRange, mockEq, mockIs, mockSingle, mockLimit, mockTextSearch } = vi.hoisted(() => {
   const mockSingle = vi.fn()
   const mockLimit = vi.fn()
   const mockRange = vi.fn()
+  const mockTextSearch = vi.fn()
   const mockEq = vi.fn()
   const mockIs = vi.fn()
   const mockOrder = vi.fn()
   const mockSelect = vi.fn()
   const mockFrom = vi.fn()
 
-  // Set up chain
+  // Set up chain: select → is → [eq/textSearch] → order → order → range
   mockSingle.mockResolvedValue({ data: null, error: null })
   mockLimit.mockResolvedValue({ data: [], error: null, count: 0 })
   mockRange.mockResolvedValue({ data: [], error: null, count: 0 })
-  mockEq.mockReturnValue({ order: mockOrder, single: mockSingle })
-  mockIs.mockReturnValue({ order: mockOrder })
-  mockOrder.mockReturnValue({ order: mockOrder, range: mockRange, limit: mockLimit, eq: mockEq, is: mockIs })
+  mockOrder.mockReturnValue({ order: mockOrder, range: mockRange, limit: mockLimit })
+  mockTextSearch.mockReturnValue({ order: mockOrder })
+  mockEq.mockReturnValue({ order: mockOrder, textSearch: mockTextSearch, eq: mockEq, single: mockSingle })
+  mockIs.mockReturnValue({ order: mockOrder, eq: mockEq, textSearch: mockTextSearch })
   mockSelect.mockReturnValue({ order: mockOrder, eq: mockEq, is: mockIs, range: mockRange, count: 0 })
   mockFrom.mockReturnValue({ select: mockSelect })
 
-  return { mockFrom, mockSelect, mockOrder, mockRange, mockEq, mockIs, mockSingle, mockLimit }
+  return { mockFrom, mockSelect, mockOrder, mockRange, mockEq, mockIs, mockSingle, mockLimit, mockTextSearch }
 })
 
 vi.mock('@/lib/supabase', () => ({
@@ -36,11 +38,12 @@ import { useRules, useRule } from './use-rules'
 describe('useRules', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset chain
+    // Reset chain: select → is → [eq/textSearch] → order → range
     mockRange.mockResolvedValue({ data: [], error: null, count: 0 })
-    mockEq.mockReturnValue({ order: mockOrder, textSearch: vi.fn().mockReturnValue({ range: mockRange }) })
-    mockIs.mockReturnValue({ order: mockOrder })
-    mockOrder.mockReturnValue({ order: mockOrder, range: mockRange, is: mockIs, eq: mockEq })
+    mockOrder.mockReturnValue({ order: mockOrder, range: mockRange })
+    mockTextSearch.mockReturnValue({ order: mockOrder })
+    mockEq.mockReturnValue({ order: mockOrder, textSearch: mockTextSearch, eq: mockEq, single: mockSingle })
+    mockIs.mockReturnValue({ order: mockOrder, eq: mockEq, textSearch: mockTextSearch })
     mockSelect.mockReturnValue({ order: mockOrder, eq: mockEq, is: mockIs, range: mockRange })
     mockFrom.mockReturnValue({ select: mockSelect })
   })
@@ -114,14 +117,8 @@ describe('useRules', () => {
   })
 
   it('applies text search', async () => {
-    const mockTextSearch = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 })
-    // range() returns builder which has textSearch; textSearch is then awaited
-    mockRange.mockReturnValue({
-      data: [], error: null, count: 0,
-      textSearch: mockTextSearch,
-      eq: mockEq,
-      then: (fn: any) => fn({ data: [], error: null, count: 0 }),
-    })
+    // textSearch is called after is(), before order()
+    mockTextSearch.mockReturnValue({ order: mockOrder })
 
     const { result } = renderHook(() => useRules({ search: 'income tax' }))
 

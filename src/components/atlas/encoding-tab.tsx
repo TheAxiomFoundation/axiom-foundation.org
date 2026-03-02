@@ -20,7 +20,7 @@ export function EncodingTab({
   if (!encoding) {
     return (
       <div className="py-20 text-center">
-        <div className="font-display text-lg text-[var(--color-text-muted)] mb-2">
+        <div className="font-heading text-lg text-[var(--color-text-muted)] mb-2">
           Not yet encoded
         </div>
         <p className="text-sm text-[var(--color-text-muted)]">

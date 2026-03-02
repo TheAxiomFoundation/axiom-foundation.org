@@ -20,14 +20,9 @@ export function Hero() {
         }`}
         style={{ transitionTimingFunction: "var(--ease-out)" }}
       >
-        <div className="inline-flex items-center gap-2 px-6 py-2 bg-[rgba(59,130,246,0.1)] border border-[var(--color-border)] rounded-full font-[family-name:var(--f-mono)] text-xs font-medium text-[var(--color-precision)] uppercase tracking-[0.1em] mb-8">
-          <span className="w-1.5 h-1.5 bg-[var(--color-success)] rounded-full animate-[pulse-glow_2s_ease-in-out_infinite]" />
-          Open Source Infrastructure
-        </div>
-
         <h1 className="heading-page text-[var(--color-text)] mb-8">
           Encoding the{" "}
-          <span className="text-[var(--color-precision)] italic">
+          <span className="text-[var(--color-precision)]">
             world&apos;s rules
           </span>
         </h1>

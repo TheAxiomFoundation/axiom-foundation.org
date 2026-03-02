@@ -9,10 +9,11 @@ vi.mock('next/link', () => ({
 import { Footer } from './footer'
 
 describe('Footer', () => {
-  it('renders the footer with logo text', () => {
+  it('renders the footer with wordmark', () => {
     render(<Footer />)
-    expect(screen.getByText('RULES')).toBeInTheDocument()
-    expect(screen.getByText('Foundation')).toBeInTheDocument()
+    const logo = screen.getByAltText('Rules Foundation')
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute('src', '/logos/rules-foundation.svg')
   })
 
   it('renders tagline', () => {

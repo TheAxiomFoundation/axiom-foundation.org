@@ -453,7 +453,7 @@ export function RacFormat() {
 
         {/* Format comparison table */}
         <div className="mt-16 mb-16">
-          <h3 className="font-[family-name:var(--f-display)] text-2xl text-[var(--color-text)] text-center mb-2">
+          <h3 className="font-[family-name:var(--f-body)] text-2xl text-[var(--color-text)] text-center mb-2">
             Format comparison
           </h3>
           <p className="font-[family-name:var(--f-body)] text-base text-[var(--color-text-secondary)] text-center mb-8">
@@ -599,7 +599,7 @@ export function RacFormat() {
               <div className="w-12 h-12 flex items-center justify-center bg-[rgba(59,130,246,0.1)] rounded-[10px] text-[var(--color-precision)] mb-5">
                 {f.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-[1.1rem] text-[var(--color-text)] mb-2">
+              <h3 className="font-[family-name:var(--f-body)] text-[1.1rem] text-[var(--color-text)] mb-2">
                 {f.title}
               </h3>
               <p className="font-[family-name:var(--f-body)] text-[0.9rem] text-[var(--color-text-secondary)] leading-relaxed">

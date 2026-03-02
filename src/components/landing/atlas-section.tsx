@@ -40,7 +40,7 @@ export function AtlasSection() {
               className="bg-gradient-to-br from-[var(--color-bg)] to-[var(--color-void)] border border-[var(--color-border)] rounded-xl p-8 transition-all duration-200 hover:border-[var(--color-precision)] hover:-translate-y-0.5"
               style={{ transitionTimingFunction: "var(--ease-out)" }}
             >
-              <h4 className="font-[family-name:var(--f-display)] text-lg text-[var(--color-text)] mb-2">
+              <h4 className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text)] mb-2">
                 {item.title}
               </h4>
               <p className="font-[family-name:var(--f-body)] text-sm text-[var(--color-text-secondary)] leading-normal m-0">

@@ -40,7 +40,7 @@ export function GroundTruthSection() {
               <div className="w-14 h-14 flex items-center justify-center bg-[var(--color-void)] border border-[var(--color-border)] rounded-xl text-[var(--color-precision)] mb-6">
                 {card.icon}
               </div>
-              <h3 className="font-[family-name:var(--f-display)] text-[1.35rem] text-[var(--color-text)] mb-4">
+              <h3 className="font-[family-name:var(--f-body)] text-[1.35rem] text-[var(--color-text)] mb-4">
                 {card.title}
               </h3>
               <p className="font-[family-name:var(--f-body)] text-[0.95rem] text-[var(--color-text-secondary)] leading-relaxed">

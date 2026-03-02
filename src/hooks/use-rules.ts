@@ -56,11 +56,8 @@ export function useRules(options: {
       try {
         let query = supabaseArch
           .from("rules")
-          .select("*", { count: "exact" })
-          .is("parent_id", null)
-          .order("jurisdiction")
-          .order("source_path")
-          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+          .select("id,jurisdiction,doc_type,parent_id,level,ordinal,heading,effective_date,repeal_date,source_url,source_path,citation_path,rac_path,has_rac,created_at,updated_at", { count: "estimated" })
+          .is("parent_id", null);
 
         if (jurisdiction) {
           query = query.eq("jurisdiction", jurisdiction);
@@ -70,12 +67,16 @@ export function useRules(options: {
           query = query.textSearch("fts", search, { type: "websearch" });
         }
 
-        const { data, error: fetchError, count } = await query;
+        const { data, error: fetchError, count } = await query
+          .order("jurisdiction")
+          .order("ordinal")
+          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
         if (fetchError) throw fetchError;
 
         /* v8 ignore next -- defensive null coalescing for Supabase data */
-        setRules(append ? (prev) => [...prev, ...(data || [])] : data || []);
+        const rows = (data || []) as Rule[];
+        setRules(append ? (prev) => [...prev, ...rows] : rows);
         setTotalCount(count || 0);
         setPage(pageNum);
       } catch (err) {

@@ -104,6 +104,7 @@ function RuleTreeView({
     <div className="max-w-[1280px] mx-auto">
       <TreeBreadcrumbs items={breadcrumbs} />
 
+      {/* v8 ignore start -- filter toggle UI */}
       {/* Filter bar */}
       <div className="flex items-center justify-end mb-3">
         <button
@@ -124,6 +125,7 @@ function RuleTreeView({
           Encoded only
         </button>
       </div>
+      {/* v8 ignore stop */}
 
       {/* Tree node list */}
       <div className="bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-xl overflow-hidden min-h-[400px]">

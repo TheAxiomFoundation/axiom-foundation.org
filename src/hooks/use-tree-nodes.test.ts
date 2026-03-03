@@ -250,6 +250,99 @@ describe("useTreeNodes", () => {
     });
   });
 
+  describe("encodedOnly filter", () => {
+    it("passes encodedOnly flag to getTitleNodes", async () => {
+      const titleNodes = [
+        makeNode({ segment: "26", label: "Title 26", nodeType: "title" }),
+      ];
+      mockGetTitleNodes.mockResolvedValue(titleNodes);
+
+      const { result } = renderHook(() =>
+        useTreeNodes("us", ["statute"], true, true)
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetTitleNodes).toHaveBeenCalledWith(
+        "us",
+        "statute",
+        expect.any(Set),
+        true
+      );
+    });
+
+    it("passes encodedOnly flag to getSectionNodes", async () => {
+      const sectionNodes = [
+        makeNode({ segment: "1", label: "Section 1", nodeType: "section" }),
+      ];
+      mockGetSectionNodes.mockResolvedValue({
+        nodes: sectionNodes,
+        hasMore: false,
+        total: 1,
+      });
+
+      const { result } = renderHook(() =>
+        useTreeNodes("us", ["statute", "26"], true, true)
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetSectionNodes).toHaveBeenCalledWith(
+        "us/statute/26",
+        0,
+        expect.any(Set),
+        true
+      );
+    });
+
+    it("uses separate cache key when encodedOnly is true", async () => {
+      const allNodes = [
+        makeNode({
+          segment: "statute",
+          label: "Statutes",
+          nodeType: "doc_type",
+        }),
+      ];
+      mockGetDocTypeNodes.mockResolvedValue(allNodes);
+
+      const { result, rerender } = renderHook(
+        ({
+          dbId,
+          segs,
+          hasCitation,
+          encoded,
+        }: {
+          dbId: string;
+          segs: string[];
+          hasCitation: boolean;
+          encoded: boolean;
+        }) => useTreeNodes(dbId, segs, hasCitation, encoded),
+        {
+          initialProps: {
+            dbId: "us",
+            segs: [],
+            hasCitation: true,
+            encoded: false,
+          },
+        }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(mockGetDocTypeNodes).toHaveBeenCalledOnce();
+
+      // Toggle encoded — should fetch again (different cache key)
+      rerender({
+        dbId: "us",
+        segs: [],
+        hasCitation: true,
+        encoded: true,
+      });
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(mockGetDocTypeNodes).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("cache behavior", () => {
     it("uses cache on second render with same args", async () => {
       const docNodes = [

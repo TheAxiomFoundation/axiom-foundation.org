@@ -28,7 +28,8 @@ const MAX_CACHE_ENTRIES = 20;
 export function useTreeNodes(
   dbJurisdictionId: string,
   ruleSegments: string[],
-  hasCitationPaths: boolean
+  hasCitationPaths: boolean,
+  encodedOnly: boolean = false
 ) {
   const [nodes, setNodes] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,7 @@ export function useTreeNodes(
   const cache = useRef<Map<string, CacheEntry>>(new Map());
   const encodedPathsRef = useRef<Set<string> | null>(null);
 
-  const cacheKey = `${dbJurisdictionId}/${ruleSegments.join("/")}`;
+  const cacheKey = `${dbJurisdictionId}/${ruleSegments.join("/")}${encodedOnly ? ":encoded" : ""}`;
 
   useEffect(() => {
     const cached = cache.current.get(cacheKey);
@@ -83,7 +84,16 @@ export function useTreeNodes(
       } else if (hasCitationPaths) {
         if (segs.length === 1) {
           // Doc type selected, show titles
-          const fetched = await getTitleNodes(dbJurisdictionId, segs[0]);
+          // Lazy-load encoded paths for filtering
+          if (!encodedPathsRef.current) {
+            encodedPathsRef.current = await getEncodedPaths();
+          }
+          const fetched = await getTitleNodes(
+            dbJurisdictionId,
+            segs[0],
+            encodedPathsRef.current,
+            encodedOnly
+          );
           result = { nodes: fetched, hasMore: false };
         } else {
           // Deep navigation via citation path
@@ -95,7 +105,8 @@ export function useTreeNodes(
           const r: TreeResult = await getSectionNodes(
             pathPrefix,
             pageNum,
-            encodedPathsRef.current
+            encodedPathsRef.current,
+            encodedOnly
           );
           if (r.leafRule) {
             setLeafRule(r.leafRule);

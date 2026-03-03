@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
@@ -63,10 +64,12 @@ function RuleTreeView({
   hasCitationPaths: boolean;
 }) {
   const router = useRouter();
+  const [encodedOnly, setEncodedOnly] = useState(false);
   const { nodes, loading, error, hasMore, loadMore, leafRule } = useTreeNodes(
     dbJurisdictionId,
     ruleSegments,
-    hasCitationPaths
+    hasCitationPaths,
+    encodedOnly
   );
   const breadcrumbs = buildBreadcrumbs(segments);
 
@@ -100,6 +103,29 @@ function RuleTreeView({
   return (
     <div className="max-w-[1280px] mx-auto">
       <TreeBreadcrumbs items={breadcrumbs} />
+
+      {/* v8 ignore start -- filter toggle UI */}
+      {/* Filter bar */}
+      <div className="flex items-center justify-end mb-3">
+        <button
+          onClick={() => setEncodedOnly((prev) => !prev)}
+          className={`flex items-center gap-2 px-3 py-1.5 font-[family-name:var(--f-mono)] text-xs rounded-lg border transition-colors ${
+            encodedOnly
+              ? "text-[var(--color-precision)] border-[var(--color-precision)] bg-[rgba(59,130,246,0.1)]"
+              : "text-[var(--color-text-muted)] border-[var(--color-border)] bg-transparent hover:border-[var(--color-border-hover)]"
+          }`}
+        >
+          <span
+            className={`inline-block w-2 h-2 rounded-full ${
+              encodedOnly
+                ? "bg-[var(--color-precision)]"
+                : "bg-[var(--color-text-muted)]"
+            }`}
+          />
+          Encoded only
+        </button>
+      </div>
+      {/* v8 ignore stop */}
 
       {/* Tree node list */}
       <div className="bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-xl overflow-hidden min-h-[400px]">

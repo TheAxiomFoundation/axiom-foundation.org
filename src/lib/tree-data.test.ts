@@ -6,6 +6,7 @@ import {
   getCountry,
   getSubJurisdiction,
   resolveAtlasPath,
+  hasEncodedDescendant,
   COUNTRIES,
 } from "./tree-data";
 
@@ -257,6 +258,35 @@ describe("buildBreadcrumbs", () => {
   it("uses raw segment for unknown doc_type", () => {
     const crumbs = buildBreadcrumbs(["uk", "regulation"]);
     expect(crumbs[2].label).toBe("regulation");
+  });
+});
+
+describe("hasEncodedDescendant", () => {
+  const paths = new Set(["statute/26/1/j/2", "statute/26/24/a", "statute/5/1"]);
+
+  it("returns true for exact match", () => {
+    expect(hasEncodedDescendant(paths, "statute/26/1/j/2")).toBe(true);
+  });
+
+  it("returns true for ancestor prefix", () => {
+    expect(hasEncodedDescendant(paths, "statute/26")).toBe(true);
+    expect(hasEncodedDescendant(paths, "statute/26/1")).toBe(true);
+    expect(hasEncodedDescendant(paths, "statute/26/1/j")).toBe(true);
+  });
+
+  it("returns false when no encoded descendant exists", () => {
+    expect(hasEncodedDescendant(paths, "statute/7")).toBe(false);
+    expect(hasEncodedDescendant(paths, "statute/26/2")).toBe(false);
+  });
+
+  it("returns false for empty set", () => {
+    expect(hasEncodedDescendant(new Set(), "statute/26")).toBe(false);
+  });
+
+  it("does not match partial segment names", () => {
+    // "statute/26" should not match "statute/260/..."
+    const testPaths = new Set(["statute/260/1"]);
+    expect(hasEncodedDescendant(testPaths, "statute/26")).toBe(false);
   });
 });
 

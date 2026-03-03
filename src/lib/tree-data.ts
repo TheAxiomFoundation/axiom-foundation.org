@@ -234,7 +234,9 @@ export async function getDocTypeNodes(
 
 export async function getTitleNodes(
   jurisdiction: string,
-  _docType: string
+  _docType: string,
+  encodedPaths?: Set<string>,
+  encodedOnly?: boolean
 ): Promise<TreeNode[]> {
   const { data } = await supabaseArch
     .from("rules")
@@ -255,7 +257,14 @@ export async function getTitleNodes(
     }
   }
 
-  const titles = Array.from(titleSet).sort(naturalCompare);
+  let titles = Array.from(titleSet).sort(naturalCompare);
+
+  // Filter to titles that have at least one encoded descendant
+  if (encodedOnly && encodedPaths) {
+    titles = titles.filter((title) =>
+      hasEncodedDescendant(encodedPaths, `statute/${title}`)
+    );
+  }
 
   const nodes = await Promise.all(
     titles.map(async (title) => {
@@ -282,7 +291,8 @@ export async function getTitleNodes(
 export async function getSectionNodes(
   pathPrefix: string,
   page: number = 0,
-  encodedPaths?: Set<string>
+  encodedPaths?: Set<string>,
+  encodedOnly?: boolean
 ): Promise<TreeResult> {
   const { data: parentRule } = await supabaseArch
     .from("rules")
@@ -313,10 +323,25 @@ export async function getSectionNodes(
       };
     }
 
+    let nodes = rules.map((r) => ruleToSectionNode(r, encodedPaths));
+
+    // Filter to nodes that are encoded or have encoded descendants
+    if (encodedOnly && encodedPaths) {
+      nodes = nodes.filter((n) => {
+        if (n.hasRac) return true;
+        if (n.rule?.citation_path) {
+          const parts = n.rule.citation_path.split("/");
+          const withoutJurisdiction = parts.slice(1).join("/");
+          return hasEncodedDescendant(encodedPaths, withoutJurisdiction);
+        }
+        return false;
+      });
+    }
+
     return {
-      nodes: rules.map((r) => ruleToSectionNode(r, encodedPaths)),
+      nodes,
       hasMore: hasNextPage(page, total),
-      total,
+      total: encodedOnly ? nodes.length : total,
     };
   }
 
@@ -334,7 +359,7 @@ export async function getSectionNodes(
   const total = count || 0;
 
   const expectedDepth = pathPrefix.split("/").length + 1;
-  const filtered = rules.filter((r) => {
+  const depthFiltered = rules.filter((r) => {
     if (!r.citation_path) return false;
     // Count slashes + 1 instead of splitting to avoid array allocations
     let depth = 1;
@@ -344,10 +369,24 @@ export async function getSectionNodes(
     return depth === expectedDepth;
   });
 
+  let nodes = depthFiltered.map((r) => ruleToSectionNode(r));
+
+  // Filter to nodes that have encoded descendants
+  if (encodedOnly && encodedPaths) {
+    nodes = nodes.filter((n) => {
+      if (n.rule?.citation_path) {
+        const parts = n.rule.citation_path.split("/");
+        const withoutJurisdiction = parts.slice(1).join("/");
+        return hasEncodedDescendant(encodedPaths, withoutJurisdiction);
+      }
+      return false;
+    });
+  }
+
   return {
-    nodes: filtered.map((r) => ruleToSectionNode(r)),
+    nodes,
     hasMore: hasNextPage(page, total),
-    total,
+    total: encodedOnly ? nodes.length : total,
   };
 }
 
@@ -370,6 +409,20 @@ export async function getEncodedPaths(): Promise<Set<string>> {
     }
   }
   return paths;
+}
+
+/**
+ * Check if any encoded path starts with the given prefix.
+ * Used to filter tree branches that contain at least one encoded rule.
+ */
+export function hasEncodedDescendant(
+  encodedPaths: Set<string>,
+  prefix: string
+): boolean {
+  for (const p of encodedPaths) {
+    if (p === prefix || p.startsWith(prefix + "/")) return true;
+  }
+  return false;
 }
 
 function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {

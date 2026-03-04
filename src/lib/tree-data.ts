@@ -391,20 +391,22 @@ export async function getSectionNodes(
 }
 
 /**
- * Fetch all encoded file_paths from encoding_runs and convert to citation paths.
- * e.g. "statute/26/1/j/2.rac" → "statute/26/1/j/2"
+ * Fetch citation paths of all rules with has_rac=true from arch.rules.
+ * Returns paths without jurisdiction prefix, e.g. "statute/26/1/j/2".
  */
 export async function getEncodedPaths(): Promise<Set<string>> {
-  const { data } = await supabase
-    .from("encoding_runs")
-    .select("file_path");
+  const { data } = await supabaseArch
+    .from("rules")
+    .select("citation_path")
+    .eq("has_rac", true);
 
   const paths = new Set<string>();
   if (data) {
     for (const row of data) {
-      if (row.file_path) {
-        // Strip .rac suffix
-        paths.add(row.file_path.replace(/\.rac$/, ""));
+      if (row.citation_path) {
+        // Strip jurisdiction prefix (e.g. "us/statute/26/1" → "statute/26/1")
+        const parts = row.citation_path.split("/");
+        paths.add(parts.slice(1).join("/"));
       }
     }
   }
@@ -434,11 +436,10 @@ function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
     ? `§ ${segment} — ${rule.heading}`
     : `§ ${segment}`;
 
-  // Check if this rule's citation_path (minus jurisdiction prefix) matches an encoded path
-  let hasRac = false;
-  if (encodedPaths && rule.citation_path) {
+  // Use has_rac from DB directly, or fall back to encoded paths set
+  let hasRac = rule.has_rac;
+  if (!hasRac && encodedPaths && rule.citation_path) {
     const parts = rule.citation_path.split("/");
-    // Strip jurisdiction prefix (e.g. "us/statute/26/1" → "statute/26/1")
     const withoutJurisdiction = parts.slice(1).join("/");
     hasRac = encodedPaths.has(withoutJurisdiction);
   }

@@ -39,8 +39,8 @@ export default function PrivacyPage() {
             <h2 className={styles.sectionTitle}>Open source</h2>
             <p className={styles.text}>
               All our code is open source at{' '}
-              <a href="https://github.com/RulesFoundation" target="_blank" rel="noopener noreferrer">
-                github.com/RulesFoundation
+              <a href="https://github.com/RuleAtlas" target="_blank" rel="noopener noreferrer">
+                github.com/RuleAtlas
               </a>
             </p>
           </section>
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
             <h2 className={styles.sectionTitle}>Contact</h2>
             <p className={styles.text}>
               For privacy questions, email{' '}
-              <a href="mailto:hello@rules.foundation">hello@rules.foundation</a>
+              <a href="mailto:hello@ruleatlas.org">hello@ruleatlas.org</a>
             </p>
           </section>
         </div>

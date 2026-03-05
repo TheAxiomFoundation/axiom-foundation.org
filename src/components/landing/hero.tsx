@@ -28,7 +28,7 @@ export function Hero() {
         </h1>
 
         <p className="font-[family-name:var(--f-body)] text-xl font-light text-[var(--color-text-secondary)] leading-relaxed max-w-[600px] mx-auto mb-12">
-          The Rules Foundation builds open, machine-readable encodings of
+          Rule Atlas builds open, machine-readable encodings of
           statutes, regulations, and policy rules. Ground truth for AI systems.
           Verifiable by design.
         </p>
@@ -38,7 +38,7 @@ export function Hero() {
             Learn More
             <ArrowRightIcon className="w-5 h-5" />
           </a>
-          <a href="https://github.com/RulesFoundation" className="btn-outline">
+          <a href="https://github.com/RuleAtlas" className="btn-outline">
             <GitHubIcon className="w-5 h-5" />
             View on GitHub
           </a>

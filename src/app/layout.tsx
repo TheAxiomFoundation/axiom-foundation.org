@@ -19,11 +19,11 @@ const body = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Rules Foundation — Open infrastructure for encoded law",
+  title: "Rule Atlas — Open infrastructure for encoded law",
   description:
     "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
   openGraph: {
-    title: "Rules Foundation",
+    title: "Rule Atlas",
     description: "Open infrastructure for encoded law.",
     images: ["/og-image.png"],
   },

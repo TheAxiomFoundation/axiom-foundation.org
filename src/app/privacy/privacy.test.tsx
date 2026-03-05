@@ -32,12 +32,12 @@ describe('PrivacyPage', () => {
   it('renders open source section with GitHub link', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /open source/i })).toBeInTheDocument()
-    expect(screen.getByText('github.com/RulesFoundation')).toBeInTheDocument()
+    expect(screen.getByText('github.com/RuleAtlas')).toBeInTheDocument()
   })
 
   it('renders contact section with email', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@rules.foundation')).toBeInTheDocument()
+    expect(screen.getByText('hello@ruleatlas.org')).toBeInTheDocument()
   })
 })

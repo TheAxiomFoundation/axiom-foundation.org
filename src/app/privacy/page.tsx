@@ -46,11 +46,11 @@ export default function PrivacyPage() {
             <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
               All our code is open source at{" "}
               <a
-                href="https://github.com/RulesFoundation"
+                href="https://github.com/RuleAtlas"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                github.com/RulesFoundation
+                github.com/RuleAtlas
               </a>
             </p>
           </section>
@@ -61,8 +61,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
               For privacy questions, email{" "}
-              <a href="mailto:hello@rules.foundation">
-                hello@rules.foundation
+              <a href="mailto:hello@ruleatlas.org">
+                hello@ruleatlas.org
               </a>
             </p>
           </section>

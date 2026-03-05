@@ -7,7 +7,7 @@ export default function AboutPage() {
       <div className="max-w-[800px] mx-auto">
         <header className="text-center mb-16">
           <h1 className="heading-page text-[var(--color-text)] mb-6">
-            About the Rules Foundation
+            About Rule Atlas
           </h1>
           <p className="font-[family-name:var(--f-body)] text-xl font-light text-[var(--color-text-secondary)] leading-relaxed max-w-[600px] mx-auto">
             Open infrastructure for encoded law. We build machine-readable
@@ -21,7 +21,7 @@ export default function AboutPage() {
             Our mission
           </h2>
           <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
-            Rules Foundation builds open infrastructure for encoded law. Our
+            Rule Atlas builds open infrastructure for encoded law. Our
             mission is to make legal rules machine-readable, verifiable, and
             accessible to everyone. We&apos;re a fiscally sponsored project of
             the{" "}
@@ -82,7 +82,7 @@ export default function AboutPage() {
             />
             <div>
               <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed mb-4">
-                The Rules Foundation is led by{" "}
+                Rule Atlas is led by{" "}
                 <a
                   href="https://maxghenis.com"
                   target="_blank"
@@ -101,10 +101,10 @@ export default function AboutPage() {
                 <span>
                   Join us on{" "}
                   <a
-                    href="https://github.com/RulesFoundation"
+                    href="https://github.com/RuleAtlas"
                     className="text-[var(--color-precision)] hover:text-[var(--color-warmth)]"
                   >
-                    github.com/RulesFoundation
+                    github.com/RuleAtlas
                   </a>
                 </span>
               </div>
@@ -122,10 +122,10 @@ export default function AboutPage() {
           </p>
           <div className="inline-block px-6 py-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg">
             <a
-              href="mailto:hello@rules.foundation"
+              href="mailto:hello@ruleatlas.org"
               className="font-[family-name:var(--f-mono)] text-[var(--color-precision)] text-[0.95rem]"
             >
-              hello@rules.foundation
+              hello@ruleatlas.org
             </a>
           </div>
         </section>

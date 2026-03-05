@@ -2,32 +2,50 @@
   "redirects": [
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rac.foundation" }],
-      "destination": "https://rules.foundation/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rac.foundation" }],
-      "destination": "https://rules.foundation/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rulesfoundation.org" }],
-      "destination": "https://rules.foundation/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rulesfoundation.org" }],
-      "destination": "https://rules.foundation/:path",
+      "has": [{ "type": "host", "value": "rules.foundation" }],
+      "destination": "https://ruleatlas.org/:path",
       "permanent": true
     },
     {
       "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "www.rules.foundation" }],
-      "destination": "https://rules.foundation/:path",
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "rac.foundation" }],
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.rac.foundation" }],
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "rulesfoundation.org" }],
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.rulesfoundation.org" }],
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "rulesatlas.org" }],
+      "destination": "https://ruleatlas.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.rulesatlas.org" }],
+      "destination": "https://ruleatlas.org/:path",
       "permanent": true
     }
   ]

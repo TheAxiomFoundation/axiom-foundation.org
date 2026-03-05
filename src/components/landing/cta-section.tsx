@@ -14,25 +14,25 @@ export function CtaSection() {
           Get involved
         </h2>
         <p className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text-secondary)] leading-relaxed mb-12">
-          Rules Foundation builds open infrastructure for AI safety in legal
+          Rule Atlas builds open infrastructure for AI safety in legal
           domains.
         </p>
 
         <div className="flex justify-center gap-6 mb-12 flex-wrap">
           <a
-            href="https://github.com/RulesFoundation/rac-us"
+            href="https://github.com/RuleAtlas/rac-us"
             className="btn-primary"
           >
             <CodeIcon className="w-5 h-5" />
             Encode your jurisdiction
           </a>
           <a
-            href="https://github.com/RulesFoundation/rac/issues"
+            href="https://github.com/RuleAtlas/rac/issues"
             className="btn-outline"
           >
             Validate our work
           </a>
-          <a href="mailto:hello@rules.foundation" className="btn-outline">
+          <a href="mailto:hello@ruleatlas.org" className="btn-outline">
             Fund the mission
           </a>
         </div>
@@ -40,15 +40,15 @@ export function CtaSection() {
         <div className="flex justify-center gap-8 flex-wrap">
           {[
             {
-              href: "https://github.com/RulesFoundation/rac",
+              href: "https://github.com/RuleAtlas/rac",
               label: "RAC specification",
             },
             {
-              href: "https://github.com/RulesFoundation/atlas",
+              href: "https://github.com/RuleAtlas/atlas",
               label: "Atlas platform",
             },
             {
-              href: "https://github.com/RulesFoundation/autorac",
+              href: "https://github.com/RuleAtlas/autorac",
               label: "AutoRAC encoder",
             },
             { href: "/about", label: "About us", internal: true },

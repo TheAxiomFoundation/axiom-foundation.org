@@ -10,7 +10,7 @@ const renderWithRouter = (ui: React.ReactElement) => {
 describe('AboutPage', () => {
   it('renders the page title', () => {
     renderWithRouter(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /about the rules foundation/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /about rule atlas/i })).toBeInTheDocument()
   })
 
   it('renders the mission section', () => {
@@ -37,11 +37,11 @@ describe('AboutPage', () => {
   it('renders the contact section', () => {
     renderWithRouter(<AboutPage />)
     expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@rules.foundation')).toBeInTheDocument()
+    expect(screen.getByText('hello@ruleatlas.org')).toBeInTheDocument()
   })
 
   it('renders GitHub link in team section', () => {
     renderWithRouter(<AboutPage />)
-    expect(screen.getByText('github.com/RulesFoundation')).toBeInTheDocument()
+    expect(screen.getByText('github.com/RuleAtlas')).toBeInTheDocument()
   })
 })

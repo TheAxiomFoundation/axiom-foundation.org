@@ -34,7 +34,7 @@ export function EncodingTab({
   // Extract repo from encoding_run_id for GitHub links
   // encoding_run_id format: "github:statute/26/32/b.rac"
   const gitHubUrl = isGitHub
-    ? `https://github.com/RulesFoundation/rac-us/blob/main/${encoding.file_path}`
+    ? `https://github.com/RuleAtlas/rac-us/blob/main/${encoding.file_path}`
     : null;
 
   return (

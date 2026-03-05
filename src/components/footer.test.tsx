@@ -11,9 +11,9 @@ import { Footer } from './footer'
 describe('Footer', () => {
   it('renders the footer with wordmark', () => {
     render(<Footer />)
-    const logo = screen.getByAltText('Rules Foundation')
+    const logo = screen.getByAltText('Rule Atlas')
     expect(logo).toBeInTheDocument()
-    expect(logo).toHaveAttribute('src', '/logos/rules-foundation.svg')
+    expect(logo).toHaveAttribute('src', '/logos/rule-atlas.svg')
   })
 
   it('renders tagline', () => {
@@ -33,7 +33,7 @@ describe('Footer', () => {
     render(<Footer />)
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
-    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/RulesFoundation')
-    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@rules.foundation')
+    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/RuleAtlas')
+    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@ruleatlas.org')
   })
 })

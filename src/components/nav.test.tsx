@@ -19,7 +19,7 @@ describe('Nav', () => {
   it('renders the logo linking to home', () => {
     mockUsePathname.mockReturnValue('/')
     render(<Nav />)
-    const logo = screen.getByAltText('Rules Foundation')
+    const logo = screen.getByAltText('Rule Atlas')
     expect(logo).toBeInTheDocument()
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
@@ -70,7 +70,7 @@ describe('Nav', () => {
     render(<Nav />)
     const links = screen.getAllByRole('link')
     const githubLink = links.find(
-      (l) => l.getAttribute('href') === 'https://github.com/RulesFoundation',
+      (l) => l.getAttribute('href') === 'https://github.com/RuleAtlas',
     )
     expect(githubLink).toBeInTheDocument()
   })

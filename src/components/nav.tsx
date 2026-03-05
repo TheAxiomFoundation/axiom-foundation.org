@@ -20,8 +20,8 @@ export function Nav() {
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
         <Link href="/" className="flex items-baseline gap-2 no-underline">
           <img
-            src="/logos/rules-foundation.svg"
-            alt="Rules Foundation"
+            src="/logos/rule-atlas.svg"
+            alt="Rule Atlas"
             className="h-11 w-auto"
           />
         </Link>
@@ -74,7 +74,7 @@ export function Nav() {
             );
           })}
           <a
-            href="https://github.com/RulesFoundation/rac"
+            href="https://github.com/RuleAtlas/rac"
             className="text-[0.9rem] font-medium no-underline text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors duration-150 flex items-center"
             target="_blank"
             rel="noopener noreferrer"
@@ -82,7 +82,7 @@ export function Nav() {
             Docs
           </a>
           <a
-            href="https://github.com/RulesFoundation"
+            href="https://github.com/RuleAtlas"
             className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors duration-150 flex items-center"
             target="_blank"
             rel="noopener noreferrer"

@@ -293,7 +293,7 @@ async function fetchRacFromGitHub(
   if (!repo) return null
 
   for (const filePath of parentPaths(basePath)) {
-    const url = `https://raw.githubusercontent.com/RulesFoundation/${repo}/main/${filePath}`
+    const url = `https://raw.githubusercontent.com/RuleAtlas/${repo}/main/${filePath}`
     try {
       const res = await fetch(url, { next: { revalidate: 3600 } } as RequestInit)
       if (!res.ok) continue

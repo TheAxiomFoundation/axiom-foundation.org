@@ -1,6 +1,6 @@
-# rules.foundation
+# Rule Atlas
 
-RF website. Deploys to Vercel.
+Rule Atlas website (ruleatlas.org). Deploys to Vercel.
 
 ## After pushing changes
 

@@ -6,8 +6,8 @@ export function Footer() {
       <div className="max-w-[1280px] mx-auto text-center">
         <div className="flex justify-center mb-4">
           <img
-            src="/logos/rules-foundation.svg"
-            alt="Rules Foundation"
+            src="/logos/rule-atlas.svg"
+            alt="Rule Atlas"
             className="h-9 w-auto"
           />
         </div>
@@ -22,7 +22,7 @@ export function Footer() {
             About
           </Link>
           <a
-            href="https://github.com/RulesFoundation"
+            href="https://github.com/RuleAtlas"
             className="text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-text)] transition-colors duration-150"
             target="_blank"
             rel="noopener noreferrer"
@@ -30,7 +30,7 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="mailto:hello@rules.foundation"
+            href="mailto:hello@ruleatlas.org"
             className="text-[0.85rem] text-[var(--color-text-muted)] no-underline hover:text-[var(--color-text)] transition-colors duration-150"
           >
             Contact

@@ -34,8 +34,8 @@ export function Hero() {
         </p>
 
         <div className="flex gap-6 justify-center mb-16 flex-wrap">
-          <a href="#atlas" className="btn-primary">
-            Learn More
+          <a href="/atlas" className="btn-primary">
+            Explore Atlas
             <ArrowRightIcon className="w-5 h-5" />
           </a>
           <a href="https://github.com/RuleAtlas" className="btn-outline">

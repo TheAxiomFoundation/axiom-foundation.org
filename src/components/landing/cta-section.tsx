@@ -14,8 +14,7 @@ export function CtaSection() {
           Get involved
         </h2>
         <p className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text-secondary)] leading-relaxed mb-12">
-          Rule Atlas builds open infrastructure for AI safety in legal
-          domains.
+          Rule Atlas builds open infrastructure for encoded law.
         </p>
 
         <div className="flex justify-center gap-6 mb-12 flex-wrap">

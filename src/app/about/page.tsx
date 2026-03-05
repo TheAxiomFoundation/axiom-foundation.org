@@ -21,9 +21,8 @@ export default function AboutPage() {
             Our mission
           </h2>
           <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
-            Rule Atlas builds open infrastructure for encoded law. Our
-            mission is to make legal rules machine-readable, verifiable, and
-            accessible to everyone. We&apos;re a fiscally sponsored project of
+            Our mission is to make legal rules machine-readable, verifiable,
+            and accessible to everyone. We&apos;re a fiscally sponsored project of
             the{" "}
             <a
               href="https://psl-foundation.org"

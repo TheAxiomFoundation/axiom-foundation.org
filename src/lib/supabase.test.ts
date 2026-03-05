@@ -435,6 +435,14 @@ describe('supabase lib', () => {
         file_path: 'statute/26/1.rac',
         rac_content: 'rule { ... }',
         final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+        iterations: null,
+        total_duration_ms: null,
+        agent_type: null,
+        agent_model: null,
+        data_source: null,
+        has_issues: null,
+        note: null,
+        timestamp: null,
       })
     })
 

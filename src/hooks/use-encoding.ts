@@ -4,13 +4,16 @@ import { useState, useEffect } from "react";
 import {
   getRuleEncoding,
   getSDKSessionEvents,
+  getTranscriptsBySession,
   type RuleEncodingData,
   type SDKSessionEvent,
+  type AgentTranscript,
 } from "@/lib/supabase";
 
 export interface UseEncodingResult {
   encoding: RuleEncodingData | null;
   sessionEvents: SDKSessionEvent[];
+  agentTranscripts: AgentTranscript[];
   loading: boolean;
   error: string | null;
 }
@@ -18,6 +21,7 @@ export interface UseEncodingResult {
 export function useEncoding(ruleId: string | null): UseEncodingResult {
   const [encoding, setEncoding] = useState<RuleEncodingData | null>(null);
   const [sessionEvents, setSessionEvents] = useState<SDKSessionEvent[]>([]);
+  const [agentTranscripts, setAgentTranscripts] = useState<AgentTranscript[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +29,7 @@ export function useEncoding(ruleId: string | null): UseEncodingResult {
     if (!ruleId) {
       setEncoding(null);
       setSessionEvents([]);
+      setAgentTranscripts([]);
       setError(null);
       return;
     }
@@ -41,12 +46,17 @@ export function useEncoding(ruleId: string | null): UseEncodingResult {
         setEncoding(encodingData);
 
         if (encodingData?.session_id) {
-          const events = await getSDKSessionEvents(encodingData.session_id);
+          const [events, transcripts] = await Promise.all([
+            getSDKSessionEvents(encodingData.session_id),
+            getTranscriptsBySession(encodingData.session_id),
+          ]);
           /* v8 ignore next -- cancellation guard for race conditions */
           if (cancelled) return;
           setSessionEvents(events);
+          setAgentTranscripts(transcripts);
         } else {
           setSessionEvents([]);
+          setAgentTranscripts([]);
         }
       } catch (err) {
         /* v8 ignore next -- cancellation guard for race conditions */
@@ -54,6 +64,7 @@ export function useEncoding(ruleId: string | null): UseEncodingResult {
         setError("Failed to load encoding data");
         setEncoding(null);
         setSessionEvents([]);
+        setAgentTranscripts([]);
       } finally {
         /* v8 ignore next -- cancellation guard for race conditions */
         if (!cancelled) setLoading(false);
@@ -67,5 +78,5 @@ export function useEncoding(ruleId: string | null): UseEncodingResult {
     };
   }, [ruleId]);
 
-  return { encoding, sessionEvents, loading, error };
+  return { encoding, sessionEvents, agentTranscripts, loading, error };
 }

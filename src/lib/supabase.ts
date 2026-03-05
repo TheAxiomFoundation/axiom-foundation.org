@@ -256,6 +256,15 @@ export interface RuleEncodingData {
   file_path: string
   rac_content: string | null
   final_scores: EncodingRunScores | null
+  // Lab metadata (only present for encoding_runs sources)
+  iterations: EncodingRunIteration[] | null
+  total_duration_ms: number | null
+  agent_type: string | null
+  agent_model: string | null
+  data_source: DataSource | null
+  has_issues: boolean | null
+  note: string | null
+  timestamp: string | null
 }
 
 // Generate candidate file paths walking up the hierarchy
@@ -296,6 +305,14 @@ async function fetchRacFromGitHub(
         file_path: filePath,
         rac_content,
         final_scores: null,
+        iterations: null,
+        total_duration_ms: null,
+        agent_type: null,
+        agent_model: null,
+        data_source: null,
+        has_issues: null,
+        note: null,
+        timestamp: null,
       }
     } catch {
       continue
@@ -323,7 +340,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   for (const filePath of parentPaths(basePath)) {
     const { data, error } = await supabase
       .from('encoding_runs')
-      .select('id, citation, session_id, file_path, rac_content, final_scores')
+      .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp')
       .eq('file_path', filePath)
       .order('timestamp', { ascending: false })
       .limit(1)
@@ -337,6 +354,14 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
         file_path: run.file_path,
         rac_content: run.rac_content,
         final_scores: run.final_scores,
+        iterations: run.iterations ?? null,
+        total_duration_ms: run.total_duration_ms ?? null,
+        agent_type: run.agent_type ?? null,
+        agent_model: run.agent_model ?? null,
+        data_source: run.data_source ?? null,
+        has_issues: run.has_issues ?? null,
+        note: run.note ?? null,
+        timestamp: run.timestamp ?? null,
       }
     }
   }

@@ -11,7 +11,7 @@ export default function AtlasPage({
 }) {
   const { segments } = use(params);
   return (
-    <div className="relative z-1 py-16 px-8">
+    <div className="relative z-1 pt-24 pb-16 px-8">
       <AtlasBrowser segments={segments || []} />
     </div>
   );

@@ -6,6 +6,7 @@ const { mockUseEncoding } = vi.hoisted(() => ({
   mockUseEncoding: vi.fn().mockReturnValue({
     encoding: null,
     sessionEvents: [],
+    agentTranscripts: [],
     loading: false,
     error: null,
   }),
@@ -68,6 +69,14 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     file_path: 'statute/26/1.rac',
     rac_content: 'rule tax_imposed { ... }',
     final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+    iterations: null,
+    total_duration_ms: null,
+    agent_type: null,
+    agent_model: null,
+    data_source: null,
+    has_issues: null,
+    note: null,
+    timestamp: null,
     ...overrides,
   }
 }
@@ -127,9 +136,8 @@ describe('EncodingTab', () => {
     expect(screen.getByText('This rule has not been encoded into RAC format yet.')).toBeInTheDocument()
   })
 
-  it('renders encoding with citation, scores, RAC content, and file path', () => {
+  it('renders encoding with scores, RAC content, and file path', () => {
     render(<EncodingTab encoding={makeEncoding()} loading={false} />)
-    expect(screen.getByText('26 USC 1')).toBeInTheDocument()
     expect(screen.getByText('90')).toBeInTheDocument()
     expect(screen.getByText('85')).toBeInTheDocument()
     expect(screen.getByText('80')).toBeInTheDocument()
@@ -140,13 +148,13 @@ describe('EncodingTab', () => {
 
   it('renders encoding without scores', () => {
     render(<EncodingTab encoding={makeEncoding({ final_scores: null })} loading={false} />)
-    expect(screen.getByText('26 USC 1')).toBeInTheDocument()
+    expect(screen.getByText('statute/26/1.rac')).toBeInTheDocument()
     expect(screen.queryByText('90')).not.toBeInTheDocument()
   })
 
   it('renders encoding without RAC content', () => {
     render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} />)
-    expect(screen.getByText('26 USC 1')).toBeInTheDocument()
+    expect(screen.getByText('statute/26/1.rac')).toBeInTheDocument()
     expect(screen.queryByText('rule tax_imposed { ... }')).not.toBeInTheDocument()
   })
 })
@@ -168,7 +176,7 @@ describe('AgentLogsTab', () => {
     expect(screen.getByText('No sessions')).toBeInTheDocument()
   })
 
-  it('renders agent phases and event timeline', () => {
+  it('renders agent phases and event timeline section headers', () => {
     const events = [
       makeEvent({ id: 'e1', sequence: 1, event_type: 'agent_start' }),
       makeEvent({ id: 'e2', sequence: 2, event_type: 'tool_use', tool_name: 'Read' }),
@@ -179,19 +187,23 @@ describe('AgentLogsTab', () => {
     expect(screen.getByText('Event timeline (3)')).toBeInTheDocument()
   })
 
-  it('shows "No agent phases found" when events have no agent_start', () => {
+  it('shows "No agent phases found" when expanding phases with no agent_start', () => {
     const events = [
       makeEvent({ id: 'e1', sequence: 1, event_type: 'tool_use' }),
     ]
     render(<AgentLogsTab sessionEvents={events} loading={false} sessionId="sess-1" />)
+    // Expand the agent phases section
+    fireEvent.click(screen.getByText('Agent phases (0)').closest('button')!)
     expect(screen.getByText(/No agent phases found/)).toBeInTheDocument()
   })
 
-  it('shows "Show more" when events exceed timeline limit', () => {
+  it('shows "Show more" when expanding event timeline with many events', () => {
     const events = Array.from({ length: 60 }, (_, i) =>
       makeEvent({ id: `e${i}`, sequence: i + 1, event_type: 'tool_use' })
     )
     render(<AgentLogsTab sessionEvents={events} loading={false} sessionId="sess-1" />)
+    // Expand event timeline
+    fireEvent.click(screen.getByText('Event timeline (60)').closest('button')!)
     expect(screen.getByText(/Show more/)).toBeInTheDocument()
     expect(screen.getByText(/10 remaining/)).toBeInTheDocument()
   })
@@ -201,6 +213,8 @@ describe('AgentLogsTab', () => {
       makeEvent({ id: `e${i}`, sequence: i + 1, event_type: 'tool_use' })
     )
     render(<AgentLogsTab sessionEvents={events} loading={false} sessionId="sess-1" />)
+    // Expand event timeline
+    fireEvent.click(screen.getByText('Event timeline (60)').closest('button')!)
     fireEvent.click(screen.getByText(/Show more/))
     expect(screen.queryByText(/remaining/)).not.toBeInTheDocument()
   })
@@ -210,6 +224,8 @@ describe('AgentLogsTab', () => {
       makeEvent({ id: 'e1', sequence: 1, event_type: 'agent_start', content: 'Hello world content' }),
     ]
     render(<AgentLogsTab sessionEvents={events} loading={false} sessionId="sess-1" />)
+    // Expand event timeline section
+    fireEvent.click(screen.getByText('Event timeline (1)').closest('button')!)
     const eventRows = screen.getAllByText('#1')
     const timelineRow = eventRows[eventRows.length - 1].closest('[class*="cursor-pointer"]')!
     fireEvent.click(timelineRow)
@@ -222,6 +238,7 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: null,
       sessionEvents: [],
+      agentTranscripts: [],
       loading: false,
       error: null,
     })
@@ -276,6 +293,7 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [],
+      agentTranscripts: [],
       loading: false,
       error: null,
     })
@@ -300,6 +318,7 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [makeEvent()],
+      agentTranscripts: [],
       loading: false,
       error: null,
     })
@@ -312,21 +331,23 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [makeEvent()],
+      agentTranscripts: [],
       loading: false,
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
 
-    // Initially closed — collapsed arrow
-    expect(screen.getByText('\u25B6')).toBeInTheDocument()
+    // Initially closed — collapsed arrow on the drawer button
+    const drawerBtn = screen.getByText('Agent logs').closest('button')!
+    expect(drawerBtn.textContent).toContain('\u25B6')
 
     // Open drawer
-    fireEvent.click(screen.getByText('Agent logs').closest('button')!)
-    expect(screen.getByText('\u25BC')).toBeInTheDocument()
+    fireEvent.click(drawerBtn)
+    expect(drawerBtn.textContent).toContain('\u25BC')
 
     // Close drawer
-    fireEvent.click(screen.getByText('Agent logs').closest('button')!)
-    expect(screen.getByText('\u25B6')).toBeInTheDocument()
+    fireEvent.click(drawerBtn)
+    expect(drawerBtn.textContent).toContain('\u25B6')
   })
 
   it('does not show agent logs drawer when no events and not loading', () => {
@@ -338,6 +359,7 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: null,
       sessionEvents: [],
+      agentTranscripts: [],
       loading: true,
       error: null,
     })
@@ -355,6 +377,7 @@ describe('RuleDetailPanel', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [],
+      agentTranscripts: [],
       loading: false,
       error: null,
     })

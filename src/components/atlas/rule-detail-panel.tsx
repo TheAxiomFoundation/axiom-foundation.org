@@ -17,8 +17,9 @@ export function RuleDetailPanel({
   rule: Rule;
   onBack?: () => void;
 }) {
-  const { encoding, sessionEvents, loading } = useEncoding(rule.id);
+  const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
   const [logsOpen, setLogsOpen] = useState(false);
+  const hasLabData = encoding && !encoding.encoding_run_id.startsWith("github:");
 
   return (
     <div className="flex flex-col h-full">
@@ -71,7 +72,7 @@ export function RuleDetailPanel({
       </main>
 
       {/* Agent logs drawer */}
-      {(sessionEvents.length > 0 || loading) && (
+      {(hasLabData || sessionEvents.length > 0 || loading) && (
         <div className="border-t border-[var(--color-border-subtle)]">
           <button
             className="w-full px-6 py-3 flex items-center justify-between bg-transparent cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors"
@@ -88,9 +89,11 @@ export function RuleDetailPanel({
             </span>
           </button>
           {logsOpen && (
-            <div className="px-6 pb-6 max-h-[400px] overflow-y-auto">
+            <div className="px-6 pb-6 max-h-[500px] overflow-y-auto">
               <AgentLogsTab
                 sessionEvents={sessionEvents}
+                agentTranscripts={agentTranscripts}
+                encoding={encoding}
                 loading={loading}
                 /* v8 ignore next -- null coalescing branch */
                 sessionId={encoding?.session_id ?? null}

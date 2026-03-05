@@ -39,16 +39,6 @@ export function EncodingTab({
 
   return (
     <div className="max-w-[800px] mx-auto">
-      {/* Citation */}
-      <div className="mb-6">
-        <span className="font-mono text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
-          Citation
-        </span>
-        <div className="font-mono text-sm text-[var(--color-text)] mt-1">
-          {encoding.citation}
-        </div>
-      </div>
-
       {/* Source indicator for GitHub */}
       {isGitHub && gitHubUrl && (
         <div className="mb-6">

@@ -1,14 +1,16 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockGetRuleEncoding, mockGetSDKSessionEvents } = vi.hoisted(() => ({
+const { mockGetRuleEncoding, mockGetSDKSessionEvents, mockGetTranscriptsBySession } = vi.hoisted(() => ({
   mockGetRuleEncoding: vi.fn(),
   mockGetSDKSessionEvents: vi.fn(),
+  mockGetTranscriptsBySession: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase', () => ({
   getRuleEncoding: mockGetRuleEncoding,
   getSDKSessionEvents: mockGetSDKSessionEvents,
+  getTranscriptsBySession: mockGetTranscriptsBySession,
 }))
 
 import { useEncoding } from '@/hooks/use-encoding'
@@ -66,6 +68,7 @@ describe('useEncoding', () => {
     ]
     mockGetRuleEncoding.mockResolvedValue(mockEncoding)
     mockGetSDKSessionEvents.mockResolvedValue(mockEvents)
+    mockGetTranscriptsBySession.mockResolvedValue([])
 
     const { result } = renderHook(() => useEncoding('rule-1'))
 
@@ -75,7 +78,9 @@ describe('useEncoding', () => {
 
     expect(result.current.encoding).toEqual(mockEncoding)
     expect(result.current.sessionEvents).toEqual(mockEvents)
+    expect(result.current.agentTranscripts).toEqual([])
     expect(mockGetSDKSessionEvents).toHaveBeenCalledWith('sess-1')
+    expect(mockGetTranscriptsBySession).toHaveBeenCalledWith('sess-1')
   })
 
   it('returns null encoding when getRuleEncoding returns null', async () => {

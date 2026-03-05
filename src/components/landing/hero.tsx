@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowRightIcon, GitHubIcon } from "@/components/icons";
+import { ArrowRightIcon } from "@/components/icons";
 
 export function Hero() {
   const [mounted, setMounted] = useState(false);
@@ -35,12 +35,8 @@ export function Hero() {
 
         <div className="flex gap-6 justify-center mb-16 flex-wrap">
           <a href="/atlas" className="btn-primary">
-            Explore Atlas
+            Explore the Rule Atlas
             <ArrowRightIcon className="w-5 h-5" />
-          </a>
-          <a href="https://github.com/RuleAtlas" className="btn-outline">
-            <GitHubIcon className="w-5 h-5" />
-            View on GitHub
           </a>
         </div>
       </div>

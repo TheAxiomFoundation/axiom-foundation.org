@@ -353,6 +353,30 @@ describe('RuleDetailPanel', () => {
     expect(screen.queryByText('Agent logs')).not.toBeInTheDocument()
   })
 
+  it('shows agent logs drawer when encoding is from DB (hasLabData) even with no events', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ session_id: 'sdk-123' }),
+      sessionEvents: [],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.getByText('Agent logs')).toBeInTheDocument()
+  })
+
+  it('does not show agent logs drawer when encoding is from GitHub fallback', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ encoding_run_id: 'github:statute/26/1.rac', session_id: null }),
+      sessionEvents: [],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.queryByText('Agent logs')).not.toBeInTheDocument()
+  })
+
   it('shows agent logs drawer when loading', () => {
     mockUseEncoding.mockReturnValue({
       encoding: null,

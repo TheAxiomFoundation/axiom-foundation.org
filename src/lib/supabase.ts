@@ -131,6 +131,7 @@ export interface SDKSession {
   output_tokens: number
   cache_read_tokens: number
   estimated_cost_usd: number
+  autorac_version: string | null
 }
 
 export interface SDKSessionEvent {
@@ -265,6 +266,7 @@ export interface RuleEncodingData {
   has_issues: boolean | null
   note: string | null
   timestamp: string | null
+  autorac_version: string | null
 }
 
 // Generate candidate file paths walking up the hierarchy
@@ -313,6 +315,7 @@ async function fetchRacFromGitHub(
         has_issues: null,
         note: null,
         timestamp: null,
+        autorac_version: null,
       }
     } catch {
       continue
@@ -340,7 +343,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   const candidates = parentPaths(basePath)
   const { data, error } = await supabase
     .from('encoding_runs')
-    .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp')
+    .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorac_version')
     .in('file_path', candidates)
     .order('timestamp', { ascending: false })
 
@@ -365,6 +368,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       has_issues: best.has_issues ?? null,
       note: best.note ?? null,
       timestamp: best.timestamp ?? null,
+      autorac_version: best.autorac_version ?? null,
     }
   }
 

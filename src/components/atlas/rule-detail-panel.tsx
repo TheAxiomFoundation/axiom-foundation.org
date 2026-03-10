@@ -86,6 +86,11 @@ export function RuleDetailPanel({
                   ({sessionEvents.length} events)
                 </span>
               )}
+              {encoding?.autorac_version && (
+                <span className="normal-case text-[var(--color-text-muted)]">
+                  autorac {encoding.autorac_version}
+                </span>
+              )}
             </span>
           </button>
           {logsOpen && (

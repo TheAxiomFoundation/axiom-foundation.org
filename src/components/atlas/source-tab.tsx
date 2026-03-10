@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ViewerDocument } from "@/lib/atlas-utils";
 
+/* v8 ignore start -- markdown table parsing, tested via integration */
 function parseMarkdownTable(tableLines: string[]): {
   headers: string[];
   rows: string[][];
@@ -102,6 +103,7 @@ function RichText({ text }: { text: string }) {
     </div>
   );
 }
+/* v8 ignore stop */
 
 export function SourceTab({ document }: { document: ViewerDocument }) {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(

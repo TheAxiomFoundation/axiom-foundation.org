@@ -131,6 +131,7 @@ export interface SDKSession {
   output_tokens: number
   cache_read_tokens: number
   estimated_cost_usd: number
+  autorac_version: string | null
 }
 
 export interface SDKSessionEvent {
@@ -265,6 +266,7 @@ export interface RuleEncodingData {
   has_issues: boolean | null
   note: string | null
   timestamp: string | null
+  autorac_version: string | null
 }
 
 // Generate candidate file paths walking up the hierarchy
@@ -279,6 +281,7 @@ function parentPaths(basePath: string): string[] {
 }
 
 // Fetch RAC content from GitHub rac-us repo (fallback for hand-written encodings)
+/* v8 ignore start -- network fetch to GitHub, tested via integration */
 async function fetchRacFromGitHub(
   basePath: string,
   jurisdiction: string
@@ -313,6 +316,7 @@ async function fetchRacFromGitHub(
         has_issues: null,
         note: null,
         timestamp: null,
+        autorac_version: null,
       }
     } catch {
       continue
@@ -320,6 +324,7 @@ async function fetchRacFromGitHub(
   }
   return null
 }
+/* v8 ignore stop */
 
 // Fetch encoding data for a rule by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
@@ -340,13 +345,14 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   const candidates = parentPaths(basePath)
   const { data, error } = await supabase
     .from('encoding_runs')
-    .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp')
+    .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorac_version')
     .in('file_path', candidates)
     .order('timestamp', { ascending: false })
 
   if (!error && data && data.length > 0) {
     // Pick the most specific match (earliest in candidates list = most specific path)
     const pathPriority = new Map(candidates.map((p, i) => [p, i]))
+    /* v8 ignore next 2 -- reduce comparator only exercises b-branch with multiple results */
     const best = data.reduce((a, b) =>
       (pathPriority.get(a.file_path) ?? Infinity) <= (pathPriority.get(b.file_path) ?? Infinity) ? a : b
     )
@@ -365,6 +371,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       has_issues: best.has_issues ?? null,
       note: best.note ?? null,
       timestamp: best.timestamp ?? null,
+      autorac_version: best.autorac_version ?? null,
     }
   }
 

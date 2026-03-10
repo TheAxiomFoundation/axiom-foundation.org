@@ -77,6 +77,7 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     has_issues: null,
     note: null,
     timestamp: null,
+    autorac_version: null,
     ...overrides,
   }
 }
@@ -325,6 +326,30 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText('(1 events)')).toBeInTheDocument()
   })
 
+  it('shows autorac version in agent logs drawer', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ autorac_version: '0.4.2' }),
+      sessionEvents: [makeEvent()],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.getByText('autorac 0.4.2')).toBeInTheDocument()
+  })
+
+  it('does not show autorac version when not present', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ autorac_version: null }),
+      sessionEvents: [makeEvent()],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.queryByText(/autorac /)).not.toBeInTheDocument()
+  })
+
   it('toggles agent logs drawer open and closed', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
@@ -349,6 +374,30 @@ describe('RuleDetailPanel', () => {
   })
 
   it('does not show agent logs drawer when no events and not loading', () => {
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.queryByText('Agent logs')).not.toBeInTheDocument()
+  })
+
+  it('shows agent logs drawer when encoding is from DB (hasLabData) even with no events', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ session_id: 'sdk-123' }),
+      sessionEvents: [],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.getByText('Agent logs')).toBeInTheDocument()
+  })
+
+  it('does not show agent logs drawer when encoding is from GitHub fallback', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ encoding_run_id: 'github:statute/26/1.rac', session_id: null }),
+      sessionEvents: [],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
     expect(screen.queryByText('Agent logs')).not.toBeInTheDocument()
   })

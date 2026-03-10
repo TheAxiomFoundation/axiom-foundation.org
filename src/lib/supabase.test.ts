@@ -444,6 +444,7 @@ describe('supabase lib', () => {
         has_issues: null,
         note: null,
         timestamp: null,
+        autorac_version: null,
       })
     })
 

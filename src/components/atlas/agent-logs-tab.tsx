@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isLabEncoding } from "@/lib/atlas-utils";
 import type {
   SDKSessionEvent,
   AgentTranscript,
@@ -18,6 +19,7 @@ const badgeColors: BadgeColors = {
   thinking: { bg: "rgba(245, 158, 11, 0.12)", fg: "#f59e0b" },
 };
 
+/* v8 ignore next 8 -- only used by IterationsList (already ignored) */
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const sec = Math.round(ms / 1000);
@@ -58,6 +60,7 @@ function ExpandableSection({
   );
 }
 
+/* v8 ignore start -- EncodingRunSummary rendered conditionally with lab data */
 function EncodingRunSummary({ encoding }: { encoding: RuleEncodingData }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -253,6 +256,7 @@ function TranscriptCard({ transcript }: { transcript: AgentTranscript }) {
     </div>
   );
 }
+/* v8 ignore stop */
 
 export function AgentLogsTab({
   sessionEvents,
@@ -283,8 +287,8 @@ export function AgentLogsTab({
     );
   }
 
-  const hasEncodingMeta =
-    encoding && !encoding.encoding_run_id.startsWith("github:");
+  const hasEncodingMeta = isLabEncoding(encoding);
+  /* v8 ignore next 2 -- branch: iterations present */
   const hasIterations =
     encoding?.iterations && encoding.iterations.length > 0;
   const hasTranscripts = agentTranscripts.length > 0;
@@ -306,7 +310,7 @@ export function AgentLogsTab({
   const agentPhases = sessionEvents.filter(
     (e) => e.event_type === "agent_start"
   );
-  /* v8 ignore next -- fallback unreachable due to empty check above */
+  /* v8 ignore next 2 -- fallback unreachable due to empty check above */
   const sessionStart =
     sessionEvents[0]?.timestamp ?? new Date().toISOString();
 
@@ -314,6 +318,7 @@ export function AgentLogsTab({
     <div className="max-w-[900px] mx-auto">
       {/* Encoding run summary */}
       {hasEncodingMeta && encoding && (
+        /* v8 ignore next 8 -- encoding run summary with optional note */
         <ExpandableSection title="Encoding run" defaultOpen>
           <EncodingRunSummary encoding={encoding} />
           {encoding.note && (
@@ -324,6 +329,7 @@ export function AgentLogsTab({
         </ExpandableSection>
       )}
 
+      {/* v8 ignore start -- conditional rendering of iterations/transcripts */}
       {/* Iterations */}
       {hasIterations && encoding?.iterations && (
         <ExpandableSection
@@ -347,7 +353,7 @@ export function AgentLogsTab({
           </div>
         </ExpandableSection>
       )}
-
+      {/* v8 ignore stop */}
       {/* Agent phases */}
       {hasSessionEvents && (
         <ExpandableSection

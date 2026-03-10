@@ -1,4 +1,14 @@
-import type { Rule } from "@/lib/supabase";
+import type { Rule, RuleEncodingData } from "@/lib/supabase";
+
+/** True when the encoding was fetched from a GitHub rac-* repo (not from the encoding DB). */
+export function isGitHubEncoding(encoding: RuleEncodingData | null): boolean {
+  return !!encoding?.encoding_run_id.startsWith("github:");
+}
+
+/** True when the encoding comes from the encoding DB (has lab/AutoRAC metadata). */
+export function isLabEncoding(encoding: RuleEncodingData | null): boolean {
+  return !!encoding && !encoding.encoding_run_id.startsWith("github:");
+}
 
 export interface ViewerDocument {
   citation: string;

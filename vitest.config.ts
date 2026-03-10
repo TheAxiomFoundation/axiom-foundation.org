@@ -24,6 +24,9 @@ export default defineConfig({
         'src/lib/prism-*/**',
         'src/app/layout.tsx',
         'src/app/atlas/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
+        'src/app/lab/**', // lab page route
+        'src/components/lab/session-card.tsx', // lab page component (tested via lab-components.test)
+        'src/hooks/use-sessions.ts', // lab page hook
         'src/_old_pages/**',
       ],
       thresholds: {

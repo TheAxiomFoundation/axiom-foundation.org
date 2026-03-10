@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { transformRuleToViewerDoc, getJurisdictionLabel } from "@/lib/atlas-utils";
-import type { Rule } from "@/lib/supabase";
+import { transformRuleToViewerDoc, getJurisdictionLabel, isGitHubEncoding, isLabEncoding } from "@/lib/atlas-utils";
+import type { Rule, RuleEncodingData } from "@/lib/supabase";
 
 function makeRule(overrides: Partial<Rule> = {}): Rule {
   return {
@@ -108,5 +108,25 @@ describe("getJurisdictionLabel", () => {
 
   it("returns US for unknown jurisdiction", () => {
     expect(getJurisdictionLabel("other")).toBe("US");
+  });
+});
+
+describe("isGitHubEncoding / isLabEncoding", () => {
+  const labEncoding = { encoding_run_id: "enc-1" } as RuleEncodingData;
+  const ghEncoding = { encoding_run_id: "github:statute/26/1.rac" } as RuleEncodingData;
+
+  it("returns true for GitHub encoding IDs", () => {
+    expect(isGitHubEncoding(ghEncoding)).toBe(true);
+    expect(isLabEncoding(ghEncoding)).toBe(false);
+  });
+
+  it("returns false for lab encoding IDs", () => {
+    expect(isGitHubEncoding(labEncoding)).toBe(false);
+    expect(isLabEncoding(labEncoding)).toBe(true);
+  });
+
+  it("handles null encoding", () => {
+    expect(isGitHubEncoding(null)).toBe(false);
+    expect(isLabEncoding(null)).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { isGitHubEncoding } from "@/lib/atlas-utils";
 import type { RuleEncodingData } from "@/lib/supabase";
 
 export function EncodingTab({
@@ -30,9 +31,7 @@ export function EncodingTab({
     );
   }
 
-  const isGitHub = encoding.encoding_run_id.startsWith("github:");
-  // Extract repo from encoding_run_id for GitHub links
-  // encoding_run_id format: "github:statute/26/32/b.rac"
+  const isGitHub = isGitHubEncoding(encoding);
   const gitHubUrl = isGitHub
     ? `https://github.com/RuleAtlas/rac-us/blob/main/${encoding.file_path}`
     : null;

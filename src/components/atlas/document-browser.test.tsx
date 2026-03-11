@@ -66,7 +66,7 @@ describe("AtlasBrowser", () => {
     });
   });
 
-  describe("country-picker phase (empty segments)", () => {
+  describe("jurisdiction-picker phase (empty segments)", () => {
     it("renders Atlas heading and description", () => {
       render(<AtlasBrowser segments={[]} />);
       expect(
@@ -81,28 +81,7 @@ describe("AtlasBrowser", () => {
     });
   });
 
-  describe("sub-jurisdiction-picker phase (US)", () => {
-    it("renders country name and sub-jurisdiction picker", () => {
-      render(<AtlasBrowser segments={["us"]} />);
-      expect(
-        screen.getByRole("heading", { name: "United States" })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Choose a sub-jurisdiction")
-      ).toBeInTheDocument();
-    });
-
-    it("renders breadcrumbs with country", () => {
-      render(<AtlasBrowser segments={["us"]} />);
-      // Breadcrumbs should show Atlas and United States
-      const breadcrumbNav = screen.getByRole("navigation", {
-        name: "Breadcrumb",
-      });
-      expect(breadcrumbNav).toBeInTheDocument();
-    });
-  });
-
-  describe("rule phase (US/federal)", () => {
+  describe("rule phase (US)", () => {
     it("shows loading state from useTreeNodes", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],
@@ -113,7 +92,7 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
@@ -127,12 +106,12 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       expect(screen.getByText("Failed to connect")).toBeInTheDocument();
     });
 
     it("shows empty state", () => {
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       expect(screen.getByText("No items found.")).toBeInTheDocument();
     });
 
@@ -153,7 +132,7 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       expect(screen.getByText("Statutes")).toBeInTheDocument();
     });
 
@@ -174,7 +153,7 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       const loadMoreBtn = screen.getByRole("button", {
         name: /load more/i,
       });
@@ -200,7 +179,7 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       expect(
         screen.getByRole("button", { name: /loading\.\.\./i })
       ).toBeInTheDocument();
@@ -223,9 +202,9 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(<AtlasBrowser segments={["us", "federal"]} />);
+      render(<AtlasBrowser segments={["us"]} />);
       fireEvent.click(screen.getByText("Statutes"));
-      expect(mockPush).toHaveBeenCalledWith("/atlas/us/federal/statute");
+      expect(mockPush).toHaveBeenCalledWith("/atlas/us/statute");
     });
 
     it("navigates with nested segments", () => {
@@ -245,25 +224,20 @@ describe("AtlasBrowser", () => {
         leafRule: null,
       });
 
-      render(
-        <AtlasBrowser segments={["us", "federal", "statute"]} />
-      );
+      render(<AtlasBrowser segments={["us", "statute"]} />);
       fireEvent.click(screen.getByText("Title 26"));
-      expect(mockPush).toHaveBeenCalledWith(
-        "/atlas/us/federal/statute/26"
-      );
+      expect(mockPush).toHaveBeenCalledWith("/atlas/us/statute/26");
     });
 
     it("renders breadcrumbs", () => {
-      render(<AtlasBrowser segments={["us", "federal", "statute"]} />);
-      // Breadcrumbs should include Atlas, United States, Federal, Statutes
+      render(<AtlasBrowser segments={["us", "statute"]} />);
       expect(
         screen.getByRole("navigation", { name: "Breadcrumb" })
       ).toBeInTheDocument();
     });
   });
 
-  describe("single-child country (UK) auto-skips to rule phase", () => {
+  describe("UK jurisdiction goes directly to rule phase", () => {
     it("renders tree browser directly for UK", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [
@@ -286,9 +260,6 @@ describe("AtlasBrowser", () => {
       // Should NOT show jurisdiction picker
       expect(
         screen.queryByText("Choose a jurisdiction")
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Choose a sub-jurisdiction")
       ).not.toBeInTheDocument();
     });
   });

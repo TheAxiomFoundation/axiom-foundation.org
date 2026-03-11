@@ -2,20 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { CountryConfig, SubJurisdiction } from "@/lib/tree-data";
-import { COUNTRIES, getJurisdictionCounts } from "@/lib/tree-data";
+import { JURISDICTIONS, getJurisdictionCounts } from "@/lib/tree-data";
 import { trackAtlasEvent } from "@/lib/analytics";
-
-interface CountryPickerProps {
-  mode: "country";
-}
-
-interface SubJurisdictionPickerProps {
-  mode: "sub-jurisdiction";
-  country: CountryConfig;
-}
-
-type JurisdictionPickerProps = CountryPickerProps | SubJurisdictionPickerProps;
 
 interface CardData {
   slug: string;
@@ -24,7 +12,7 @@ interface CardData {
   count: number | null;
 }
 
-export function JurisdictionPicker(props: JurisdictionPickerProps) {
+export function JurisdictionPicker() {
   const router = useRouter();
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,63 +20,31 @@ export function JurisdictionPicker(props: JurisdictionPickerProps) {
   useEffect(() => {
     loadCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.mode, "country" in props ? undefined : undefined]);
+  }, []);
 
   /* v8 ignore start -- Supabase-dependent count fetching */
   async function loadCards() {
     setLoading(true);
 
-    if (props.mode === "country") {
-      // Collect all dbJurisdictionIds grouped by country
-      const dbIds = COUNTRIES.flatMap((c) =>
-        c.children.map((s) => s.dbJurisdictionId)
-      );
-      const counts = await getJurisdictionCounts(dbIds);
+    const dbIds = JURISDICTIONS.map((j) => j.slug);
+    const counts = await getJurisdictionCounts(dbIds);
 
-      const countryCards: CardData[] = COUNTRIES.map((country) => {
-        const total = country.children.reduce(
-          (sum, s) => sum + (counts.get(s.dbJurisdictionId) || 0),
-          0
-        );
-        return {
-          slug: country.slug,
-          label: country.label,
-          href: `/atlas/${country.slug}`,
-          count: total,
-        };
-      }).filter((c) => c.count > 0);
+    const jurisdictionCards: CardData[] = JURISDICTIONS.map((j) => ({
+      slug: j.slug,
+      label: j.label,
+      href: `/atlas/${j.slug}`,
+      count: counts.get(j.slug) || 0,
+    })).filter((c) => (c.count ?? 0) > 0);
 
-      setCards(countryCards);
-    } else {
-      const country = props.country;
-      const dbIds = country.children.map((s) => s.dbJurisdictionId);
-      const counts = await getJurisdictionCounts(dbIds);
-
-      const subCards: CardData[] = country.children.map(
-        (sub: SubJurisdiction) => ({
-          slug: sub.slug,
-          label: sub.label,
-          href: `/atlas/${country.slug}/${sub.slug}`,
-          count: counts.get(sub.dbJurisdictionId) || 0,
-        })
-      );
-
-      setCards(subCards);
-    }
-
+    setCards(jurisdictionCards);
     setLoading(false);
   }
   /* v8 ignore stop */
 
-  const heading =
-    props.mode === "country"
-      ? "Choose a jurisdiction"
-      : "Choose a sub-jurisdiction";
-
   return (
     <div>
       <h2 className="font-[family-name:var(--f-display)] text-lg text-[var(--color-text-secondary)] mb-6 text-center">
-        {heading}
+        Choose a jurisdiction
       </h2>
 
       {loading ? (

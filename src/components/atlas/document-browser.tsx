@@ -169,7 +169,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   const resolved = resolveAtlasPath(segments);
   const breadcrumbs = buildBreadcrumbs(segments);
 
-  if (resolved.phase === "country-picker") {
+  if (resolved.phase === "jurisdiction-picker") {
     return (
       <div className="max-w-[1280px] mx-auto">
         <TreeBreadcrumbs items={breadcrumbs} />
@@ -185,43 +185,20 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           </p>
         </div>
 
-        <JurisdictionPicker mode="country" />
+        <JurisdictionPicker />
       </div>
     );
   }
 
-  if (resolved.phase === "sub-jurisdiction-picker" && resolved.country) {
-    return (
-      <div className="max-w-[1280px] mx-auto">
-        <TreeBreadcrumbs items={breadcrumbs} />
-
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="heading-section text-[var(--color-text)] mb-4">
-            {resolved.country.label}
-          </h1>
-          <p className="font-[family-name:var(--f-body)] text-lg text-[var(--color-text-secondary)] max-w-[600px] mx-auto">
-            Select a sub-jurisdiction to browse.
-          </p>
-        </div>
-
-        <JurisdictionPicker
-          mode="sub-jurisdiction"
-          country={resolved.country}
-        />
-      </div>
-    );
-  }
-
-  /* v8 ignore start -- subJurisdiction always defined in rule phase; else branch is unreachable */
+  /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
   // Rule phase
-  if (resolved.subJurisdiction) {
+  if (resolved.jurisdiction) {
     return (
       <RuleTreeView
         segments={segments}
-        dbJurisdictionId={resolved.subJurisdiction.dbJurisdictionId}
+        dbJurisdictionId={resolved.jurisdiction.slug}
         ruleSegments={resolved.ruleSegments}
-        hasCitationPaths={resolved.subJurisdiction.hasCitationPaths}
+        hasCitationPaths={resolved.jurisdiction.hasCitationPaths}
       />
     );
   }

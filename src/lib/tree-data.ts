@@ -11,7 +11,7 @@ export type NodeType =
 export interface TreeNode {
   /** URL segment: "us", "statute", "26", "1" */
   segment: string;
-  /** Display label: "United States", "Title 26", "§ 1 — Tax imposed" */
+  /** Display label: "US Federal", "Title 26", "§ 1 — Tax imposed" */
   label: string;
   hasChildren: boolean;
   /** For count badges */
@@ -31,160 +31,66 @@ export interface TreeResult {
   leafRule?: Rule;
 }
 
-// ---- Hierarchical jurisdiction config ----
+// ---- Flat jurisdiction config ----
 
-export interface SubJurisdiction {
-  /** URL segment: "federal", "oh" */
+export interface Jurisdiction {
+  /** URL segment and DB jurisdiction ID: "us", "us-oh", "uk", "canada" */
   slug: string;
-  /** Display label: "Federal", "Ohio" */
+  /** Display label: "US Federal", "Ohio", "United Kingdom" */
   label: string;
-  /** DB jurisdiction value: "us", "us-oh" */
-  dbJurisdictionId: string;
   /** Whether rules use citation_path-based navigation */
   hasCitationPaths: boolean;
 }
 
-export interface CountryConfig {
-  /** URL segment: "us", "uk", "canada" */
-  slug: string;
-  /** Display label: "United States" */
-  label: string;
-  /** Sub-jurisdictions. length===1 → skip sub-jurisdiction picker */
-  children: SubJurisdiction[];
-}
-
-export const COUNTRIES: CountryConfig[] = [
-  {
-    slug: "us",
-    label: "United States",
-    children: [
-      {
-        slug: "federal",
-        label: "Federal",
-        dbJurisdictionId: "us",
-        hasCitationPaths: true,
-      },
-      {
-        slug: "oh",
-        label: "Ohio",
-        dbJurisdictionId: "us-oh",
-        hasCitationPaths: true,
-      },
-    ],
-  },
-  {
-    slug: "uk",
-    label: "United Kingdom",
-    children: [
-      {
-        slug: "uk",
-        label: "United Kingdom",
-        dbJurisdictionId: "uk",
-        hasCitationPaths: false,
-      },
-    ],
-  },
-  {
-    slug: "canada",
-    label: "Canada",
-    children: [
-      {
-        slug: "canada",
-        label: "Canada",
-        dbJurisdictionId: "canada",
-        hasCitationPaths: false,
-      },
-    ],
-  },
+export const JURISDICTIONS: Jurisdiction[] = [
+  { slug: "us", label: "US Federal", hasCitationPaths: true },
+  { slug: "us-oh", label: "Ohio", hasCitationPaths: true },
+  { slug: "uk", label: "United Kingdom", hasCitationPaths: false },
+  { slug: "canada", label: "Canada", hasCitationPaths: false },
 ];
 
-export function getCountry(slug: string): CountryConfig | undefined {
-  return COUNTRIES.find((c) => c.slug === slug);
-}
-
-export function getSubJurisdiction(
-  country: CountryConfig,
+export function getJurisdictionBySlug(
   slug: string
-): SubJurisdiction | undefined {
-  return country.children.find((s) => s.slug === slug);
+): Jurisdiction | undefined {
+  return JURISDICTIONS.find((j) => j.slug === slug);
 }
 
 // ---- Path resolution ----
 
-export type AtlasPhase = "country-picker" | "sub-jurisdiction-picker" | "rule";
+export type AtlasPhase = "jurisdiction-picker" | "rule";
 
 export interface ResolvedPath {
   phase: AtlasPhase;
-  country?: CountryConfig;
-  subJurisdiction?: SubJurisdiction;
+  jurisdiction?: Jurisdiction;
   ruleSegments: string[];
 }
 
 export function resolveAtlasPath(segments: string[]): ResolvedPath {
   if (segments.length === 0) {
-    return { phase: "country-picker", ruleSegments: [] };
+    return { phase: "jurisdiction-picker", ruleSegments: [] };
   }
 
-  const country = getCountry(segments[0]);
-  if (!country) {
-    return { phase: "country-picker", ruleSegments: [] };
-  }
-
-  // Single-child country: skip sub-jurisdiction picker
-  if (country.children.length === 1) {
-    const sub = country.children[0];
-    return {
-      phase: "rule",
-      country,
-      subJurisdiction: sub,
-      ruleSegments: segments.slice(1),
-    };
-  }
-
-  // Multi-child country: need sub-jurisdiction segment
-  if (segments.length === 1) {
-    return {
-      phase: "sub-jurisdiction-picker",
-      country,
-      ruleSegments: [],
-    };
-  }
-
-  const sub = getSubJurisdiction(country, segments[1]);
-  if (!sub) {
-    return {
-      phase: "sub-jurisdiction-picker",
-      country,
-      ruleSegments: [],
-    };
+  const jurisdiction = getJurisdictionBySlug(segments[0]);
+  if (!jurisdiction) {
+    return { phase: "jurisdiction-picker", ruleSegments: [] };
   }
 
   return {
     phase: "rule",
-    country,
-    subJurisdiction: sub,
-    ruleSegments: segments.slice(2),
+    jurisdiction,
+    ruleSegments: segments.slice(1),
   };
 }
 
 // ---- Backward compat ----
 
-/** Derive a flat jurisdiction lookup from COUNTRIES for internal use */
+/** Look up jurisdiction config by DB ID (same as slug in flat model) */
 export function getJurisdiction(
   id: string
 ): { id: string; label: string; hasCitationPaths: boolean } | undefined {
-  for (const country of COUNTRIES) {
-    for (const sub of country.children) {
-      if (sub.dbJurisdictionId === id) {
-        return {
-          id: sub.dbJurisdictionId,
-          label: sub.label,
-          hasCitationPaths: sub.hasCitationPaths,
-        };
-      }
-    }
-  }
-  return undefined;
+  const j = getJurisdictionBySlug(id);
+  if (!j) return undefined;
+  return { id: j.slug, label: j.label, hasCitationPaths: j.hasCitationPaths };
 }
 
 // ---- Pagination ----
@@ -540,32 +446,18 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
 
   if (segments.length === 0) return items;
 
-  const country = getCountry(segments[0]);
-  if (!country) return items;
+  const jurisdiction = getJurisdictionBySlug(segments[0]);
+  if (!jurisdiction) return items;
 
-  // Country breadcrumb
-  items.push({ label: country.label, href: `/atlas/${country.slug}` });
+  // Jurisdiction breadcrumb
+  items.push({
+    label: jurisdiction.label,
+    href: `/atlas/${jurisdiction.slug}`,
+  });
 
-  let ruleStartIndex: number;
-
-  if (country.children.length === 1) {
-    // Single-child: no sub-jurisdiction in URL
-    ruleStartIndex = 1;
-  } else {
-    // Multi-child: sub-jurisdiction segment at index 1
-    if (segments.length < 2) return items;
-    const sub = getSubJurisdiction(country, segments[1]);
-    if (!sub) return items;
-    items.push({
-      label: sub.label,
-      href: `/atlas/${country.slug}/${sub.slug}`,
-    });
-    ruleStartIndex = 2;
-  }
-
-  // Rule segments
-  for (let i = ruleStartIndex; i < segments.length; i++) {
-    const ruleIndex = i - ruleStartIndex;
+  // Rule segments start at index 1
+  for (let i = 1; i < segments.length; i++) {
+    const ruleIndex = i - 1;
     const href = "/atlas/" + segments.slice(0, i + 1).join("/");
     const label = formatRuleSegmentLabel(segments[i], ruleIndex);
     items.push({ label, href });

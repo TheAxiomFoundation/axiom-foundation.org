@@ -38,7 +38,7 @@ describe('EventRow', () => {
       />
     )
     expect(screen.getByText('#1')).toBeInTheDocument()
-    expect(screen.getByText('agent_start')).toBeInTheDocument()
+    expect(screen.getByText('start')).toBeInTheDocument()
     expect(screen.getByText('+1m 30s')).toBeInTheDocument()
   })
 
@@ -52,11 +52,11 @@ describe('EventRow', () => {
         onToggle={vi.fn()}
       />
     )
-    expect(screen.getByText('tool_use:WebSearch')).toBeInTheDocument()
+    expect(screen.getByText('WebSearch')).toBeInTheDocument()
   })
 
-  it('truncates content at 120 chars when collapsed', () => {
-    const longContent = 'A'.repeat(150)
+  it('truncates content at 150 chars when collapsed', () => {
+    const longContent = 'A'.repeat(200)
     render(
       <EventRow
         event={makeEvent({ content: longContent })}
@@ -66,7 +66,7 @@ describe('EventRow', () => {
         onToggle={vi.fn()}
       />
     )
-    expect(screen.getByText('A'.repeat(120) + '...')).toBeInTheDocument()
+    expect(screen.getByText('A'.repeat(150) + '...')).toBeInTheDocument()
   })
 
   it('shows full content when expanded', () => {
@@ -310,8 +310,8 @@ describe('AgentPhase', () => {
     expect(newSet.has(0)).toBe(false)
   })
 
-  it('truncates long prompt at 200 chars with ellipsis', () => {
-    const longPrompt = 'X'.repeat(250)
+  it('truncates long prompt at 300 chars with ellipsis', () => {
+    const longPrompt = 'X'.repeat(350)
     render(
       <AgentPhase
         phase={makeEvent({ content: longPrompt })}
@@ -325,7 +325,7 @@ describe('AgentPhase', () => {
         badgeColors={badgeColors}
       />
     )
-    expect(screen.getByText('X'.repeat(200) + '...')).toBeInTheDocument()
+    expect(screen.getByText('X'.repeat(300) + '...')).toBeInTheDocument()
   })
 
   it('does not add ellipsis for short prompt', () => {

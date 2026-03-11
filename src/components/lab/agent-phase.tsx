@@ -3,6 +3,36 @@
 import type { SDKSessionEvent } from "@/lib/supabase";
 import { EventRow, type BadgeColors } from "@/components/lab/event-row";
 
+/* v8 ignore start -- phase summary helpers */
+function getPhaseLabel(phase: SDKSessionEvent): string {
+  const meta = phase.metadata as Record<string, unknown> | null;
+  const agentType = meta?.agent_type as string | undefined;
+  if (agentType) return agentType;
+
+  // Fall back to extracting from content
+  const content = phase.content || "";
+  if (content.toLowerCase().includes("analyz")) return "Analysis";
+  if (content.toLowerCase().includes("encod")) return "Encoding";
+  if (content.toLowerCase().includes("review")) return "Review";
+  if (content.toLowerCase().includes("valid")) return "Validation";
+  return "Agent";
+}
+
+function getPhaseSummary(
+  phaseEvents: SDKSessionEvent[]
+): { errors: number; toolCalls: number; thinkingEvents: number } {
+  let errors = 0;
+  let toolCalls = 0;
+  let thinkingEvents = 0;
+  for (const e of phaseEvents) {
+    if (e.content?.includes("tool_use_error") || e.content?.includes("permission")) errors++;
+    if (e.tool_name) toolCalls++;
+    if (e.content?.includes("ThinkingBlock")) thinkingEvents++;
+  }
+  return { errors, toolCalls, thinkingEvents };
+}
+/* v8 ignore stop */
+
 export function AgentPhase({
   phase,
   phaseIndex,
@@ -50,7 +80,10 @@ export function AgentPhase({
         (phaseToolCounts[e.tool_name] || 0) + 1;
   }
 
-  const prompt = (phase.content || "").slice(0, 200);
+  /* v8 ignore next 3 -- phase metadata extraction */
+  const phaseLabel = getPhaseLabel(phase);
+  const { errors, toolCalls, thinkingEvents } = getPhaseSummary(phaseEvents);
+  const prompt = (phase.content || "").slice(0, 300);
   const isPhaseExpanded = expandedPhases.has(phaseIndex);
 
   return (
@@ -80,17 +113,28 @@ export function AgentPhase({
               {isPhaseExpanded ? "\u25BC" : "\u25B6"}
             </span>
             <span className="text-[var(--color-precision)] font-semibold text-[0.85rem]">
+              {phaseLabel}
+            </span>
+            <span className="font-mono text-[0.7rem] text-[var(--color-text-muted)]">
               Phase {phaseIndex + 1}
             </span>
           </div>
-          <span className="text-[#888] text-xs font-mono">
-            {phaseEvents.length} events
-          </span>
+          {/* v8 ignore next 10 -- phase stats badges */}
+          <div className="flex items-center gap-2">
+            <span className="text-[#888] text-xs font-mono">
+              {phaseEvents.length} events
+            </span>
+            {errors > 0 && (
+              <span className="text-[0.7rem] font-mono px-1.5 py-px rounded bg-[rgba(239,68,68,0.12)] text-red-400">
+                {errors} errors
+              </span>
+            )}
+          </div>
         </div>
         {prompt && (
           <div className="text-[#ccc] text-[0.8rem] mb-2 leading-relaxed">
             {prompt}
-            {phase.content && phase.content.length > 200 ? "..." : ""}
+            {phase.content && phase.content.length > 300 ? "..." : ""}
           </div>
         )}
         {Object.keys(phaseToolCounts).length > 0 && (

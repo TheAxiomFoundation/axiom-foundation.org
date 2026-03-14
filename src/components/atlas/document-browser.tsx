@@ -16,6 +16,7 @@ import {
 } from "@/lib/tree-data";
 import type { DisplayContext } from "@/lib/tree-data";
 import { useRule } from "@/hooks/use-rules";
+import { trackAtlasEvent } from "@/lib/analytics";
 
 /* v8 ignore start -- UUID backward compat component */
 function UUIDRuleView({
@@ -84,6 +85,12 @@ function RuleTreeView({
   useEffect(() => {
     if (leafRule) {
       resolveDisplayContext(leafRule).then(setDisplayCtx);
+      /* v8 ignore next 4 -- analytics side effect */
+      trackAtlasEvent("atlas_rule_viewed", {
+        citation_path: leafRule.citation_path || leafRule.id,
+        jurisdiction: leafRule.jurisdiction,
+        has_rac: leafRule.has_rac,
+      });
     } else {
       setDisplayCtx(null);
     }
@@ -134,6 +141,10 @@ function RuleTreeView({
   /* v8 ignore stop */
 
   const handleNavigate = (node: { segment: string }) => {
+    trackAtlasEvent("atlas_tree_navigated", {
+      depth: segments.length + 1,
+      segment: node.segment,
+    });
     router.push(`/atlas/${[...segments, node.segment].join("/")}`);
   };
 
@@ -145,7 +156,12 @@ function RuleTreeView({
       {/* Filter bar */}
       <div className="flex items-center justify-end mb-3">
         <button
-          onClick={() => setEncodedOnly((prev) => !prev)}
+          onClick={() => {
+            setEncodedOnly((prev) => {
+              trackAtlasEvent("atlas_filter_toggled", { filter: "encoded_only", enabled: !prev });
+              return !prev;
+            });
+          }}
           className={`flex items-center gap-2 px-3 py-1.5 font-[family-name:var(--f-mono)] text-xs rounded-lg border transition-colors ${
             encodedOnly
               ? "text-[var(--color-precision)] border-[var(--color-precision)] bg-[rgba(59,130,246,0.1)]"

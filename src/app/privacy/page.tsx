@@ -7,7 +7,7 @@ export default function PrivacyPage() {
             Privacy policy
           </h1>
           <p className="font-[family-name:var(--f-mono)] text-sm text-[var(--color-text-muted)]">
-            Last updated: February 2026
+            Last updated: March 2026
           </p>
         </header>
 
@@ -17,7 +17,10 @@ export default function PrivacyPage() {
               Information we collect
             </h2>
             <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
-              We collect minimal data. Our website uses Vercel Analytics for anonymous usage statistics.
+              We collect minimal data. Our website uses PostHog for anonymous usage analytics.
+              We track page views and atlas browsing interactions (which rules are viewed, navigation patterns)
+              to understand how our tools are used. All data is anonymous — we do not collect personal information
+              or use cookies for tracking. We respect Do Not Track browser settings.
             </p>
           </section>
 
@@ -35,7 +38,8 @@ export default function PrivacyPage() {
               Third-party services
             </h2>
             <p className="font-[family-name:var(--f-body)] text-[1rem] text-[var(--color-text-secondary)] leading-relaxed">
-              Vercel (hosting), GitHub (code hosting), Supabase (database for experiment tracking)
+              Vercel (hosting), GitHub (code hosting), Supabase (database for experiment tracking),
+              PostHog (anonymous usage analytics)
             </p>
           </section>
 

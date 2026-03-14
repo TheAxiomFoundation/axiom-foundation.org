@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { getJurisdictionLabel, isLabEncoding, type ViewerDocument } from "@/lib/atlas-utils";
+import { useState, useEffect } from "react";
+import { getJurisdictionLabel, isGitHubEncoding, isLabEncoding, type ViewerDocument } from "@/lib/atlas-utils";
 import type { Rule } from "@/lib/supabase";
 import { useEncoding } from "@/hooks/use-encoding";
+import { trackAtlasEvent } from "@/lib/analytics";
 import { SourceTab } from "./source-tab";
 import { EncodingTab } from "./encoding-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
@@ -20,6 +21,17 @@ export function RuleDetailPanel({
   const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
   const [logsOpen, setLogsOpen] = useState(false);
   const hasLabData = isLabEncoding(encoding);
+
+  /* v8 ignore start -- analytics side effect */
+  useEffect(() => {
+    if (encoding) {
+      trackAtlasEvent("atlas_encoding_viewed", {
+        citation_path: rule.citation_path || rule.id,
+        source: isGitHubEncoding(encoding) ? "github" : "lab",
+      });
+    }
+  }, [encoding, rule.citation_path, rule.id]);
+  /* v8 ignore stop */
 
   return (
     <div className="flex flex-col h-full">

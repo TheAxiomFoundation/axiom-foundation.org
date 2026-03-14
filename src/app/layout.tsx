@@ -3,6 +3,7 @@ import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { PostHogProvider } from "@/components/posthog-provider";
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -43,6 +44,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body>
+        <PostHogProvider />
         <div className="grid-bg" />
         <Nav />
         <main className="relative z-10">{children}</main>

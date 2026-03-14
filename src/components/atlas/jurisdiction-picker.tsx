@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { CountryConfig, SubJurisdiction } from "@/lib/tree-data";
 import { COUNTRIES, getJurisdictionCounts } from "@/lib/tree-data";
+import { trackAtlasEvent } from "@/lib/analytics";
 
 interface CountryPickerProps {
   mode: "country";
@@ -110,7 +111,10 @@ export function JurisdictionPicker(props: JurisdictionPickerProps) {
               key={card.slug}
               role="button"
               tabIndex={0}
-              onClick={() => router.push(card.href)}
+              onClick={() => {
+                trackAtlasEvent("atlas_jurisdiction_selected", { jurisdiction: card.slug });
+                router.push(card.href);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();

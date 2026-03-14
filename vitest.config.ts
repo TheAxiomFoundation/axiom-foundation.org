@@ -28,6 +28,7 @@ export default defineConfig({
         'src/components/lab/session-card.tsx', // lab page component (tested via lab-components.test)
         'src/hooks/use-sessions.ts', // lab page hook
         'src/_old_pages/**',
+        'src/components/posthog-provider.tsx', // client-only PostHog init
       ],
       thresholds: {
         lines: 100,

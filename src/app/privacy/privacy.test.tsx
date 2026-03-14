@@ -16,7 +16,7 @@ describe('PrivacyPage', () => {
   it('renders information we collect section', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /information we collect/i })).toBeInTheDocument()
-    expect(screen.getByText(/vercel analytics/i)).toBeInTheDocument()
+    expect(screen.getByText(/PostHog for anonymous usage analytics/)).toBeInTheDocument()
   })
 
   it('renders how we use information section', () => {

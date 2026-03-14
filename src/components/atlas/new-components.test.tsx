@@ -21,7 +21,7 @@ import { EncodingTab } from './encoding-tab'
 import { AgentLogsTab } from './agent-logs-tab'
 import { RuleDetailPanel } from './rule-detail-panel'
 import type { ViewerDocument } from '@/lib/atlas-utils'
-import type { Rule, RuleEncodingData, SDKSessionEvent } from '@/lib/supabase'
+import type { Rule, RuleEncodingData, SDKSessionEvent, AgentTranscript } from '@/lib/supabase'
 
 function makeDoc(overrides: Partial<ViewerDocument> = {}): ViewerDocument {
   return {
@@ -96,6 +96,25 @@ function makeEvent(overrides: Partial<SDKSessionEvent> = {}): SDKSessionEvent {
   }
 }
 
+function makeTranscript(overrides: Partial<AgentTranscript> = {}): AgentTranscript {
+  return {
+    id: 1,
+    session_id: 'sess-1',
+    agent_id: 'agent-1',
+    tool_use_id: 'tu-1',
+    subagent_type: 'rules-engineer',
+    prompt: 'Encode 26 USC 32(b)',
+    description: 'Encoding subsection b',
+    response_summary: 'Successfully encoded the subsection',
+    transcript: null,
+    orchestrator_thinking: 'Need to handle the credit percentages',
+    message_count: 12,
+    created_at: '2025-01-01T10:00:00Z',
+    uploaded_at: null,
+    ...overrides,
+  }
+}
+
 describe('SourceTab', () => {
   it('renders subsections with IDs', () => {
     render(<SourceTab document={makeDoc()} />)
@@ -155,6 +174,26 @@ describe('EncodingTab', () => {
   it('renders encoding without RAC content', () => {
     render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} />)
     expect(screen.queryByText('rule tax_imposed { ... }')).not.toBeInTheDocument()
+  })
+
+  it('shows GitHub link and hides scores for GitHub-sourced encoding', () => {
+    render(<EncodingTab encoding={makeEncoding({
+      encoding_run_id: 'github:statute/26/32/b.rac',
+      file_path: 'statute/26/32/b.rac',
+      final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+    })} loading={false} />)
+    expect(screen.getByText('View on GitHub')).toBeInTheDocument()
+    // Scores should be hidden for GitHub sources
+    expect(screen.queryByText('90')).not.toBeInTheDocument()
+  })
+
+  it('shows scores for non-GitHub encoding', () => {
+    render(<EncodingTab encoding={makeEncoding({
+      encoding_run_id: 'enc-1',
+      final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+    })} loading={false} />)
+    expect(screen.queryByText('View on GitHub')).not.toBeInTheDocument()
+    expect(screen.getByText('90')).toBeInTheDocument()
   })
 })
 
@@ -216,6 +255,79 @@ describe('AgentLogsTab', () => {
     fireEvent.click(screen.getByText('Event timeline (60)').closest('button')!)
     fireEvent.click(screen.getByText(/Show more/))
     expect(screen.queryByText(/remaining/)).not.toBeInTheDocument()
+  })
+
+  it('shows encoding run summary when encoding has lab metadata', () => {
+    const encoding = makeEncoding({
+      agent_type: 'autorac-v2',
+      agent_model: 'claude-sonnet-4',
+      total_duration_ms: 125000,
+      data_source: 'reviewer_agent',
+      has_issues: false,
+      timestamp: '2025-06-15T12:00:00Z',
+    })
+    render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
+    // Encoding run section is open by default
+    expect(screen.getByText('autorac-v2')).toBeInTheDocument()
+    expect(screen.getByText('claude-sonnet-4')).toBeInTheDocument()
+    expect(screen.getByText('2m 5s')).toBeInTheDocument()
+    expect(screen.getByText('reviewer agent')).toBeInTheDocument()
+    expect(screen.getByText('None')).toBeInTheDocument()
+  })
+
+  it('shows encoding run note when present', () => {
+    const encoding = makeEncoding({
+      agent_type: 'autorac-v2',
+      note: 'Manual review needed for edge cases',
+    })
+    render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
+    expect(screen.getByText('Manual review needed for edge cases')).toBeInTheDocument()
+  })
+
+  it('shows iterations when expanding the section', () => {
+    const encoding = makeEncoding({
+      agent_type: 'autorac-v2',
+      iterations: [
+        { attempt: 1, success: false, duration_ms: 30000, errors: [{ type: 'ValidationError', message: 'Missing parameter' }] },
+        { attempt: 2, success: true, duration_ms: 45000, errors: [] },
+      ],
+    })
+    render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
+    // Expand iterations section
+    fireEvent.click(screen.getByText('Iterations (2)').closest('button')!)
+    expect(screen.getByText('Attempt 1')).toBeInTheDocument()
+    expect(screen.getByText('Fail')).toBeInTheDocument()
+    expect(screen.getByText('ValidationError:')).toBeInTheDocument()
+    expect(screen.getByText(/Missing parameter/)).toBeInTheDocument()
+    expect(screen.getByText('Attempt 2')).toBeInTheDocument()
+    expect(screen.getByText('Pass')).toBeInTheDocument()
+  })
+
+  it('shows agent transcripts when expanding the section', () => {
+    const transcripts = [makeTranscript()]
+    render(<AgentLogsTab sessionEvents={[makeEvent()]} agentTranscripts={transcripts} loading={false} sessionId="sess-1" />)
+    // Expand transcripts section
+    fireEvent.click(screen.getByText('Agent transcripts (1)').closest('button')!)
+    expect(screen.getByText('rules-engineer')).toBeInTheDocument()
+    expect(screen.getByText('12 messages')).toBeInTheDocument()
+    expect(screen.getByText('Successfully encoded the subsection')).toBeInTheDocument()
+  })
+
+  it('expands transcript card to show prompt and response', () => {
+    const transcripts = [makeTranscript()]
+    render(<AgentLogsTab sessionEvents={[makeEvent()]} agentTranscripts={transcripts} loading={false} sessionId="sess-1" />)
+    // Expand transcripts section
+    fireEvent.click(screen.getByText('Agent transcripts (1)').closest('button')!)
+    // Expand the transcript card
+    fireEvent.click(screen.getByText('rules-engineer').closest('[class*="cursor-pointer"]')!)
+    expect(screen.getByText('Encode 26 USC 32(b)')).toBeInTheDocument()
+    expect(screen.getByText('Need to handle the credit percentages')).toBeInTheDocument()
+  })
+
+  it('shows "No sessions" for GitHub-sourced encoding with no events', () => {
+    const encoding = makeEncoding({ encoding_run_id: 'github:statute/26/32/b.rac' })
+    render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
+    expect(screen.getByText('No sessions')).toBeInTheDocument()
   })
 
   it('toggles event expansion in timeline', () => {
@@ -369,6 +481,18 @@ describe('RuleDetailPanel', () => {
     // Close drawer
     fireEvent.click(drawerBtn)
     expect(drawerBtn.textContent).toContain('\u25B6')
+  })
+
+  it('shows agent logs drawer when encoding has lab data but no session events', () => {
+    mockUseEncoding.mockReturnValue({
+      encoding: makeEncoding({ agent_type: 'autorac-v2', session_id: null }),
+      sessionEvents: [],
+      agentTranscripts: [],
+      loading: false,
+      error: null,
+    })
+    render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
+    expect(screen.getByText('Agent logs')).toBeInTheDocument()
   })
 
   it('does not show agent logs drawer when no events and not loading', () => {

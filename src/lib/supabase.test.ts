@@ -448,6 +448,81 @@ describe('supabase lib', () => {
       })
     })
 
+    it('picks the most specific path when multiple matches exist', async () => {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'rules') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({
+                  data: { citation_path: 'us/statute/26/32/b/1', jurisdiction: 'us' },
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        // Return both a parent and child match — should pick child (more specific)
+        return mockEncodingRunsChain({
+          data: [
+            { id: 'enc-parent', citation: '26 USC 32/b', session_id: null, file_path: 'statute/26/32/b.rac', rac_content: 'parent', final_scores: null },
+            { id: 'enc-child', citation: '26 USC 32/b/1', session_id: null, file_path: 'statute/26/32/b/1.rac', rac_content: 'child', final_scores: null },
+          ],
+          error: null,
+        })
+      })
+
+      const result = await getRuleEncoding('rule-1')
+      expect(result?.encoding_run_id).toBe('enc-child')
+      expect(result?.file_path).toBe('statute/26/32/b/1.rac')
+    })
+
+    it('returns lab metadata fields from encoding_runs', async () => {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'rules') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({
+                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us' },
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        return mockEncodingRunsChain({
+          data: [{
+            id: 'enc-1',
+            citation: '26 USC 1',
+            session_id: 'sess-1',
+            file_path: 'statute/26/1.rac',
+            rac_content: 'rule { ... }',
+            final_scores: null,
+            iterations: [{ attempt: 1, success: true, duration_ms: 5000, errors: [] }],
+            total_duration_ms: 5000,
+            agent_type: 'autorac-v2',
+            agent_model: 'claude-sonnet-4',
+            data_source: 'reviewer_agent',
+            has_issues: false,
+            note: 'Clean run',
+            timestamp: '2025-06-15T12:00:00Z',
+          }],
+          error: null,
+        })
+      })
+
+      const result = await getRuleEncoding('rule-1')
+      expect(result?.agent_type).toBe('autorac-v2')
+      expect(result?.agent_model).toBe('claude-sonnet-4')
+      expect(result?.total_duration_ms).toBe(5000)
+      expect(result?.data_source).toBe('reviewer_agent')
+      expect(result?.has_issues).toBe(false)
+      expect(result?.note).toBe('Clean run')
+      expect(result?.iterations).toHaveLength(1)
+      expect(result?.timestamp).toBe('2025-06-15T12:00:00Z')
+    })
+
     it('returns null when rule has no citation_path', async () => {
       mockFrom.mockReturnValue({
         select: () => ({

@@ -14,8 +14,9 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 import { useEncoding } from '@/hooks/use-encoding'
+import type { RuleEncodingData } from '@/lib/supabase'
 
-function makeEncoding(overrides: Record<string, unknown> = {}) {
+function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingData {
   return {
     encoding_run_id: 'enc-1',
     citation: '26 USC 1',
@@ -23,6 +24,15 @@ function makeEncoding(overrides: Record<string, unknown> = {}) {
     file_path: 'statute/26/1.rac',
     rac_content: 'rule { ... }',
     final_scores: null,
+    iterations: null,
+    total_duration_ms: null,
+    agent_type: null,
+    agent_model: null,
+    data_source: null,
+    has_issues: null,
+    note: null,
+    timestamp: null,
+    autorac_version: null,
     ...overrides,
   }
 }

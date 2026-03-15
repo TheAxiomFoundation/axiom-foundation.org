@@ -12,7 +12,6 @@ export function CoverageSection() {
     >
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">Progress</span>
           <h2 className="heading-section text-[var(--color-ink)] mb-6">
             Encoding coverage
           </h2>

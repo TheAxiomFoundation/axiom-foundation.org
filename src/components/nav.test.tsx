@@ -19,7 +19,7 @@ describe('Nav', () => {
   it('renders the logo linking to home', () => {
     mockUsePathname.mockReturnValue('/')
     render(<Nav />)
-    const logo = screen.getByAltText('Axiom')
+    const logo = screen.getByAltText('Axiom Foundation')
     expect(logo).toBeInTheDocument()
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })

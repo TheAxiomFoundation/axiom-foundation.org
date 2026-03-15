@@ -5,7 +5,6 @@ export function RacSection() {
     <section id="about" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">What is RAC</span>
           <h2 className="heading-section mb-6">
             Rules as Code
           </h2>

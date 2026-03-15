@@ -1,7 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 40">
-    <g transform="translate(2, 2)">
-        <path d="M14 32 L28 0 L24 0 L21 8 L7 8 L4 0 L0 0 Z" fill="#b45309"/>
-        <path d="M9 13 L19 13 L17.5 17 L10.5 17 Z" fill="#faf9f6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 48">
+    <!-- AXIOM FOUNDATION wordmark -->
+    <!-- ∀XIOM thin geometric, "FOUNDATION" spans full width below -->
+
+    <!-- ∀ (flipped A) as strokes — x: 0-22 -->
+    <g fill="none" stroke="#b45309" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="butt">
+        <polyline points="1.4,8 11,32 20.6,8"/>
+        <line x1="5" y1="17" x2="17" y2="17"/>
     </g>
-    <text x="40" y="27" font-family="Geist, Inter, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="-0.8" fill="#1c1917">Axiom</text>
+
+    <!-- X — x: 26-48 -->
+    <polygon points="26,8 29,8 37,19 45,8 48,8 38.5,21 48,32 45,32 37,22.5 29,32 26,32 35.5,21" fill="#1c1917"/>
+
+    <!-- I — x: 53-56 -->
+    <rect x="53" y="8" width="2.8" height="24" fill="#1c1917"/>
+
+    <!-- O — x: 61-83 -->
+    <path fill-rule="evenodd" fill="#1c1917"
+      d="M72,8 C78.5,8 83,14 83,20 C83,26 78.5,32 72,32 C65.5,32 61,26 61,20 C61,14 65.5,8 72,8 Z
+         M72,11 C67.8,11 64,15.5 64,20 C64,24.5 67.8,29 72,29 C76.2,29 80,24.5 80,20 C80,15.5 76.2,11 72,11 Z"/>
+
+    <!-- M — x: 88-116 -->
+    <polygon points="88,32 88,8 91,8 102,25 113,8 116,8 116,32 113.2,32 113.2,13.5 102.5,29 101.5,29 90.8,13.5 90.8,32" fill="#1c1917"/>
+
+    <!-- FOUNDATION — spans full width of AXIOM above -->
+    <text x="0" y="44" font-family="Geist, Inter, system-ui, sans-serif" font-size="7" font-weight="400" fill="#a8a29e" textLength="116" lengthAdjust="spacingAndGlyphs">FOUNDATION</text>
 </svg>

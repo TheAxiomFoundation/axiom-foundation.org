@@ -14,11 +14,11 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Axiom — Open infrastructure for encoded law",
+  title: "Axiom Foundation — Open infrastructure for encoded law",
   description:
     "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
   openGraph: {
-    title: "Axiom",
+    title: "Axiom Foundation",
     description: "Open infrastructure for encoded law.",
     images: ["/og-image.png"],
   },

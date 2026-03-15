@@ -10,7 +10,6 @@ export default function LabPage() {
     <div className="relative z-1 py-32 px-8">
       <div className="max-w-[900px] mx-auto">
         <header className="text-center mb-16">
-          <span className="eyebrow block mb-4">Development</span>
           <h1 className="heading-page text-[var(--color-ink)] mb-6">
             Experiment lab
           </h1>

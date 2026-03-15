@@ -8,15 +8,15 @@
 // -- Hero animation snippet ---------------------------------------------------
 
 export const heroRacCode = `niit_rate:
-    from 2013-01-01: 0.038
+  from 2013-01-01: 0.038
 
 net_investment_income_tax:
-    imports:
-        - 26/1411/a#net_investment_income
-        - 26/1411/a#excess_magi
-    entity: TaxUnit
-    from 2013-01-01:
-        niit_rate * min(net_investment_income, excess_magi)`
+  imports:
+    - 26/1411/a#net_investment_income
+    - 26/1411/a#excess_magi
+  entity: TaxUnit
+  from 2013-01-01:
+    niit_rate * min(net_investment_income, excess_magi)`
 
 // -- Code comparison examples -------------------------------------------------
 

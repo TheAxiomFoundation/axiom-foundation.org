@@ -21,11 +21,11 @@ export function Nav() {
         <Link href="/" className="flex items-baseline gap-2 no-underline">
           <img
             src="/logos/rules-atlas.svg"
-            alt="Axiom"
-            className="h-9 w-auto"
+            alt="Axiom Foundation"
+            className="h-9 w-auto shrink-0"
           />
         </Link>
-        <nav className="flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-8">
           {navLinks.map(({ href, label }) => {
             const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
 

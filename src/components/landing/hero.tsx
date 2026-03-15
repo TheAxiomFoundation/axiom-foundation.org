@@ -6,20 +6,20 @@ import CodeBlock from "@/components/code-block";
 import { heroRacCode } from "@/lib/rac-examples";
 
 function HeroTransform() {
-  const [phase, setPhase] = useState(0);
+  const [showRac, setShowRac] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (isPaused) return;
     const interval = setInterval(() => {
-      setPhase((p) => (p + 1) % 3);
-    }, 3000);
+      setShowRac((v) => !v);
+    }, 4000);
     return () => clearInterval(interval);
   }, [isPaused]);
 
   const handleClick = () => {
     setIsPaused(true);
-    setPhase((p) => (p + 1) % 3);
+    setShowRac((v) => !v);
   };
 
   const statuteText = `(a) In general.\u2014 There is hereby
@@ -30,69 +30,83 @@ of the threshold amount.`;
 
   return (
     <div
-      className="flex items-center md:items-stretch justify-center gap-8 flex-wrap md:flex-row flex-col cursor-pointer"
+      className="max-w-[520px] mx-auto cursor-pointer select-none"
       onClick={handleClick}
-      title="Click to advance"
+      title="Click to toggle"
     >
-      {/* Statute panel */}
-      <div
-        className={`flex-[0_0_380px] max-md:flex-[1_1_100%] max-md:max-w-full bg-[var(--color-code-bg)] border rounded-md overflow-hidden transition-all duration-500 flex flex-col ${
-          phase === 0
-            ? "opacity-100 scale-100 border-[var(--color-accent)] shadow-[0_0_30px_rgba(180,83,9,0.12)]"
-            : "opacity-60 scale-[0.98] border-[#2a2826]"
-        }`}
-      >
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2a2826]">
-          <span className="w-2 h-2 bg-[var(--color-accent)] rounded-full" />
-          <span className="font-mono text-xs text-[var(--color-code-text)]">
+      <div className="bg-[var(--color-code-bg)] border border-[#2a2826] rounded-md overflow-hidden">
+        {/* Tab bar */}
+        <div className="flex border-b border-[#2a2826]">
+          <button
+            className={`flex items-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
+              !showRac
+                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
+                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPaused(true);
+              setShowRac(false);
+            }}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                !showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
+              }`}
+            />
             26 USC &sect; 1411(a)
-          </span>
-        </div>
-        <div className="p-6 font-mono text-[0.85rem] text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap flex-1">
-          {statuteText}
-        </div>
-      </div>
-
-      {/* Arrow */}
-      <div className="flex flex-col items-center gap-2 max-md:rotate-90 max-md:my-4">
-        <div
-          className={`w-16 h-0.5 relative transition-colors duration-200 after:content-[''] after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-[5px] after:border-transparent after:border-l-current after:bg-transparent ${
-            phase === 1
-              ? "bg-[var(--color-accent)] after:border-l-[var(--color-accent)]"
-              : "bg-[var(--color-rule)] after:border-l-[var(--color-rule)]"
-          }`}
-        />
-        <span
-          className={`font-mono text-[0.7rem] uppercase tracking-[0.12em] transition-colors duration-200 ${
-            phase === 1
-              ? "text-[var(--color-accent)]"
-              : "text-[var(--color-ink-muted)]"
-          }`}
-        >
-          AutoRAC
-        </span>
-      </div>
-
-      {/* RAC panel */}
-      <div
-        className={`flex-[0_0_380px] max-md:flex-[1_1_100%] max-md:max-w-full bg-[var(--color-code-bg)] border rounded-md overflow-hidden transition-all duration-500 flex flex-col ${
-          phase === 2
-            ? "opacity-100 scale-100 border-[var(--color-accent)] shadow-[0_0_30px_rgba(180,83,9,0.12)]"
-            : "opacity-60 scale-[0.98] border-[#2a2826]"
-        }`}
-      >
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2a2826]">
-          <span className="w-2 h-2 bg-[var(--color-accent)] rounded-full" />
-          <span className="font-mono text-xs text-[var(--color-code-text)]">
+          </button>
+          <button
+            className={`flex items-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
+              showRac
+                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
+                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPaused(true);
+              setShowRac(true);
+            }}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
+              }`}
+            />
             statute/26/1411/a.rac
-          </span>
+          </button>
         </div>
-        <CodeBlock
-          code={heroRacCode}
-          language="rac"
-          className="p-6 font-mono text-[0.85rem] leading-relaxed whitespace-pre-wrap m-0 flex-1"
-        />
+
+        {/* Content area — fixed height with crossfade */}
+        <div className="relative min-h-[280px]">
+          {/* Statute view */}
+          <div
+            className={`absolute inset-0 p-6 font-mono text-[0.85rem] text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap transition-opacity duration-500 ${
+              !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          >
+            {statuteText}
+          </div>
+
+          {/* RAC view */}
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 ${
+              showRac ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          >
+            <CodeBlock
+              code={heroRacCode}
+              language="rac"
+              className="p-6 font-mono text-[0.85rem] leading-relaxed whitespace-pre-wrap m-0 h-full"
+            />
+          </div>
+        </div>
       </div>
+
+      {/* Subtle hint */}
+      <p className="text-center mt-3 font-mono text-[0.65rem] text-[var(--color-ink-muted)] tracking-wide uppercase">
+        Same law, two representations
+      </p>
     </div>
   );
 }
@@ -123,7 +137,7 @@ export function Hero() {
           </h1>
 
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[540px] mx-auto">
-            Axiom builds open, machine-readable encodings of
+            The Axiom Foundation builds open, machine-readable encodings of
             statutes, regulations, and policy rules. Ground truth for AI systems.
           </p>
         </div>

@@ -435,7 +435,6 @@ export function RacFormat() {
     >
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">File format</span>
           <h2 className="heading-section mb-6">
             .rac
           </h2>

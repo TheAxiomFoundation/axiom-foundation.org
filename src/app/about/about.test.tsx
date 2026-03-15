@@ -16,7 +16,7 @@ import AboutPage from '@/app/about/page'
 describe('AboutPage', () => {
   it('renders the page title', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /about axiom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /about the axiom foundation/i })).toBeInTheDocument()
   })
 
   it('renders the mission section', () => {

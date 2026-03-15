@@ -156,33 +156,36 @@ pre {
   color: var(--color-accent);
 }
 
-/* Page-level heading */
+/* Page-level heading — thin geometric uppercase */
 .heading-page {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
+  font-weight: 300;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--color-ink);
 }
 
-/* Section-level heading */
+/* Section-level heading — thin geometric uppercase */
 .heading-section {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: clamp(1.75rem, 3vw, 2.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.04em;
+  font-weight: 300;
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--color-ink);
 }
 
-/* Subsection heading */
+/* Subsection heading — thin geometric uppercase */
 .heading-sub {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: 1.5rem;
+  font-weight: 300;
+  font-size: 1.1rem;
   line-height: 1.2;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--color-ink);
 }
 

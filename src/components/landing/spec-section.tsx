@@ -11,7 +11,6 @@ export function SpecSection() {
     <section id="spec" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">Reference</span>
           <h2 className="heading-section mb-6">
             RAC_SPEC.md
           </h2>

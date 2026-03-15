@@ -6,7 +6,6 @@ export function AtlasSection() {
     <section id="atlas" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">Platform</span>
           <h2 className="heading-section text-[var(--color-ink)] mb-6">
             Atlas
           </h2>

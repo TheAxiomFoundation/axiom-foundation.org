@@ -1,51 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 44">
-    <!-- ∀XIOM wordmark with FOUNDATION below -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 440">
+    <!-- ∀XIOM FOUNDATION wordmark — all text, A flipped via transform -->
 
-    <!-- ∀ (flipped A) as strokes -->
-    <g fill="none" stroke="#b45309" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="butt">
-        <polyline points="1.4,6 11,30 20.6,6"/>
-        <line x1="5" y1="15" x2="17" y2="15"/>
+    <!-- Flipped A (∀) — same font as XIOM, vertically mirrored -->
+    <g transform="translate(0,360) scale(1,-1)">
+      <text x="0" y="290"
+        font-family="Geist, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="310" font-weight="300"
+        fill="#b45309">A</text>
     </g>
 
-    <!-- X -->
-    <polygon points="26,6 29,6 37,17 45,6 48,6 38.5,19 48,30 45,30 37,20.5 29,30 26,30 35.5,19" fill="#1c1917"/>
+    <!-- XIOM -->
+    <text x="240" y="290" textLength="920" lengthAdjust="spacing"
+      font-family="Geist, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+      font-size="310" font-weight="300"
+      fill="#1c1917">XIOM</text>
 
-    <!-- I -->
-    <rect x="53" y="6" width="2.8" height="24" fill="#1c1917"/>
-
-    <!-- O -->
-    <path fill-rule="evenodd" fill="#1c1917"
-      d="M72,6 C78.5,6 83,12 83,18 C83,24 78.5,30 72,30 C65.5,30 61,24 61,18 C61,12 65.5,6 72,6 Z
-         M72,9 C67.8,9 64,13.5 64,18 C64,22.5 67.8,27 72,27 C76.2,27 80,22.5 80,18 C80,13.5 76.2,9 72,9 Z"/>
-
-    <!-- M -->
-    <polygon points="88,30 88,6 91,6 102,23 113,6 116,6 116,30 113.2,30 113.2,11.5 102.5,27 101.5,27 90.8,11.5 90.8,30" fill="#1c1917"/>
-
-    <!-- FOUNDATION — same thin geometric style, hand-drawn as strokes -->
-    <g fill="none" stroke="#a8a29e" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="butt">
-        <!-- F -->
-        <polyline points="0,35 0,42"/>
-        <line x1="0" y1="35" x2="4" y2="35"/>
-        <line x1="0" y1="38.2" x2="3" y2="38.2"/>
-        <!-- O -->
-        <ellipse cx="9" cy="38.5" rx="3" ry="3.5"/>
-        <!-- U -->
-        <path d="M16,35 L16,39.5 C16,41.5 17,42 18,42 C19,42 20,41.5 20,39.5 L20,35"/>
-        <!-- N -->
-        <polyline points="24,42 24,35 28,42 28,35"/>
-        <!-- D -->
-        <path d="M32,35 L32,42 L34,42 C36.5,42 37,40 37,38.5 C37,37 36.5,35 34,35 L32,35"/>
-        <!-- A -->
-        <polyline points="40,42 42.5,35 45,42"/>
-        <line x1="40.8" y1="39.5" x2="44.2" y2="39.5"/>
-        <!-- T -->
-        <line x1="49" y1="35" x2="53" y2="35"/>
-        <line x1="51" y1="35" x2="51" y2="42"/>
-        <!-- I -->
-        <line x1="57" y1="35" x2="57" y2="42"/>
-        <!-- O -->
-        <ellipse cx="63" cy="38.5" rx="3" ry="3.5"/>
-        <!-- N -->
-        <polyline points="70,42 70,35 74,42 74,35"/>
-    </g>
+    <!-- FOUNDATION — spanning full ∀XIOM width (0 to 1160) -->
+    <text x="0" y="400" textLength="1160" lengthAdjust="spacing"
+      font-family="Geist, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+      font-size="80" font-weight="400" letter-spacing="0.25em"
+      fill="#44403c">FOUNDATION</text>
 </svg>

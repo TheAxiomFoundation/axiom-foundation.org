@@ -6,7 +6,7 @@ export function Footer() {
       <div className="max-w-[1280px] mx-auto text-center">
         <div className="flex justify-center mb-4">
           <img
-            src="/logos/rule-atlas.svg"
+            src="/logos/rules-atlas.svg"
             alt="Rules Atlas"
             className="h-9 w-auto"
           />

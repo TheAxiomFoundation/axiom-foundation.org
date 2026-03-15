@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Newsreader, Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
@@ -12,15 +12,7 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-const display = Newsreader({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const body = Instrument_Sans({
+const body = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
@@ -46,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${mono.variable} ${display.variable} ${body.variable}`}
+      className={`${mono.variable} ${body.variable}`}
     >
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

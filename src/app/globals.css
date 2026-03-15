@@ -3,22 +3,22 @@
 @import "../lib/prism-catala/light.css";
 
 /* ═══════════════════════════════════════════
-   Rules Atlas design tokens — "The Library"
+   Rules Atlas design tokens
    ═══════════════════════════════════════════ */
 
 @theme {
-  /* Color palette — warm editorial: law library meets reference publication */
-  --color-paper: #faf8f5;
+  /* Color palette — clean tech infrastructure */
+  --color-paper: #fafafa;
   --color-paper-elevated: #ffffff;
-  --color-ink: #1a1a1a;
-  --color-ink-secondary: #4a4a4a;
-  --color-ink-muted: #8a8a8a;
-  --color-rule: #e0ddd8;
-  --color-rule-subtle: #eeece8;
-  --color-accent: #1a7a6d;
-  --color-accent-hover: #15665b;
-  --color-accent-light: rgba(26, 122, 109, 0.08);
-  --color-code-bg: #f5f3f0;
+  --color-ink: #111111;
+  --color-ink-secondary: #555555;
+  --color-ink-muted: #999999;
+  --color-rule: #e5e5e5;
+  --color-rule-subtle: #f0f0f0;
+  --color-accent: #0d7c66;
+  --color-accent-hover: #0a6354;
+  --color-accent-light: rgba(13, 124, 102, 0.06);
+  --color-code-bg: #f6f6f6;
   --color-success: #2d8a4e;
   --color-warning: #c27a1a;
   --color-error: #c43d3d;
@@ -28,9 +28,9 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Typography — next/font sets --font-display, --font-body, --font-mono on <html> */
+/* Typography — next/font sets --font-body, --font-mono on <html> */
 :root {
-  --f-display: var(--font-display), Georgia, "Times New Roman", serif;
+  --f-display: var(--font-body), -apple-system, sans-serif;
   --f-body: var(--font-body), -apple-system, sans-serif;
   --f-mono: var(--font-mono), "Fira Code", monospace;
 }
@@ -43,6 +43,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  background-image: radial-gradient(circle, #d0d0d0 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
 }
 
 body {
@@ -58,9 +60,10 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--f-display);
-  font-weight: 600;
-  line-height: 1.2;
+  font-family: var(--f-body);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
   color: var(--color-ink);
 }
 
@@ -126,9 +129,9 @@ pre {
 /* ── Typography utilities ── */
 
 .font-heading {
-  font-family: var(--f-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-family: var(--f-body);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .font-body {
@@ -154,30 +157,31 @@ pre {
 
 /* Page-level heading */
 .heading-page {
-  font-family: var(--f-display);
+  font-family: var(--f-body);
   font-weight: 700;
   font-size: clamp(2.5rem, 5vw, 4rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
   color: var(--color-ink);
 }
 
 /* Section-level heading */
 .heading-section {
-  font-family: var(--f-display);
-  font-weight: 600;
+  font-family: var(--f-body);
+  font-weight: 700;
   font-size: clamp(1.75rem, 3vw, 2.5rem);
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--color-ink);
 }
 
 /* Subsection heading */
 .heading-sub {
-  font-family: var(--f-display);
-  font-weight: 600;
+  font-family: var(--f-body);
+  font-weight: 700;
   font-size: 1.5rem;
   line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--color-ink);
 }
 
@@ -255,7 +259,7 @@ pre {
 /* ── Nav bar ── */
 
 .nav-bar {
-  background: rgba(250, 248, 245, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-rule-subtle);
+  background: rgba(250, 250, 250, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-rule);
 }

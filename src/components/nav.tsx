@@ -20,7 +20,7 @@ export function Nav() {
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
         <Link href="/" className="flex items-baseline gap-2 no-underline">
           <img
-            src="/logos/rule-atlas.svg"
+            src="/logos/rules-atlas.svg"
             alt="Rules Atlas"
             className="h-11 w-auto"
           />

@@ -13,7 +13,7 @@ describe('Footer', () => {
     render(<Footer />)
     const logo = screen.getByAltText('Rules Atlas')
     expect(logo).toBeInTheDocument()
-    expect(logo).toHaveAttribute('src', '/logos/rule-atlas.svg')
+    expect(logo).toHaveAttribute('src', '/logos/rules-atlas.svg')
   })
 
   it('renders tagline', () => {

@@ -6,14 +6,13 @@ vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
 
-import { Footer } from './footer'
+import { Footer } from '@axiom-foundation/ui'
 
 describe('Footer', () => {
   it('renders the footer with wordmark', () => {
     render(<Footer />)
-    const logo = screen.getByAltText('Axiom Foundation')
+    const logo = screen.getByLabelText('Axiom Foundation')
     expect(logo).toBeInTheDocument()
-    expect(logo).toHaveAttribute('src', '/logos/axiom-foundation.svg')
   })
 
   it('renders tagline', () => {

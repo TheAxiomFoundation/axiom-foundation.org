@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Newsreader } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
+import Link from "next/link";
 import "./globals.css";
-import { Nav } from "@/components/nav";
-import { Footer } from "@/components/footer";
-import { GradientSync } from "@/components/gradient-sync";
+import { NavWrapper } from "@/components/nav-wrapper";
+import { Footer, GradientSync } from "@axiom-foundation/ui";
 import { PostHogProvider } from "@/components/posthog-provider";
 
 const mono = JetBrains_Mono({
@@ -49,9 +49,9 @@ export default function RootLayout({
       <body>
         <PostHogProvider />
         <GradientSync />
-        <Nav />
+        <NavWrapper />
         <main className="relative z-10">{children}</main>
-        <Footer />
+        <Footer renderLink={Link} />
       </body>
     </html>
   );

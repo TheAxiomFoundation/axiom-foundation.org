@@ -38,6 +38,7 @@
     "src/components/CodeBlock.test.tsx",
     "src/components/Icons.tsx",
     "src/components/Icons.test.tsx",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "packages"
   ]
 }

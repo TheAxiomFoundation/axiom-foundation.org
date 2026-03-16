@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
 const mockUsePathname = vi.fn()
@@ -80,5 +80,33 @@ describe('Nav', () => {
     render(<Nav />)
     const atlasLink = screen.getByText('Browse')
     expect(atlasLink.closest('a')).toHaveAttribute('href', '/atlas')
+  })
+
+  it('renders hamburger button for mobile', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+    const button = screen.getByLabelText('Open menu')
+    expect(button).toBeInTheDocument()
+  })
+
+  it('opens mobile drawer on hamburger click', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+    const button = screen.getByLabelText('Open menu')
+    fireEvent.click(button)
+    // Mobile drawer renders duplicate links
+    const browseLinks = screen.getAllByText('Browse')
+    expect(browseLinks.length).toBe(2)
+    expect(screen.getByLabelText('Close menu')).toBeInTheDocument()
+  })
+
+  it('closes mobile drawer on link click', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<Nav />)
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    const browseLinks = screen.getAllByText('Browse')
+    fireEvent.click(browseLinks[1]) // click mobile link
+    // Drawer should close, back to single link
+    expect(screen.getAllByText('Browse').length).toBe(1)
   })
 })

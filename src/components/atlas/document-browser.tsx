@@ -101,7 +101,7 @@ function RuleTreeView({
   if (leafRule) {
     if (!displayCtx) {
       return (
-        <div className="max-w-[1280px] mx-auto">
+        <div className="max-w-[1280px] mx-auto px-8">
           <TreeBreadcrumbs items={breadcrumbs} />
           <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
             Loading...
@@ -122,7 +122,7 @@ function RuleTreeView({
     );
 
     return (
-      <div className="max-w-[1280px] mx-auto">
+      <div className="max-w-[1280px] mx-auto px-8">
         <TreeBreadcrumbs items={breadcrumbs} />
         <div className="min-h-[calc(100vh-200px)]">
           <RuleDetailPanel
@@ -149,7 +149,7 @@ function RuleTreeView({
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto">
+    <div className="max-w-[1280px] mx-auto px-8">
       <TreeBreadcrumbs items={breadcrumbs} />
 
       {/* v8 ignore start -- filter toggle UI */}
@@ -224,7 +224,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
 
   if (resolved.phase === "jurisdiction-picker") {
     return (
-      <div className="max-w-[1280px] mx-auto">
+      <div className="max-w-[1280px] mx-auto px-8">
         <TreeBreadcrumbs items={breadcrumbs} />
 
         {/* Header */}
@@ -257,7 +257,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto">
+    <div className="max-w-[1280px] mx-auto px-8">
       <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
         Invalid path.{" "}
         <button

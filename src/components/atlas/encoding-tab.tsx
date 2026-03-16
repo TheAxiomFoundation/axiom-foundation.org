@@ -2,6 +2,7 @@
 
 import { isGitHubEncoding } from "@/lib/atlas-utils";
 import type { RuleEncodingData } from "@/lib/supabase";
+import CodeBlock from "@/components/code-block";
 
 export function EncodingTab({
   encoding,
@@ -96,9 +97,11 @@ export function EncodingTab({
           <span className="font-mono text-xs text-[var(--color-ink-muted)] uppercase tracking-wider">
             RAC encoding
           </span>
-          <pre className="mt-2 p-4 bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md overflow-x-auto text-sm text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap">
-            {encoding.rac_content}
-          </pre>
+          <CodeBlock
+            code={encoding.rac_content}
+            language="rac"
+            className="mt-2 p-4 bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md overflow-x-auto text-sm text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap"
+          />
         </div>
       )}
 

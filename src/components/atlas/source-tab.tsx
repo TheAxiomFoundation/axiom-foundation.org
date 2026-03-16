@@ -55,7 +55,7 @@ function RichText({ text }: { text: string }) {
   }
 
   return (
-    <div className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed">
+    <div className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-[1.8]" style={{ fontFamily: "var(--f-serif)" }}>
       {segments.map((seg, idx) => {
         if (seg.type === "text") {
           return (

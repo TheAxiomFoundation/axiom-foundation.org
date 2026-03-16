@@ -17,6 +17,8 @@ function lerp(a: number, b: number, t: number) {
  * Sets --gx (gradient offset for background-clip:text) and
  * --gc (interpolated solid color) on each gradient element.
  * Text uses --gx for smooth gradients; SVG icons use --gc via color.
+ *
+ * Re-syncs on window resize and DOM mutations (e.g. route changes).
  */
 export function GradientSync() {
   useEffect(() => {
@@ -30,7 +32,7 @@ export function GradientSync() {
         return {
           el,
           left: rect.left,
-          cx: rect.left + el.offsetWidth / 2,
+          cx: rect.left + rect.width / 2,
         };
       });
 
@@ -48,14 +50,20 @@ export function GradientSync() {
     sync();
 
     let timer: ReturnType<typeof setTimeout>;
-    const onResize = () => {
+    const debouncedSync = () => {
       clearTimeout(timer);
       timer = setTimeout(sync, 80);
     };
 
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", debouncedSync);
+
+    // Re-sync when DOM changes (e.g. client-side navigation adds new elements)
+    const observer = new MutationObserver(debouncedSync);
+    observer.observe(document.body, { childList: true, subtree: true });
+
     return () => {
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", debouncedSync);
+      observer.disconnect();
       clearTimeout(timer);
     };
   }, []);

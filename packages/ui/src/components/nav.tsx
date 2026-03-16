@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState, useMemo, useCallback, type ReactNode, type ComponentType } from "react";
 import { GitHubIcon } from "./icons";
+import { AxiomLogo } from "./axiom-logo";
+import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 const NAV_LINK =
   "text-gradient text-[0.9rem] font-light no-underline transition-opacity duration-150 flex items-center";
@@ -11,74 +11,102 @@ const NAV_LINK =
 const MOBILE_LINK =
   "text-gradient text-[1.1rem] font-light no-underline block py-2";
 
-export function Nav() {
-  const pathname = usePathname();
+export interface NavLink {
+  href: string;
+  label: string;
+}
+
+export interface NavProps {
+  /** Base URL for generating absolute links (e.g. "https://axiom-foundation.org").
+   *  When set, all nav links become absolute URLs. */
+  baseUrl?: string;
+  /** Current pathname for active-state detection (e.g. from usePathname()) */
+  pathname?: string;
+  /** Custom link renderer for framework integration (e.g. Next.js Link).
+   *  Receives href, className, children, onClick. Defaults to <a>. */
+  renderLink?: RenderLinkComponent;
+  /** Additional nav links to append (e.g. "Proposal" for the proposal app) */
+  extraLinks?: NavLink[];
+}
+
+const DEFAULT_LINKS: NavLink[] = [
+  { href: "/atlas", label: "Browse" },
+  { href: "/#format", label: ".rac" },
+  { href: "/#autorac", label: "AutoRAC" },
+  { href: "/#spec", label: "Spec" },
+  { href: "/about", label: "About" },
+];
+
+export function Nav({
+  baseUrl = "",
+  pathname,
+  renderLink: LinkComponent,
+  extraLinks = [],
+}: NavProps = {}) {
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
 
-  const navLinks = [
-    { href: "/atlas", label: "Browse" },
-    { href: "/#format", label: ".rac" },
-    { href: "/#autorac", label: "AutoRAC" },
-    { href: "/#spec", label: "Spec" },
-    { href: "/about", label: "About" },
-  ];
+  const navLinks = useMemo(
+    () => [...DEFAULT_LINKS, ...extraLinks],
+    [extraLinks],
+  );
 
-  function renderLink({ href, label }: { href: string; label: string }, mobile = false) {
+  function renderNavLink({ href, label }: NavLink, mobile = false) {
     const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
     const base = mobile ? MOBILE_LINK : NAV_LINK;
     const opacity = isActive ? "opacity-100" : "opacity-70 hover:opacity-100";
 
-    if (href.startsWith("/#")) {
-      if (pathname === "/") {
-        return (
-          <a
-            key={href}
-            href={href.replace("/", "")}
-            className={`${base} opacity-70 hover:opacity-100`}
-            onClick={() => setOpen(false)}
-          >
-            {label}
-          </a>
-        );
-      }
+    // Determine what to render as and with what href
+    const isHashLink = href.startsWith("/#");
+    const isHomepageHash = isHashLink && !baseUrl && pathname === "/";
+    const useNativeAnchor = baseUrl || !LinkComponent || isHomepageHash;
+
+    const finalHref = isHomepageHash
+      ? href.replace("/", "")
+      : resolveHref(href, baseUrl);
+    const finalOpacity = isHashLink ? "opacity-70 hover:opacity-100" : opacity;
+    const className = `${base} ${finalOpacity}`;
+
+    if (useNativeAnchor) {
       return (
-        <Link
-          key={href}
-          href={href}
-          className={`${base} opacity-70 hover:opacity-100`}
-          onClick={() => setOpen(false)}
-        >
+        <a key={href} href={finalHref} className={className} onClick={close}>
           {label}
-        </Link>
+        </a>
       );
     }
 
     return (
-      <Link
-        key={href}
-        href={href}
-        className={`${base} ${opacity}`}
-        onClick={() => setOpen(false)}
-      >
+      <LinkComponent key={href} href={href} className={className} onClick={close}>
         {label}
-      </Link>
+      </LinkComponent>
     );
   }
+
+  const homeHref = baseUrl || "/";
 
   return (
     <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
-        <Link href="/" className="flex items-baseline no-underline" aria-label="Axiom Foundation">
-          <img
-            src="/logos/axiom-foundation.svg"
-            alt="Axiom Foundation"
-            className="h-9 w-auto shrink-0"
-          />
-        </Link>
+        {LinkComponent && !baseUrl ? (
+          <LinkComponent
+            href="/"
+            className="flex items-baseline no-underline"
+          >
+            <AxiomLogo className="h-9 w-auto shrink-0 text-[var(--color-accent)]" />
+          </LinkComponent>
+        ) : (
+          <a
+            href={homeHref}
+            className="flex items-baseline no-underline"
+            aria-label="Axiom Foundation"
+          >
+            <AxiomLogo className="h-9 w-auto shrink-0 text-[var(--color-accent)]" />
+          </a>
+        )}
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
-          {navLinks.map((link) => renderLink(link))}
+          {navLinks.map((link) => renderNavLink(link))}
           <a
             href="https://github.com/TheAxiomFoundation/rac"
             className={`${NAV_LINK} opacity-70 hover:opacity-100`}
@@ -126,13 +154,13 @@ export function Nav() {
       {/* Mobile drawer */}
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
-          {navLinks.map((link) => renderLink(link, true))}
+          {navLinks.map((link) => renderNavLink(link, true))}
           <a
             href="https://github.com/TheAxiomFoundation/rac"
             className={`${MOBILE_LINK} opacity-70 hover:opacity-100`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setOpen(false)}
+            onClick={close}
           >
             Docs
           </a>

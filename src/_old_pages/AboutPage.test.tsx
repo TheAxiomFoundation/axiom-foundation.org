@@ -42,6 +42,6 @@ describe('AboutPage', () => {
 
   it('renders GitHub link in team section', () => {
     renderWithRouter(<AboutPage />)
-    expect(screen.getByText('github.com/RuleAtlas')).toBeInTheDocument()
+    expect(screen.getByText('github.com/TheAxiomFoundation')).toBeInTheDocument()
   })
 })

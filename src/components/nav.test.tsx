@@ -70,7 +70,7 @@ describe('Nav', () => {
     render(<Nav />)
     const links = screen.getAllByRole('link')
     const githubLink = links.find(
-      (l) => l.getAttribute('href') === 'https://github.com/RuleAtlas',
+      (l) => l.getAttribute('href') === 'https://github.com/TheAxiomFoundation',
     )
     expect(githubLink).toBeInTheDocument()
   })

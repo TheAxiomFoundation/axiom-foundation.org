@@ -13,7 +13,7 @@ describe('Footer', () => {
     render(<Footer />)
     const logo = screen.getByAltText('Axiom Foundation')
     expect(logo).toBeInTheDocument()
-    expect(logo).toHaveAttribute('src', '/logos/rules-atlas.svg')
+    expect(logo).toHaveAttribute('src', '/logos/axiom-foundation.svg')
   })
 
   it('renders tagline', () => {
@@ -33,7 +33,7 @@ describe('Footer', () => {
     render(<Footer />)
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
-    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/RuleAtlas')
+    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/TheAxiomFoundation')
     expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
   })
 })

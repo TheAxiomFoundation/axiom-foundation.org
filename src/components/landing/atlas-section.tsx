@@ -71,7 +71,7 @@ export function AtlasSection() {
             Explore Atlas
           </Link>
           <a
-            href="https://github.com/RuleAtlas/atlas"
+            href="https://github.com/TheAxiomFoundation/atlas"
             className="btn-outline"
           >
             <GitHubIcon className="w-5 h-5" />

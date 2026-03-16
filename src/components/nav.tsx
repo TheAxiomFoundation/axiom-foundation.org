@@ -70,7 +70,7 @@ export function Nav() {
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
         <Link href="/" className="flex items-baseline no-underline" aria-label="Axiom Foundation">
           <img
-            src="/logos/rules-atlas.svg"
+            src="/logos/axiom-foundation.svg"
             alt="Axiom Foundation"
             className="h-9 w-auto shrink-0"
           />
@@ -80,7 +80,7 @@ export function Nav() {
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderLink(link))}
           <a
-            href="https://github.com/RuleAtlas/rac"
+            href="https://github.com/TheAxiomFoundation/rac"
             className={`${NAV_LINK} opacity-70 hover:opacity-100`}
             target="_blank"
             rel="noopener noreferrer"
@@ -88,7 +88,7 @@ export function Nav() {
             Docs
           </a>
           <a
-            href="https://github.com/RuleAtlas"
+            href="https://github.com/TheAxiomFoundation"
             className="gradient-icon transition-opacity duration-150 flex items-center opacity-70 hover:opacity-100"
             style={{ color: "var(--gc, #1c1917)" }}
             target="_blank"
@@ -128,7 +128,7 @@ export function Nav() {
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderLink(link, true))}
           <a
-            href="https://github.com/RuleAtlas/rac"
+            href="https://github.com/TheAxiomFoundation/rac"
             className={`${MOBILE_LINK} opacity-70 hover:opacity-100`}
             target="_blank"
             rel="noopener noreferrer"

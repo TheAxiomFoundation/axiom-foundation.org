@@ -100,10 +100,10 @@ export default function AboutPage() {
                 <span>
                   Join us on{" "}
                   <a
-                    href="https://github.com/RuleAtlas"
+                    href="https://github.com/TheAxiomFoundation"
                     className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
                   >
-                    github.com/RuleAtlas
+                    github.com/TheAxiomFoundation
                   </a>
                 </span>
               </div>

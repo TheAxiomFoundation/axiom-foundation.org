@@ -39,8 +39,8 @@ export default function PrivacyPage() {
             <h2 className={styles.sectionTitle}>Open source</h2>
             <p className={styles.text}>
               All our code is open source at{' '}
-              <a href="https://github.com/RuleAtlas" target="_blank" rel="noopener noreferrer">
-                github.com/RuleAtlas
+              <a href="https://github.com/TheAxiomFoundation" target="_blank" rel="noopener noreferrer">
+                github.com/TheAxiomFoundation
               </a>
             </p>
           </section>

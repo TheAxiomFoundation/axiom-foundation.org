@@ -67,7 +67,7 @@ function HeroTransform() {
         <div className="relative min-h-[250px]">
           {/* Statute view — serif font on gradient bg */}
           <div
-            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-500 ${
+            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-1000 ${
               !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             style={{ fontFamily: "var(--f-serif)" }}
@@ -77,7 +77,7 @@ function HeroTransform() {
 
           {/* RAC view — solid black bg */}
           <div
-            className={`absolute inset-0 bg-black transition-opacity duration-500 ${
+            className={`absolute inset-0 bg-black transition-opacity duration-1000 ${
               showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >

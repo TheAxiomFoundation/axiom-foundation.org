@@ -25,11 +25,14 @@ export function GradientSync() {
       const els = document.querySelectorAll<HTMLElement>(SELECTOR);
 
       // Batch reads
-      const measurements = Array.from(els).map((el) => ({
-        el,
-        left: el.getBoundingClientRect().left,
-        cx: el.getBoundingClientRect().left + el.offsetWidth / 2,
-      }));
+      const measurements = Array.from(els).map((el) => {
+        const rect = el.getBoundingClientRect();
+        return {
+          el,
+          left: rect.left,
+          cx: rect.left + el.offsetWidth / 2,
+        };
+      });
 
       // Batch writes
       for (const { el, left, cx } of measurements) {

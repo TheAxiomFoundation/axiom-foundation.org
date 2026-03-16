@@ -28,7 +28,7 @@ export function CtaSection() {
           >
             Validate our work
           </a>
-          <a href="mailto:hello@ruleatlas.org" className="btn-outline">
+          <a href="mailto:hello@axiom-foundation.org" className="btn-outline">
             Fund the mission
           </a>
         </div>

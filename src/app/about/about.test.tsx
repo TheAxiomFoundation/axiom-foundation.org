@@ -43,7 +43,7 @@ describe('AboutPage', () => {
   it('renders the contact section', () => {
     render(<AboutPage />)
     expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@ruleatlas.org')).toBeInTheDocument()
+    expect(screen.getByText('hello@axiom-foundation.org')).toBeInTheDocument()
   })
 
   it('renders GitHub link in team section', () => {

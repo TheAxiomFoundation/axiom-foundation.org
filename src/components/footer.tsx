@@ -30,7 +30,7 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="mailto:hello@ruleatlas.org"
+            href="mailto:hello@axiom-foundation.org"
             className="text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-ink)] transition-colors duration-150"
           >
             Contact

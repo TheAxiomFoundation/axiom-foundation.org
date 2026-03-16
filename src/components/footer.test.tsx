@@ -34,6 +34,6 @@ describe('Footer', () => {
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
     expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/RuleAtlas')
-    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@ruleatlas.org')
+    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
   })
 })

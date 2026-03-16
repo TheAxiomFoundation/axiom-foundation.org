@@ -121,10 +121,10 @@ export default function AboutPage() {
           </p>
           <div className="inline-block px-6 py-3 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
             <a
-              href="mailto:hello@ruleatlas.org"
+              href="mailto:hello@axiom-foundation.org"
               className="font-mono text-[var(--color-accent)] text-[0.95rem]"
             >
-              hello@ruleatlas.org
+              hello@axiom-foundation.org
             </a>
           </div>
         </section>

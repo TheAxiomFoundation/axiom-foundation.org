@@ -162,7 +162,7 @@ describe('EncodingTab', () => {
     expect(screen.getByText('85')).toBeInTheDocument()
     expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getByText('75')).toBeInTheDocument()
-    expect(screen.getByText('rule tax_imposed { ... }')).toBeInTheDocument()
+    expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
   })
 
   it('renders encoding without scores', () => {
@@ -173,7 +173,7 @@ describe('EncodingTab', () => {
 
   it('renders encoding without RAC content', () => {
     render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} />)
-    expect(screen.queryByText('rule tax_imposed { ... }')).not.toBeInTheDocument()
+    expect(screen.queryByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).not.toBeInTheDocument()
   })
 
   it('shows GitHub link and hides scores for GitHub-sourced encoding', () => {
@@ -407,7 +407,7 @@ describe('RuleDetailPanel', () => {
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('rule tax_imposed { ... }')).toBeInTheDocument()
+    expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
   })
 
   it('shows back button when onBack is provided', () => {

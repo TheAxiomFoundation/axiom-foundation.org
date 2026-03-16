@@ -22,7 +22,7 @@ function HeroTransform() {
     setShowRac((v) => !v);
   };
 
-  const statuteText = `(a) In general.\u2014 There is hereby imposed a tax equal to 3.8 percent of the lesser of net investment income or modified AGI in excess of the threshold amount.`;
+  const statuteText = `(a) Allowance of credit.\u2014 There shall be allowed as a credit against the tax imposed by this chapter for the taxable year an amount equal to the sum of $2,000 multiplied by the number of qualifying children of the taxpayer.`;
 
   return (
     <div
@@ -50,7 +50,7 @@ function HeroTransform() {
                 !showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
               }`}
             />
-            26 USC &sect; 1411(a)
+            26 USC &sect; 24(a)
           </button>
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
@@ -69,7 +69,7 @@ function HeroTransform() {
                 showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
               }`}
             />
-            statute/26/1411/a.rac
+            statute/26/24/a.rac
           </button>
         </div>
 

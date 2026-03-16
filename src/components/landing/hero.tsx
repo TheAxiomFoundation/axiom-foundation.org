@@ -34,7 +34,7 @@ of the threshold amount.`;
       onClick={handleClick}
       title="Click to toggle"
     >
-      <div className="bg-[var(--color-code-bg)] border border-[#2a2826] rounded-md overflow-hidden">
+      <div className="gradient-fill border border-[#2a2826] rounded-md overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-[#2a2826]">
           <button

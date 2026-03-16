@@ -136,17 +136,6 @@ export function Nav() {
           >
             Docs
           </a>
-          <a
-            href="https://github.com/RuleAtlas"
-            className="gradient-icon flex items-center gap-2 py-2 opacity-70 hover:opacity-100 text-[1.1rem] font-light no-underline"
-            style={{ color: "var(--gc, #1c1917)" }}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setOpen(false)}
-          >
-            <GitHubIcon className="w-5 h-5" />
-            <span className={MOBILE_LINK}>GitHub</span>
-          </a>
         </nav>
       )}
     </header>

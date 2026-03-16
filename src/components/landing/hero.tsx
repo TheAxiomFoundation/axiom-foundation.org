@@ -45,11 +45,6 @@ function HeroTransform() {
               setShowRac(false);
             }}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                !showRac ? "bg-white" : "bg-[rgba(255,255,255,0.5)]"
-              }`}
-            />
             26 USC &sect; 24(a)
           </button>
           <button
@@ -64,11 +59,6 @@ function HeroTransform() {
               setShowRac(true);
             }}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                showRac ? "bg-white" : "bg-[rgba(255,255,255,0.5)]"
-              }`}
-            />
             statute/26/24/a.rac
           </button>
         </div>

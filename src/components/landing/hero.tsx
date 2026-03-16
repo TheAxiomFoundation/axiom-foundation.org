@@ -74,7 +74,7 @@ function HeroTransform() {
         </div>
 
         {/* Content area — fixed height with crossfade */}
-        <div className="relative min-h-[280px]">
+        <div className="relative min-h-[250px]">
           {/* Statute view — serif font on gradient bg */}
           <div
             className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-500 ${

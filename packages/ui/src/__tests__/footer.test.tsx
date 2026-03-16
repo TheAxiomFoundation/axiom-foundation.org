@@ -4,7 +4,7 @@ import { Footer } from "../components/footer";
 describe("Footer", () => {
   it("renders the logo", () => {
     render(<Footer />);
-    expect(screen.getByLabelText("Axiom Foundation")).toBeInTheDocument();
+    expect(screen.getByAltText("Axiom Foundation")).toBeInTheDocument();
   });
 
   it("renders the tagline", () => {

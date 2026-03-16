@@ -11,7 +11,7 @@ import { Footer } from '@axiom-foundation/ui'
 describe('Footer', () => {
   it('renders the footer with wordmark', () => {
     render(<Footer />)
-    const logo = screen.getByLabelText('Axiom Foundation')
+    const logo = screen.getByAltText('Axiom Foundation')
     expect(logo).toBeInTheDocument()
   })
 

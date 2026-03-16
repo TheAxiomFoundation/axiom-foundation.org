@@ -39,3 +39,4 @@ coverage/
 # Wrangler
 .wrangler/
 .vercel
+*.tgz

@@ -8,12 +8,7 @@
 // -- Hero animation snippet ---------------------------------------------------
 
 export const heroRacCode = `ctc_amount_per_child:
-  from 1998-01-01: 400
-  from 1999-01-01: 500
-  from 2001-01-01: 600
-  from 2003-01-01: 1000
   from 2018-01-01: 2000
-  from 2025-01-01: 2200
 
 child_tax_credit:
   imports:

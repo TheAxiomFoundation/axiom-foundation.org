@@ -22,11 +22,7 @@ function HeroTransform() {
     setShowRac((v) => !v);
   };
 
-  const statuteText = `(a) In general.\u2014 There is hereby
-imposed a tax equal to 3.8 percent
-of the lesser of net investment
-income or modified AGI in excess
-of the threshold amount.`;
+  const statuteText = `(a) Allowance of credit.\u2014 There shall be allowed as a credit against the tax imposed by this chapter for the taxable year an amount equal to the sum of $2,000 multiplied by the number of qualifying children of the taxpayer.`;
 
   return (
     <div
@@ -40,8 +36,8 @@ of the threshold amount.`;
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               !showRac
-                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
-                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+                ? "text-white border-b-2 border-white -mb-px"
+                : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -49,18 +45,13 @@ of the threshold amount.`;
               setShowRac(false);
             }}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                !showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
-              }`}
-            />
-            26 USC &sect; 1411(a)
+            26 USC &sect; 24(a)
           </button>
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               showRac
-                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
-                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+                ? "text-white border-b-2 border-white -mb-px"
+                : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -68,20 +59,15 @@ of the threshold amount.`;
               setShowRac(true);
             }}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
-              }`}
-            />
-            statute/26/1411/a.rac
+            statute/26/24/a.rac
           </button>
         </div>
 
         {/* Content area — fixed height with crossfade */}
-        <div className="relative min-h-[280px]">
+        <div className="relative min-h-[250px]">
           {/* Statute view — serif font on gradient bg */}
           <div
-            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] whitespace-pre-wrap transition-opacity duration-500 ${
+            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-500 ${
               !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             style={{ fontFamily: "var(--f-serif)" }}

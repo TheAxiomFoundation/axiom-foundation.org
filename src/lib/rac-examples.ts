@@ -7,16 +7,15 @@
 
 // -- Hero animation snippet ---------------------------------------------------
 
-export const heroRacCode = `niit_rate:
-  from 2013-01-01: 0.038
+export const heroRacCode = `ctc_amount_per_child:
+  from 2018-01-01: 2000
 
-net_investment_income_tax:
+child_tax_credit:
   imports:
-    - 26/1411/a#net_investment_income
-    - 26/1411/a#excess_magi
+    - 26/24/c#qualifying_children
   entity: TaxUnit
-  from 2013-01-01:
-    niit_rate * min(net_investment_income, excess_magi)`
+  from 1998-01-01:
+    ctc_amount_per_child * qualifying_children`
 
 // -- Code comparison examples -------------------------------------------------
 

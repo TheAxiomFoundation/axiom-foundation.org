@@ -34,11 +34,12 @@ function HeroTransform() {
         {/* Tab bar */}
         <div className="gradient-fill flex border-b border-[#2a2826]">
           <button
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm transition-colors duration-300 ${
               !showRac
                 ? "text-white border-b-2 border-white -mb-px"
                 : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
+            style={{ fontFamily: "var(--f-serif)" }}
             onClick={(e) => {
               e.stopPropagation();
               setIsPaused(true);

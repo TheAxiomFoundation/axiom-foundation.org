@@ -18,7 +18,7 @@ describe('Footer', () => {
 
   it('renders tagline', () => {
     render(<Footer />)
-    expect(screen.getByText('Open infrastructure for encoded law.')).toBeInTheDocument()
+    expect(screen.getByText(/the world.*rules, encoded/i)).toBeInTheDocument()
   })
 
   it('renders navigation links', () => {

@@ -55,14 +55,14 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/atlas')
     render(<Nav />)
     const atlasLink = screen.getByText('Browse')
-    expect(atlasLink.closest('a')).toHaveClass('text-[var(--color-accent)]')
+    expect(atlasLink.closest('a')).toHaveClass('opacity-100')
   })
 
   it('highlights active link on /about', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<Nav />)
     const aboutLink = screen.getByText('About')
-    expect(aboutLink.closest('a')).toHaveClass('text-[var(--color-accent)]')
+    expect(aboutLink.closest('a')).toHaveClass('opacity-100')
   })
 
   it('renders GitHub icon link', () => {

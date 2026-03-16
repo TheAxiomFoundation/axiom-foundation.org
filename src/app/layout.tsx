@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { GradientSync } from "@/components/gradient-sync";
 import { PostHogProvider } from "@/components/posthog-provider";
 
 const mono = JetBrains_Mono({
@@ -14,12 +15,12 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Axiom Foundation — Open infrastructure for encoded law",
+  title: "Axiom Foundation — The world's rules, encoded",
   description:
     "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
   openGraph: {
     title: "Axiom Foundation",
-    description: "Open infrastructure for encoded law.",
+    description: "The world's rules, encoded.",
     images: ["/og-image.png"],
   },
 };
@@ -39,6 +40,7 @@ export default function RootLayout({
       </head>
       <body>
         <PostHogProvider />
+        <GradientSync />
         <Nav />
         <main className="relative z-10">{children}</main>
         <Footer />

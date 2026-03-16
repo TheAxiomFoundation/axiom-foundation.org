@@ -130,10 +130,7 @@ export function Hero() {
       >
         <div className="text-center mb-14">
           <h1 className="heading-page mb-6">
-            Encoding the{" "}
-            <span className="text-[var(--color-accent)]">
-              world&apos;s rules
-            </span>
+            The world&apos;s rules, encoded
           </h1>
 
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[540px] mx-auto">

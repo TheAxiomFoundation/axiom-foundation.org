@@ -10,7 +10,7 @@ export default function AboutPage() {
             About the Axiom Foundation
           </h1>
           <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
-            Open infrastructure for encoded law. We build machine-readable
+            The world&apos;s rules, encoded. We build machine-readable
             encodings of statutes, regulations, and policy rules to serve as
             ground truth for AI systems.
           </p>

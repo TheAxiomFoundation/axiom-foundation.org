@@ -164,7 +164,6 @@ pre {
   line-height: 1.2;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-ink);
 }
 
 /* Section-level heading — thin geometric uppercase */
@@ -175,7 +174,6 @@ pre {
   line-height: 1.2;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-ink);
 }
 
 /* Subsection heading — thin geometric uppercase */
@@ -186,7 +184,26 @@ pre {
   line-height: 1.2;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-ink);
+}
+
+/* ── Page-wide gradient fill — brown→ink, synced via JS --gx offset ── */
+
+.gradient-fill {
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
+}
+
+.text-gradient,
+.heading-page,
+.heading-section,
+.heading-sub {
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ── Color utilities ── */
@@ -222,7 +239,9 @@ pre {
   padding: 0.875rem 1.75rem;
   font-size: 0.95rem;
   font-weight: 500;
-  background: var(--color-accent);
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
   color: white;
   text-decoration: none;
   transition: all 150ms;
@@ -231,7 +250,7 @@ pre {
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-hover);
+  filter: brightness(0.85);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(180, 83, 9, 0.15);
   color: white;

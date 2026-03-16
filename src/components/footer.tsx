@@ -12,7 +12,7 @@ export function Footer() {
           />
         </div>
         <p className="text-[0.9rem] text-[var(--color-ink-muted)] mb-6">
-          Open infrastructure for encoded law.
+          The world&apos;s rules, encoded.
         </p>
         <div className="flex justify-center gap-8">
           <Link

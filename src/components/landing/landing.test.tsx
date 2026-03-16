@@ -34,7 +34,7 @@ describe('Landing sections', () => {
 
   it('renders the hero section with mission statement', () => {
     render(<Hero />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/encoding the/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/the world.*rules.*encoded/i)
   })
 
   it('renders the Atlas section', () => {

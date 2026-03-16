@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GitHubIcon } from "./icons";
 
+const NAV_LINK =
+  "text-gradient text-[0.9rem] font-light no-underline transition-opacity duration-150 flex items-center";
+
 export function Nav() {
   const pathname = usePathname();
 
@@ -30,19 +33,12 @@ export function Nav() {
             const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
 
             if (href.startsWith("/#")) {
-              // Anchor links — on landing page use native anchors, elsewhere use Link
               if (pathname === "/") {
                 return (
                   <a
                     key={href}
                     href={href.replace("/", "")}
-                    className={`text-[0.9rem] font-light no-underline transition-colors duration-150 flex items-center ${
-                      /* v8 ignore start -- anchor links never match pathname */
-                      isActive
-                        ? "text-[var(--color-ink)]"
-                        : /* v8 ignore stop */
-                          "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-                    }`}
+                    className={`${NAV_LINK} opacity-70 hover:opacity-100`}
                   >
                     {label}
                   </a>
@@ -52,7 +48,7 @@ export function Nav() {
                 <Link
                   key={href}
                   href={href}
-                  className="text-[0.9rem] font-light no-underline text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+                  className={`${NAV_LINK} opacity-70 hover:opacity-100`}
                 >
                   {label}
                 </Link>
@@ -63,10 +59,8 @@ export function Nav() {
               <Link
                 key={href}
                 href={href}
-                className={`text-[0.9rem] font-light no-underline transition-colors duration-150 flex items-center ${
-                  isActive
-                    ? "text-[var(--color-accent)]"
-                    : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                className={`${NAV_LINK} ${
+                  isActive ? "opacity-100" : "opacity-70 hover:opacity-100"
                 }`}
               >
                 {label}
@@ -75,7 +69,7 @@ export function Nav() {
           })}
           <a
             href="https://github.com/RuleAtlas/rac"
-            className="text-[0.9rem] font-light no-underline text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+            className={`${NAV_LINK} opacity-70 hover:opacity-100`}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -83,7 +77,8 @@ export function Nav() {
           </a>
           <a
             href="https://github.com/RuleAtlas"
-            className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+            className="gradient-icon transition-opacity duration-150 flex items-center opacity-70 hover:opacity-100"
+            style={{ color: "var(--gc, #1c1917)" }}
             target="_blank"
             rel="noopener noreferrer"
           >

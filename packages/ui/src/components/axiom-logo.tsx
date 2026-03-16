@@ -1,7 +1,8 @@
-import type { ReactElement } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 interface AxiomLogoProps {
   className?: string;
+  style?: CSSProperties;
   /** "full" renders "AXIOM FOUNDATION", "compact" renders just "AXIOM" */
   variant?: "full" | "compact";
 }
@@ -12,6 +13,7 @@ interface AxiomLogoProps {
  */
 export function AxiomLogo({
   className,
+  style,
   variant = "full",
 }: AxiomLogoProps): ReactElement {
   if (variant === "compact") {
@@ -21,6 +23,7 @@ export function AxiomLogo({
         viewBox="0 0 991 310"
         fill="currentColor"
         className={className}
+        style={style}
         aria-label="Axiom"
       >
         <g transform="translate(0,360) scale(1,-1)">

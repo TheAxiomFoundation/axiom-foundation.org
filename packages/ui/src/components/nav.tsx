@@ -92,7 +92,7 @@ export function Nav({
             href="/"
             className="flex items-baseline no-underline"
           >
-            <AxiomLogo className="h-9 w-auto shrink-0 text-[var(--color-accent)]" />
+            <AxiomLogo className="h-9 w-auto shrink-0" style={{ color: "var(--color-accent)" }} />
           </LinkComponent>
         ) : (
           <a
@@ -100,7 +100,7 @@ export function Nav({
             className="flex items-baseline no-underline"
             aria-label="Axiom Foundation"
           >
-            <AxiomLogo className="h-9 w-auto shrink-0 text-[var(--color-accent)]" />
+            <AxiomLogo className="h-9 w-auto shrink-0" style={{ color: "var(--color-accent)" }} />
           </a>
         )}
 

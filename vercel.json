@@ -1,15 +1,15 @@
 {
-  "redirects": [
+  "rewrites": [
     {
       "source": "/proposal/:path*",
-      "destination": "https://proposal.axiom-foundation.org/:path*",
-      "permanent": false
+      "destination": "https://proposal.axiom-foundation.org/:path*"
     },
     {
       "source": "/proposal",
-      "destination": "https://proposal.axiom-foundation.org/",
-      "permanent": false
-    },
+      "destination": "https://proposal.axiom-foundation.org/"
+    }
+  ],
+  "redirects": [
     {
       "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "ruleatlas.org" }],

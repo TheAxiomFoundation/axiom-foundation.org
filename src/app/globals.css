@@ -35,6 +35,7 @@
   --f-display: var(--font-geist-sans), -apple-system, sans-serif;
   --f-body: var(--font-geist-sans), -apple-system, sans-serif;
   --f-mono: var(--font-mono), "Fira Code", monospace;
+  --f-serif: var(--font-serif), "Georgia", "Times New Roman", serif;
 }
 
 /* ── Base resets ── */

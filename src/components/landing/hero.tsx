@@ -34,11 +34,11 @@ of the threshold amount.`;
       onClick={handleClick}
       title="Click to toggle"
     >
-      <div className="gradient-fill border border-[#2a2826] rounded-md overflow-hidden">
+      <div className="border border-[#2a2826] rounded-md overflow-hidden">
         {/* Tab bar */}
-        <div className="flex border-b border-[#2a2826]">
+        <div className="gradient-fill flex border-b border-[#2a2826]">
           <button
-            className={`flex items-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               !showRac
                 ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
                 : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
@@ -57,7 +57,7 @@ of the threshold amount.`;
             26 USC &sect; 1411(a)
           </button>
           <button
-            className={`flex items-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               showRac
                 ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
                 : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
@@ -79,18 +79,19 @@ of the threshold amount.`;
 
         {/* Content area — fixed height with crossfade */}
         <div className="relative min-h-[280px]">
-          {/* Statute view */}
+          {/* Statute view — serif font on gradient bg */}
           <div
-            className={`absolute inset-0 p-6 font-mono text-[0.85rem] text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap transition-opacity duration-500 ${
+            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] whitespace-pre-wrap transition-opacity duration-500 ${
               !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
+            style={{ fontFamily: "var(--f-serif)" }}
           >
             {statuteText}
           </div>
 
-          {/* RAC view */}
+          {/* RAC view — solid black bg */}
           <div
-            className={`absolute inset-0 transition-opacity duration-500 ${
+            className={`absolute inset-0 bg-black transition-opacity duration-500 ${
               showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >

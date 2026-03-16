@@ -36,7 +36,7 @@ function HeroTransform() {
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               !showRac
-                ? "text-white border-b-2 border-white -mb-px bg-[rgba(255,255,255,0.08)]"
+                ? "text-white border-b-2 border-white -mb-px"
                 : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
@@ -55,7 +55,7 @@ function HeroTransform() {
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               showRac
-                ? "text-white border-b-2 border-white -mb-px bg-[rgba(255,255,255,0.08)]"
+                ? "text-white border-b-2 border-white -mb-px"
                 : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {

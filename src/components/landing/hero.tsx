@@ -22,11 +22,7 @@ function HeroTransform() {
     setShowRac((v) => !v);
   };
 
-  const statuteText = `(a) In general.\u2014 There is hereby
-imposed a tax equal to 3.8 percent
-of the lesser of net investment
-income or modified AGI in excess
-of the threshold amount.`;
+  const statuteText = `(a) In general.\u2014 There is hereby imposed a tax equal to 3.8 percent of the lesser of net investment income or modified AGI in excess of the threshold amount.`;
 
   return (
     <div
@@ -81,7 +77,7 @@ of the threshold amount.`;
         <div className="relative min-h-[280px]">
           {/* Statute view — serif font on gradient bg */}
           <div
-            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] whitespace-pre-wrap transition-opacity duration-500 ${
+            className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-500 ${
               !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             style={{ fontFamily: "var(--f-serif)" }}

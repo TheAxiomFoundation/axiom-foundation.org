@@ -36,8 +36,8 @@ function HeroTransform() {
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               !showRac
-                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
-                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+                ? "text-white border-b-2 border-white -mb-px bg-[rgba(255,255,255,0.08)]"
+                : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -47,7 +47,7 @@ function HeroTransform() {
           >
             <span
               className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                !showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
+                !showRac ? "bg-white" : "bg-[rgba(255,255,255,0.5)]"
               }`}
             />
             26 USC &sect; 24(a)
@@ -55,8 +55,8 @@ function HeroTransform() {
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
               showRac
-                ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] -mb-px bg-[rgba(180,83,9,0.06)]"
-                : "text-[var(--color-ink-muted)] hover:text-[var(--color-code-text)]"
+                ? "text-white border-b-2 border-white -mb-px bg-[rgba(255,255,255,0.08)]"
+                : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
               e.stopPropagation();
@@ -66,7 +66,7 @@ function HeroTransform() {
           >
             <span
               className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                showRac ? "bg-[var(--color-accent)]" : "bg-[var(--color-ink-muted)]"
+                showRac ? "bg-white" : "bg-[rgba(255,255,255,0.5)]"
               }`}
             />
             statute/26/24/a.rac

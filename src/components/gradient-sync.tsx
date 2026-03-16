@@ -7,7 +7,7 @@ const FROM = [180, 83, 9];
 const TO = [28, 25, 23];
 
 const SELECTOR =
-  ".heading-page, .heading-section, .heading-sub, .text-gradient, .btn-primary, .gradient-icon";
+  ".heading-page, .heading-section, .heading-sub, .text-gradient, .btn-primary, .gradient-fill, .gradient-icon";
 
 function lerp(a: number, b: number, t: number) {
   return Math.round(a + (b - a) * t);

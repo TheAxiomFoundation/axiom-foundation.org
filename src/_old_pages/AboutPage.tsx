@@ -75,8 +75,8 @@ export default function AboutPage() {
                 <CheckIcon className={styles.checkIcon} />
                 <span>
                   Join us on{' '}
-                  <a href="https://github.com/RuleAtlas" className={styles.link}>
-                    github.com/RuleAtlas
+                  <a href="https://github.com/TheAxiomFoundation" className={styles.link}>
+                    github.com/TheAxiomFoundation
                   </a>
                 </span>
               </div>

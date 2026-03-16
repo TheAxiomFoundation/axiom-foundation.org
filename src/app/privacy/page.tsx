@@ -50,11 +50,11 @@ export default function PrivacyPage() {
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
               All our code is open source at{" "}
               <a
-                href="https://github.com/RuleAtlas"
+                href="https://github.com/TheAxiomFoundation"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                github.com/RuleAtlas
+                github.com/TheAxiomFoundation
               </a>
             </p>
           </section>

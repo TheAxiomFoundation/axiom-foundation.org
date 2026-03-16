@@ -6,7 +6,7 @@ export function Footer() {
       <div className="max-w-[1280px] mx-auto text-center">
         <div className="flex justify-center mb-4">
           <img
-            src="/logos/rules-atlas.svg"
+            src="/logos/axiom-foundation.svg"
             alt="Axiom Foundation"
             className="h-9 w-auto"
           />
@@ -22,7 +22,7 @@ export function Footer() {
             About
           </Link>
           <a
-            href="https://github.com/RuleAtlas"
+            href="https://github.com/TheAxiomFoundation"
             className="text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-ink)] transition-colors duration-150"
             target="_blank"
             rel="noopener noreferrer"

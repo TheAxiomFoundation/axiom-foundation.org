@@ -33,7 +33,7 @@ export function EncodingTab({
 
   const isGitHub = isGitHubEncoding(encoding);
   const gitHubUrl = isGitHub
-    ? `https://github.com/RuleAtlas/rac-us/blob/main/${encoding.file_path}`
+    ? `https://github.com/TheAxiomFoundation/rac-us/blob/main/${encoding.file_path}`
     : null;
 
   return (

@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GitHubIcon } from "./icons";
 
+const NAV_LINK =
+  "text-gradient text-[0.9rem] font-light no-underline transition-opacity duration-150 flex items-center";
+
 export function Nav() {
   const pathname = usePathname();
 
@@ -16,33 +19,26 @@ export function Nav() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-100 py-4 nav-bar">
+    <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
-        <Link href="/" className="flex items-baseline gap-2 no-underline">
+        <Link href="/" className="flex items-baseline no-underline" aria-label="Axiom Foundation">
           <img
             src="/logos/rules-atlas.svg"
-            alt="Rules Atlas"
-            className="h-11 w-auto"
+            alt="Axiom Foundation"
+            className="h-9 w-auto shrink-0"
           />
         </Link>
-        <nav className="flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map(({ href, label }) => {
             const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
 
             if (href.startsWith("/#")) {
-              // Anchor links — on landing page use native anchors, elsewhere use Link
               if (pathname === "/") {
                 return (
                   <a
                     key={href}
                     href={href.replace("/", "")}
-                    className={`text-[0.9rem] font-medium no-underline transition-colors duration-150 flex items-center ${
-                      /* v8 ignore start -- anchor links never match pathname */
-                      isActive
-                        ? "text-[var(--color-ink)]"
-                        : /* v8 ignore stop */
-                          "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-                    }`}
+                    className={`${NAV_LINK} opacity-70 hover:opacity-100`}
                   >
                     {label}
                   </a>
@@ -52,7 +48,7 @@ export function Nav() {
                 <Link
                   key={href}
                   href={href}
-                  className="text-[0.9rem] font-medium no-underline text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+                  className={`${NAV_LINK} opacity-70 hover:opacity-100`}
                 >
                   {label}
                 </Link>
@@ -63,10 +59,8 @@ export function Nav() {
               <Link
                 key={href}
                 href={href}
-                className={`text-[0.9rem] font-medium no-underline transition-colors duration-150 flex items-center ${
-                  isActive
-                    ? "text-[var(--color-accent)]"
-                    : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+                className={`${NAV_LINK} ${
+                  isActive ? "opacity-100" : "opacity-70 hover:opacity-100"
                 }`}
               >
                 {label}
@@ -75,7 +69,7 @@ export function Nav() {
           })}
           <a
             href="https://github.com/RuleAtlas/rac"
-            className="text-[0.9rem] font-medium no-underline text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+            className={`${NAV_LINK} opacity-70 hover:opacity-100`}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -83,7 +77,8 @@ export function Nav() {
           </a>
           <a
             href="https://github.com/RuleAtlas"
-            className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors duration-150 flex items-center"
+            className="gradient-icon transition-opacity duration-150 flex items-center opacity-70 hover:opacity-100"
+            style={{ color: "var(--gc, #1c1917)" }}
             target="_blank"
             rel="noopener noreferrer"
           >

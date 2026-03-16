@@ -7,12 +7,12 @@ export function Footer() {
         <div className="flex justify-center mb-4">
           <img
             src="/logos/rules-atlas.svg"
-            alt="Rules Atlas"
+            alt="Axiom Foundation"
             className="h-9 w-auto"
           />
         </div>
         <p className="text-[0.9rem] text-[var(--color-ink-muted)] mb-6">
-          Open infrastructure for encoded law.
+          The world&apos;s rules, encoded.
         </p>
         <div className="flex justify-center gap-8">
           <Link
@@ -30,7 +30,7 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="mailto:hello@ruleatlas.org"
+            href="mailto:hello@axiom-foundation.org"
             className="text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-ink)] transition-colors duration-150"
           >
             Contact

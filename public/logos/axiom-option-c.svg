@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 44">
+    <!-- Option C: Abstract convergence — two angular brackets forming an A-like shape -->
+    <g transform="translate(2, 4)">
+        <!-- Left stroke -->
+        <path d="M0 34 L14 0 L18 0 L4 34 Z" fill="#0d7c66"/>
+        <!-- Right stroke -->
+        <path d="M32 34 L18 0 L14 0 L28 34 Z" fill="#0d7c66" opacity="0.6"/>
+        <!-- Dot at apex — the axiom/truth point -->
+        <circle cx="16" cy="3" r="3" fill="#0d7c66"/>
+    </g>
+    <!-- Wordmark -->
+    <text x="44" y="30" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" letter-spacing="-1" fill="#111111">Axiom</text>
+</svg>

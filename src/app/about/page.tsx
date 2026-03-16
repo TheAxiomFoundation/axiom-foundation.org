@@ -7,10 +7,10 @@ export default function AboutPage() {
       <div className="max-w-[800px] mx-auto">
         <header className="text-center mb-16">
           <h1 className="heading-page mb-6">
-            About Rules Atlas
+            About the Axiom Foundation
           </h1>
           <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
-            Open infrastructure for encoded law. We build machine-readable
+            The world&apos;s rules, encoded. We build machine-readable
             encodings of statutes, regulations, and policy rules to serve as
             ground truth for AI systems.
           </p>
@@ -81,7 +81,7 @@ export default function AboutPage() {
             />
             <div>
               <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
-                Rules Atlas is led by{" "}
+                The Axiom Foundation is led by{" "}
                 <a
                   href="https://maxghenis.com"
                   target="_blank"
@@ -121,10 +121,10 @@ export default function AboutPage() {
           </p>
           <div className="inline-block px-6 py-3 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
             <a
-              href="mailto:hello@ruleatlas.org"
+              href="mailto:hello@axiom-foundation.org"
               className="font-mono text-[var(--color-accent)] text-[0.95rem]"
             >
-              hello@ruleatlas.org
+              hello@axiom-foundation.org
             </a>
           </div>
         </section>

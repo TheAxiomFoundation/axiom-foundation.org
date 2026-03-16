@@ -27,7 +27,6 @@ export function LabPreview() {
     <section id="lab" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">Development</span>
           <h2 className="heading-section mb-6">
             Experiment lab
           </h2>
@@ -53,7 +52,7 @@ export function LabPreview() {
               <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
                 {card.desc}
               </p>
-              <div className="px-4 py-2 bg-[var(--color-code-bg)] rounded font-mono text-xs text-[var(--color-ink-muted)]">
+              <div className="px-4 py-2 bg-[var(--color-code-bg)] rounded font-mono text-xs text-[#78716c]">
                 <span>{card.meta}</span>
               </div>
             </Link>

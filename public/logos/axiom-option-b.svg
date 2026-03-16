@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 44">
+    <!-- Option B: Universal quantifier (∀) — inverted A from formal logic -->
+    <g transform="translate(2, 2)">
+        <!-- Inverted A / ∀ symbol -->
+        <path d="M16 36 L32 0 L28 0 L24 9 L8 9 L4 0 L0 0 Z" fill="#0d7c66"/>
+        <!-- Crossbar cutout -->
+        <path d="M10 15 L22 15 L20 20 L12 20 Z" fill="#fafafa"/>
+    </g>
+    <!-- Wordmark -->
+    <text x="44" y="30" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" letter-spacing="-1" fill="#111111">Axiom</text>
+</svg>

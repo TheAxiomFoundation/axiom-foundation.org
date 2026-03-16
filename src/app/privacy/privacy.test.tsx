@@ -38,6 +38,6 @@ describe('PrivacyPage', () => {
   it('renders contact section with email', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@ruleatlas.org')).toBeInTheDocument()
+    expect(screen.getByText('hello@axiom-foundation.org')).toBeInTheDocument()
   })
 })

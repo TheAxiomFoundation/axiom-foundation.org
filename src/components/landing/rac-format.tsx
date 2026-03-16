@@ -435,7 +435,6 @@ export function RacFormat() {
     >
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
-          <span className="eyebrow block mb-4">File format</span>
           <h2 className="heading-section mb-6">
             .rac
           </h2>
@@ -461,16 +460,16 @@ export function RacFormat() {
             <table className="w-full border-collapse font-body text-[0.9rem]">
               <thead>
                 <tr>
-                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-ink)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
+                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-code-text)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
                     Capability
                   </th>
-                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-ink)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
+                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-code-text)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
                     DMN
                   </th>
-                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-ink)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
+                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-code-text)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
                     OpenFisca/PE
                   </th>
-                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-ink)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
+                  <th className="px-5 py-3 text-left font-semibold text-[var(--color-code-text)] bg-[var(--color-code-bg)] border-b border-[var(--color-rule)]">
                     Catala
                   </th>
                   <th className="px-5 py-3 text-left font-semibold bg-[var(--color-accent-light)] text-[var(--color-accent)] border-b border-[var(--color-rule)]">

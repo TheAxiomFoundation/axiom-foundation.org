@@ -34,7 +34,7 @@ describe('Landing sections', () => {
 
   it('renders the hero section with mission statement', () => {
     render(<Hero />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/encoding the/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/the world.*rules.*encoded/i)
   })
 
   it('renders the Atlas section', () => {
@@ -45,7 +45,6 @@ describe('Landing sections', () => {
 
   it('renders the RAC DSL section', () => {
     render(<RacSection />)
-    expect(screen.getByText(/what is rac/i)).toBeInTheDocument()
     expect(screen.getByText(/rules as code/i)).toBeInTheDocument()
   })
 
@@ -58,7 +57,6 @@ describe('Landing sections', () => {
   it('renders the AutoRAC section', () => {
     render(<AutoracSection />)
     expect(screen.getAllByText(/autorac/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/ai encoding/i)).toBeInTheDocument()
     expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
   })
 
@@ -69,8 +67,7 @@ describe('Landing sections', () => {
 
   it('renders the ground truth for AI section', () => {
     render(<GroundTruthSection />)
-    expect(screen.getAllByText(/ground truth for ai/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/verifiable/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/verifiable rewards/i)).toBeInTheDocument()
   })
 
   it('renders encoding coverage section', () => {
@@ -201,7 +198,7 @@ describe('RacFormat tabbed code examples', () => {
   })
 })
 
-describe('RacSection CodeTransform', () => {
+describe('Hero transform', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -210,35 +207,30 @@ describe('RacSection CodeTransform', () => {
     vi.useRealTimers()
   })
 
-  it('CodeTransform auto-advances phases with timer', () => {
-    render(<RacSection />)
+  it('auto-toggles between statute and RAC views', () => {
+    render(<Hero />)
 
     act(() => {
-      vi.advanceTimersByTime(3000)
+      vi.advanceTimersByTime(4000)
     })
 
     act(() => {
-      vi.advanceTimersByTime(3000)
-    })
-
-    act(() => {
-      vi.advanceTimersByTime(3000)
+      vi.advanceTimersByTime(4000)
     })
   })
 
-  it('CodeTransform click pauses auto-advance and manually advances', () => {
-    render(<RacSection />)
+  it('click pauses auto-toggle and switches view', () => {
+    render(<Hero />)
 
-    const codeTransform = screen.getByTitle('Click to advance')
+    const transform = screen.getByTitle('Click to toggle')
 
-    fireEvent.click(codeTransform)
+    fireEvent.click(transform)
 
     act(() => {
-      vi.advanceTimersByTime(6000)
+      vi.advanceTimersByTime(8000)
     })
 
-    fireEvent.click(codeTransform)
-    fireEvent.click(codeTransform)
+    fireEvent.click(transform)
   })
 })
 

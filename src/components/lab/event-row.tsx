@@ -191,7 +191,7 @@ export function EventRow({
       <div className="min-w-0">
         {/* v8 ignore next 5 -- agent type badge */}
         {agentType && (
-          <span className="font-mono text-[0.65rem] text-[var(--color-ink-muted)] bg-[var(--color-code-bg)] px-1.5 py-px rounded mr-2">
+          <span className="font-mono text-[0.65rem] text-[#78716c] bg-[var(--color-code-bg)] px-1.5 py-px rounded mr-2">
             {agentType}
           </span>
         )}

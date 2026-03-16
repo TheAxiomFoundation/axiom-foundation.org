@@ -1,6 +1,6 @@
-# Rules Atlas
+# Axiom
 
-Rules Atlas website (ruleatlas.org). Deploys to Vercel.
+Axiom website (axiom-foundation.org). Deploys to Vercel.
 
 ## After pushing changes
 

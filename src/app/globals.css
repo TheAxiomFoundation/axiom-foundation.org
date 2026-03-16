@@ -3,35 +3,37 @@
 @import "../lib/prism-catala/light.css";
 
 /* ═══════════════════════════════════════════
-   Rules Atlas design tokens
+   Axiom design tokens — "The Transformation"
+   Light paper (law) + dark code (computation)
    ═══════════════════════════════════════════ */
 
 @theme {
-  /* Color palette — clean tech infrastructure */
-  --color-paper: #fafafa;
+  /* Color palette — statute paper & legal ink */
+  --color-paper: #faf9f6;
   --color-paper-elevated: #ffffff;
-  --color-ink: #111111;
-  --color-ink-secondary: #555555;
-  --color-ink-muted: #999999;
-  --color-rule: #e5e5e5;
-  --color-rule-subtle: #f0f0f0;
-  --color-accent: #0d7c66;
-  --color-accent-hover: #0a6354;
-  --color-accent-light: rgba(13, 124, 102, 0.06);
-  --color-code-bg: #f6f6f6;
-  --color-success: #2d8a4e;
-  --color-warning: #c27a1a;
-  --color-error: #c43d3d;
+  --color-ink: #1c1917;
+  --color-ink-secondary: #57534e;
+  --color-ink-muted: #a8a29e;
+  --color-rule: #e7e5e4;
+  --color-rule-subtle: #f5f5f4;
+  --color-accent: #b45309;
+  --color-accent-hover: #92400e;
+  --color-accent-light: rgba(180, 83, 9, 0.06);
+  --color-code-bg: #1c1917;
+  --color-code-text: #e7e5e4;
+  --color-success: #166534;
+  --color-warning: #b45309;
+  --color-error: #991b1b;
 
   /* Animation curves */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Typography — next/font sets --font-body, --font-mono on <html> */
+/* Typography — next/font sets --font-geist-sans, --font-mono on <html> */
 :root {
-  --f-display: var(--font-body), -apple-system, sans-serif;
-  --f-body: var(--font-body), -apple-system, sans-serif;
+  --f-display: var(--font-geist-sans), -apple-system, sans-serif;
+  --f-body: var(--font-geist-sans), -apple-system, sans-serif;
   --f-mono: var(--font-mono), "Fira Code", monospace;
 }
 
@@ -43,8 +45,6 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
-  background-image: radial-gradient(circle, #d0d0d0 0.5px, transparent 0.5px);
-  background-size: 24px 24px;
 }
 
 body {
@@ -55,7 +55,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  background: rgba(180, 83, 9, 0.15);
   color: var(--color-ink);
 }
 
@@ -63,7 +63,7 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--f-body);
   font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   color: var(--color-ink);
 }
 
@@ -84,10 +84,11 @@ code, pre {
 
 pre {
   background: var(--color-code-bg);
-  border: 1px solid var(--color-rule);
+  border: 1px solid #2a2826;
   border-radius: 4px;
   padding: 1.25rem;
   overflow-x: auto;
+  color: var(--color-code-text);
 }
 
 /* ── Keyframes ── */
@@ -131,7 +132,7 @@ pre {
 .font-heading {
   font-family: var(--f-body);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 .font-body {
@@ -155,34 +156,54 @@ pre {
   color: var(--color-accent);
 }
 
-/* Page-level heading */
+/* Page-level heading — thin geometric uppercase */
 .heading-page {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  color: var(--color-ink);
+  font-weight: 300;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-/* Section-level heading */
+/* Section-level heading — thin geometric uppercase */
 .heading-section {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: clamp(1.75rem, 3vw, 2.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: var(--color-ink);
+  font-weight: 300;
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-/* Subsection heading */
+/* Subsection heading — thin geometric uppercase */
 .heading-sub {
   font-family: var(--f-body);
-  font-weight: 700;
-  font-size: 1.5rem;
+  font-weight: 300;
+  font-size: 1.1rem;
   line-height: 1.2;
-  letter-spacing: -0.02em;
-  color: var(--color-ink);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── Page-wide gradient fill — brown→ink, synced via JS --gx offset ── */
+
+.gradient-fill {
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
+}
+
+.text-gradient,
+.heading-page,
+.heading-section,
+.heading-sub {
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ── Color utilities ── */
@@ -200,13 +221,12 @@ pre {
 .card {
   border: 1px solid var(--color-rule);
   background: var(--color-paper-elevated);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .card:hover {
-  background: var(--color-accent-light);
   border-color: var(--color-accent);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 /* ── Button utilities ── */
@@ -219,7 +239,9 @@ pre {
   padding: 0.875rem 1.75rem;
   font-size: 0.95rem;
   font-weight: 500;
-  background: var(--color-accent);
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
   color: white;
   text-decoration: none;
   transition: all 150ms;
@@ -228,9 +250,9 @@ pre {
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-hover);
+  filter: brightness(0.85);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26, 122, 109, 0.2);
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.15);
   color: white;
 }
 
@@ -251,7 +273,6 @@ pre {
 }
 
 .btn-outline:hover {
-  background: var(--color-accent-light);
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
@@ -259,7 +280,7 @@ pre {
 /* ── Nav bar ── */
 
 .nav-bar {
-  background: rgba(250, 250, 250, 0.9);
-  backdrop-filter: blur(12px);
+  background: rgba(250, 249, 246, 0.95);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-rule);
 }

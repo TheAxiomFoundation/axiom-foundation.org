@@ -14,7 +14,7 @@ describe("Nav", () => {
 
   it("renders the Axiom Foundation logo", () => {
     render(<Nav />);
-    expect(screen.getAllByLabelText("Axiom Foundation").length).toBeGreaterThan(0);
+    expect(screen.getByAltText("Axiom Foundation")).toBeInTheDocument();
   });
 
   it("applies baseUrl to links", () => {

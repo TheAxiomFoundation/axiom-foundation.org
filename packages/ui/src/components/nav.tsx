@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, type ReactNode, type ComponentType } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { GitHubIcon } from "./icons";
-import { AxiomLogo } from "./axiom-logo";
 import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 const NAV_LINK =
@@ -27,6 +26,9 @@ export interface NavProps {
   renderLink?: RenderLinkComponent;
   /** Additional nav links to append (e.g. "Proposal" for the proposal app) */
   extraLinks?: NavLink[];
+  /** Logo image src. Defaults to "/logos/axiom-foundation.svg".
+   *  When baseUrl is set, resolved relative to baseUrl. */
+  logoSrc?: string;
 }
 
 const DEFAULT_LINKS: NavLink[] = [
@@ -37,11 +39,14 @@ const DEFAULT_LINKS: NavLink[] = [
   { href: "/about", label: "About" },
 ];
 
+const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
+
 export function Nav({
   baseUrl = "",
   pathname,
   renderLink: LinkComponent,
   extraLinks = [],
+  logoSrc,
 }: NavProps = {}) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -51,12 +56,17 @@ export function Nav({
     [extraLinks],
   );
 
+  const resolvedLogoSrc = logoSrc
+    ? logoSrc
+    : baseUrl
+      ? `${baseUrl}${DEFAULT_LOGO}`
+      : DEFAULT_LOGO;
+
   function renderNavLink({ href, label }: NavLink, mobile = false) {
     const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
     const base = mobile ? MOBILE_LINK : NAV_LINK;
     const opacity = isActive ? "opacity-100" : "opacity-70 hover:opacity-100";
 
-    // Determine what to render as and with what href
     const isHashLink = href.startsWith("/#");
     const isHomepageHash = isHashLink && !baseUrl && pathname === "/";
     const useNativeAnchor = baseUrl || !LinkComponent || isHomepageHash;
@@ -83,6 +93,13 @@ export function Nav({
   }
 
   const homeHref = baseUrl || "/";
+  const logo = (
+    <img
+      src={resolvedLogoSrc}
+      alt="Axiom Foundation"
+      className="h-9 w-auto shrink-0"
+    />
+  );
 
   return (
     <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
@@ -92,7 +109,7 @@ export function Nav({
             href="/"
             className="flex items-baseline no-underline"
           >
-            <AxiomLogo className="h-9 w-auto shrink-0" style={{ color: "var(--color-accent)" }} />
+            {logo}
           </LinkComponent>
         ) : (
           <a
@@ -100,7 +117,7 @@ export function Nav({
             className="flex items-baseline no-underline"
             aria-label="Axiom Foundation"
           >
-            <AxiomLogo className="h-9 w-auto shrink-0" style={{ color: "var(--color-accent)" }} />
+            {logo}
           </a>
         )}
 

@@ -35,6 +35,74 @@ export function getJurisdictionLabel(jurisdiction: string): string {
   }
 }
 
+function isHumanReadableCitation(sourcePath: string): boolean {
+  return /\b(?:U\.?S\.?C\.?|USC|C\.?F\.?R\.?|CFR|Code|Act)\b|§/.test(
+    sourcePath
+  );
+}
+
+function formatSubsectionSuffix(subsections: string[]): string {
+  return subsections.map((segment) => `(${segment})`).join("");
+}
+
+function formatCitationPath(
+  citationPath: string,
+  jurisdiction: string,
+  docType: string
+): string | null {
+  const parts = citationPath.split("/").filter(Boolean);
+  if (parts.length < 4) {
+    return null;
+  }
+
+  if (jurisdiction === "uk" && docType === "legislation") {
+    const [, kind, instrumentType, year, number, ...rest] = parts;
+    if (!kind || !instrumentType || !year || !number) {
+      return null;
+    }
+    const suffixText =
+      rest.length > 0 ? " " + rest.join(" ").replace(/[-_]/g, " ") : "";
+    return `${instrumentType.toUpperCase()} ${year}/${number}${suffixText}`;
+  }
+
+  if (docType !== "statute") {
+    return null;
+  }
+
+  const [, , title, section, ...subsections] = parts;
+  const suffix = formatSubsectionSuffix(subsections);
+
+  if (jurisdiction === "us") {
+    return `${title} U.S.C. § ${section}${suffix}`;
+  }
+
+  if (jurisdiction.startsWith("us-")) {
+    return `${title} § ${section}${suffix}`;
+  }
+
+  return null;
+}
+
+function getRuleCitation(rule: Rule): string {
+  const sourcePath = rule.source_path?.trim();
+  if (sourcePath && isHumanReadableCitation(sourcePath)) {
+    return sourcePath;
+  }
+
+  if (rule.citation_path) {
+    const formatted = formatCitationPath(
+      rule.citation_path,
+      rule.jurisdiction,
+      rule.doc_type
+    );
+    if (formatted) {
+      return formatted;
+    }
+  }
+
+  return sourcePath || rule.citation_path || rule.id;
+}
+
 export function transformRuleToViewerDoc(
   rule: Rule,
   children: Rule[],
@@ -72,7 +140,7 @@ export function transformRuleToViewerDoc(
   }
 
   return {
-    citation: rule.source_path || rule.id,
+    citation: getRuleCitation(rule),
     title: rule.heading || "Untitled",
     subsections,
     hasRac: rule.has_rac,

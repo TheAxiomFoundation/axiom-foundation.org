@@ -94,14 +94,36 @@ describe("useTreeNodes", () => {
       });
 
       const { result } = renderHook(() =>
-        useTreeNodes("uk", [], false)
+        useTreeNodes("canada", [], false)
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(mockGetActNodes).toHaveBeenCalledWith("uk", 0);
+      expect(mockGetActNodes).toHaveBeenCalledWith("canada", 0);
       expect(result.current.nodes).toEqual(actNodes);
       expect(result.current.hasMore).toBe(true);
+    });
+  });
+
+  describe("root of UK citation-path jurisdiction", () => {
+    it("calls getDocTypeNodes", async () => {
+      const docNodes = [
+        makeNode({
+          segment: "legislation",
+          label: "Legislation",
+          nodeType: "doc_type",
+        }),
+      ];
+      mockGetDocTypeNodes.mockResolvedValue(docNodes);
+
+      const { result } = renderHook(() =>
+        useTreeNodes("uk", [], true)
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetDocTypeNodes).toHaveBeenCalledWith("uk");
+      expect(result.current.nodes).toEqual(docNodes);
     });
   });
 
@@ -125,6 +147,31 @@ describe("useTreeNodes", () => {
         false
       );
       expect(result.current.nodes).toEqual(titleNodes);
+    });
+
+    it("calls getTitleNodes for UK legislation", async () => {
+      const nodes = [
+        makeNode({
+          segment: "uksi",
+          label: "UK Statutory Instruments",
+          nodeType: "title",
+        }),
+      ];
+      mockGetTitleNodes.mockResolvedValue(nodes);
+
+      const { result } = renderHook(() =>
+        useTreeNodes("uk", ["legislation"], true)
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetTitleNodes).toHaveBeenCalledWith(
+        "uk",
+        "legislation",
+        expect.any(Set),
+        false
+      );
+      expect(result.current.nodes).toEqual(nodes);
     });
   });
 
@@ -173,7 +220,7 @@ describe("useTreeNodes", () => {
       });
 
       const { result } = renderHook(() =>
-        useTreeNodes("uk", [SAMPLE_UUID], false)
+        useTreeNodes("canada", [SAMPLE_UUID], false)
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -197,7 +244,7 @@ describe("useTreeNodes", () => {
       mockGetRuleById.mockResolvedValue(fakeRule);
 
       const { result } = renderHook(() =>
-        useTreeNodes("uk", [SAMPLE_UUID], false)
+        useTreeNodes("canada", [SAMPLE_UUID], false)
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -240,7 +287,7 @@ describe("useTreeNodes", () => {
       mockIsUUID.mockReturnValue(false);
 
       const { result } = renderHook(() =>
-        useTreeNodes("uk", ["not-a-uuid"], false)
+        useTreeNodes("canada", ["not-a-uuid"], false)
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));

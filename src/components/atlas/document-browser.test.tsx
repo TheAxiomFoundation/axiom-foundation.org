@@ -242,10 +242,10 @@ describe("AtlasBrowser", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [
           {
-            segment: "some-uuid",
-            label: "Some Act",
+            segment: "legislation",
+            label: "Legislation",
             hasChildren: true,
-            nodeType: "act",
+            nodeType: "doc_type",
           },
         ],
         loading: false,
@@ -256,11 +256,22 @@ describe("AtlasBrowser", () => {
       });
 
       render(<AtlasBrowser segments={["uk"]} />);
-      expect(screen.getByText("Some Act")).toBeInTheDocument();
+      expect(screen.getByText("Legislation")).toBeInTheDocument();
       // Should NOT show jurisdiction picker
       expect(
         screen.queryByText("Choose a jurisdiction")
       ).not.toBeInTheDocument();
+    });
+
+    it("preserves legacy UK UUID routes", () => {
+      render(<AtlasBrowser segments={["uk", "550e8400-e29b-41d4-a716-446655440000"]} />);
+
+      expect(useTreeNodes).toHaveBeenCalledWith(
+        "uk",
+        ["550e8400-e29b-41d4-a716-446655440000"],
+        false,
+        false
+      );
     });
   });
 
@@ -382,6 +393,40 @@ describe("AtlasBrowser", () => {
       });
 
       // No context intro block
+      expect(
+        screen.queryByTestId("context-intro")
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders top-level citation-path leaves without parent section context", async () => {
+      const topLevelLeaf = {
+        ...leafRule,
+        level: 1,
+        heading: "Allowance of credit",
+        body: "There shall be allowed as a credit against the tax imposed by this chapter.",
+        citation_path: "us/statute/26/24/a",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: topLevelLeaf,
+      });
+
+      render(<AtlasBrowser segments={["us", "statute", "26", "24", "a"]} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "There shall be allowed as a credit against the tax imposed by this chapter."
+          )
+        ).toBeInTheDocument();
+      });
+
+      expect(resolveDisplayContext).not.toHaveBeenCalled();
       expect(
         screen.queryByTestId("context-intro")
       ).not.toBeInTheDocument();

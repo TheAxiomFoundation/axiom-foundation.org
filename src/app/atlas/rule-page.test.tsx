@@ -40,7 +40,7 @@ describe("transformRuleToViewerDoc", () => {
       { id: "c", text: "" },
     ]);
     expect(doc.title).toBe("Section 1 - Tax imposed");
-    expect(doc.citation).toBe("statute/26/1");
+    expect(doc.citation).toBe("26 U.S.C. § 1");
   });
 
   it("splits body into paragraphs when no children", () => {
@@ -69,10 +69,10 @@ describe("transformRuleToViewerDoc", () => {
     expect(doc.title).toBe("Untitled");
   });
 
-  it("uses rule.id as citation when source_path is null", () => {
+  it("uses formatted citation_path when source_path is null", () => {
     const rule = makeRule({ source_path: null });
     const doc = transformRuleToViewerDoc(rule, []);
-    expect(doc.citation).toBe("rule-1");
+    expect(doc.citation).toBe("26 U.S.C. § 1");
   });
 
   it("passes hasRac, jurisdiction, and archPath", () => {
@@ -85,6 +85,20 @@ describe("transformRuleToViewerDoc", () => {
     expect(doc.hasRac).toBe(true);
     expect(doc.jurisdiction).toBe("uk");
     expect(doc.archPath).toBe("statute/uk/1");
+  });
+
+  it("formats UK legislation citation paths when source_path is archival", () => {
+    const rule = makeRule({
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      source_path: "sources/official/uksi/2013/376/2025-04-01/data.akn",
+      citation_path:
+        "uk/legislation/uksi/2013/376/regulation/22/work-allowance-without-housing",
+    });
+    const doc = transformRuleToViewerDoc(rule, []);
+    expect(doc.citation).toBe(
+      "UKSI 2013/376 regulation 22 work allowance without housing"
+    );
   });
 });
 

@@ -81,10 +81,21 @@ function RuleTreeView({
   const breadcrumbs = buildBreadcrumbs(segments);
 
   const [displayCtx, setDisplayCtx] = useState<DisplayContext | null>(null);
+  const useParentContext =
+    !hasCitationPaths || (leafRule?.level ?? 0) > 1;
 
   useEffect(() => {
     if (leafRule) {
-      resolveDisplayContext(leafRule).then(setDisplayCtx);
+      if (useParentContext) {
+        resolveDisplayContext(leafRule).then(setDisplayCtx);
+      } else {
+        setDisplayCtx({
+          rule: leafRule,
+          parentBody: null,
+          siblings: [leafRule],
+          targetIndex: 0,
+        });
+      }
       /* v8 ignore next 4 -- analytics side effect */
       trackAtlasEvent("atlas_rule_viewed", {
         citation_path: leafRule.citation_path || leafRule.id,
@@ -94,7 +105,7 @@ function RuleTreeView({
     } else {
       setDisplayCtx(null);
     }
-  }, [leafRule]);
+  }, [leafRule, useParentContext]);
 
   // Leaf rule from tree navigation (e.g. UK/Canada act with no children)
   /* v8 ignore start -- leaf rule rendering */
@@ -246,12 +257,19 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
   // Rule phase
   if (resolved.jurisdiction) {
+    const useLegacyUuidRouting =
+      resolved.jurisdiction.slug === "uk" &&
+      resolved.ruleSegments.length > 0 &&
+      resolved.ruleSegments.every((segment) => isUUID(segment));
+
     return (
       <RuleTreeView
         segments={segments}
         dbJurisdictionId={resolved.jurisdiction.slug}
         ruleSegments={resolved.ruleSegments}
-        hasCitationPaths={resolved.jurisdiction.hasCitationPaths}
+        hasCitationPaths={
+          useLegacyUuidRouting ? false : resolved.jurisdiction.hasCitationPaths
+        }
       />
     );
   }

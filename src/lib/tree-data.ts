@@ -45,7 +45,7 @@ export interface Jurisdiction {
 export const JURISDICTIONS: Jurisdiction[] = [
   { slug: "us", label: "US Federal", hasCitationPaths: true },
   { slug: "us-oh", label: "Ohio", hasCitationPaths: true },
-  { slug: "uk", label: "United Kingdom", hasCitationPaths: false },
+  { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
   { slug: "canada", label: "Canada", hasCitationPaths: false },
 ];
 
@@ -163,16 +163,33 @@ export async function getJurisdictionCounts(
 }
 
 export async function getDocTypeNodes(
-  _jurisdiction: string
+  jurisdiction: string
 ): Promise<TreeNode[]> {
-  return [
-    {
-      segment: "statute",
-      label: "Statutes",
+  const { data } = await supabaseArch
+    .from("rules")
+    .select("citation_path")
+    .eq("jurisdiction", jurisdiction)
+    .not("citation_path", "is", null)
+    .is("parent_id", null)
+    .limit(1000);
+
+  const docTypes = new Set<string>();
+  for (const row of data || []) {
+    if (!row.citation_path) continue;
+    const parts = row.citation_path.split("/");
+    if (parts.length >= 2) {
+      docTypes.add(parts[1]);
+    }
+  }
+
+  return Array.from(docTypes)
+    .sort(naturalCompare)
+    .map((segment) => ({
+      segment,
+      label: segment === "statute" ? "Statutes" : formatGenericSegmentLabel(segment),
       hasChildren: true,
       nodeType: "doc_type" as const,
-    },
-  ];
+    }));
 }
 
 export async function getTitleNodes(
@@ -181,6 +198,39 @@ export async function getTitleNodes(
   encodedPaths?: Set<string>,
   encodedOnly?: boolean
 ): Promise<TreeNode[]> {
+  const rootPath = `${jurisdiction}/${_docType}`;
+  const { data: parentRule } = await supabaseArch
+    .from("rules")
+    .select("*")
+    .eq("citation_path", rootPath)
+    .single();
+
+  if (parentRule) {
+    const { data } = await supabaseArch
+      .from("rules")
+      .select("*")
+      .eq("parent_id", parentRule.id)
+      .order("ordinal");
+
+    let nodes = ((data || []) as Rule[]).map((r) =>
+      ruleToSectionNode(r, encodedPaths)
+    );
+
+    if (encodedOnly && encodedPaths) {
+      nodes = nodes.filter((n) => {
+        if (n.hasRac) return true;
+        if (n.rule?.citation_path) {
+          const parts = n.rule.citation_path.split("/");
+          const withoutJurisdiction = parts.slice(1).join("/");
+          return hasEncodedDescendant(encodedPaths, withoutJurisdiction);
+        }
+        return false;
+      });
+    }
+
+    return nodes;
+  }
+
   const { data } = await supabaseArch
     .from("rules")
     .select("citation_path")
@@ -375,9 +425,12 @@ function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
     ? rule.citation_path.split("/").pop() || rule.id
     : rule.id;
 
-  const label = rule.heading
-    ? `§ ${segment} — ${rule.heading}`
-    : `§ ${segment}`;
+  const isStatutePath = rule.citation_path?.includes("/statute/");
+  const label = isStatutePath
+    ? rule.heading
+      ? `§ ${segment} — ${rule.heading}`
+      : `§ ${segment}`
+    : rule.heading || formatGenericSegmentLabel(segment);
 
   // Use has_rac from DB directly, or fall back to encoded paths set
   let hasRac = rule.has_rac;
@@ -496,20 +549,76 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
   for (let i = 1; i < segments.length; i++) {
     const ruleIndex = i - 1;
     const href = "/atlas/" + segments.slice(0, i + 1).join("/");
-    const label = formatRuleSegmentLabel(segments[i], ruleIndex);
+    const label = formatRuleSegmentLabel(
+      segments[i],
+      ruleIndex,
+      jurisdiction.slug,
+      segments[i - 1]
+    );
     items.push({ label, href });
   }
 
   return items;
 }
 
-function formatRuleSegmentLabel(segment: string, ruleIndex: number): string {
+function formatGenericSegmentLabel(segment: string): string {
+  switch (segment) {
+    case "legislation":
+      return "Legislation";
+    case "uksi":
+      return "UK Statutory Instruments";
+    case "ssi":
+      return "Scottish Statutory Instruments";
+    case "regulation":
+    case "schedule":
+    case "paragraph":
+    case "article":
+    case "section":
+    case "part":
+    case "chapter":
+      return segment.charAt(0).toUpperCase() + segment.slice(1);
+    default:
+      return segment
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+}
+
+function formatRuleSegmentLabel(
+  segment: string,
+  ruleIndex: number,
+  jurisdiction: string,
+  previousSegment?: string
+): string {
+  if (jurisdiction === "uk") {
+    if (ruleIndex === 0) {
+      return formatGenericSegmentLabel(segment);
+    }
+
+    if (
+      previousSegment &&
+      ["regulation", "schedule", "paragraph", "article", "section", "part", "chapter"].includes(previousSegment)
+    ) {
+      return segment;
+    }
+
+    return formatGenericSegmentLabel(segment);
+  }
+
   if (ruleIndex === 0) {
     return segment === "statute" ? "Statutes" : segment;
   }
 
   if (ruleIndex === 1) {
     return `Title ${segment}`;
+  }
+
+  if (ruleIndex === 2) {
+    return `§ ${segment}`;
+  }
+
+  if (ruleIndex > 2) {
+    return `(${segment})`;
   }
 
   return `§ ${segment}`;

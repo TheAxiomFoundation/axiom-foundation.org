@@ -32,10 +32,10 @@ describe("JURISDICTIONS", () => {
     expect(us!.hasCitationPaths).toBe(true);
   });
 
-  it("UK does not use citation paths", () => {
+  it("UK uses citation paths", () => {
     const uk = JURISDICTIONS.find((j) => j.slug === "uk");
     expect(uk).toBeDefined();
-    expect(uk!.hasCitationPaths).toBe(false);
+    expect(uk!.hasCitationPaths).toBe(true);
   });
 });
 
@@ -79,8 +79,8 @@ describe("getJurisdiction (backward compat)", () => {
     expect(getJurisdiction("us-oh")?.hasCitationPaths).toBe(true);
   });
 
-  it("marks UK and Canada as not having citation paths", () => {
-    expect(getJurisdiction("uk")?.hasCitationPaths).toBe(false);
+  it("marks UK as having citation paths and Canada as not", () => {
+    expect(getJurisdiction("uk")?.hasCitationPaths).toBe(true);
     expect(getJurisdiction("canada")?.hasCitationPaths).toBe(false);
   });
 });
@@ -126,10 +126,10 @@ describe("resolveAtlasPath", () => {
   });
 
   it("returns rule phase for UK with rule segments", () => {
-    const result = resolveAtlasPath(["uk", "statute"]);
+    const result = resolveAtlasPath(["uk", "legislation"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("uk");
-    expect(result.ruleSegments).toEqual(["statute"]);
+    expect(result.ruleSegments).toEqual(["legislation"]);
   });
 
   it("returns rule phase for Canada", () => {
@@ -165,6 +165,20 @@ describe("buildBreadcrumbs", () => {
     ]);
   });
 
+  it("formats nested statute breadcrumbs with parenthetical subsections", () => {
+    const crumbs = buildBreadcrumbs(["us", "statute", "26", "24", "d", "1", "A"]);
+    expect(crumbs).toEqual([
+      { label: "Atlas", href: "/atlas" },
+      { label: "US Federal", href: "/atlas/us" },
+      { label: "Statutes", href: "/atlas/us/statute" },
+      { label: "Title 26", href: "/atlas/us/statute/26" },
+      { label: "§ 24", href: "/atlas/us/statute/26/24" },
+      { label: "(d)", href: "/atlas/us/statute/26/24/d" },
+      { label: "(1)", href: "/atlas/us/statute/26/24/d/1" },
+      { label: "(A)", href: "/atlas/us/statute/26/24/d/1/A" },
+    ]);
+  });
+
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
@@ -174,11 +188,14 @@ describe("buildBreadcrumbs", () => {
   });
 
   it("builds breadcrumb for UK with rule segments", () => {
-    const crumbs = buildBreadcrumbs(["uk", "statute"]);
+    const crumbs = buildBreadcrumbs(["uk", "legislation", "uksi", "2013", "376"]);
     expect(crumbs).toEqual([
       { label: "Atlas", href: "/atlas" },
       { label: "United Kingdom", href: "/atlas/uk" },
-      { label: "Statutes", href: "/atlas/uk/statute" },
+      { label: "Legislation", href: "/atlas/uk/legislation" },
+      { label: "UK Statutory Instruments", href: "/atlas/uk/legislation/uksi" },
+      { label: "2013", href: "/atlas/uk/legislation/uksi/2013" },
+      { label: "376", href: "/atlas/uk/legislation/uksi/2013/376" },
     ]);
   });
 
@@ -199,7 +216,7 @@ describe("buildBreadcrumbs", () => {
 
   it("uses raw segment for unknown doc_type", () => {
     const crumbs = buildBreadcrumbs(["uk", "regulation"]);
-    expect(crumbs[2].label).toBe("regulation");
+    expect(crumbs[2].label).toBe("Regulation");
   });
 });
 

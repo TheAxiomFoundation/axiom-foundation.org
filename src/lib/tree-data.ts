@@ -29,6 +29,8 @@ export interface TreeResult {
   total: number;
   /** Set when a citation-path resolves to a rule with no children (leaf node) */
   leafRule?: Rule;
+  /** Set when a citation-path resolves to a rule that still has child nodes */
+  currentRule?: Rule;
 }
 
 // ---- Flat jurisdiction config ----
@@ -335,6 +337,7 @@ export async function getSectionNodes(
       nodes,
       hasMore: hasNextPage(page, total),
       total: encodedOnly ? nodes.length : total,
+      currentRule: parentRule as Rule,
     };
   }
 

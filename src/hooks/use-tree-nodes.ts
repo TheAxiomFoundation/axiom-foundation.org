@@ -17,6 +17,7 @@ import type { Rule } from "@/lib/supabase";
 interface CacheEntry {
   nodes: TreeNode[];
   hasMore: boolean;
+  currentRule: Rule | null;
 }
 
 const MAX_CACHE_ENTRIES = 20;
@@ -36,6 +37,7 @@ export function useTreeNodes(
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [leafRule, setLeafRule] = useState<Rule | null>(null);
+  const [currentRule, setCurrentRule] = useState<Rule | null>(null);
 
   const pageRef = useRef(0);
   const cache = useRef<Map<string, CacheEntry>>(new Map());
@@ -48,6 +50,7 @@ export function useTreeNodes(
     if (cached) {
       setNodes(cached.nodes);
       setHasMore(cached.hasMore);
+      setCurrentRule(cached.currentRule);
       setLoading(false);
       setLeafRule(null);
       setError(null);
@@ -68,6 +71,7 @@ export function useTreeNodes(
     setLoading(true);
     setError(null);
     setLeafRule(null);
+    setCurrentRule(null);
 
     try {
       let result: { nodes: TreeNode[]; hasMore: boolean };
@@ -112,6 +116,7 @@ export function useTreeNodes(
             setLeafRule(r.leafRule);
             result = { nodes: [], hasMore: false };
           } else {
+            setCurrentRule(r.currentRule ?? null);
             result = { nodes: r.nodes, hasMore: r.hasMore };
           }
         }
@@ -152,6 +157,7 @@ export function useTreeNodes(
         cache.current.set(cacheKey, {
           nodes: result.nodes,
           hasMore: result.hasMore,
+          currentRule: result.currentRule ?? null,
         });
       }
     } catch (err) {
@@ -169,5 +175,5 @@ export function useTreeNodes(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, hasMore, cacheKey]);
 
-  return { nodes, loading, error, hasMore, loadMore, leafRule };
+  return { nodes, loading, error, hasMore, loadMore, leafRule, currentRule };
 }

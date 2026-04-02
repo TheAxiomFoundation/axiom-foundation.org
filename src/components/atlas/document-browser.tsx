@@ -72,13 +72,18 @@ function RuleTreeView({
 }) {
   const router = useRouter();
   const [encodedOnly, setEncodedOnly] = useState(false);
-  const { nodes, loading, error, hasMore, loadMore, leafRule } = useTreeNodes(
+  const { nodes, loading, error, hasMore, loadMore, leafRule, currentRule } = useTreeNodes(
     dbJurisdictionId,
     ruleSegments,
     hasCitationPaths,
     encodedOnly
   );
   const breadcrumbs = buildBreadcrumbs(segments);
+  const {
+    rule: currentRuleDetail,
+    children: currentRuleChildren,
+    loading: currentRuleLoading,
+  } = useRule(currentRule?.id ?? null);
 
   const [displayCtx, setDisplayCtx] = useState<DisplayContext | null>(null);
   const useParentContext =
@@ -151,6 +156,16 @@ function RuleTreeView({
   }
   /* v8 ignore stop */
 
+  const currentRuleDoc =
+    currentRuleDetail &&
+    transformRuleToViewerDoc(
+      currentRuleDetail,
+      currentRuleChildren,
+      currentRuleChildren.length > 0 && currentRuleDetail.body
+        ? { contextText: currentRuleDetail.body }
+        : undefined
+    );
+
   const handleNavigate = (node: { segment: string }) => {
     trackAtlasEvent("atlas_tree_navigated", {
       depth: segments.length + 1,
@@ -162,6 +177,18 @@ function RuleTreeView({
   return (
     <div className="max-w-[1280px] mx-auto px-8">
       <TreeBreadcrumbs items={breadcrumbs} />
+
+      {currentRule && (
+        <div className="mb-6 min-h-[240px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
+          {currentRuleLoading || !currentRuleDoc ? (
+            <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
+              Loading...
+            </div>
+          ) : (
+            <RuleDetailPanel document={currentRuleDoc} rule={currentRuleDetail} />
+          )}
+        </div>
+      )}
 
       {/* v8 ignore start -- filter toggle UI */}
       {/* Filter bar */}

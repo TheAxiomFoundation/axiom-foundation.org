@@ -30,6 +30,16 @@ vi.mock("@/hooks/use-tree-nodes", () => ({
     hasMore: false,
     loadMore: mockLoadMore,
     leafRule: null,
+    currentRule: null,
+  }),
+}));
+
+vi.mock("@/hooks/use-rules", () => ({
+  useRule: vi.fn().mockReturnValue({
+    rule: null,
+    children: [],
+    loading: false,
+    error: null,
   }),
 }));
 
@@ -50,6 +60,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
+import { useRule } from "@/hooks/use-rules";
 import { resolveDisplayContext } from "@/lib/tree-data";
 import { AtlasBrowser } from "./document-browser";
 
@@ -63,6 +74,13 @@ describe("AtlasBrowser", () => {
       hasMore: false,
       loadMore: mockLoadMore,
       leafRule: null,
+      currentRule: null,
+    });
+    vi.mocked(useRule).mockReturnValue({
+      rule: null,
+      children: [],
+      loading: false,
+      error: null,
     });
   });
 
@@ -430,6 +448,75 @@ describe("AtlasBrowser", () => {
       expect(
         screen.queryByTestId("context-intro")
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("current rule with children", () => {
+    it("renders the current rule detail panel above child nodes", async () => {
+      const currentRule = {
+        id: "rule-1",
+        jurisdiction: "us",
+        doc_type: "statute",
+        parent_id: "parent-1",
+        level: 4,
+        ordinal: 2,
+        heading: null,
+        body: "Special rule for spouse who is a student or incapable of caring for himself.",
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: "26 USC 21(d)(2)",
+        citation_path: "us/statute/26/21/d/2",
+        rac_path: "statute/26/21/d/2.rac",
+        has_rac: true,
+        created_at: "",
+        updated_at: "",
+      };
+
+      const childRuleA = {
+        ...currentRule,
+        id: "rule-1-a",
+        parent_id: "rule-1",
+        ordinal: 1,
+        body: "$250 if subsection (c)(1) applies for the taxable year.",
+        citation_path: "us/statute/26/21/d/2/A",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "A",
+            label: "§ A RAC",
+            hasChildren: true,
+            nodeType: "section",
+            rule: childRuleA,
+            hasRac: true,
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children: [childRuleA],
+        loading: false,
+        error: null,
+      });
+
+      render(<AtlasBrowser segments={["us", "statute", "26", "21", "d", "2"]} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Special rule for spouse who is a student or incapable of caring for himself.")
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("§ A RAC")).toBeInTheDocument();
     });
   });
 });

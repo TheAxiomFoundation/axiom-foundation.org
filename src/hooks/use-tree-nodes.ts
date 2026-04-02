@@ -74,7 +74,7 @@ export function useTreeNodes(
     setCurrentRule(null);
 
     try {
-      let result: { nodes: TreeNode[]; hasMore: boolean };
+      let result: { nodes: TreeNode[]; hasMore: boolean; currentRule?: Rule | null };
 
       if (segs.length === 0) {
         // Root of jurisdiction: show doc types or acts

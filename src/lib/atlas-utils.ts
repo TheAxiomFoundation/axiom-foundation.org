@@ -65,6 +65,24 @@ function formatCitationPath(
     return `${instrumentType.toUpperCase()} ${year}/${number}${suffixText}`;
   }
 
+  if (jurisdiction === "us-co" && docType === "regulation") {
+    const [, , instrument, section, ...subsections] = parts;
+    if (!instrument || !section) {
+      return null;
+    }
+    const suffix = formatSubsectionSuffix(subsections);
+    return `${instrument.replace("-CCR-", " CCR ")} § ${section}${suffix}`;
+  }
+
+  if (jurisdiction === "us-co" && docType === "statute") {
+    const [, , collection, section, ...subsections] = parts;
+    if (collection !== "crs" || !section) {
+      return null;
+    }
+    const suffix = formatSubsectionSuffix(subsections);
+    return `C.R.S. § ${section}${suffix}`;
+  }
+
   if (docType !== "statute") {
     return null;
   }

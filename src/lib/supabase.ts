@@ -312,6 +312,7 @@ async function fetchRacFromGitHub(
 ): Promise<RuleEncodingData | null> {
   const repoMap: Record<string, string> = {
     us: 'rac-us',
+    'us-co': 'rac-us-co',
     'us-ca': 'rac-us-ca',
     'us-ny': 'rac-us-ny',
     ca: 'rac-ca',

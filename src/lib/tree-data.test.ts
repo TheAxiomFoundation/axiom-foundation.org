@@ -18,9 +18,10 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 describe("JURISDICTIONS", () => {
-  it("contains US Federal, Ohio, UK, and Canada", () => {
+  it("contains US Federal, Colorado, Ohio, UK, and Canada", () => {
     const slugs = JURISDICTIONS.map((j) => j.slug);
     expect(slugs).toContain("us");
+    expect(slugs).toContain("us-co");
     expect(slugs).toContain("us-oh");
     expect(slugs).toContain("uk");
     expect(slugs).toContain("canada");
@@ -118,6 +119,13 @@ describe("resolveAtlasPath", () => {
     expect(result.ruleSegments).toEqual(["statute"]);
   });
 
+  it("returns rule phase for Colorado", () => {
+    const result = resolveAtlasPath(["us-co", "regulation"]);
+    expect(result.phase).toBe("rule");
+    expect(result.jurisdiction?.slug).toBe("us-co");
+    expect(result.ruleSegments).toEqual(["regulation"]);
+  });
+
   it("returns rule phase for UK", () => {
     const result = resolveAtlasPath(["uk"]);
     expect(result.phase).toBe("rule");
@@ -206,6 +214,30 @@ describe("buildBreadcrumbs", () => {
       { label: "Ohio", href: "/atlas/us-oh" },
       { label: "Statutes", href: "/atlas/us-oh/statute" },
       { label: "Title 26", href: "/atlas/us-oh/statute/26" },
+    ]);
+  });
+
+  it("builds breadcrumb for Colorado regulation path", () => {
+    const crumbs = buildBreadcrumbs(["us-co", "regulation", "9-CCR-2503-6", "3.606.1", "I"]);
+    expect(crumbs).toEqual([
+      { label: "Atlas", href: "/atlas" },
+      { label: "Colorado", href: "/atlas/us-co" },
+      { label: "Regulations", href: "/atlas/us-co/regulation" },
+      { label: "9 CCR 2503-6", href: "/atlas/us-co/regulation/9-CCR-2503-6" },
+      { label: "§ 3.606.1", href: "/atlas/us-co/regulation/9-CCR-2503-6/3.606.1" },
+      { label: "(I)", href: "/atlas/us-co/regulation/9-CCR-2503-6/3.606.1/I" },
+    ]);
+  });
+
+  it("builds breadcrumb for Colorado statute path", () => {
+    const crumbs = buildBreadcrumbs(["us-co", "statute", "crs", "26-2-703", "2.5"]);
+    expect(crumbs).toEqual([
+      { label: "Atlas", href: "/atlas" },
+      { label: "Colorado", href: "/atlas/us-co" },
+      { label: "Statutes", href: "/atlas/us-co/statute" },
+      { label: "Colorado Revised Statutes", href: "/atlas/us-co/statute/crs" },
+      { label: "§ 26-2-703", href: "/atlas/us-co/statute/crs/26-2-703" },
+      { label: "(2.5)", href: "/atlas/us-co/statute/crs/26-2-703/2.5" },
     ]);
   });
 

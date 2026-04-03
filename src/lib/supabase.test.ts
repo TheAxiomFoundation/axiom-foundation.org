@@ -660,5 +660,37 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('rule-err')
       expect(result).toBeNull()
     })
+
+    it('falls back to rac-us-co GitHub paths for Colorado rules', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'colorado rule',
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'rules') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({
+                  data: { citation_path: 'us-co/statute/crs/26-2-703/2.5', jurisdiction: 'us-co', rac_path: null },
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        return mockEncodingRunsChain({ data: [], error: null })
+      })
+
+      const result = await getRuleEncoding('rule-us-co')
+      expect(result?.encoding_run_id).toBe('github:statute/crs/26-2-703/2.5.rac')
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rac-us-co/main/statute/crs/26-2-703/2.5.rac',
+        expect.any(Object)
+      )
+      vi.unstubAllGlobals()
+    })
   })
 })

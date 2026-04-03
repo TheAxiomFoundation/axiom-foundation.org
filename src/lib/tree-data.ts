@@ -46,6 +46,7 @@ export interface Jurisdiction {
 
 export const JURISDICTIONS: Jurisdiction[] = [
   { slug: "us", label: "US Federal", hasCitationPaths: true },
+  { slug: "us-co", label: "Colorado", hasCitationPaths: true },
   { slug: "us-oh", label: "Ohio", hasCitationPaths: true },
   { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
   { slug: "canada", label: "Canada", hasCitationPaths: false },
@@ -188,7 +189,12 @@ export async function getDocTypeNodes(
     .sort(naturalCompare)
     .map((segment) => ({
       segment,
-      label: segment === "statute" ? "Statutes" : formatGenericSegmentLabel(segment),
+      label:
+        segment === "statute"
+          ? "Statutes"
+          : segment === "regulation"
+            ? "Regulations"
+            : formatGenericSegmentLabel(segment),
       hasChildren: true,
       nodeType: "doc_type" as const,
     }));
@@ -427,13 +433,33 @@ function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
   const segment = rule.citation_path
     ? rule.citation_path.split("/").pop() || rule.id
     : rule.id;
+  const parts = rule.citation_path?.split("/") ?? [];
 
-  const isStatutePath = rule.citation_path?.includes("/statute/");
-  const label = isStatutePath
-    ? rule.heading
-      ? `§ ${segment} — ${rule.heading}`
-      : `§ ${segment}`
-    : rule.heading || formatGenericSegmentLabel(segment);
+  let label: string;
+  if (rule.jurisdiction === "us-co" && parts[1] === "statute") {
+    if (parts.length === 3) {
+      label = rule.heading || "Colorado Revised Statutes";
+    } else if (parts.length === 4) {
+      label = rule.heading ? `§ ${segment} — ${rule.heading}` : `§ ${segment}`;
+    } else {
+      label = rule.heading ? `(${segment}) — ${rule.heading}` : `(${segment})`;
+    }
+  } else if (rule.jurisdiction === "us-co" && parts[1] === "regulation") {
+    if (parts.length === 3) {
+      label = rule.heading || segment.replace("-CCR-", " CCR ");
+    } else if (parts.length === 4) {
+      label = rule.heading ? `§ ${segment} — ${rule.heading}` : `§ ${segment}`;
+    } else {
+      label = rule.heading ? `(${segment}) — ${rule.heading}` : `(${segment})`;
+    }
+  } else {
+    const isStatutePath = rule.citation_path?.includes("/statute/");
+    label = isStatutePath
+      ? rule.heading
+        ? `§ ${segment} — ${rule.heading}`
+        : `§ ${segment}`
+      : rule.heading || formatGenericSegmentLabel(segment);
+  }
 
   // Use has_rac from DB directly, or fall back to encoded paths set
   let hasRac = rule.has_rac;
@@ -593,6 +619,36 @@ function formatRuleSegmentLabel(
   jurisdiction: string,
   previousSegment?: string
 ): string {
+  if (jurisdiction === "us-co") {
+    if (ruleIndex === 0) {
+      if (segment === "statute") return "Statutes";
+      if (segment === "regulation") return "Regulations";
+      return formatGenericSegmentLabel(segment);
+    }
+
+    if (previousSegment === "statute" && segment === "crs") {
+      return "Colorado Revised Statutes";
+    }
+
+    if (previousSegment === "regulation") {
+      return segment.replace("-CCR-", " CCR ");
+    }
+
+    if (previousSegment?.includes("-CCR-")) {
+      return `§ ${segment}`;
+    }
+
+    if (previousSegment === "crs") {
+      return `§ ${segment}`;
+    }
+
+    if (previousSegment && /^\d[\d.-]*$/.test(previousSegment)) {
+      return `(${segment})`;
+    }
+
+    return formatGenericSegmentLabel(segment);
+  }
+
   if (jurisdiction === "uk") {
     if (ruleIndex === 0) {
       return formatGenericSegmentLabel(segment);

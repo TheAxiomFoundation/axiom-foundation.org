@@ -280,10 +280,34 @@ function parentPaths(basePath: string): string[] {
   return paths
 }
 
+function duplicateTerminalSectionPath(basePath: string): string | null {
+  const parts = basePath.split('/')
+  if (parts.length !== 3 || parts[0] !== 'statute') return null
+  const section = parts[2]
+  return `${basePath}/${section}.rac`
+}
+
 // Fetch RAC content from GitHub rac-us repo (fallback for hand-written encodings)
 /* v8 ignore start -- network fetch to GitHub, tested via integration */
+function candidatePaths(basePath: string | null, racPath: string | null): string[] {
+  const candidates: string[] = []
+  if (racPath) {
+    candidates.push(racPath.endsWith('.rac') ? racPath : `${racPath}.rac`)
+  }
+  if (basePath) {
+    const duplicateSectionPath = duplicateTerminalSectionPath(basePath)
+    if (duplicateSectionPath && !candidates.includes(duplicateSectionPath)) {
+      candidates.push(duplicateSectionPath)
+    }
+    for (const path of parentPaths(basePath)) {
+      if (!candidates.includes(path)) candidates.push(path)
+    }
+  }
+  return candidates
+}
+
 async function fetchRacFromGitHub(
-  basePath: string,
+  candidates: string[],
   jurisdiction: string
 ): Promise<RuleEncodingData | null> {
   const repoMap: Record<string, string> = {
@@ -291,11 +315,12 @@ async function fetchRacFromGitHub(
     'us-ca': 'rac-us-ca',
     'us-ny': 'rac-us-ny',
     ca: 'rac-ca',
+    uk: 'rac-uk',
   }
   const repo = repoMap[jurisdiction]
   if (!repo) return null
 
-  for (const filePath of parentPaths(basePath)) {
+  for (const filePath of candidates) {
     const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${filePath}`
     try {
       const res = await fetch(url, { next: { revalidate: 3600 } } as RequestInit)
@@ -328,21 +353,25 @@ async function fetchRacFromGitHub(
 
 // Fetch encoding data for a rule by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
-  // First get the rule's citation_path and jurisdiction
+  // First get the rule's citation_path/rac_path and jurisdiction
   const { data: rule, error: ruleError } = await supabaseArch
     .from('rules')
-    .select('citation_path, jurisdiction')
+    .select('citation_path, jurisdiction, rac_path')
     .eq('id', ruleId)
     .single()
 
-  if (ruleError || !rule?.citation_path) return null
+  if (ruleError || !rule) return null
 
   // Match citation_path to encoding_runs.file_path
   // citation_path: "us/statute/26/1/j/2" → file_path: "statute/26/1/j/2.rac"
-  const basePath = rule.citation_path.replace(rule.jurisdiction + '/', '')
+  const basePath = rule.citation_path
+    ? rule.citation_path.replace(rule.jurisdiction + '/', '')
+    : null
+  const candidates = candidatePaths(basePath, rule.rac_path)
+
+  if (candidates.length === 0) return null
 
   // Single query: try all candidate paths at once, pick the most specific match
-  const candidates = parentPaths(basePath)
   const { data, error } = await supabase
     .from('encoding_runs')
     .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorac_version')
@@ -376,5 +405,5 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   }
 
   // Fallback: fetch from GitHub rac-* repo
-  return fetchRacFromGitHub(basePath, rule.jurisdiction)
+  return fetchRacFromGitHub(candidates, rule.jurisdiction)
 }

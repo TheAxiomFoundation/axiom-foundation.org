@@ -20,7 +20,6 @@ import { AutoracSection } from '@/components/landing/autorac-section'
 import { SpecSection } from '@/components/landing/spec-section'
 import { GroundTruthSection } from '@/components/landing/ground-truth-section'
 import { CoverageSection } from '@/components/landing/coverage-section'
-import { LabPreview } from '@/components/landing/lab-preview'
 import { CtaSection } from '@/components/landing/cta-section'
 
 describe('Landing sections', () => {
@@ -58,6 +57,7 @@ describe('Landing sections', () => {
     render(<AutoracSection />)
     expect(screen.getAllByText(/autorac/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /open the system map/i })).toHaveAttribute('href', '/autorac')
   })
 
   it('renders the RAC specification section', () => {
@@ -76,15 +76,6 @@ describe('Landing sections', () => {
     expect(screen.getByText(/Federal \(rac-us\)/i)).toBeInTheDocument()
     expect(screen.getByText(/California \(rac-us-ca\)/i)).toBeInTheDocument()
     expect(screen.getByText(/New York \(rac-us-ny\)/i)).toBeInTheDocument()
-  })
-
-  it('renders experiment lab section', () => {
-    render(<LabPreview />)
-    expect(screen.getAllByText(/experiment lab/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/encoding runs/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/agent transcripts/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/sdk sessions/i)).toBeInTheDocument()
-    expect(screen.getByText(/open experiment lab/i)).toBeInTheDocument()
   })
 
   it('renders get involved CTA', () => {

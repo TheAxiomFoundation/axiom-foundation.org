@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
-import { CheckIcon, XIcon } from "@/components/icons";
+import { ArrowRightIcon, CheckIcon, XIcon } from "@/components/icons";
 import CodeBlock from "@/components/code-block";
 import { heroRacCode } from "@/lib/rac-examples";
 
@@ -464,6 +465,13 @@ export function AutoracSection() {
               <span>{text}</span>
             </div>
           ))}
+        </div>
+
+        <div className="text-center mt-12">
+          <Link href="/autorac" className="btn-outline">
+            Open the system map
+            <ArrowRightIcon className="w-5 h-5" />
+          </Link>
         </div>
       </div>
     </section>

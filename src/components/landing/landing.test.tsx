@@ -57,7 +57,8 @@ describe('Landing sections', () => {
     render(<AutoracSection />)
     expect(screen.getAllByText(/autorac/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open the system map/i })).toHaveAttribute('href', '/autorac')
+    expect(screen.getByRole('link', { name: /open the autorac system map/i })).toHaveAttribute('href', '/autorac')
+    expect(screen.getByRole('link', { name: /view the broader stack/i })).toHaveAttribute('href', '/stack')
   })
 
   it('renders the RAC specification section', () => {

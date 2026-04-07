@@ -467,10 +467,13 @@ export function AutoracSection() {
           ))}
         </div>
 
-        <div className="text-center mt-12">
+        <div className="mt-12 flex flex-wrap justify-center gap-3">
           <Link href="/autorac" className="btn-outline">
-            Open the system map
+            Open the AutoRAC system map
             <ArrowRightIcon className="w-5 h-5" />
+          </Link>
+          <Link href="/stack" className="btn-outline">
+            View the broader stack
           </Link>
         </div>
       </div>

@@ -16,6 +16,7 @@ describe('AutoracPage', () => {
     expect(screen.getByRole('heading', { name: /failure pattern browser/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /run ledger and provenance files/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /inspect encoding records in atlas/i })).toHaveAttribute('href', '/atlas')
+    expect(screen.getByRole('link', { name: /view broader technical stack/i })).toHaveAttribute('href', '/stack')
   })
 
   it('switches pipeline detail and guardrail detail panels', () => {

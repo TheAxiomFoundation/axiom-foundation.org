@@ -506,6 +506,9 @@ export function AutoracSystemPage() {
                 Inspect encoding records in Atlas
                 <ArrowRightIcon className="w-5 h-5" />
               </Link>
+              <Link href="/stack" className="btn-outline">
+                View broader technical stack
+              </Link>
             </div>
           </div>
 

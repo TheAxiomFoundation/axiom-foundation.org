@@ -47,6 +47,17 @@ type RepoLane = {
   repos: string[];
 };
 
+type JourneyArtifact = {
+  id: string;
+  stage: string;
+  title: string;
+  summary: string;
+  href: string;
+  linkLabel: string;
+  previewLabel: string;
+  preview: string;
+};
+
 const stackLayers: StackLayer[] = [
   {
     id: "scrape",
@@ -328,9 +339,120 @@ const stackStats = [
   { label: "1 public inspection surface", value: "1" },
 ];
 
+const journeyArtifacts: JourneyArtifact[] = [
+  {
+    id: "official-source",
+    stage: "Acquire",
+    title: "Official source snapshot",
+    summary:
+      "The point-in-time legal text comes from the official legislation source for the exact instrument and date.",
+    href: "https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.akn",
+    linkLabel: "Open official AKN source",
+    previewLabel: "official source",
+    preview: `https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.akn
+
+Official point-in-time source for regulation 4A(1)(a).`,
+  },
+  {
+    id: "repo-snapshot",
+    stage: "Acquire",
+    title: "Repo source snapshot",
+    summary:
+      "The official source is mirrored into the corpus repo so later encoding and review steps use a stable input.",
+    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/sources/official/uksi/2002/1792/2025-03-31/source.akn",
+    linkLabel: "Open repo source snapshot",
+    previewLabel: "repo source.akn",
+    preview: `sources/official/uksi/2002/1792/2025-03-31/source.akn
+
+Stable checked-in source snapshot used downstream by the stack.`,
+  },
+  {
+    id: "exact-slice",
+    stage: "Acquire",
+    title: "Exact source slice",
+    summary:
+      "The encoder works from a tight clause slice rather than the whole instrument, so generation and review are reproducible.",
+    href: "/stack-examples/uk-regulation-4A-1-a-source-slice.txt",
+    linkLabel: "Open extracted source slice",
+    previewLabel: "source slice",
+    preview: `PART II Entitlement and amount
+
+4A. Meaning of "qualifying young person"
+
+(1) A person who has reached the age of 16 but not the age of 20 is a qualifying young person for the purposes of these Regulations—
+
+(a) up to, but not including, the 1st September following the person's 16th birthday; and`,
+  },
+  {
+    id: "rac-file",
+    stage: "Encode",
+    title: "Promoted RAC rule",
+    summary:
+      "The encoded rule is checked in as a versioned `.rac` file in the jurisdiction corpus.",
+    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.rac",
+    linkLabel: "Open .rac file",
+    previewLabel: "4A(1)(a).rac",
+    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.rac
+
+qualifying_young_person_4A_1_a:
+  entity: Person
+  period: Day
+  dtype: Boolean
+  from 2025-03-21:
+    person_has_reached_age_threshold_16_4A_1
+      and person_is_under_age_threshold_20_4A_1
+      and date_is_before_1st_september_following_person_16th_birthday_4A_1_a`,
+  },
+  {
+    id: "rac-test",
+    stage: "Verify",
+    title: "Companion execution test",
+    summary:
+      "The rule ships with a checked-in `.rac.test` file so the execution engine can validate behavior deterministically.",
+    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.rac.test",
+    linkLabel: "Open .rac.test file",
+    previewLabel: "4A(1)(a).rac.test",
+    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.rac.test
+
+The companion test file exercises the age and September cut-off behavior against concrete cases.`,
+  },
+  {
+    id: "autorac-summary",
+    stage: "Verify",
+    title: "AutoRAC run summary",
+    summary:
+      "Wave 16 promotion metadata ties this exact rule back to a concrete AutoRAC run, model, commit, and metrics.",
+    href: "/stack-examples/uk-regulation-4A-1-a-autorac-summary.json",
+    linkLabel: "Open AutoRAC summary JSON",
+    previewLabel: "wave16 summary",
+    preview: `{
+  "wave": "2026-04-01-wave16",
+  "autorac_commit": "243d37f",
+  "autorac_version": "0.2.64",
+  "runner": "openai-gpt-5.4",
+  "compile_pass": true,
+  "ci_pass": true
+}`,
+  },
+  {
+    id: "atlas-page",
+    stage: "Inspect",
+    title: "Live Atlas page",
+    summary:
+      "The promoted rule is then available in Atlas with source context, encoding metadata, and inspection surfaces.",
+    href: "https://axiom-foundation.org/atlas/uk/legislation/uksi/2002/1792/regulation/4A/1/a",
+    linkLabel: "Open live Atlas page",
+    previewLabel: "atlas route",
+    preview: `https://axiom-foundation.org/atlas/uk/legislation/uksi/2002/1792/regulation/4A/1/a
+
+Live public page for the promoted encoding.`,
+  },
+];
+
 export function StackSystemPage() {
   const [selectedStageId, setSelectedStageId] = useState(runtimeStages[0].id);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [selectedArtifactId, setSelectedArtifactId] = useState(journeyArtifacts[0].id);
   const selectedStage =
     runtimeStages.find((stage) => stage.id === selectedStageId) ?? runtimeStages[0];
   const selectedLayer =
@@ -338,6 +460,8 @@ export function StackSystemPage() {
   const selectedStageLayers = stackLayers.filter((layer) =>
     layer.stageIds.includes(selectedStage.id)
   );
+  const selectedArtifact =
+    journeyArtifacts.find((artifact) => artifact.id === selectedArtifactId) ?? journeyArtifacts[0];
 
   return (
     <div className="relative z-1 py-32 px-8">
@@ -387,9 +511,9 @@ export function StackSystemPage() {
                     One concrete path through the stack:
                   </p>
                   <div className="font-mono text-xs text-[var(--color-code-text)] leading-6 overflow-x-auto">
-                    Colorado Works 3.606.1(I)
+                    Pension Credit regulation 4A(1)(a)
                     <br />
-                    source.pdf -&gt; source.akn.xml -&gt; source.txt -&gt; 3.606.1/I.rac -&gt; rac.validate -&gt; Atlas
+                    official data.akn -&gt; extracted source slice -&gt; 4A/1/a.rac -&gt; wave16 AutoRAC summary -&gt; Atlas
                   </div>
                 </div>
               </div>
@@ -534,6 +658,93 @@ export function StackSystemPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-24">
+          <div className="mb-8">
+            <h2 className="heading-section mb-3">
+              Follow one real rule
+            </h2>
+            <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed">
+              This is one promoted UK rule traced across the stack. Each step
+              links to a real artifact, not a placeholder.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-[minmax(260px,0.95fr)_minmax(0,1.25fr)] gap-8 max-lg:grid-cols-1">
+            <div className="flex flex-col gap-3">
+              {journeyArtifacts.map((artifact) => {
+                const active = artifact.id === selectedArtifact.id;
+                return (
+                  <button
+                    key={artifact.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSelectedArtifactId(artifact.id)}
+                    className={`text-left rounded-md border px-4 py-4 transition-all duration-150 ${
+                      active
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                        : "border-[var(--color-rule)] bg-[var(--color-paper-elevated)] hover:border-[var(--color-accent)]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <span className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper)] px-3 py-1 font-mono text-xs text-[var(--color-accent)]">
+                        {artifact.stage}
+                      </span>
+                      <ArrowRightIcon className="w-4 h-4 text-[var(--color-accent)] opacity-70" />
+                    </div>
+                    <div className="font-body text-[1rem] text-[var(--color-ink)] mb-2">
+                      {artifact.title}
+                    </div>
+                    <div className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                      {artifact.summary}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8">
+                <div className="flex items-center justify-between gap-4 mb-4 max-sm:flex-col max-sm:items-start">
+                  <div>
+                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-accent)] mb-2">
+                      {selectedArtifact.stage}
+                    </p>
+                    <h3 className="font-body text-2xl text-[var(--color-ink)]">
+                      {selectedArtifact.title}
+                    </h3>
+                  </div>
+                  <a
+                    href={selectedArtifact.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-outline"
+                  >
+                    {selectedArtifact.linkLabel}
+                  </a>
+                </div>
+
+                <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+                  {selectedArtifact.summary}
+                </p>
+              </div>
+
+              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-code-bg)] overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2a2826]">
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
+                  <span className="font-mono text-xs text-[var(--color-code-text)]">
+                    {selectedArtifact.previewLabel}
+                  </span>
+                </div>
+                <CodeBlock
+                  code={selectedArtifact.preview}
+                  language="plain"
+                  className="m-0 p-6 font-mono text-[0.82rem] leading-7 whitespace-pre-wrap text-[var(--color-code-text)] overflow-x-auto"
+                />
               </div>
             </div>
           </div>

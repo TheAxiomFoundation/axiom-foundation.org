@@ -19,11 +19,12 @@ describe("StackPage", () => {
       screen.getByRole("heading", { name: /from scraped documents to executable rules/i })
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /general flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /follow one real rule/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /layer detail/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /execution and promotion path/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /repository map/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /choose a layer to inspect/i })).toBeInTheDocument();
-    expect(screen.getByText(/colorado works 3\.606\.1\(i\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/pension credit regulation 4A\(1\)\(a\)/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open autorac system map/i })).toHaveAttribute(
       "href",
       "/autorac"
@@ -47,5 +48,17 @@ describe("StackPage", () => {
     );
     expect(screen.getAllByText(/rac\.validate/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/python\/js\/rust codegen/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /exact source slice/i }));
+    expect(screen.getByRole("link", { name: /open extracted source slice/i })).toHaveAttribute(
+      "href",
+      "/stack-examples/uk-regulation-4A-1-a-source-slice.txt"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /autorac run summary/i }));
+    expect(screen.getByRole("link", { name: /open autorac summary json/i })).toHaveAttribute(
+      "href",
+      "/stack-examples/uk-regulation-4A-1-a-autorac-summary.json"
+    );
   });
 });

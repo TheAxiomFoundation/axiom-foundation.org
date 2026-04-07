@@ -1,0 +1,39 @@
+{
+  "wave": "2026-04-01-wave16",
+  "citation": "uksi-2002-1792 regulation 4A(1)(a) qualifying young person up to September after 16th birthday",
+  "source_eval_runs": [
+    "/tmp/autorac-uk-wave16-atomic-20260401d"
+  ],
+  "autorac_commit": "243d37f",
+  "autorac_version": "0.2.64",
+  "runner": "openai-gpt-5.4",
+  "all_ready": true,
+  "suite_summary": {
+    "total_cases": 8,
+    "compile_pass_rate": 1.0,
+    "ci_pass_rate": 1.0,
+    "zero_ungrounded_rate": 1.0,
+    "mean_estimated_cost_usd": 0.024254
+  },
+  "case": {
+    "index": 1,
+    "name": "pension-credit-qualifying-young-person-up-to-september-after-16th-birthday",
+    "repo_rac_path": "legislation/uksi/2002/1792/regulation/4A/1/a.rac",
+    "repo_test_path": "legislation/uksi/2002/1792/regulation/4A/1/a.rac.test",
+    "source_path": "sources/official/uksi/2002/1792/2025-03-31/source.akn",
+    "backend": "openai",
+    "model": "gpt-5.4",
+    "estimated_cost_usd": 0.028777499999999998,
+    "metrics": {
+      "compile_pass": true,
+      "ci_pass": true,
+      "embedded_source_present": true,
+      "grounded_numeric_count": 3,
+      "ungrounded_numeric_count": 0,
+      "source_numeric_occurrence_count": 3,
+      "covered_source_numeric_occurrence_count": 3,
+      "missing_source_numeric_occurrence_count": 0
+    }
+  },
+  "manifest_source": "https://github.com/TheAxiomFoundation/rac-uk/blob/main/waves/2026-04-01-wave16/manifest.json"
+}

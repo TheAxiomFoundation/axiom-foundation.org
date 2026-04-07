@@ -19,10 +19,11 @@ describe("StackPage", () => {
       screen.getByRole("heading", { name: /from scraped documents to executable rules/i })
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /general flow/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /layer explorer/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /runtime path/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /layer detail/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /execution and promotion path/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /repository map/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /choose a layer to inspect/i })).toBeInTheDocument();
+    expect(screen.getByText(/colorado works 3\.606\.1\(i\)/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open autorac system map/i })).toHaveAttribute(
       "href",
       "/autorac"

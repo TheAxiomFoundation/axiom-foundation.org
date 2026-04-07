@@ -260,9 +260,9 @@ uv run python -m rac.test_runner /path/to/repo -v`,
 const runtimeStages: RuntimeStage[] = [
   {
     id: "input",
-    label: "Input",
+    label: "Acquire",
     detail:
-      "A source tree and exact slice are selected from ingested official documents.",
+      "Official documents are fetched, normalized, and turned into exact slices with stable references.",
   },
   {
     id: "encode",
@@ -272,19 +272,19 @@ const runtimeStages: RuntimeStage[] = [
   },
   {
     id: "check",
-    label: "Check",
+    label: "Verify",
     detail:
       "Deterministic CI, tests, and semantic review decide whether the candidate is promotion-safe.",
   },
   {
     id: "run",
-    label: "Run",
+    label: "Execute",
     detail:
       "The RAC engine validates, tests, and executes the accepted encoding.",
   },
   {
     id: "publish",
-    label: "Publish",
+    label: "Inspect",
     detail:
       "Wave manifests and Atlas sync expose the result as a durable, inspectable rule artifact.",
   },
@@ -351,9 +351,10 @@ export function StackSystemPage() {
               From scraped documents to executable rules
             </h1>
             <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[820px]">
-              This is the broader architecture around AutoRAC: source scraping,
-              Akoma Ntoso normalization, source trees, RAC corpora, the
-              harness, the execution engine, and the Atlas inspection layer.
+              Axiom separates source acquisition, structural normalization,
+              rules encoding, harness evaluation, runtime execution, and public
+              inspection into distinct layers so each can be audited, improved,
+              and replaced without collapsing the whole system into one tool.
             </p>
           </div>
 
@@ -361,11 +362,13 @@ export function StackSystemPage() {
             <div className="flex flex-wrap items-start justify-between gap-8">
               <div className="max-w-[720px]">
                 <p className="font-body text-[1rem] text-[var(--color-ink)] leading-relaxed mb-4">
-                  AutoRAC is one layer in a longer chain. The important split is
-                  that source ingestion, structural normalization, encoded
-                  corpora, harness evaluation, and execution are separate
-                  systems on purpose, so each layer can be audited and improved
-                  without pretending the others are the same problem.
+                  AutoRAC is one layer in a longer chain. A provision moves from
+                  official document capture, to structural normalization, to a
+                  reproducible source slice, to a tested RAC file, to harness
+                  evaluation, to runtime execution, and finally to Atlas. The
+                  system is split this way so authority, transformation,
+                  correctness, and presentation can each be inspected on their
+                  own terms.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link href="/autorac" className="btn-outline">
@@ -375,6 +378,19 @@ export function StackSystemPage() {
                     Explore Atlas
                     <ArrowRightIcon className="w-5 h-5" />
                   </Link>
+                </div>
+                <div className="mt-5 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-4">
+                  <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)] mb-2">
+                    Example thread
+                  </p>
+                  <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed mb-3">
+                    One concrete path through the stack:
+                  </p>
+                  <div className="font-mono text-xs text-[var(--color-code-text)] leading-6 overflow-x-auto">
+                    Colorado Works 3.606.1(I)
+                    <br />
+                    source.pdf -&gt; source.akn.xml -&gt; source.txt -&gt; 3.606.1/I.rac -&gt; rac.validate -&gt; Atlas
+                  </div>
                 </div>
               </div>
 
@@ -409,7 +425,8 @@ export function StackSystemPage() {
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed">
               Pick a runtime stage to highlight the relevant layers. Then open a
               layer to inspect the repos, outputs, and code shape underneath
-              that part of the stack.
+              that part of the stack. The hero example stays constant; the
+              cards below show representative technical shapes from each layer.
             </p>
           </div>
 
@@ -525,12 +542,12 @@ export function StackSystemPage() {
         <section className="mb-24">
           <div className="mb-8">
             <h2 className="heading-section mb-3">
-              Layer explorer
+              Layer detail
             </h2>
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
-              Use the overview above to orient yourself, then drill down here
-              for the exact responsibilities, repositories, outputs, and code
-              shape of one layer.
+              The overview above is the map. This section is the architecture
+              reference for one selected layer: responsibilities, repository
+              boundaries, outputs, and representative code or data shape.
             </p>
           </div>
 
@@ -743,12 +760,12 @@ export function StackSystemPage() {
           <div className="flex items-end justify-between gap-6 mb-8 max-md:flex-col max-md:items-start">
             <div>
               <h2 className="heading-section mb-3">
-                Runtime path
+                Execution and promotion path
               </h2>
               <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
-                A `.rac` file is not the end state. The stack exists so a
-                source-backed rule can be validated, tested, executed, and then
-                inspected in public.
+                After a rule is encoded, the downstream path is verification,
+                runtime execution, and public inspection. This section is the
+                post-encoding path, not a second architecture map.
               </p>
             </div>
             <Link href="/autorac" className="btn-outline">
@@ -830,7 +847,7 @@ export function StackSystemPage() {
                     "If the corpus layer is weak, the harness has nothing durable to promote into.",
                     "If the harness is weak, you get compileable but semantically unsafe encodings.",
                     "If the execution layer is weak, the rules are not actually usable.",
-                    "If Atlas is weak, nobody can inspect or trust the output.",
+                    "If the inspection layer is weak, the system becomes a black box even if the rule is technically correct.",
                   ].map((line) => (
                     <div
                       key={line}

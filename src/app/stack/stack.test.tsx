@@ -18,9 +18,11 @@ describe("StackPage", () => {
     expect(
       screen.getByRole("heading", { name: /from scraped documents to executable rules/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /general flow/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /layer explorer/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /runtime path/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /repository map/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /choose a layer to inspect/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open autorac system map/i })).toHaveAttribute(
       "href",
       "/autorac"
@@ -30,14 +32,17 @@ describe("StackPage", () => {
   it("switches layer detail panels", () => {
     render(<StackPage />);
 
+    expect(screen.getByText(/overview mode/i)).toBeInTheDocument();
+
     fireEvent.click(
-      screen.getByRole("button", { name: /normalize structure into akoma ntoso/i })
+      screen.getAllByRole("button", { name: /normalize structure into akoma ntoso/i })[0]
     );
     expect(screen.getAllByText(/AKN normalization/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/source\.akn/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /back to overview/i })).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /compile, validate, test, and execute/i })
+      screen.getAllByRole("button", { name: /compile, validate, test, and execute/i })[0]
     );
     expect(screen.getAllByText(/rac\.validate/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/python\/js\/rust codegen/i)).toBeInTheDocument();

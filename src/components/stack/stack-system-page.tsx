@@ -21,6 +21,7 @@ type SnippetLanguage = "rac" | "xml" | "python" | "yaml" | "catala" | "plain";
 type StackLayer = {
   id: string;
   step: string;
+  stageIds: string[];
   title: string;
   summary: string;
   details: string[];
@@ -50,6 +51,7 @@ const stackLayers: StackLayer[] = [
   {
     id: "scrape",
     step: "01",
+    stageIds: ["input"],
     title: "Collect and archive official documents",
     summary:
       "Everything starts with real government material: statutes, regulations, manuals, guidance, PDFs, HTML, and XML snapshots.",
@@ -78,6 +80,7 @@ const stackLayers: StackLayer[] = [
   {
     id: "akomize",
     step: "02",
+    stageIds: ["input"],
     title: "Normalize structure into Akoma Ntoso",
     summary:
       "Akomize gives the system a structural representation of the law so later tools can target exact sections, paragraphs, and subparagraphs.",
@@ -106,6 +109,7 @@ const stackLayers: StackLayer[] = [
   {
     id: "source-graph",
     step: "03",
+    stageIds: ["input"],
     title: "Build source trees and exact slices",
     summary:
       "Once the documents are structured, the stack can expose source trees, exact slices, and cross-document references to both humans and the harness.",
@@ -133,6 +137,7 @@ context_files:
   {
     id: "rac",
     step: "04",
+    stageIds: ["encode"],
     title: "Encode law into RAC corpora",
     summary:
       "RAC is the rules language and corpus layer. This is where statutes, regulations, and manuals become tested, versioned rule files.",
@@ -166,6 +171,7 @@ context_files:
   {
     id: "autorac",
     step: "05",
+    stageIds: ["encode", "check"],
     title: "Generate and evaluate with AutoRAC",
     summary:
       "AutoRAC is the harness layer: benchmark manifests, workspace construction, generation policy, deterministic CI, oracles, review, and readiness gates.",
@@ -197,6 +203,7 @@ context_files:
   {
     id: "engine",
     step: "06",
+    stageIds: ["check", "run"],
     title: "Compile, validate, test, and execute",
     summary:
       "The RAC engine is what turns encodings into something executable: validators, test runners, interpreters, and code generation targets.",
@@ -222,6 +229,7 @@ uv run python -m rac.test_runner /path/to/repo -v`,
   {
     id: "atlas",
     step: "07",
+    stageIds: ["publish"],
     title: "Publish and inspect in Atlas",
     summary:
       "Atlas is the public-facing inspection layer where source trees, RAC files, encodings, provenance, and agent logs become explorable.",
@@ -321,9 +329,15 @@ const stackStats = [
 ];
 
 export function StackSystemPage() {
-  const [selectedLayerId, setSelectedLayerId] = useState(stackLayers[0].id);
+  const [selectedStageId, setSelectedStageId] = useState(runtimeStages[0].id);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const selectedStage =
+    runtimeStages.find((stage) => stage.id === selectedStageId) ?? runtimeStages[0];
   const selectedLayer =
-    stackLayers.find((layer) => layer.id === selectedLayerId) ?? stackLayers[0];
+    stackLayers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedStageLayers = stackLayers.filter((layer) =>
+    layer.stageIds.includes(selectedStage.id)
+  );
 
   return (
     <div className="relative z-1 py-32 px-8">
@@ -382,22 +396,131 @@ export function StackSystemPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {runtimeStages.map((stage, index) => (
-              <div
-                key={stage.id}
-                className="flex items-center gap-3 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-4 py-2"
-              >
-                <span className="font-mono text-xs text-[var(--color-accent)]">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="font-body text-sm text-[var(--color-ink)]">
-                  {stage.label}
-                </span>
-              </div>
-            ))}
-          </div>
         </header>
+
+        <section className="mb-24">
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-accent)] mb-3">
+              Start with the overview
+            </p>
+            <h2 className="heading-section mb-3">
+              General flow
+            </h2>
+            <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed">
+              Pick a runtime stage to highlight the relevant layers. Then open a
+              layer to inspect the repos, outputs, and code shape underneath
+              that part of the stack.
+            </p>
+          </div>
+
+          <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8">
+            <div className="flex flex-wrap gap-3 mb-8">
+              {runtimeStages.map((stage, index) => {
+                const active = stage.id === selectedStage.id;
+                return (
+                  <button
+                    key={stage.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setSelectedStageId(stage.id);
+                      setSelectedLayerId(null);
+                    }}
+                    className={`flex items-center gap-3 rounded-full border px-4 py-2 transition-all duration-150 ${
+                      active
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                        : "border-[var(--color-rule)] bg-[var(--color-paper)] hover:border-[var(--color-accent)]"
+                    }`}
+                  >
+                    <span className="font-mono text-xs text-[var(--color-accent)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="font-body text-sm text-[var(--color-ink)]">
+                      {stage.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4 mb-8">
+              {stackLayers.map((layer) => {
+                const active = layer.id === selectedLayer?.id;
+                const highlighted = layer.stageIds.includes(selectedStage.id);
+                return (
+                  <button
+                    key={layer.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setSelectedLayerId(layer.id);
+                      if (!layer.stageIds.includes(selectedStage.id)) {
+                        setSelectedStageId(layer.stageIds[0]);
+                      }
+                    }}
+                    className={`group text-left rounded-md border px-4 py-4 transition-all duration-150 ${
+                      active
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent-light)] shadow-[0_0_24px_rgba(192,80,0,0.12)]"
+                        : highlighted
+                          ? "border-[var(--color-rule)] bg-[var(--color-paper)] hover:border-[var(--color-accent)]"
+                          : "border-[var(--color-rule)] bg-[var(--color-paper)] opacity-55 hover:opacity-100"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[var(--color-paper-elevated)] text-[var(--color-accent)] flex items-center justify-center shrink-0">
+                        {layer.icon}
+                      </div>
+                      <div className="flex items-center gap-2 text-[var(--color-accent)]">
+                        <span className="font-mono text-xs uppercase tracking-[0.12em]">
+                          {layer.step}
+                        </span>
+                        <ArrowRightIcon className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 transition-transform duration-150" />
+                      </div>
+                    </div>
+                    <div className="font-body text-[1rem] text-[var(--color-ink)] mb-2 leading-tight">
+                      {layer.title}
+                    </div>
+                    <div className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                      {layer.summary}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)] gap-6 max-lg:grid-cols-1">
+              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)] mb-3">
+                  Selected stage
+                </p>
+                <div className="font-body text-2xl text-[var(--color-ink)] mb-3">
+                  {selectedStage.label}
+                </div>
+                <p className="font-body text-[0.98rem] text-[var(--color-ink-secondary)] leading-relaxed">
+                  {selectedStage.detail}
+                </p>
+              </div>
+
+              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
+                  Relevant layers
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedStageLayers.map((layer) => (
+                    <button
+                      key={layer.id}
+                      type="button"
+                      onClick={() => setSelectedLayerId(layer.id)}
+                      className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)] hover:border-[var(--color-accent)] transition-colors duration-150"
+                    >
+                      {layer.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section className="mb-24">
           <div className="mb-8">
@@ -405,20 +528,21 @@ export function StackSystemPage() {
               Layer explorer
             </h2>
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
-              The stack is separated into layers so document acquisition,
-              structural normalization, rule encoding, execution, and public
-              inspection can each be evaluated on their own terms.
+              Use the overview above to orient yourself, then drill down here
+              for the exact responsibilities, repositories, outputs, and code
+              shape of one layer.
             </p>
           </div>
 
           <div className="grid grid-cols-[minmax(260px,0.9fr)_minmax(0,1.3fr)] gap-8 max-lg:grid-cols-1">
             <div className="flex flex-col gap-3">
               {stackLayers.map((layer) => {
-                const active = layer.id === selectedLayer.id;
+                const active = layer.id === selectedLayer?.id;
                 return (
                   <button
                     key={layer.id}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => setSelectedLayerId(layer.id)}
                     className={`text-left rounded-md border px-4 py-4 transition-all duration-150 ${
                       active
@@ -448,109 +572,169 @@ export function StackSystemPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--color-accent-light)] text-[var(--color-accent)] flex items-center justify-center">
-                    {selectedLayer.icon}
-                  </div>
-                  <div>
-                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-accent)]">
-                      Layer {selectedLayer.step}
-                    </p>
-                    <h3 className="font-body text-2xl text-[var(--color-ink)]">
-                      {selectedLayer.title}
-                    </h3>
-                  </div>
-                </div>
-
-                <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
-                  {selectedLayer.summary}
-                </p>
-
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-body text-lg text-[var(--color-ink)] mb-3">
-                      What this layer does
-                    </h4>
-                    <div className="flex flex-col gap-3">
-                      {selectedLayer.details.map((detail) => (
-                        <div
-                          key={detail}
-                          className="flex items-start gap-3 font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed"
-                        >
-                          <CheckIcon className="w-4 h-4 text-[var(--color-success)] mt-0.5 shrink-0" />
-                          <span>{detail}</span>
+              {selectedLayer ? (
+                <>
+                  <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8">
+                    <div className="flex items-start justify-between gap-4 mb-4 max-sm:flex-col">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-accent-light)] text-[var(--color-accent)] flex items-center justify-center">
+                          {selectedLayer.icon}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
-                      <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
-                        components
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedLayer.components.map((component) => (
-                          <span
-                            key={component}
-                            className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)]"
-                          >
-                            {component}
-                          </span>
-                        ))}
+                        <div>
+                          <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                            Layer {selectedLayer.step}
+                          </p>
+                          <h3 className="font-body text-2xl text-[var(--color-ink)]">
+                            {selectedLayer.title}
+                          </h3>
+                        </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLayerId(null)}
+                        className="btn-outline"
+                      >
+                        Back to overview
+                      </button>
                     </div>
 
-                    <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
-                      <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
-                        repos
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedLayer.repos.map((repo) => (
-                          <span
-                            key={repo}
-                            className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)]"
-                          >
-                            {repo}
-                          </span>
-                        ))}
+                    <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
+                      {selectedLayer.summary}
+                    </p>
+
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                      <div>
+                        <h4 className="font-body text-lg text-[var(--color-ink)] mb-3">
+                          What this layer does
+                        </h4>
+                        <div className="flex flex-col gap-3">
+                          {selectedLayer.details.map((detail) => (
+                            <div
+                              key={detail}
+                              className="flex items-start gap-3 font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed"
+                            >
+                              <CheckIcon className="w-4 h-4 text-[var(--color-success)] mt-0.5 shrink-0" />
+                              <span>{detail}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
-                      <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
-                        outputs
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {selectedLayer.outputs.map((output) => (
-                          <div
-                            key={output}
-                            className="flex items-start gap-2 font-body text-sm text-[var(--color-ink-secondary)]"
-                          >
-                            <TerminalIcon className="w-4 h-4 text-[var(--color-accent)] mt-0.5 shrink-0" />
-                            <span>{output}</span>
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
+                          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
+                            components
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedLayer.components.map((component) => (
+                              <span
+                                key={component}
+                                className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)]"
+                              >
+                                {component}
+                              </span>
+                            ))}
                           </div>
+                        </div>
+
+                        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
+                          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
+                            repos
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedLayer.repos.map((repo) => (
+                              <span
+                                key={repo}
+                                className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)]"
+                              >
+                                {repo}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5">
+                          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
+                            outputs
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            {selectedLayer.outputs.map((output) => (
+                              <div
+                                key={output}
+                                className="flex items-start gap-2 font-body text-sm text-[var(--color-ink-secondary)]"
+                              >
+                                <TerminalIcon className="w-4 h-4 text-[var(--color-accent)] mt-0.5 shrink-0" />
+                                <span>{output}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-code-bg)] overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2a2826]">
+                      <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
+                      <span className="font-mono text-xs text-[var(--color-code-text)]">
+                        {selectedLayer.snippetLabel}
+                      </span>
+                    </div>
+                    <CodeBlock
+                      code={selectedLayer.snippet}
+                      language={selectedLayer.snippetLanguage}
+                      className="m-0 p-6 font-mono text-[0.82rem] leading-7 whitespace-pre-wrap text-[var(--color-code-text)] overflow-x-auto"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8">
+                  <p className="font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
+                    Overview mode
+                  </p>
+                  <h3 className="font-body text-2xl text-[var(--color-ink)] mb-4">
+                    Choose a layer to inspect
+                  </h3>
+                  <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6 max-w-[760px]">
+                    Start with the selected runtime stage, then drill into one
+                    layer to see its repositories, outputs, and representative
+                    code or data shape.
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+                    <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-6">
+                      <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)] mb-3">
+                        Current stage
+                      </p>
+                      <div className="font-body text-xl text-[var(--color-ink)] mb-3">
+                        {selectedStage.label}
+                      </div>
+                      <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                        {selectedStage.detail}
+                      </p>
+                    </div>
+
+                    <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-6">
+                      <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-ink-muted)] mb-3">
+                        Drill into
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedStageLayers.map((layer) => (
+                          <button
+                            key={layer.id}
+                            type="button"
+                            onClick={() => setSelectedLayerId(layer.id)}
+                            className="rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1 font-mono text-xs text-[var(--color-code-text)] hover:border-[var(--color-accent)] transition-colors duration-150"
+                          >
+                            {layer.title}
+                          </button>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-code-bg)] overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2a2826]">
-                  <span className="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
-                  <span className="font-mono text-xs text-[var(--color-code-text)]">
-                    {selectedLayer.snippetLabel}
-                  </span>
-                </div>
-                <CodeBlock
-                  code={selectedLayer.snippet}
-                  language={selectedLayer.snippetLanguage}
-                  className="m-0 p-6 font-mono text-[0.82rem] leading-7 whitespace-pre-wrap text-[var(--color-code-text)] overflow-x-auto"
-                />
-              </div>
+              )}
             </div>
           </div>
         </section>

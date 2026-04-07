@@ -502,11 +502,8 @@ export function AutoracSystemPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/atlas" className="btn-outline">
-                Inspect encoding records in Atlas
-              </Link>
               <Link href="/atlas" className="btn-primary">
-                Explore Atlas
+                Inspect encoding records in Atlas
                 <ArrowRightIcon className="w-5 h-5" />
               </Link>
             </div>

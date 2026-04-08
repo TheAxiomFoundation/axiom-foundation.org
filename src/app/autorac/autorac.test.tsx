@@ -12,11 +12,14 @@ describe('AutoracPage', () => {
     render(<AutoracPage />)
 
     expect(screen.getByRole('heading', { name: /how the harness actually works/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /recent proof points/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /pipeline explorer/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /failure pattern browser/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /run ledger and provenance files/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /inspect encoding records in atlas/i })).toHaveAttribute('href', '/atlas')
     expect(screen.getByRole('link', { name: /view broader technical stack/i })).toHaveAttribute('href', '/stack')
+    expect(screen.getByText(/accepted autoresearch mutation/i)).toBeInTheDocument()
+    expect(screen.getByText(/55-case uk bulk wave promoted/i)).toBeInTheDocument()
   })
 
   it('switches pipeline detail and guardrail detail panels', () => {
@@ -39,7 +42,24 @@ describe('AutoracPage', () => {
     render(<AutoracPage />)
 
     expect(
-      screen.getByText(/representative of the file shapes the harness writes, not a live view of the current run directory/i)
+      screen.getByText(/concrete current examples from the accepted autoresearch run and the latest uk bulk promotion/i)
     ).toBeInTheDocument()
+  })
+
+  it('shows the autoresearch decision artifact and holdout guardrail', () => {
+    render(<AutoracPage />)
+
+    const holdoutButton = screen.getByRole('button', { name: /do not keep prompt mutations without a holdout check/i })
+    fireEvent.click(holdoutButton)
+    expect(holdoutButton).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/autoresearch now scores candidates on frozen training manifests/i)).toBeInTheDocument()
+    expect(screen.getByText(/decision\.json keep \/ discard gate/i)).toBeInTheDocument()
+
+    const decisionButton = screen.getByRole('button', { name: /autoresearch decision\.json/i })
+    fireEvent.click(decisionButton)
+    expect(decisionButton).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/candidate_improved_training_and_preserved_final_review/i)).toBeInTheDocument()
+    expect(screen.getByText(/baseline_training_score/i)).toBeInTheDocument()
+    expect(screen.getByText(/candidate_final_review_score/i)).toBeInTheDocument()
   })
 })

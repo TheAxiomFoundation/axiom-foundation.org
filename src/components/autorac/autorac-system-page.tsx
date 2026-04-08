@@ -53,6 +53,12 @@ type ArtifactPanel = {
   code: string;
 };
 
+type ProofPoint = {
+  id: string;
+  label: string;
+  summary: string;
+};
+
 const pipelineStages: PipelineStage[] = [
   {
     id: "ingest",
@@ -233,7 +239,7 @@ assessed_income_period_satisfied:
     step: "07",
     title: "Compute a suite-level readiness verdict",
     summary:
-      "Individual cases are not enough. The harness computes suite-wide readiness using explicit thresholds for success, CI, grounding, review, and cost.",
+      "Individual cases are not enough. The harness computes suite-wide readiness using explicit thresholds for success, CI, grounding, review, and cost, then uses those same files as evidence for later outer-loop tuning.",
     details: [
       "A suite only becomes READY when its gates clear together, not when a few hand-picked leaves look good.",
       "We now persist top-level run files even for interrupted or failing runs so harness changes are justified by evidence.",
@@ -269,9 +275,9 @@ assessed_income_period_satisfied:
     summary:
       "A successful suite is still not the end. Promotion records wave manifests, repo versions, and source lineage so the resulting corpus is auditable.",
     details: [
-      "UK and Colorado now use wave manifests to record file sets, dates, commits, and provenance tier.",
-      "Atlas sync is downstream of validated corpus state, not the source of truth.",
-      "The long-term goal is to expose this provenance layer directly in the site rather than summarizing it by hand.",
+      "UK and Colorado now use wave manifests to record file sets, dates, commits, source eval runs, and provenance tier.",
+      "The latest UK promotion added 55 regulation 15 leaves and brought the checked-in corpus to 146 RAC files.",
+      "Atlas sync is downstream of validated corpus state, not the source of truth, and the UK replace-mode delete path now works without append-only fallback.",
     ],
     checks: [
       "wave manifest present",
@@ -290,6 +296,33 @@ assessed_income_period_satisfied:
   ]
 }`,
     icon: <VersionIcon className="w-5 h-5" />,
+  },
+];
+
+const recentProofPoints: ProofPoint[] = [
+  {
+    id: "autoresearch",
+    label: "Accepted autoresearch mutation",
+    summary:
+      "The first kept outer-loop prompt mutation fixed claimant-or-partner disjunction handling and improved training score from 73.978 to 99.979 without regressing the separate final-review holdout.",
+  },
+  {
+    id: "wave20",
+    label: "55-case UK bulk wave promoted",
+    summary:
+      "Wave 20 cleared the real scale gate, then landed 55 new Pension Credit regulation 15 leaves in rac-uk.",
+  },
+  {
+    id: "corpus",
+    label: "Current UK corpus state",
+    summary:
+      "The promoted UK repo now has 146 RAC files, companion tests complete, zero embedded scalar violations, and zero numeric-occurrence backlog.",
+  },
+  {
+    id: "sync",
+    label: "Replace-mode Atlas sync repaired",
+    summary:
+      "UK sync no longer depends on append-only recovery. Managed uk/legislation rows are deleted and republished in normal mode.",
   },
 ];
 
@@ -382,6 +415,20 @@ const guardrails: Guardrail[] = [
     catches: ["durable run ledger", "top-level suite files", "partial progress persistence"],
     recentExample: "wave 19 pence-threshold repair trail",
   },
+  {
+    id: "holdout",
+    label: "Do not keep prompt mutations without a holdout check",
+    symptom:
+      "An outer-loop prompt change can improve a narrow repair suite while quietly making other semantic cases worse.",
+    fix:
+      "Autoresearch now scores candidates on frozen training manifests and only keeps them when they improve training without regressing a separate final-review holdout.",
+    catches: [
+      "outer-loop training baseline",
+      "final-review holdout baseline",
+      "decision.json keep / discard gate",
+    ],
+    recentExample: "accepted claimant-or-partner disjunction mutation",
+  },
 ];
 
 const artifactPanels: ArtifactPanel[] = [
@@ -392,12 +439,12 @@ const artifactPanels: ArtifactPanel[] = [
       "Live run state, runner metadata, progress counts, and current status. Updated while the suite is running.",
     language: "plain",
     code: `{
-  "name": "UK wave 19 scale seed",
+  "name": "UK wave 20 bulk seed",
   "runner_backend": "codex",
-  "status": "running",
-  "cases_total": 32,
-  "cases_completed": 28,
-  "started_at": "2026-04-05T02:14:08Z"
+  "status": "completed",
+  "cases_total": 55,
+  "cases_completed": 55,
+  "started_at": "2026-04-08T00:12:44Z"
 }`,
   },
   {
@@ -417,12 +464,29 @@ const artifactPanels: ArtifactPanel[] = [
       "Top-level verdict and aggregate metrics. This is the file the readiness gate and later paper-style reporting lean on.",
     language: "plain",
     code: `{
-  "ready": false,
+  "ready": true,
+  "cases": 55,
   "success_rate": 1.0,
-  "compile_pass_rate": 0.96,
-  "ci_pass_rate": 0.96,
+  "compile_pass_rate": 1.0,
+  "ci_pass_rate": 1.0,
   "zero_ungrounded_rate": 1.0,
-  "generalist_review_pass_rate": 0.76
+  "generalist_review_pass_rate": 1.0,
+  "mean_generalist_review_score": 8.6875
+}`,
+  },
+  {
+    id: "decision",
+    label: "autoresearch decision.json",
+    summary:
+      "Outer-loop keep or discard record. This is how prompt changes are justified instead of being accepted from intuition.",
+    language: "plain",
+    code: `{
+  "kept": true,
+  "reason": "candidate_improved_training_and_preserved_final_review",
+  "baseline_training_score": 73.978195,
+  "candidate_training_score": 99.978679,
+  "baseline_final_review_score": 99.976074,
+  "candidate_final_review_score": 99.976753
 }`,
   },
   {
@@ -450,14 +514,13 @@ cases:
       "Promotion-time provenance: which files landed, when, under which repo revision and provenance tier.",
     language: "plain",
     code: `{
-  "wave": "2026-04-02-wave7",
-  "repo": "rac-us",
-  "provenance_tier": "manual_repo_change",
-  "files": [
-    "statute/26/24/24.rac",
-    "statute/26/32/32.rac",
-    "statute/26/152/c.rac"
-  ]
+  "wave": "2026-04-08-wave18",
+  "repo": "rac-uk",
+  "provenance_tier": "benchmarked_promotion",
+  "file_count": 55,
+  "runner": "codex-gpt-5.4",
+  "autorac_commit": "d4114bd",
+  "all_ready": true
 }`,
   },
 ];
@@ -496,8 +559,10 @@ export function AutoracSystemPage() {
               <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed">
                 This is the operational path from official source text to a
                 promoted RAC file. It includes the deterministic CI checks,
-                semantic review gates, import discipline, run ledgers, and
-                provenance controls we have been adding over the last few weeks.
+                semantic review gates, import discipline, run ledgers,
+                provenance controls, and the new outer-loop autoresearch gate
+                that only keeps prompt mutations when they beat a separate
+                holdout.
               </p>
             </div>
 
@@ -528,6 +593,41 @@ export function AutoracSystemPage() {
             ))}
           </div>
         </header>
+
+        <section className="mb-24">
+          <div className="flex items-end justify-between gap-6 mb-8 max-md:flex-col max-md:items-start">
+            <div>
+              <h2 className="heading-section mb-3">
+                Recent proof points
+              </h2>
+              <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
+                The page is still curated, but these are current system facts
+                rather than generic claims. They are the shortest path to what
+                actually changed this week.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-4 py-2 font-mono text-xs text-[var(--color-ink-muted)]">
+              <CheckIcon size={14} />
+              current as of wave 20 promotion
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
+            {recentProofPoints.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-5"
+              >
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)] mb-3">
+                  {item.label}
+                </p>
+                <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                  {item.summary}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <section className="mb-24">
           <div className="flex items-end justify-between gap-6 mb-8 max-md:flex-col max-md:items-start">
@@ -679,8 +779,10 @@ export function AutoracSystemPage() {
               <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
                 These are real failure classes from recent UK, US, and Colorado
                 work. Each one maps to a concrete harness or repo validator
-                change, and Atlas is where those encoding records and agent logs
-                are meant to be inspected per rule.
+                change. Atlas is where per-rule encoding records and agent logs
+                are meant to be inspected, while autoresearch sits one level up
+                and decides whether prompt-surface changes should be kept at
+                all.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-4 py-2 font-mono text-xs text-[var(--color-ink-muted)]">
@@ -789,10 +891,11 @@ export function AutoracSystemPage() {
               <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
                 The harness now produces enough structured output that this
                 section can eventually be generated directly from exported
-                metadata. Right now the artifact list is curated and
-                representative of the file shapes the harness writes, not a live
-                view of the current run directory. The actual per-encoding logs
-                and RAC records belong in Atlas.
+                metadata. Right now the artifact list is curated, but it now
+                uses concrete current examples from the accepted autoresearch
+                run and the latest UK bulk promotion rather than abstract file
+                shapes. The actual per-encoding logs and RAC records still
+                belong in Atlas.
               </p>
             </div>
             <Link href="/atlas" className="btn-outline">

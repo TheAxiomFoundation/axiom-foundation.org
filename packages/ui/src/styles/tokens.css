@@ -52,7 +52,7 @@ body {
 }
 
 ::selection {
-  background: rgba(180, 83, 9, 0.15);
+  background: rgba(146, 64, 14, 0.15);
   color: var(--color-ink);
 }
 
@@ -251,7 +251,7 @@ pre {
 .btn-primary:hover {
   filter: brightness(0.85);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.15);
+  box-shadow: 0 2px 8px rgba(146, 64, 14, 0.15);
   color: white;
 }
 

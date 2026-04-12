@@ -32,7 +32,7 @@ export function TreeBreadcrumbs({ items }: TreeBreadcrumbsProps) {
             ) : (
               <Link
                 href={item.href}
-                className="text-[var(--color-accent)] hover:underline"
+                className="text-[var(--color-accent)] no-underline hover:underline"
               >
                 {item.label}
               </Link>

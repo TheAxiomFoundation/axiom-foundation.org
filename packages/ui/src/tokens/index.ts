@@ -10,7 +10,7 @@ export const colors = {
   ruleSubtle: "#f5f5f4",
   accent: "#92400e",
   accentHover: "#7c2d12",
-  accentLight: "rgba(180, 83, 9, 0.06)",
+  accentLight: "rgba(146, 64, 14, 0.06)",
   codeBg: "#1c1917",
   codeText: "#e7e5e4",
   success: "#166534",

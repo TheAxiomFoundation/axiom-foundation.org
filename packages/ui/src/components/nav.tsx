@@ -138,6 +138,7 @@ export function Nav({
             style={{ color: "var(--gc, #1c1917)" }}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="GitHub"
           >
             <GitHubIcon className="w-5 h-5" />
           </a>

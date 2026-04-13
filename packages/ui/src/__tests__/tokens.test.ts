@@ -4,8 +4,9 @@ describe("tokens", () => {
   it("exports color values matching the design system", () => {
     expect(colors.paper).toBe("#faf9f6");
     expect(colors.ink).toBe("#1c1917");
-    expect(colors.accent).toBe("#b45309");
-    expect(colors.accentHover).toBe("#92400e");
+    expect(colors.inkMuted).toBe("#78716c");
+    expect(colors.accent).toBe("#92400e");
+    expect(colors.accentHover).toBe("#7c2d12");
   });
 
   it("exports all expected color keys", () => {
@@ -37,14 +38,14 @@ describe("tokens", () => {
   it("color values snapshot", () => {
     expect(colors).toMatchInlineSnapshot(`
       {
-        "accent": "#b45309",
-        "accentHover": "#92400e",
-        "accentLight": "rgba(180, 83, 9, 0.06)",
+        "accent": "#92400e",
+        "accentHover": "#7c2d12",
+        "accentLight": "rgba(146, 64, 14, 0.06)",
         "codeBg": "#1c1917",
         "codeText": "#e7e5e4",
         "error": "#991b1b",
         "ink": "#1c1917",
-        "inkMuted": "#a8a29e",
+        "inkMuted": "#78716c",
         "inkSecondary": "#57534e",
         "paper": "#faf9f6",
         "paperElevated": "#ffffff",

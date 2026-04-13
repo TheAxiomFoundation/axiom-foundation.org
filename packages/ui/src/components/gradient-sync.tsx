@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 
-// Brown (#b45309) → Ink (#1c1917)
-const FROM = [180, 83, 9];
+// Accent brown (#92400e) → Ink (#1c1917)
+const FROM = [146, 64, 14];
 const TO = [28, 25, 23];
 
 const SELECTOR =

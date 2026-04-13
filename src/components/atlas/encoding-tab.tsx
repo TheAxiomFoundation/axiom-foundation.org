@@ -50,7 +50,7 @@ export function EncodingTab({
               href={gitHubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
             >
               <svg
                 className="w-4 h-4"

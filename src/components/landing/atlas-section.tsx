@@ -40,9 +40,9 @@ export function AtlasSection() {
               className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md p-8 transition-all duration-200 hover:border-[var(--color-accent)] hover:-translate-y-0.5"
               style={{ transitionTimingFunction: "var(--ease-out)" }}
             >
-              <h4 className="font-body text-lg text-[var(--color-ink)] mb-2">
+              <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
                 {item.title}
-              </h4>
+              </h3>
               <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-normal m-0">
                 {item.desc}
               </p>

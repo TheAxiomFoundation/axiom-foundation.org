@@ -17,6 +17,14 @@ describe("Nav", () => {
     expect(screen.getByAltText("Axiom Foundation")).toBeInTheDocument();
   });
 
+  it("gives the desktop GitHub icon link an accessible name", () => {
+    render(<Nav />);
+    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation",
+    );
+  });
+
   it("applies baseUrl to links", () => {
     render(<Nav baseUrl="https://axiom-foundation.org" />);
     const browseLink = screen.getAllByText("Browse")[0];

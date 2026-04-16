@@ -1,9 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JURISDICTIONS, getJurisdictionCounts } from "@/lib/tree-data";
 import { trackAtlasEvent } from "@/lib/analytics";
+
+type TopicCard = {
+  slug: string;
+  label: string;
+  subtitle: string;
+  href: string;
+};
+
+const TOPIC_CARDS: TopicCard[] = [
+  {
+    slug: "snap",
+    label: "SNAP",
+    subtitle:
+      "Food and Nutrition Act (7 USC Ch 51) and SNAP regulations (7 CFR 271–283)",
+    href: "/topics/snap",
+  },
+];
 
 interface CardData {
   slug: string;
@@ -43,6 +61,40 @@ export function JurisdictionPicker() {
 
   return (
     <div>
+      {TOPIC_CARDS.length > 0 && (
+        <div className="mb-12">
+          <h2 className="font-display text-lg text-[var(--color-ink-secondary)] mb-6 text-center">
+            Explore by topic
+          </h2>
+          <div
+            className="grid gap-4"
+            style={{
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            }}
+          >
+            {TOPIC_CARDS.map((topic) => (
+              <Link
+                key={topic.slug}
+                href={topic.href}
+                className="block p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md cursor-pointer hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors"
+                onClick={() =>
+                  trackAtlasEvent("atlas_topic_selected", {
+                    topic: topic.slug,
+                  })
+                }
+              >
+                <div className="text-base font-display text-[var(--color-ink)]">
+                  {topic.label}
+                </div>
+                <div className="mt-2 text-sm text-[var(--color-ink-secondary)] leading-snug">
+                  {topic.subtitle}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <h2 className="font-display text-lg text-[var(--color-ink-secondary)] mb-6 text-center">
         Choose a jurisdiction
       </h2>

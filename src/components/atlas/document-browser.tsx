@@ -206,7 +206,7 @@ function RuleTreeView({
 
       {currentRule && !currentRuleIsNavigationContainer && (
         <div className="mb-6 min-h-[240px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
-          {currentRuleLoading || !currentRuleDoc ? (
+          {currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
             <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
               Loading...
             </div>

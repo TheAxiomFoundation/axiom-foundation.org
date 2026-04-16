@@ -108,6 +108,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -122,6 +123,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -148,6 +150,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -169,6 +172,7 @@ describe("AtlasBrowser", () => {
         hasMore: true,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -195,6 +199,7 @@ describe("AtlasBrowser", () => {
         hasMore: true,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -218,6 +223,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us"]} />);
@@ -240,6 +246,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us", "statute"]} />);
@@ -271,6 +278,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: null,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["uk"]} />);
@@ -322,6 +330,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule,
+        currentRule: null,
       });
 
       vi.mocked(resolveDisplayContext).mockResolvedValue({
@@ -351,6 +360,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule,
+        currentRule: null,
       });
 
       vi.mocked(resolveDisplayContext).mockResolvedValue({
@@ -389,6 +399,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: rootLeaf,
+        currentRule: null,
       });
 
       vi.mocked(resolveDisplayContext).mockResolvedValue({
@@ -432,6 +443,7 @@ describe("AtlasBrowser", () => {
         hasMore: false,
         loadMore: mockLoadMore,
         leafRule: topLevelLeaf,
+        currentRule: null,
       });
 
       render(<AtlasBrowser segments={["us", "statute", "26", "24", "a"]} />);

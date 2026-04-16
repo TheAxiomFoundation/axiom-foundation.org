@@ -70,7 +70,7 @@ const STATE_SOURCES: LinkItem[] = [
     external: true,
   },
   {
-    href: "https://fns-prod.azureedge.us/sites/default/files/resource-files/snap-302-bpg.pdf",
+    href: "https://www.fns.usda.gov/snap/waivers/state-options-report",
     label: "USDA FNS — SNAP State Options Report",
     sub: "Federal guidance on state flexibility",
     external: true,

@@ -162,7 +162,7 @@ function RuleTreeView({
   // tree list below, not dumped inline.
   const currentRuleIsNavigationContainer =
     !!currentRuleDetail &&
-    !currentRuleDetail.body &&
+    (currentRuleDetail.body == null || currentRuleDetail.body.trim() === "") &&
     currentRuleChildren.length > 0;
 
   const currentRuleDoc =

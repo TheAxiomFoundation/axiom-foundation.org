@@ -663,6 +663,140 @@ describe("AtlasBrowser", () => {
       expect(screen.getAllByText("Loading...").length).toBeGreaterThan(0);
     });
 
+    it("treats a whitespace-only body on a rule with children as a navigation container", async () => {
+      // Hardening: a future ingestion writing body = "" or "   " should still
+      // route through the compact navigation-container branch rather than
+      // dumping an empty RuleDetailPanel above the children.
+      const currentRule = {
+        id: "subpart-ws",
+        jurisdiction: "us",
+        doc_type: "regulation",
+        parent_id: "part-273",
+        level: 1,
+        ordinal: 1,
+        heading: "Subpart with whitespace-only body",
+        body: "   ",
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/regulation/7/273/subpart-ws",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      const childSection = {
+        ...currentRule,
+        id: "sec-ws-1",
+        parent_id: "subpart-ws",
+        level: 2,
+        heading: "Child section",
+        body: "Actual child content.",
+        citation_path: "us/regulation/7/273/ws-1",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "ws-1",
+            label: "Child section",
+            hasChildren: true,
+            nodeType: "section",
+            rule: childSection,
+            hasRac: false,
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children: [childSection],
+        loading: false,
+        error: null,
+      });
+
+      render(
+        <AtlasBrowser
+          segments={["us", "regulation", "7", "273", "subpart-ws"]}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Subpart with whitespace-only body")
+        ).toBeInTheDocument();
+      });
+
+      // Compact container header is shown; child's actual content is NOT
+      // dumped inline at the container level.
+      expect(screen.getByText(/1 section below/)).toBeInTheDocument();
+      expect(
+        screen.queryByText("Actual child content.")
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders the RuleDetailPanel (non-container branch) when body is empty string but rule has no children", async () => {
+      // body: "" with non-empty children → container; with zero children the
+      // predicate falls through and the rule renders inline. This anchors the
+      // non-container branch for the hardened predicate.
+      const currentRule = {
+        id: "rule-empty-body",
+        jurisdiction: "us",
+        doc_type: "statute",
+        parent_id: "parent-eb",
+        level: 2,
+        ordinal: 0,
+        heading: "Empty body rule",
+        body: "",
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/statute/26/999",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children: [],
+        loading: false,
+        error: null,
+      });
+
+      render(<AtlasBrowser segments={["us", "statute", "26", "999"]} />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Empty body rule").length).toBeGreaterThan(
+          0
+        );
+      });
+
+      // Non-container branch renders via RuleDetailPanel, which does NOT emit
+      // the "N sections below" compact container summary.
+      expect(screen.queryByText(/sections? below/)).not.toBeInTheDocument();
+    });
+
     it("pluralizes the section count for multi-child navigation containers", async () => {
       const currentRule = {
         id: "part-273",

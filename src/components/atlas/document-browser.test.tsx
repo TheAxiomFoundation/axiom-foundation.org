@@ -857,5 +857,73 @@ describe("AtlasBrowser", () => {
         expect(screen.getByText(/3 sections below/)).toBeInTheDocument();
       });
     });
+
+    it("falls back to 'Untitled' when a navigation container has no heading", async () => {
+      const currentRule = {
+        id: "subpart-x",
+        jurisdiction: "us",
+        doc_type: "regulation",
+        parent_id: "part-999",
+        level: 1,
+        ordinal: 0,
+        heading: null,
+        body: null,
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/regulation/9/999/subpart-x",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      const child = {
+        ...currentRule,
+        id: "child-1",
+        parent_id: "subpart-x",
+        level: 2,
+        heading: "Some section",
+        body: "body",
+        citation_path: "us/regulation/9/999/1",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "1",
+            label: "Some section",
+            hasChildren: true,
+            nodeType: "section" as const,
+            rule: child,
+            hasRac: false,
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children: [child],
+        loading: false,
+        error: null,
+      });
+
+      render(
+        <AtlasBrowser
+          segments={["us", "regulation", "9", "999", "subpart-x"]}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Untitled")).toBeInTheDocument();
+      });
+    });
   });
 });

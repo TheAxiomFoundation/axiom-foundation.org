@@ -408,3 +408,56 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   // Fallback: fetch from GitHub rac-* repo
   return fetchRacFromGitHub(candidates, rule.jurisdiction)
 }
+
+// ---- Atlas full-text search ----
+
+export interface SearchHit {
+  id: string
+  jurisdiction: string
+  doc_type: string
+  citation_path: string
+  heading: string | null
+  snippet: string
+  has_rac: boolean
+  rank: number
+}
+
+export interface SearchOptions {
+  jurisdiction?: string
+  docType?: 'statute' | 'regulation'
+  limit?: number
+}
+
+/**
+ * Search arch.rules via the server-side `search_rules` RPC.
+ *
+ * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
+ * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
+ * snippet suitable for rendering as innerHTML.
+ *
+ * Callers must treat `snippet` as sanitized-by-construction: Postgres
+ * ts_headline emits exactly the `StartSel`/`StopSel` markers we passed
+ * and HTML-escapes everything else. Do not pass untrusted strings as
+ * start/stop markers in the RPC definition.
+ */
+export async function searchRules(
+  query: string,
+  options: SearchOptions = {}
+): Promise<SearchHit[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  const { data, error } = await supabaseArch.rpc('search_rules', {
+    q,
+    jurisdiction_in: options.jurisdiction ?? null,
+    doc_type_in: options.docType ?? null,
+    limit_in: Math.max(1, Math.min(options.limit ?? 30, 100)),
+  })
+
+  if (error) {
+    console.error('search_rules RPC failed:', error)
+    return []
+  }
+
+  return (data || []) as SearchHit[]
+}

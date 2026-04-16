@@ -7,6 +7,7 @@ import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
 import { JurisdictionPicker } from "./jurisdiction-picker";
+import { AtlasSearch } from "./atlas-search";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -302,6 +303,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           </p>
         </div>
 
+        <AtlasSearch />
         <JurisdictionPicker />
       </div>
     );

@@ -22,6 +22,7 @@ import {
   getSDKSessionEvents,
   getSDKSessionMeta,
   getRuleEncoding,
+  searchRules,
 } from './supabase'
 
 describe('supabase lib', () => {
@@ -691,6 +692,74 @@ describe('supabase lib', () => {
         expect.any(Object)
       )
       vi.unstubAllGlobals()
+    })
+  })
+
+  describe('searchRules', () => {
+    it('returns an empty array for blank queries without hitting the RPC', async () => {
+      const result = await searchRules('   ')
+      expect(result).toEqual([])
+      expect(mockRpc).not.toHaveBeenCalled()
+    })
+
+    it('calls the search_rules RPC with trimmed query and default options', async () => {
+      const hits = [
+        {
+          id: 'a',
+          jurisdiction: 'us',
+          doc_type: 'regulation',
+          citation_path: 'us/regulation/7/273/9',
+          heading: 'Income and deductions',
+          snippet: '<mark>SNAP</mark>',
+          has_rac: false,
+          rank: 0.1,
+        },
+      ]
+      mockRpc.mockResolvedValue({ data: hits, error: null })
+
+      const result = await searchRules('  SNAP standard  ')
+      expect(mockRpc).toHaveBeenCalledWith('search_rules', {
+        q: 'SNAP standard',
+        jurisdiction_in: null,
+        doc_type_in: null,
+        limit_in: 30,
+      })
+      expect(result).toEqual(hits)
+    })
+
+    it('forwards jurisdiction, docType, and clamps the limit', async () => {
+      mockRpc.mockResolvedValue({ data: [], error: null })
+      await searchRules('x', { jurisdiction: 'us', docType: 'statute', limit: 500 })
+      expect(mockRpc).toHaveBeenCalledWith('search_rules', {
+        q: 'x',
+        jurisdiction_in: 'us',
+        doc_type_in: 'statute',
+        limit_in: 100,
+      })
+    })
+
+    it('clamps a below-minimum limit to 1', async () => {
+      mockRpc.mockResolvedValue({ data: [], error: null })
+      await searchRules('x', { limit: 0 })
+      expect(mockRpc).toHaveBeenCalledWith(
+        'search_rules',
+        expect.objectContaining({ limit_in: 1 })
+      )
+    })
+
+    it('returns an empty array when the RPC errors', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('boom') })
+      const result = await searchRules('anything')
+      expect(result).toEqual([])
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('handles a null data response as an empty array', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null })
+      const result = await searchRules('anything')
+      expect(result).toEqual([])
     })
   })
 })

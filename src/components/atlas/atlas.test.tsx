@@ -25,6 +25,7 @@ vi.mock("@/hooks/use-tree-nodes", () => ({
     hasMore: false,
     loadMore: vi.fn(),
     leafRule: null,
+    currentRule: null,
   }),
 }));
 
@@ -79,6 +80,7 @@ describe("AtlasBrowser integration", () => {
       hasMore: false,
       loadMore: vi.fn(),
       leafRule: null,
+      currentRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "federal"]} />);
@@ -93,6 +95,7 @@ describe("AtlasBrowser integration", () => {
       hasMore: false,
       loadMore: vi.fn(),
       leafRule: null,
+      currentRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "federal", "statute"]} />);
@@ -110,6 +113,7 @@ describe("AtlasBrowser integration", () => {
       hasMore: false,
       loadMore: vi.fn(),
       leafRule: null,
+      currentRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "federal"]} />);
@@ -132,6 +136,7 @@ describe("AtlasBrowser integration", () => {
       hasMore: true,
       loadMore,
       leafRule: null,
+      currentRule: null,
     });
 
     render(<AtlasBrowser segments={["us", "federal"]} />);

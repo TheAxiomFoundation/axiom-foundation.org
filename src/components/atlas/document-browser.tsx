@@ -156,15 +156,25 @@ function RuleTreeView({
   }
   /* v8 ignore stop */
 
+  // Suppress the inline detail panel when the current node is a navigation
+  // container (no body of its own) whose children are distinct navigable
+  // sections — e.g. a CFR subpart. In that case the children belong in the
+  // tree list below, not dumped inline.
+  const currentRuleIsNavigationContainer =
+    !!currentRuleDetail &&
+    !currentRuleDetail.body &&
+    currentRuleChildren.length > 0;
+
   const currentRuleDoc =
-    currentRuleDetail &&
-    transformRuleToViewerDoc(
-      currentRuleDetail,
-      currentRuleChildren,
-      currentRuleChildren.length > 0 && currentRuleDetail.body
-        ? { contextText: currentRuleDetail.body }
-        : undefined
-    );
+    currentRuleDetail && !currentRuleIsNavigationContainer
+      ? transformRuleToViewerDoc(
+          currentRuleDetail,
+          currentRuleChildren,
+          currentRuleChildren.length > 0 && currentRuleDetail.body
+            ? { contextText: currentRuleDetail.body }
+            : undefined
+        )
+      : null;
 
   const handleNavigate = (node: { segment: string }) => {
     trackAtlasEvent("atlas_tree_navigated", {
@@ -178,9 +188,25 @@ function RuleTreeView({
     <div className="max-w-[1280px] mx-auto px-8">
       <TreeBreadcrumbs items={breadcrumbs} />
 
-      {currentRule && (
+      {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
+        <div className="mb-6 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
+          <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
+            {currentRuleDetail.citation_path}
+          </div>
+          <h2 className="font-display text-lg text-[var(--color-ink)]">
+            {currentRuleDetail.heading || "Untitled"}
+          </h2>
+          <p className="mt-2 text-sm text-[var(--color-ink-secondary)]">
+            {currentRuleChildren.length} section
+            {currentRuleChildren.length === 1 ? "" : "s"} below — select one to
+            read the text.
+          </p>
+        </div>
+      )}
+
+      {currentRule && !currentRuleIsNavigationContainer && (
         <div className="mb-6 min-h-[240px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
-          {currentRuleLoading || !currentRuleDoc ? (
+          {currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
             <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
               Loading...
             </div>

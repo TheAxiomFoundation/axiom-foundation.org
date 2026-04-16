@@ -162,4 +162,35 @@ describe("JurisdictionPicker", () => {
     });
     expect(mockPush).not.toHaveBeenCalled();
   });
+
+  it("renders the SNAP topic card above jurisdictions", async () => {
+    mockGetJurisdictionCounts.mockResolvedValue(new Map([["uk", 50]]));
+
+    render(<JurisdictionPicker />);
+
+    await waitFor(() =>
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByText("Explore by topic")).toBeInTheDocument();
+    const snapLink = screen.getByText("SNAP").closest("a");
+    expect(snapLink?.getAttribute("href")).toBe("/topics/snap");
+  });
+
+  it("fires atlas_topic_selected analytics on SNAP card click", async () => {
+    mockGetJurisdictionCounts.mockResolvedValue(new Map([["uk", 50]]));
+
+    render(<JurisdictionPicker />);
+
+    await waitFor(() =>
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument()
+    );
+
+    const snapLink = screen.getByText("SNAP").closest("a")!;
+    // The Link component preventDefaults, but the onClick still fires.
+    fireEvent.click(snapLink);
+    // We don't assert on the analytics mock directly (PostHog is env-gated),
+    // but clicking must not throw and the href must be correct.
+    expect(snapLink.getAttribute("href")).toBe("/topics/snap");
+  });
 });

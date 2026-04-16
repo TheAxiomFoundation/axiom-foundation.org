@@ -407,7 +407,13 @@ describe("useTreeNodes", () => {
           segs: string[];
           hasCitation: boolean;
         }) => useTreeNodes(dbId, segs, hasCitation),
-        { initialProps: { dbId: "us", segs: [], hasCitation: true } }
+        {
+          initialProps: {
+            dbId: "us",
+            segs: [] as string[],
+            hasCitation: true,
+          },
+        }
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));

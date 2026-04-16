@@ -582,7 +582,8 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
       segments[i],
       ruleIndex,
       jurisdiction.slug,
-      segments[i - 1]
+      segments[i - 1],
+      segments
     );
     items.push({ label, href });
   }
@@ -617,7 +618,8 @@ function formatRuleSegmentLabel(
   segment: string,
   ruleIndex: number,
   jurisdiction: string,
-  previousSegment?: string
+  previousSegment?: string,
+  allSegments?: string[]
 ): string {
   if (jurisdiction === "us-co") {
     if (ruleIndex === 0) {
@@ -664,14 +666,41 @@ function formatRuleSegmentLabel(
     return formatGenericSegmentLabel(segment);
   }
 
+  // Default path (us federal and similar): handle statute and regulation lanes
+  const isRegulationLane =
+    Array.isArray(allSegments) && allSegments[1] === "regulation";
+  const isSubpart =
+    typeof segment === "string" && segment.startsWith("subpart-");
+
   if (ruleIndex === 0) {
-    return segment === "statute" ? "Statutes" : segment;
+    if (segment === "statute") return "Statutes";
+    if (segment === "regulation") return "Regulations";
+    return segment;
   }
 
   if (ruleIndex === 1) {
     return `Title ${segment}`;
   }
 
+  if (isRegulationLane) {
+    if (ruleIndex === 2) return `Part ${segment}`;
+    if (isSubpart) {
+      return `Subpart ${segment.replace(/^subpart-/, "").toUpperCase()}`;
+    }
+    if (ruleIndex === 3) {
+      // Section under part: e.g. us/regulation/7/273/9 → "§ 273.9"
+      const partNum = allSegments?.[3] ?? "";
+      return `§ ${partNum}.${segment}`;
+    }
+    if (ruleIndex === 4 && previousSegment?.startsWith("subpart-")) {
+      // Section under subpart: e.g. us/regulation/7/273/subpart-d/9 → "§ 273.9"
+      const partNum = allSegments?.[3] ?? "";
+      return `§ ${partNum}.${segment}`;
+    }
+    return `(${segment})`;
+  }
+
+  // Statute lane
   if (ruleIndex === 2) {
     return `§ ${segment}`;
   }

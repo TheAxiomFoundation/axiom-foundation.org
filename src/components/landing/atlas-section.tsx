@@ -32,7 +32,7 @@ export function AtlasSection() {
             },
             {
               title: "Regulations",
-              desc: "CFR titles, Treasury regulations, agency rules \u2014 coming soon",
+              desc: "7 CFR 271\u2013283 (SNAP) ingested \u2022 Treasury and agency rules next",
             },
           ].map((item) => (
             <div
@@ -69,6 +69,9 @@ export function AtlasSection() {
         <div className="flex justify-center gap-4">
           <Link href="/atlas" className="btn-primary">
             Explore Atlas
+          </Link>
+          <Link href="/topics/snap" className="btn-outline">
+            SNAP topic
           </Link>
           <a
             href="https://github.com/TheAxiomFoundation/atlas"

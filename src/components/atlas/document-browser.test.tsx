@@ -530,5 +530,198 @@ describe("AtlasBrowser", () => {
 
       expect(screen.getByText("§ A RAC")).toBeInTheDocument();
     });
+
+    it("renders a compact navigation container (no inline body) when current rule has children but no body of its own", async () => {
+      const currentRule = {
+        id: "subpart-d",
+        jurisdiction: "us",
+        doc_type: "regulation",
+        parent_id: "part-273",
+        level: 1,
+        ordinal: 68,
+        heading: "Subpart D — Eligibility and Benefit Levels",
+        body: null,
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/regulation/7/273/subpart-d",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      const childSection = {
+        ...currentRule,
+        id: "sec-273-9",
+        parent_id: "subpart-d",
+        level: 2,
+        ordinal: 90,
+        heading: "Income and deductions",
+        body: "(a) Income eligibility standards...",
+        citation_path: "us/regulation/7/273/9",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "9",
+            label: "Income and deductions",
+            hasChildren: true,
+            nodeType: "section",
+            rule: childSection,
+            hasRac: false,
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children: [childSection],
+        loading: false,
+        error: null,
+      });
+
+      render(
+        <AtlasBrowser
+          segments={["us", "regulation", "7", "273", "subpart-d"]}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Subpart D — Eligibility and Benefit Levels")
+        ).toBeInTheDocument();
+      });
+
+      // Compact container header with children count summary
+      expect(
+        screen.getByText(/1 section below/)
+      ).toBeInTheDocument();
+      // Citation path is rendered as the eyebrow
+      expect(
+        screen.getByText("us/regulation/7/273/subpart-d")
+      ).toBeInTheDocument();
+      // Child section is surfaced in the tree list below, not dumped inline
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+      // Inline body of the child should NOT be rendered at the container level
+      expect(
+        screen.queryByText(/Income eligibility standards/)
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Loading... in the non-container branch while useRule is still fetching", async () => {
+      const currentRule = {
+        id: "rule-load",
+        jurisdiction: "us",
+        doc_type: "statute",
+        parent_id: "parent-load",
+        level: 2,
+        ordinal: 0,
+        heading: "Loading demo",
+        body: "Some body so this is treated as a non-container rule.",
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/statute/26/21",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      // useRule still loading — forces the Loading... fallback in the
+      // non-container render branch.
+      vi.mocked(useRule).mockReturnValue({
+        rule: null,
+        children: [],
+        loading: true,
+        error: null,
+      });
+
+      render(<AtlasBrowser segments={["us", "statute", "26", "21"]} />);
+
+      // "Loading..." appears in the detail panel area
+      expect(screen.getAllByText("Loading...").length).toBeGreaterThan(0);
+    });
+
+    it("pluralizes the section count for multi-child navigation containers", async () => {
+      const currentRule = {
+        id: "part-273",
+        jurisdiction: "us",
+        doc_type: "regulation",
+        parent_id: null,
+        level: 0,
+        ordinal: 273,
+        heading: "CERTIFICATION OF ELIGIBLE HOUSEHOLDS",
+        body: null,
+        effective_date: null,
+        repeal_date: null,
+        source_url: null,
+        source_path: null,
+        citation_path: "us/regulation/7/273",
+        rac_path: null,
+        has_rac: false,
+        created_at: "",
+        updated_at: "",
+      };
+
+      const children = ["a", "b", "c"].map((letter) => ({
+        ...currentRule,
+        id: `subpart-${letter}`,
+        parent_id: "part-273",
+        level: 1,
+        heading: `Subpart ${letter.toUpperCase()}`,
+        citation_path: `us/regulation/7/273/subpart-${letter}`,
+      }));
+
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: children.map((c) => ({
+          segment: c.citation_path.split("/").pop()!,
+          label: c.heading!,
+          hasChildren: true,
+          nodeType: "section" as const,
+          rule: c,
+          hasRac: false,
+        })),
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule,
+      });
+
+      vi.mocked(useRule).mockReturnValue({
+        rule: currentRule,
+        children,
+        loading: false,
+        error: null,
+      });
+
+      render(<AtlasBrowser segments={["us", "regulation", "7", "273"]} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/3 sections below/)).toBeInTheDocument();
+      });
+    });
   });
 });

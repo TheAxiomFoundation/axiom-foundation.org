@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 type LinkItem = {
   href: string;
   label: string;
-  sub?: string;
+  sub: string;
   external?: boolean;
 };
 
@@ -90,11 +90,9 @@ function LinkCard({ item }: { item: LinkItem }) {
           </span>
         ) : null}
       </div>
-      {item.sub ? (
-        <div className="mt-2 text-sm text-[var(--color-ink-secondary)] leading-snug">
-          {item.sub}
-        </div>
-      ) : null}
+      <div className="mt-2 text-sm text-[var(--color-ink-secondary)] leading-snug">
+        {item.sub}
+      </div>
     </div>
   );
 

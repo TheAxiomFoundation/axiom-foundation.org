@@ -78,7 +78,11 @@ export function RuleDetailPanel({
             <div className="font-mono text-xs text-[var(--color-ink-muted)] uppercase tracking-wider mb-4">
               Encoding
             </div>
-            <EncodingTab encoding={encoding} loading={loading} />
+            <EncodingTab
+              encoding={encoding}
+              loading={loading}
+              jurisdiction={document.jurisdiction}
+            />
           </div>
         </div>
       </main>

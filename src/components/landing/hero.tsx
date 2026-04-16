@@ -122,8 +122,9 @@ export function Hero() {
           </h1>
 
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[540px] mx-auto">
-            The Axiom Foundation builds open, machine-readable encodings of
-            statutes, regulations, and policy rules. Ground truth for AI systems.
+            Axiom Foundation is the nonprofit home of The Axiom Project. We build
+            open, machine-readable encodings of statutes, regulations, and policy
+            rules, with Axiom Labs prototyping the applied layer on top.
           </p>
         </div>
 

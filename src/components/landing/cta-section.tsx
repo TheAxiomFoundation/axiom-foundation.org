@@ -11,7 +11,8 @@ export function CtaSection() {
           Get involved
         </h2>
         <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed mb-12">
-          The Axiom Foundation builds open infrastructure for encoded law.
+          The Axiom Project builds the canonical rules layer. Axiom Labs prototypes
+          the applied layer. Both depend on an open community.
         </p>
 
         <div className="flex justify-center gap-6 mb-12 flex-wrap">

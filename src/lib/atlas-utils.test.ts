@@ -34,7 +34,11 @@ const mockRule = (overrides: Partial<Rule> = {}): Rule => ({
 describe("transformRuleToViewerDoc", () => {
   describe("existing behavior preserved", () => {
     it("maps children to subsections with letter IDs", () => {
-      const rule = mockRule({ heading: "Section 1", source_path: "26/1" });
+      const rule = mockRule({
+        heading: "Section 1",
+        source_path: "26/1",
+        citation_path: "us/statute/26/1",
+      });
       const children = [
         mockRule({ id: "c1", body: "Child A body" }),
         mockRule({ id: "c2", body: "Child B body" }),
@@ -42,7 +46,7 @@ describe("transformRuleToViewerDoc", () => {
 
       const doc = transformRuleToViewerDoc(rule, children);
 
-      expect(doc.citation).toBe("26/1");
+      expect(doc.citation).toBe("26 U.S.C. § 1");
       expect(doc.title).toBe("Section 1");
       expect(doc.subsections).toEqual([
         { id: "a", text: "Child A body" },
@@ -81,12 +85,27 @@ describe("transformRuleToViewerDoc", () => {
       ]);
     });
 
-    it("uses id as citation when source_path is null", () => {
-      const rule = mockRule({ id: "abc-123", source_path: null });
+    it("uses formatted citation_path when source_path is null", () => {
+      const rule = mockRule({
+        id: "abc-123",
+        source_path: null,
+        citation_path: "us/statute/26/24/a",
+      });
 
       const doc = transformRuleToViewerDoc(rule, []);
 
-      expect(doc.citation).toBe("abc-123");
+      expect(doc.citation).toBe("26 U.S.C. § 24(a)");
+    });
+
+    it("preserves human-readable source citations", () => {
+      const rule = mockRule({
+        source_path: "26 USC 24(d)(1)(A)",
+        citation_path: "us/statute/26/24/d/1/A",
+      });
+
+      const doc = transformRuleToViewerDoc(rule, []);
+
+      expect(doc.citation).toBe("26 USC 24(d)(1)(A)");
     });
   });
 

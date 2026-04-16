@@ -10,9 +10,9 @@ export default function AboutPage() {
             About the Axiom Foundation
           </h1>
           <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
-            The world&apos;s rules, encoded. We build machine-readable
-            encodings of statutes, regulations, and policy rules to serve as
-            ground truth for AI systems.
+            The world&apos;s rules, encoded. Axiom Foundation is the nonprofit
+            home of The Axiom Project, with Axiom Labs prototyping the applied
+            layer on top of the canonical rules core.
           </p>
         </header>
 
@@ -22,8 +22,10 @@ export default function AboutPage() {
           </h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
             Our mission is to make legal rules machine-readable, verifiable,
-            and accessible to everyone. We&apos;re a fiscally sponsored project of
-            the{" "}
+            and accessible to everyone. The Axiom Project focuses on the bounded
+            public-good core: source documents, encoded rules, provenance, and
+            validation. Axiom Labs prototypes intake, packaging, and other applied
+            tooling on top. We&apos;re a fiscally sponsored project of the{" "}
             <a
               href="https://psl-foundation.org"
               target="_blank"
@@ -33,6 +35,40 @@ export default function AboutPage() {
             </a>
             .
           </p>
+        </section>
+
+        <section className="mb-16">
+          <h2 className="heading-sub mb-6">
+            How we&apos;re organized
+          </h2>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
+            {[
+              {
+                title: "Axiom Foundation",
+                desc: "The nonprofit steward: long-term governance, funding, community, and public accountability.",
+              },
+              {
+                title: "The Axiom Project",
+                desc: "The bounded core: canonical rules encodings, provenance, compilers, and validation.",
+              },
+              {
+                title: "Axiom Labs",
+                desc: "The applied layer: reference intake flows, adaptive questioning pilots, and delivery tooling built on top of the core.",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md"
+              >
+                <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
+                  {card.title}
+                </h3>
+                <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                  {card.desc}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="mb-16">

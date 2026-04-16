@@ -146,33 +146,37 @@ describe('SourceTab', () => {
 
 describe('EncodingTab', () => {
   it('shows loading state', () => {
-    render(<EncodingTab encoding={null} loading={true} />)
+    render(<EncodingTab encoding={null} loading={true} jurisdiction="us" />)
     expect(screen.getByText('Loading encoding data...')).toBeInTheDocument()
   })
 
   it('shows empty state when no encoding', () => {
-    render(<EncodingTab encoding={null} loading={false} />)
+    render(<EncodingTab encoding={null} loading={false} jurisdiction="us" />)
     expect(screen.getByText('Not yet encoded')).toBeInTheDocument()
     expect(screen.getByText('This rule has not been encoded into RAC format yet.')).toBeInTheDocument()
   })
 
   it('renders encoding with scores and RAC content', () => {
-    render(<EncodingTab encoding={makeEncoding()} loading={false} />)
+    render(<EncodingTab encoding={makeEncoding()} loading={false} jurisdiction="us" />)
     expect(screen.getByText('90')).toBeInTheDocument()
     expect(screen.getByText('85')).toBeInTheDocument()
     expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getByText('75')).toBeInTheDocument()
     expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
+    expect(screen.getByText('Shown source')).toBeInTheDocument()
+    expect(screen.getByText('Stored encoding record')).toBeInTheDocument()
+    expect(screen.getByText(/latest stored encoding run/i)).toBeInTheDocument()
+    expect(screen.getByText('View canonical repo file')).toBeInTheDocument()
   })
 
   it('renders encoding without scores', () => {
-    render(<EncodingTab encoding={makeEncoding({ final_scores: null })} loading={false} />)
+    render(<EncodingTab encoding={makeEncoding({ final_scores: null })} loading={false} jurisdiction="us" />)
     expect(screen.getByText('RAC encoding')).toBeInTheDocument()
     expect(screen.queryByText('90')).not.toBeInTheDocument()
   })
 
   it('renders encoding without RAC content', () => {
-    render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} />)
+    render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} jurisdiction="us" />)
     expect(screen.queryByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).not.toBeInTheDocument()
   })
 
@@ -181,7 +185,8 @@ describe('EncodingTab', () => {
       encoding_run_id: 'github:statute/26/32/b.rac',
       file_path: 'statute/26/32/b.rac',
       final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
-    })} loading={false} />)
+    })} loading={false} jurisdiction="us" />)
+    expect(screen.getByText('Repository file')).toBeInTheDocument()
     expect(screen.getByText('View on GitHub')).toBeInTheDocument()
     // Scores should be hidden for GitHub sources
     expect(screen.queryByText('90')).not.toBeInTheDocument()
@@ -191,9 +196,20 @@ describe('EncodingTab', () => {
     render(<EncodingTab encoding={makeEncoding({
       encoding_run_id: 'enc-1',
       final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
-    })} loading={false} />)
+    })} loading={false} jurisdiction="us" />)
     expect(screen.queryByText('View on GitHub')).not.toBeInTheDocument()
     expect(screen.getByText('90')).toBeInTheDocument()
+  })
+
+  it('renders the canonical repo link for UK encodings', () => {
+    render(<EncodingTab encoding={makeEncoding({
+      file_path: 'legislation/uksi/2013/376/regulation/36/3/single-under-25.rac',
+    })} loading={false} jurisdiction="uk" />)
+    const link = screen.getByText('View canonical repo file').closest('a')
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.rac'
+    )
   })
 })
 
@@ -322,6 +338,43 @@ describe('AgentLogsTab', () => {
     fireEvent.click(screen.getByText('rules-engineer').closest('[class*="cursor-pointer"]')!)
     expect(screen.getByText('Encode 26 USC 32(b)')).toBeInTheDocument()
     expect(screen.getByText('Need to handle the credit percentages')).toBeInTheDocument()
+  })
+
+  it('renders provenance events in a dedicated section', () => {
+    const events = [
+      makeEvent({ id: 'e1', sequence: 1, event_type: 'agent_start', content: 'Start encoding' }),
+      makeEvent({
+        id: 'e2',
+        sequence: 2,
+        event_type: 'provenance_reasoning',
+        content: 'Need to reconcile subsection (a) with section 151 usage.',
+        metadata: { phase: 'encoding', provider: 'openai' },
+      }),
+      makeEvent({
+        id: 'e3',
+        sequence: 3,
+        event_type: 'provenance_artifact',
+        content: 'Artifact provenance for 26/24/a.rac',
+        metadata: { phase: 'encoding' },
+      }),
+      makeEvent({
+        id: 'e4',
+        sequence: 4,
+        event_type: 'provenance_sidecar',
+        content: 'Provider sidecar trace for encoder',
+        metadata: { backend: 'cli' },
+      }),
+    ]
+
+    render(<AgentLogsTab sessionEvents={events} loading={false} sessionId="sess-1" />)
+
+    expect(screen.getByText('Provenance (3)')).toBeInTheDocument()
+    expect(screen.getByText('reasoning')).toBeInTheDocument()
+    expect(screen.getByText('artifact')).toBeInTheDocument()
+    expect(screen.getByText('sidecar')).toBeInTheDocument()
+    expect(screen.getByText('Need to reconcile subsection (a) with section 151 usage.')).toBeInTheDocument()
+    expect(screen.getByText('Artifact provenance for 26/24/a.rac')).toBeInTheDocument()
+    expect(screen.getByText('Provider sidecar trace for encoder')).toBeInTheDocument()
   })
 
   it('shows "No sessions" for GitHub-sourced encoding with no events', () => {

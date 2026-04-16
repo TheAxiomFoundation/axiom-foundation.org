@@ -6,7 +6,6 @@ import { AutoracSection } from "@/components/landing/autorac-section";
 import { SpecSection } from "@/components/landing/spec-section";
 import { GroundTruthSection } from "@/components/landing/ground-truth-section";
 import { CoverageSection } from "@/components/landing/coverage-section";
-import { LabPreview } from "@/components/landing/lab-preview";
 import { CtaSection } from "@/components/landing/cta-section";
 
 export default function Home() {
@@ -20,7 +19,6 @@ export default function Home() {
       <SpecSection />
       <GroundTruthSection />
       <CoverageSection />
-      <LabPreview />
       <CtaSection />
     </>
   );

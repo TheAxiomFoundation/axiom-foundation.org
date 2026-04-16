@@ -150,7 +150,11 @@ export function EventRow({
   const { text: displayText, kind } = getDisplayContent(event);
 
   // Simpler label: use tool_name or event_type
-  const label = event.tool_name || event.event_type.replace("agent_", "");
+  const label =
+    event.tool_name ||
+    event.event_type
+      .replace(/^agent_/, "")
+      .replace(/^provenance_/, "");
 
   const colors = badgeColors[event.event_type] || {
     bg: "rgba(255, 255, 255, 0.08)",

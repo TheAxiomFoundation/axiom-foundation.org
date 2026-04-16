@@ -12,11 +12,19 @@ import { EventRow, type BadgeColors } from "@/components/lab/event-row";
 
 const badgeColors: BadgeColors = {
   agent_start: { bg: "rgba(180, 83, 9, 0.1)", fg: "#b45309" },
+  agent_assistant: { bg: "rgba(22, 101, 52, 0.1)", fg: "#166534" },
   agent_end: { bg: "rgba(180, 83, 9, 0.07)", fg: "#92400e" },
   tool_use: { bg: "rgba(124, 58, 237, 0.1)", fg: "#7c3aed" },
   tool_result: { bg: "rgba(124, 58, 237, 0.07)", fg: "#8b5cf6" },
   message: { bg: "rgba(22, 101, 52, 0.1)", fg: "#166534" },
   thinking: { bg: "rgba(180, 83, 9, 0.1)", fg: "#b45309" },
+  provenance_plan: { bg: "rgba(14, 116, 144, 0.1)", fg: "#0e7490" },
+  provenance_decision: { bg: "rgba(217, 119, 6, 0.1)", fg: "#b45309" },
+  provenance_reasoning: { bg: "rgba(245, 158, 11, 0.12)", fg: "#b45309" },
+  provenance_artifact: { bg: "rgba(30, 64, 175, 0.1)", fg: "#1d4ed8" },
+  provenance_sidecar: { bg: "rgba(71, 85, 105, 0.12)", fg: "#475569" },
+  provenance_validation: { bg: "rgba(22, 101, 52, 0.1)", fg: "#166534" },
+  provenance_review: { bg: "rgba(91, 33, 182, 0.1)", fg: "#6d28d9" },
 };
 
 /* v8 ignore next 8 -- only used by IterationsList (already ignored) */
@@ -293,6 +301,10 @@ export function AgentLogsTab({
     encoding?.iterations && encoding.iterations.length > 0;
   const hasTranscripts = agentTranscripts.length > 0;
   const hasSessionEvents = sessionEvents.length > 0;
+  const provenanceEvents = sessionEvents.filter((e) =>
+    e.event_type.startsWith("provenance_")
+  );
+  const hasProvenance = provenanceEvents.length > 0;
 
   if (!hasEncodingMeta && !hasSessionEvents) {
     return (
@@ -354,6 +366,34 @@ export function AgentLogsTab({
         </ExpandableSection>
       )}
       {/* v8 ignore stop */}
+      {hasProvenance && (
+        <ExpandableSection
+          title="Provenance"
+          count={provenanceEvents.length}
+          defaultOpen
+        >
+          <div className="max-h-[320px] overflow-y-auto flex flex-col gap-0.5">
+            {provenanceEvents.map((event) => (
+              <EventRow
+                key={event.id}
+                event={event}
+                sessionStart={sessionStart}
+                isExpanded={expandedEvents.has(event.id)}
+                badgeColors={badgeColors}
+                onToggle={(e) => {
+                  e.stopPropagation();
+                  setExpandedEvents((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(event.id)) next.delete(event.id);
+                    else next.add(event.id);
+                    return next;
+                  });
+                }}
+              />
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
       {/* Agent phases */}
       {hasSessionEvents && (
         <ExpandableSection

@@ -150,6 +150,19 @@ describe('EventRow', () => {
     expect(screen.getByText('unknown_type')).toBeInTheDocument()
   })
 
+  it('strips provenance prefix from the badge label', () => {
+    render(
+      <EventRow
+        event={makeEvent({ event_type: 'provenance_artifact', content: 'Artifact provenance' })}
+        sessionStart={sessionStart}
+        isExpanded={false}
+        badgeColors={badgeColors}
+        onToggle={vi.fn()}
+      />
+    )
+    expect(screen.getByText('artifact')).toBeInTheDocument()
+  })
+
   it('handles event before session start (negative offset clamped to 0)', () => {
     render(
       <EventRow

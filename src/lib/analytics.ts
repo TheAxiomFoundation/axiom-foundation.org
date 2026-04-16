@@ -28,7 +28,6 @@ export type AtlasEvent =
   | { event: "atlas_rule_viewed"; properties: { citation_path: string; jurisdiction: string; has_rac: boolean } }
   | { event: "atlas_encoding_viewed"; properties: { citation_path: string; source: "github" | "lab" } }
   | { event: "atlas_jurisdiction_selected"; properties: { jurisdiction: string } }
-  | { event: "atlas_topic_selected"; properties: { topic: string } }
   | { event: "atlas_tree_navigated"; properties: { depth: number; segment: string } }
   | { event: "atlas_filter_toggled"; properties: { filter: string; enabled: boolean } };
 

@@ -70,9 +70,6 @@ export function AtlasSection() {
           <Link href="/atlas" className="btn-primary">
             Explore Atlas
           </Link>
-          <Link href="/topics/snap" className="btn-outline">
-            SNAP topic
-          </Link>
           <a
             href="https://github.com/TheAxiomFoundation/atlas"
             className="btn-outline"

@@ -219,6 +219,37 @@ describe("RuleBody", () => {
     expect(pane.className).toMatch(/whitespace-pre-wrap/);
   });
 
+  it("sorts unsorted but disjoint refs into offset order", () => {
+    // Caller hands us refs in reverse order; splice() must sort them
+    // so both are emitted in the right position rather than silently
+    // dropping the second as an apparent overlap.
+    const body = "First 26 USC 32, then 42 USC 9902.";
+    const r1s = body.indexOf("26 USC 32");
+    const r2s = body.indexOf("42 USC 9902");
+    render(
+      <RuleBody
+        body={body}
+        refs={[
+          ref({
+            start_offset: r2s,
+            end_offset: r2s + "42 USC 9902".length,
+            other_citation_path: "us/statute/42/9902",
+          }),
+          ref({
+            start_offset: r1s,
+            end_offset: r1s + "26 USC 32".length,
+            other_citation_path: "us/statute/26/32",
+          }),
+        ]}
+      />
+    );
+    const links = screen.getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual([
+      "26 USC 32",
+      "42 USC 9902",
+    ]);
+  });
+
   it("renders multiple refs in offset order with plain text between them", () => {
     const body = "See 26 USC 32, 42 USC 9902, and also more.";
     const r1s = body.indexOf("26 USC 32");

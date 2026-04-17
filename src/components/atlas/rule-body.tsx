@@ -12,10 +12,11 @@ import type { RuleReference } from "@/lib/supabase";
  * ``akn.rules.body``, so splicing is a single pass: emit the
  * plain-text chunks between refs, wrap each ref's text in an anchor.
  *
- * Refs whose offsets fall outside the body (stale or mismatched) are
- * silently skipped — better to lose a link than render garbled text.
- * Overlapping refs are resolved by the caller having sorted them by
- * ``start_offset`` and the extractor guaranteeing disjoint spans.
+ * Refs whose offsets fall outside the body (stale or mismatched),
+ * whose spans overlap a previously emitted ref, or whose spans are
+ * zero-width are silently skipped — better to lose a link than
+ * render garbled text. splice() sorts its input, so the caller can
+ * pass refs in any order.
  */
 
 interface RuleBodyProps {
@@ -24,13 +25,17 @@ interface RuleBodyProps {
 }
 
 type Part =
-  | { kind: "plain"; text: string }
-  | { kind: "ref"; text: string; ref: RuleReference };
+  | { kind: "plain"; text: string; key: string }
+  | { kind: "ref"; text: string; key: string; ref: RuleReference };
 
 function splice(body: string, refs: RuleReference[]): Part[] {
   const parts: Part[] = [];
   let cursor = 0;
-  for (const ref of refs) {
+  // Sort defensively: the extractor guarantees disjoint spans, but a
+  // resort (e.g. after a second fetch) could put the hook's cached
+  // refs temporarily out of order during a render.
+  const sorted = [...refs].sort((a, b) => a.start_offset - b.start_offset);
+  for (const ref of sorted) {
     if (
       ref.start_offset < cursor ||
       ref.end_offset > body.length ||
@@ -39,17 +44,26 @@ function splice(body: string, refs: RuleReference[]): Part[] {
       continue;
     }
     if (ref.start_offset > cursor) {
-      parts.push({ kind: "plain", text: body.slice(cursor, ref.start_offset) });
+      parts.push({
+        kind: "plain",
+        text: body.slice(cursor, ref.start_offset),
+        key: `plain-${cursor}`,
+      });
     }
     parts.push({
       kind: "ref",
       text: body.slice(ref.start_offset, ref.end_offset),
+      key: `ref-${ref.start_offset}-${ref.end_offset}`,
       ref,
     });
     cursor = ref.end_offset;
   }
   if (cursor < body.length) {
-    parts.push({ kind: "plain", text: body.slice(cursor) });
+    parts.push({
+      kind: "plain",
+      text: body.slice(cursor),
+      key: `plain-${cursor}`,
+    });
   }
   return parts;
 }
@@ -78,11 +92,11 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
       className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-[1.8] whitespace-pre-wrap"
       style={{ fontFamily: "var(--f-serif)" }}
     >
-      {parts.map((part, i) =>
+      {parts.map((part) =>
         part.kind === "ref" ? (
-          <Citation key={i} ref={part.ref} text={part.text} />
+          <Citation key={part.key} ref={part.ref} text={part.text} />
         ) : (
-          <span key={i}>{part.text}</span>
+          <span key={part.key}>{part.text}</span>
         )
       )}
     </div>

@@ -107,6 +107,21 @@ describe("SourceTab context rendering", () => {
     expect(screen.getByText("second subsection text")).toBeInTheDocument();
   });
 
+  it("renders body as plain text when outgoingRefs is undefined (loading state)", () => {
+    // During initial fetch, the parent may not yet pass outgoingRefs.
+    // SourceTab must still show the body text — just without links —
+    // rather than crashing or rendering the subsection fallback.
+    const body = "See 42 U.S.C. 9902 for definitions.";
+    const doc: ViewerDocument = { ...baseDoc, body };
+    render(<SourceTab document={doc} />);
+    // Body shows up
+    expect(screen.getByTestId("rule-body-inline")).toHaveTextContent(
+      "See 42 U.S.C. 9902 for definitions."
+    );
+    // No links yet (refs haven't arrived)
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("renders both contextText and highlightedSubsection correctly", () => {
     const doc: ViewerDocument = {
       ...baseDoc,

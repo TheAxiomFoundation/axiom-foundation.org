@@ -42,6 +42,8 @@ vi.mock("@/lib/tree-data", async (importOriginal) => {
 vi.mock("@/lib/supabase", () => ({
   supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
+  getRuleReferences: vi.fn().mockResolvedValue([]),
+  getAtlasStats: vi.fn().mockResolvedValue(null),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";

@@ -24,6 +24,7 @@ import {
   getRuleEncoding,
   searchRules,
   getRuleReferences,
+  getAtlasStats,
 } from './supabase'
 
 describe('supabase lib', () => {
@@ -800,6 +801,34 @@ describe('supabase lib', () => {
     it('handles null data as empty', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
       expect(await getRuleReferences('any')).toEqual([])
+    })
+  })
+
+  describe('getAtlasStats', () => {
+    it('calls the get_atlas_stats RPC and returns its payload', async () => {
+      const stats = {
+        rules_count: 658899,
+        references_count: 148604,
+        jurisdictions_count: 17,
+      }
+      mockRpc.mockResolvedValue({ data: stats, error: null })
+      const result = await getAtlasStats()
+      expect(mockRpc).toHaveBeenCalledWith('get_atlas_stats')
+      expect(result).toEqual(stats)
+    })
+
+    it('returns null on RPC error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('timeout') })
+      const result = await getAtlasStats()
+      expect(result).toBeNull()
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('returns null when the RPC returns null data', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null })
+      expect(await getAtlasStats()).toBeNull()
     })
   })
 })

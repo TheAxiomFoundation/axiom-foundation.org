@@ -60,6 +60,9 @@ vi.mock("@/lib/supabase", () => ({
   // ReferencesPanel calls getRuleReferences via useRuleReferences; stub it
   // out so the leaf-render tests don't need to wire the RPC mock.
   getRuleReferences: vi.fn().mockResolvedValue([]),
+  // AtlasStats on the landing page calls this; return null so the
+  // component renders nothing instead of hitting a real RPC.
+  getAtlasStats: vi.fn().mockResolvedValue(null),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";

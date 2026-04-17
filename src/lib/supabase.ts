@@ -501,3 +501,26 @@ export async function getRuleReferences(
   }
   return (data || []) as RuleReference[]
 }
+
+/**
+ * High-level corpus + graph stats surfaced on the Atlas landing page.
+ *
+ * ``rules_count`` / ``references_count`` are planner estimates from
+ * ``pg_class.reltuples`` — fast and fresh enough for an at-a-glance
+ * stat block. ``jurisdictions_count`` is an exact distinct count.
+ */
+export interface AtlasStats {
+  rules_count: number
+  references_count: number
+  jurisdictions_count: number
+}
+
+/** Fetch landing-page stats via the akn.get_atlas_stats RPC. */
+export async function getAtlasStats(): Promise<AtlasStats | null> {
+  const { data, error } = await supabaseAkn.rpc('get_atlas_stats')
+  if (error) {
+    console.error('get_atlas_stats RPC failed:', error)
+    return null
+  }
+  return (data || null) as AtlasStats | null
+}

@@ -8,6 +8,7 @@ import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
 import { JurisdictionPicker } from "./jurisdiction-picker";
 import { AtlasSearch } from "./atlas-search";
+import { AtlasStats } from "./atlas-stats";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -303,6 +304,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           </p>
         </div>
 
+        <AtlasStats />
         <AtlasSearch />
         <JurisdictionPicker />
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getJurisdictionLabel, isGitHubEncoding, isLabEncoding, type ViewerDocument } from "@/lib/atlas-utils";
 import type { Rule } from "@/lib/supabase";
 import { useEncoding } from "@/hooks/use-encoding";
+import { useRuleReferences } from "@/hooks/use-rule-references";
 import { trackAtlasEvent } from "@/lib/analytics";
 import { SourceTab } from "./source-tab";
 import { EncodingTab } from "./encoding-tab";
@@ -20,6 +21,7 @@ export function RuleDetailPanel({
   onBack?: () => void;
 }) {
   const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
+  const { outgoing, incoming } = useRuleReferences(rule.citation_path);
   const [logsOpen, setLogsOpen] = useState(false);
   const hasLabData = isLabEncoding(encoding);
 
@@ -71,8 +73,8 @@ export function RuleDetailPanel({
             <div className="font-mono text-xs text-[var(--color-ink-muted)] uppercase tracking-wider mb-4">
               Source
             </div>
-            <SourceTab document={document} />
-            <ReferencesPanel citationPath={rule.citation_path} />
+            <SourceTab document={document} outgoingRefs={outgoing} />
+            <ReferencesPanel outgoing={outgoing} incoming={incoming} />
           </div>
 
           {/* Encoding pane */}

@@ -19,6 +19,13 @@ export interface ViewerDocument {
   archPath: string | null;
   contextText?: string;
   highlightedSubsection?: string;
+  /**
+   * Raw body text for leaf rules (no real children). When set, SourceTab
+   * renders it directly so outgoing citation refs — whose offsets index
+   * into this exact string — can be spliced in as inline links.
+   * Omitted when the rule's content is distributed across children.
+   */
+  body?: string;
 }
 
 export function getJurisdictionLabel(jurisdiction: string): string {
@@ -140,8 +147,13 @@ export function transformRuleToViewerDoc(
     };
   });
 
-  if (subsections.length === 0 && rule.body) {
-    const paragraphs = rule.body.split(/\n\n+/).filter(Boolean);
+  // Leaf rules (no children, has body): expose the raw body verbatim so
+  // SourceTab can render citation refs inline at their true offsets. For
+  // viewers/tests that ignore the body field we also emit a paragraph-
+  // split subsection fallback with synthetic (a)(b)(c) labels.
+  const isLeafWithBody = subsections.length === 0 && !!rule.body;
+  if (isLeafWithBody) {
+    const paragraphs = rule.body!.split(/\n\n+/).filter(Boolean);
     paragraphs.forEach((para, i) => {
       subsections.push({
         id: String.fromCharCode(97 + i),
@@ -166,5 +178,6 @@ export function transformRuleToViewerDoc(
     archPath: rule.source_path,
     ...(options?.contextText && { contextText: options.contextText }),
     ...(options?.highlightId && { highlightedSubsection: options.highlightId }),
+    ...(isLeafWithBody && { body: rule.body! }),
   };
 }

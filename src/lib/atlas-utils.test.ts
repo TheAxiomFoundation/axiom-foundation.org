@@ -159,6 +159,33 @@ describe("transformRuleToViewerDoc", () => {
     });
   });
 
+  describe("raw body passthrough for inline citation refs", () => {
+    it("sets body field for leaf rules with body text", () => {
+      const rule = mockRule({ body: "Paragraph one.\n\nParagraph two." });
+
+      const doc = transformRuleToViewerDoc(rule, []);
+
+      expect(doc.body).toBe("Paragraph one.\n\nParagraph two.");
+    });
+
+    it("omits body field when the rule has children", () => {
+      const rule = mockRule({ body: "Ignored parent body." });
+      const children = [mockRule({ id: "c1", body: "Child body" })];
+
+      const doc = transformRuleToViewerDoc(rule, children);
+
+      expect(doc.body).toBeUndefined();
+    });
+
+    it("omits body field when the rule has no body", () => {
+      const rule = mockRule({ heading: "Empty leaf" });
+
+      const doc = transformRuleToViewerDoc(rule, []);
+
+      expect(doc.body).toBeUndefined();
+    });
+  });
+
   describe("children use citation_path segment as subsection ID", () => {
     it("uses last segment of citation_path instead of letter index", () => {
       const rule = mockRule({ heading: "Section 24(d)(1)" });

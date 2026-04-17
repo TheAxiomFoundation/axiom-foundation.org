@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { RuleReference } from "@/lib/supabase";
-import { useRuleReferences } from "@/hooks/use-rule-references";
 
 /**
  * Format a canonical Atlas citation_path into a human-readable label.
@@ -99,14 +98,13 @@ function RefGroup({
 }
 
 export function ReferencesPanel({
-  citationPath,
+  outgoing,
+  incoming,
 }: {
-  citationPath: string | null | undefined;
+  outgoing: RuleReference[];
+  incoming: RuleReference[];
 }) {
-  const { outgoing, incoming, loading, error } = useRuleReferences(citationPath);
-
-  if (!citationPath || loading) return null;
-  if (error || (outgoing.length === 0 && incoming.length === 0)) return null;
+  if (outgoing.length === 0 && incoming.length === 0) return null;
 
   return (
     <div data-testid="references-panel" className="max-w-[800px] mx-auto">

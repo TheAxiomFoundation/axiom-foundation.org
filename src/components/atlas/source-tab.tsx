@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ViewerDocument } from "@/lib/atlas-utils";
+import type { RuleReference } from "@/lib/supabase";
+import { RuleBody } from "./rule-body";
 
 /* v8 ignore start -- markdown table parsing, tested via integration */
 function parseMarkdownTable(tableLines: string[]): {
@@ -105,10 +107,22 @@ function RichText({ text }: { text: string }) {
 }
 /* v8 ignore stop */
 
-export function SourceTab({ document }: { document: ViewerDocument }) {
+export function SourceTab({
+  document,
+  outgoingRefs,
+}: {
+  document: ViewerDocument;
+  outgoingRefs?: RuleReference[];
+}) {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null
   );
+
+  // When the rule has a raw body (leaf rule), render it verbatim so any
+  // outgoing citation refs slot in at their true offsets as inline links.
+  // The existing subsection list is a fallback for rules whose content
+  // lives in children.
+  const renderInline = !!document.body;
 
   return (
     <div className="max-w-[800px] mx-auto">
@@ -120,7 +134,12 @@ export function SourceTab({ document }: { document: ViewerDocument }) {
           <RichText text={document.contextText} />
         </div>
       )}
-      {document.subsections.map((subsection) => {
+      {renderInline ? (
+        <div className="p-4">
+          <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
+        </div>
+      ) : (
+        document.subsections.map((subsection) => {
         const isHighlighted =
           document.highlightedSubsection === subsection.id;
         return (
@@ -143,7 +162,8 @@ export function SourceTab({ document }: { document: ViewerDocument }) {
           <RichText text={subsection.text} />
         </div>
         );
-      })}
+      })
+      )}
 
       {document.archPath && (
         <div className="mt-8 pt-4 border-t border-[var(--color-rule)]">

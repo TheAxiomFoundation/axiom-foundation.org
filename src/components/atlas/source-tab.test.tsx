@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import { SourceTab } from "./source-tab";
+import { describe, it, expect, vi } from "vitest";
 import type { ViewerDocument } from "@/lib/atlas-utils";
+import type { RuleReference } from "@/lib/supabase";
+
+vi.mock("next/link", () => ({
+  default: ({ children, href, title }: { children: React.ReactNode; href: string; title?: string }) => (
+    <a href={href} title={title}>
+      {children}
+    </a>
+  ),
+}));
+
+import { SourceTab } from "./source-tab";
 
 const baseDoc: ViewerDocument = {
   citation: "26 USC 24(d)(1)",
@@ -59,6 +69,42 @@ describe("SourceTab context rendering", () => {
     const subsectionB = screen.getByText("second subsection text").closest("[data-subsection-id]");
     if (subsectionA) expect(subsectionA).not.toHaveClass("border-l-2");
     if (subsectionB) expect(subsectionB).not.toHaveClass("border-l-2");
+  });
+
+  it("renders the raw body with inline citation links when document.body is set", () => {
+    const body = "See 42 U.S.C. 9902 for definitions.";
+    const start = body.indexOf("42 U.S.C. 9902");
+    const end = start + "42 U.S.C. 9902".length;
+    const doc: ViewerDocument = {
+      ...baseDoc,
+      body,
+      // subsections here shouldn't render — the inline body takes over
+      subsections: [{ id: "a", text: "should not render" }],
+    };
+    const refs: RuleReference[] = [
+      {
+        direction: "outgoing",
+        citation_text: "42 U.S.C. 9902",
+        pattern_kind: "usc",
+        confidence: 1,
+        start_offset: start,
+        end_offset: end,
+        other_citation_path: "us/statute/42/9902",
+        other_rule_id: "uuid",
+        other_heading: null,
+        target_resolved: true,
+      },
+    ];
+    render(<SourceTab document={doc} outgoingRefs={refs} />);
+    expect(screen.queryByText("should not render")).not.toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "42 U.S.C. 9902" });
+    expect(link).toHaveAttribute("href", "/atlas/us/statute/42/9902");
+  });
+
+  it("falls back to the subsection list when document.body is absent", () => {
+    render(<SourceTab document={baseDoc} />);
+    expect(screen.getByText("first subsection text")).toBeInTheDocument();
+    expect(screen.getByText("second subsection text")).toBeInTheDocument();
   });
 
   it("renders both contextText and highlightedSubsection correctly", () => {

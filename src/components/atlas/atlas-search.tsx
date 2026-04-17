@@ -150,31 +150,31 @@ export function AtlasSearch({ jurisdiction }: AtlasSearchProps) {
         <label className="sr-only" htmlFor="atlas-search-input">
           Search statutes and regulations
         </label>
-        <div className="relative">
-          <input
-            id="atlas-search-input"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder='Search statutes and regulations (e.g. "SNAP standard deduction")'
-            className="w-full px-4 py-3 pr-28 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
-            aria-describedby="atlas-search-help"
-          />
+        <input
+          id="atlas-search-input"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder='Search statutes and regulations (e.g. "SNAP standard deduction")'
+          className="w-full px-4 py-3 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+          aria-describedby="atlas-search-help"
+        />
+        <p
+          id="atlas-search-help"
+          className="mt-2 font-mono text-xs text-[var(--color-ink-muted)] flex items-center gap-2"
+        >
+          <span>
+            Quoted phrases, OR, and −exclude are supported. Ranked by relevance
+            across statutes and regulations.
+          </span>
           {loading && (
             <span
-              className="absolute right-4 top-1/2 -translate-y-1/2 font-mono text-xs text-[var(--color-ink-muted)]"
+              className="text-[var(--color-accent)]"
               aria-live="polite"
             >
               Searching…
             </span>
           )}
-        </div>
-        <p
-          id="atlas-search-help"
-          className="mt-2 font-mono text-xs text-[var(--color-ink-muted)]"
-        >
-          Quoted phrases, OR, and −exclude are supported. Ranked by relevance
-          across statutes and regulations.
         </p>
       </form>
 

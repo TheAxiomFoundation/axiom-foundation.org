@@ -10,10 +10,10 @@ import {
   JURISDICTIONS,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
-import { supabaseArch } from "@/lib/supabase";
+import { supabaseAkn } from "@/lib/supabase";
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseArch: { from: vi.fn() },
+  supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
 
@@ -357,7 +357,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -375,7 +375,7 @@ describe("resolveDisplayContext", () => {
     const mockSelect = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({ single: mockSingle }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -404,7 +404,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -427,7 +427,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -450,7 +450,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 

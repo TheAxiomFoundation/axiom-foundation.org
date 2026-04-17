@@ -39,7 +39,7 @@ vi.mock("@/lib/tree-data", async (importOriginal) => {
 
 // Mock supabase
 vi.mock("@/lib/supabase", () => ({
-  supabaseArch: { from: vi.fn() },
+  supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
 

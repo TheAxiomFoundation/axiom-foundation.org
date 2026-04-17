@@ -400,7 +400,7 @@ describe('supabase lib', () => {
 
   describe('getRuleEncoding', () => {
     it('returns encoding data when rule has citation_path and encoding exists', async () => {
-      // getRuleEncoding calls supabaseArch.from('rules') then supabase.from('encoding_runs')
+      // getRuleEncoding calls supabaseAkn.from('rules') then supabase.from('encoding_runs')
       // Both clients use the same mockFrom since createClient is mocked once
       mockFrom.mockImplementation((table: string) => {
         if (table === 'rules') {

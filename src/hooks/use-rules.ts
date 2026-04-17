@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabaseArch, type Rule } from "@/lib/supabase";
+import { supabaseAkn, type Rule } from "@/lib/supabase";
 import { JURISDICTIONS } from "@/lib/tree-data";
 
 const PAGE_SIZE = 50;
@@ -36,7 +36,7 @@ export function useRules(options: {
       const jurisdictions = JURISDICTIONS.map((j) => j.slug);
       const results = await Promise.all(
         jurisdictions.map(async (jur) => {
-          const { count } = await supabaseArch
+          const { count } = await supabaseAkn
             .from("rules")
             .select("*", { count: "exact", head: true })
             .eq("jurisdiction", jur);
@@ -55,7 +55,7 @@ export function useRules(options: {
       setError(null);
 
       try {
-        let query = supabaseArch
+        let query = supabaseAkn
           .from("rules")
           .select("id,jurisdiction,doc_type,parent_id,level,ordinal,heading,effective_date,repeal_date,source_url,source_path,citation_path,rac_path,has_rac,created_at,updated_at", { count: "estimated" })
           .is("parent_id", null);
@@ -131,7 +131,7 @@ export function useRule(id: string | null) {
       setError(null);
 
       try {
-        const { data: ruleData, error: ruleError } = await supabaseArch
+        const { data: ruleData, error: ruleError } = await supabaseAkn
           .from("rules")
           .select("*")
           .eq("id", id)
@@ -140,7 +140,7 @@ export function useRule(id: string | null) {
         if (ruleError) throw ruleError;
         setRule(ruleData);
 
-        const { data: childrenData, error: childrenError } = await supabaseArch
+        const { data: childrenData, error: childrenError } = await supabaseAkn
           .from("rules")
           .select("*")
           .eq("parent_id", id)

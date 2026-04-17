@@ -28,7 +28,7 @@ const { mockFrom, mockSelect, mockOrder, mockRange, mockEq, mockIs, mockSingle, 
 })
 
 vi.mock('@/lib/supabase', () => ({
-  supabaseArch: {
+  supabaseAkn: {
     from: mockFrom,
   },
 }))

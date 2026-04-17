@@ -1,4 +1,4 @@
-import { supabase, supabaseArch, type Rule } from "@/lib/supabase";
+import { supabase, supabaseAkn, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
 
 export type NodeType =
@@ -109,7 +109,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   if (!rule.parent_id) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const parentResult = await supabaseArch
+  const parentResult = await supabaseAkn
     .from("rules")
     .select("*")
     .eq("id", rule.parent_id)
@@ -118,7 +118,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   if (!parent) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const siblingsResult = await supabaseArch
+  const siblingsResult = await supabaseAkn
     .from("rules")
     .select("*")
     .eq("parent_id", rule.parent_id)
@@ -155,7 +155,7 @@ export async function getJurisdictionCounts(
   const counts = new Map<string, number>();
   await Promise.all(
     dbIds.map(async (id) => {
-      const { count } = await supabaseArch
+      const { count } = await supabaseAkn
         .from("rules")
         .select("*", { count: "exact", head: true })
         .eq("jurisdiction", id);
@@ -168,7 +168,7 @@ export async function getJurisdictionCounts(
 export async function getDocTypeNodes(
   jurisdiction: string
 ): Promise<TreeNode[]> {
-  const { data } = await supabaseArch
+  const { data } = await supabaseAkn
     .from("rules")
     .select("citation_path")
     .eq("jurisdiction", jurisdiction)
@@ -207,14 +207,14 @@ export async function getTitleNodes(
   encodedOnly?: boolean
 ): Promise<TreeNode[]> {
   const rootPath = `${jurisdiction}/${_docType}`;
-  const { data: parentRule } = await supabaseArch
+  const { data: parentRule } = await supabaseAkn
     .from("rules")
     .select("*")
     .eq("citation_path", rootPath)
     .single();
 
   if (parentRule) {
-    const { data } = await supabaseArch
+    const { data } = await supabaseAkn
       .from("rules")
       .select("*")
       .eq("parent_id", parentRule.id)
@@ -239,7 +239,7 @@ export async function getTitleNodes(
     return nodes;
   }
 
-  const { data } = await supabaseArch
+  const { data } = await supabaseAkn
     .from("rules")
     .select("citation_path")
     .eq("jurisdiction", jurisdiction)
@@ -270,7 +270,7 @@ export async function getTitleNodes(
   const nodes = await Promise.all(
     titles.map(async (title) => {
       const prefix = `${jurisdiction}/statute/${title}`;
-      const { count } = await supabaseArch
+      const { count } = await supabaseAkn
         .from("rules")
         .select("*", { count: "exact", head: true })
         .like("citation_path", `${prefix}/%`)
@@ -295,7 +295,7 @@ export async function getSectionNodes(
   encodedPaths?: Set<string>,
   encodedOnly?: boolean
 ): Promise<TreeResult> {
-  const { data: parentRule } = await supabaseArch
+  const { data: parentRule } = await supabaseAkn
     .from("rules")
     .select("*")
     .eq("citation_path", pathPrefix)
@@ -304,7 +304,7 @@ export async function getSectionNodes(
   if (parentRule) {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const { data, count } = await supabaseArch
+    const { data, count } = await supabaseAkn
       .from("rules")
       .select("*", { count: "exact" })
       .eq("parent_id", parentRule.id)
@@ -349,7 +349,7 @@ export async function getSectionNodes(
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
-  const { data, count } = await supabaseArch
+  const { data, count } = await supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
     .like("citation_path", `${pathPrefix}/%`)
@@ -393,11 +393,11 @@ export async function getSectionNodes(
 }
 
 /**
- * Fetch citation paths of all rules with has_rac=true from arch.rules.
+ * Fetch citation paths of all rules with has_rac=true from akn.rules.
  * Returns paths without jurisdiction prefix, e.g. "statute/26/1/j/2".
  */
 export async function getEncodedPaths(): Promise<Set<string>> {
-  const { data } = await supabaseArch
+  const { data } = await supabaseAkn
     .from("rules")
     .select("citation_path")
     .eq("has_rac", true);
@@ -486,7 +486,7 @@ export async function getActNodes(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseArch
+  const { data, count } = await supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
     .eq("jurisdiction", jurisdiction)
@@ -517,7 +517,7 @@ export async function getChildrenByParentId(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseArch
+  const { data, count } = await supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
     .eq("parent_id", parentId)
@@ -541,7 +541,7 @@ export async function getChildrenByParentId(
 }
 
 export async function getRuleById(id: string): Promise<Rule | null> {
-  const { data, error } = await supabaseArch
+  const { data, error } = await supabaseAkn
     .from("rules")
     .select("*")
     .eq("id", id)

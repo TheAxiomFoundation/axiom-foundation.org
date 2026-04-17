@@ -10,9 +10,9 @@ export const supabase: SupabaseClient = isTestEnv
   : createClient(supabaseUrl, supabaseAnonKey)
 
 // Arch schema client for atlas/rule browsing
-export const supabaseArch = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'arch' } })
-  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'arch' } })
+export const supabaseAkn = isTestEnv
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'akn' } })
+  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'akn' } })
 /* v8 ignore stop */
 
 // Types for encoding runs (AutoRAC Experiment Lab)
@@ -355,7 +355,7 @@ async function fetchRacFromGitHub(
 // Fetch encoding data for a rule by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
   // First get the rule's citation_path/rac_path and jurisdiction
-  const { data: rule, error: ruleError } = await supabaseArch
+  const { data: rule, error: ruleError } = await supabaseAkn
     .from('rules')
     .select('citation_path, jurisdiction, rac_path')
     .eq('id', ruleId)
@@ -429,7 +429,7 @@ export interface SearchOptions {
 }
 
 /**
- * Search arch.rules via the server-side `search_rules` RPC.
+ * Search akn.rules via the server-side `search_rules` RPC.
  *
  * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
  * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
@@ -447,7 +447,7 @@ export async function searchRules(
   const q = query.trim()
   if (!q) return []
 
-  const { data, error } = await supabaseArch.rpc('search_rules', {
+  const { data, error } = await supabaseAkn.rpc('search_rules', {
     q,
     jurisdiction_in: options.jurisdiction ?? null,
     doc_type_in: options.docType ?? null,

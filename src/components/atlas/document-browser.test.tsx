@@ -57,6 +57,9 @@ vi.mock("@/lib/tree-data", async (importOriginal) => {
 vi.mock("@/lib/supabase", () => ({
   supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
+  // ReferencesPanel calls getRuleReferences via useRuleReferences; stub it
+  // out so the leaf-render tests don't need to wire the RPC mock.
+  getRuleReferences: vi.fn().mockResolvedValue([]),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";

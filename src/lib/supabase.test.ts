@@ -23,6 +23,7 @@ import {
   getSDKSessionMeta,
   getRuleEncoding,
   searchRules,
+  getRuleReferences,
 } from './supabase'
 
 describe('supabase lib', () => {
@@ -760,6 +761,45 @@ describe('supabase lib', () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
       const result = await searchRules('anything')
       expect(result).toEqual([])
+    })
+  })
+
+  describe('getRuleReferences', () => {
+    it('calls the get_references RPC with citation_path_in', async () => {
+      const rows = [
+        {
+          direction: 'outgoing',
+          citation_text: '42 U.S.C. 9902',
+          pattern_kind: 'usc',
+          confidence: 1,
+          start_offset: 0,
+          end_offset: 10,
+          other_citation_path: 'us/statute/42/9902',
+          other_rule_id: 'x',
+          other_heading: 'Definitions',
+          target_resolved: true,
+        },
+      ]
+      mockRpc.mockResolvedValue({ data: rows, error: null })
+      const result = await getRuleReferences('us/statute/7/2014')
+      expect(mockRpc).toHaveBeenCalledWith('get_references', {
+        citation_path_in: 'us/statute/7/2014',
+      })
+      expect(result).toEqual(rows)
+    })
+
+    it('returns an empty array on RPC error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('boom') })
+      const result = await getRuleReferences('any')
+      expect(result).toEqual([])
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('handles null data as empty', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null })
+      expect(await getRuleReferences('any')).toEqual([])
     })
   })
 })

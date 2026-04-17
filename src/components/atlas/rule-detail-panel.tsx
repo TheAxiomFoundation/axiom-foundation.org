@@ -8,6 +8,7 @@ import { trackAtlasEvent } from "@/lib/analytics";
 import { SourceTab } from "./source-tab";
 import { EncodingTab } from "./encoding-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
+import { ReferencesPanel } from "./references-panel";
 
 export function RuleDetailPanel({
   document,
@@ -71,6 +72,7 @@ export function RuleDetailPanel({
               Source
             </div>
             <SourceTab document={document} />
+            <ReferencesPanel citationPath={rule.citation_path} />
           </div>
 
           {/* Encoding pane */}

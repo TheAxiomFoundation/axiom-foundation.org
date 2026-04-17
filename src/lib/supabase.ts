@@ -461,3 +461,43 @@ export async function searchRules(
 
   return (data || []) as SearchHit[]
 }
+
+// ---- Atlas cross-references (get_references RPC) ----
+
+export type RefDirection = 'outgoing' | 'incoming'
+
+export interface RuleReference {
+  direction: RefDirection
+  citation_text: string
+  pattern_kind: string
+  confidence: number
+  start_offset: number
+  end_offset: number
+  /** For outgoing: the cited rule. For incoming: the citing rule. */
+  other_citation_path: string
+  other_rule_id: string | null
+  other_heading: string | null
+  /** Outgoing only — whether the target is ingested in akn.rules. */
+  target_resolved: boolean
+}
+
+/**
+ * Fetch the citation graph around a single rule.
+ *
+ * Returns one row per outgoing and incoming reference. Outgoing rows
+ * carry `start_offset` / `end_offset` so the caller can splice `<a>`
+ * tags at those positions when rendering the body. Incoming rows point
+ * back to the citing rule for a "referenced by" panel.
+ */
+export async function getRuleReferences(
+  citationPath: string
+): Promise<RuleReference[]> {
+  const { data, error } = await supabaseAkn.rpc('get_references', {
+    citation_path_in: citationPath,
+  })
+  if (error) {
+    console.error('get_references RPC failed:', error)
+    return []
+  }
+  return (data || []) as RuleReference[]
+}

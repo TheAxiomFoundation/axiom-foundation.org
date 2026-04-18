@@ -531,25 +531,3 @@ export async function getAtlasStats(): Promise<AtlasStats | null> {
   }
   return (data || null) as AtlasStats | null
 }
-
-/** One edge of the jurisdiction-to-jurisdiction citation flow graph. */
-export interface JurisdictionFlow {
-  source: string
-  target: string
-  count: number
-}
-
-/**
- * Fetch the aggregate citation-flow graph between jurisdictions.
- *
- * Backed by a materialized view, so this call is instant. Returned
- * rows are sorted DESC by ``count``.
- */
-export async function getJurisdictionFlows(): Promise<JurisdictionFlow[]> {
-  const { data, error } = await supabaseAkn.rpc('get_jurisdiction_flows')
-  if (error) {
-    console.error('get_jurisdiction_flows RPC failed:', error)
-    return []
-  }
-  return (data || []) as JurisdictionFlow[]
-}

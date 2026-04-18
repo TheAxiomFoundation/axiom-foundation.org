@@ -43,6 +43,7 @@ vi.mock("@/lib/supabase", () => ({
   supabase: { from: vi.fn() },
   getRuleReferences: vi.fn().mockResolvedValue([]),
   getAtlasStats: vi.fn().mockResolvedValue(null),
+  getJurisdictionFlows: vi.fn().mockResolvedValue([]),
 }));
 
 import { AtlasBrowser } from "@/components/atlas/document-browser";

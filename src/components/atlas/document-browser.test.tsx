@@ -63,6 +63,8 @@ vi.mock("@/lib/supabase", () => ({
   // AtlasStats on the landing page calls this; return null so the
   // component renders nothing instead of hitting a real RPC.
   getAtlasStats: vi.fn().mockResolvedValue(null),
+  // CitationFlowDiagram calls this; empty array = nothing to render.
+  getJurisdictionFlows: vi.fn().mockResolvedValue([]),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";

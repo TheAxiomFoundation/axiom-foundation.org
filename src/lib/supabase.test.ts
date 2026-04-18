@@ -25,6 +25,7 @@ import {
   searchRules,
   getRuleReferences,
   getAtlasStats,
+  getJurisdictionFlows,
 } from './supabase'
 
 describe('supabase lib', () => {
@@ -833,6 +834,31 @@ describe('supabase lib', () => {
     it('returns null when the RPC returns null data', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
       expect(await getAtlasStats()).toBeNull()
+    })
+  })
+
+  describe('getJurisdictionFlows', () => {
+    it('calls the get_jurisdiction_flows RPC and returns its payload', async () => {
+      const flows = [
+        { source: 'us-dc', target: 'us', count: 3548 },
+        { source: 'us-ny', target: 'us', count: 790 },
+      ]
+      mockRpc.mockResolvedValue({ data: flows, error: null })
+      const result = await getJurisdictionFlows()
+      expect(mockRpc).toHaveBeenCalledWith('get_jurisdiction_flows')
+      expect(result).toEqual(flows)
+    })
+
+    it('returns empty array on RPC error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('x') })
+      expect(await getJurisdictionFlows()).toEqual([])
+      errorSpy.mockRestore()
+    })
+
+    it('returns empty array on null data', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: null })
+      expect(await getJurisdictionFlows()).toEqual([])
     })
   })
 })

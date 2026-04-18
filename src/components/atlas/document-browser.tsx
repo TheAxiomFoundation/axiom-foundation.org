@@ -9,6 +9,7 @@ import { RuleDetailPanel } from "./rule-detail-panel";
 import { JurisdictionPicker } from "./jurisdiction-picker";
 import { AtlasSearch } from "./atlas-search";
 import { AtlasStats } from "./atlas-stats";
+import { CitationFlowDiagram } from "./citation-flow";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -305,6 +306,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
         </div>
 
         <AtlasStats />
+        <CitationFlowDiagram />
         <AtlasSearch />
         <JurisdictionPicker />
       </div>

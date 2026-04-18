@@ -810,6 +810,10 @@ describe('supabase lib', () => {
         rules_count: 658899,
         references_count: 148604,
         jurisdictions_count: 17,
+        jurisdictions: [
+          { jurisdiction: 'us', count: 467993 },
+          { jurisdiction: 'us-dc', count: 130617 },
+        ],
       }
       mockRpc.mockResolvedValue({ data: stats, error: null })
       const result = await getAtlasStats()

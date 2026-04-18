@@ -509,10 +509,17 @@ export async function getRuleReferences(
  * ``pg_class.reltuples`` — fast and fresh enough for an at-a-glance
  * stat block. ``jurisdictions_count`` is an exact distinct count.
  */
+export interface AtlasJurisdictionCount {
+  jurisdiction: string
+  count: number
+}
+
 export interface AtlasStats {
   rules_count: number
   references_count: number
   jurisdictions_count: number
+  /** Per-jurisdiction rule counts, sorted DESC. */
+  jurisdictions: AtlasJurisdictionCount[]
 }
 
 /** Fetch landing-page stats via the akn.get_atlas_stats RPC. */

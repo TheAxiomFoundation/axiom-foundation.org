@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAtlasStats, type AtlasStats } from "@/lib/supabase";
+import {
+  getAtlasStats,
+  type AtlasJurisdictionCount,
+  type AtlasStats,
+} from "@/lib/supabase";
 
 /**
  * Landing-page stat block. Shows corpus size + graph density so the
@@ -30,13 +34,68 @@ export function AtlasStats() {
   return (
     <div
       data-testid="atlas-stats"
-      className="flex justify-center gap-12 mb-10 pb-10 border-b border-[var(--color-rule)]"
+      className="mb-10 pb-10 border-b border-[var(--color-rule)]"
     >
-      <Stat value={stats.rules_count} label="documents indexed" />
-      <Stat value={stats.references_count} label="citations extracted" />
-      <Stat value={stats.jurisdictions_count} label="jurisdictions" />
+      <div className="flex justify-center gap-12">
+        <Stat value={stats.rules_count} label="documents indexed" />
+        <Stat value={stats.references_count} label="citations extracted" />
+        <Stat value={stats.jurisdictions_count} label="jurisdictions" />
+      </div>
+      {stats.jurisdictions && stats.jurisdictions.length > 0 && (
+        <JurisdictionPills jurisdictions={stats.jurisdictions} />
+      )}
     </div>
   );
+}
+
+function JurisdictionPills({
+  jurisdictions,
+}: {
+  jurisdictions: AtlasJurisdictionCount[];
+}) {
+  return (
+    <div
+      data-testid="atlas-stats-pills"
+      className="flex flex-wrap justify-center gap-2 mt-6 px-8 max-w-[900px] mx-auto"
+    >
+      {jurisdictions.map((j) => (
+        <span
+          key={j.jurisdiction}
+          className="inline-flex items-baseline gap-1.5 px-3 py-1 rounded-full border border-[var(--color-rule)] text-xs text-[var(--color-ink-secondary)]"
+          title={`${j.count.toLocaleString()} documents`}
+        >
+          <span className="font-mono uppercase tracking-wider text-[var(--color-ink-muted)]">
+            {jurisdictionDisplay(j.jurisdiction)}
+          </span>
+          <span className="font-heading text-[var(--color-accent)] tabular-nums">
+            {formatCompact(j.count)}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Render a jurisdiction code as its short display label.
+ *
+ *   'us'     → 'USC+CFR'    (federal statutes + regulations)
+ *   'us-ny'  → 'NY'
+ *   'us-dc'  → 'DC'
+ *   'uk'     → 'UK'
+ *   'canada' → 'CA'
+ *
+ * Exported for tests and as a single source of truth — the jurisdiction
+ * column holds the atlas's canonical ids but users read labels.
+ */
+export function jurisdictionDisplay(jurisdiction: string): string {
+  if (jurisdiction === "us") return "USC+CFR";
+  if (jurisdiction === "canada") return "CA";
+  if (jurisdiction === "uk") return "UK";
+  if (jurisdiction.startsWith("us-")) {
+    return jurisdiction.slice(3).toUpperCase();
+  }
+  return jurisdiction.toUpperCase();
 }
 
 function Stat({ value, label }: { value: number; label: string }) {

@@ -122,6 +122,51 @@ describe("SourceTab context rendering", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("scrolls the highlighted subsection into view on mount", () => {
+    const scrollIntoView = vi.fn();
+    // jsdom omits scrollIntoView; install a spy on Element.prototype so
+    // any rendered subsection can invoke it.
+    (Element.prototype as unknown as {
+      scrollIntoView: typeof scrollIntoView;
+    }).scrollIntoView = scrollIntoView;
+
+    render(
+      <SourceTab
+        document={{ ...baseDoc, highlightedSubsection: "B" }}
+      />
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      behavior: "instant",
+    });
+  });
+
+  it("does not scroll when no subsection is highlighted", () => {
+    const scrollIntoView = vi.fn();
+    (Element.prototype as unknown as {
+      scrollIntoView: typeof scrollIntoView;
+    }).scrollIntoView = scrollIntoView;
+
+    render(<SourceTab document={baseDoc} />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the highlighted subsection id isn't in the DOM", () => {
+    const scrollIntoView = vi.fn();
+    (Element.prototype as unknown as {
+      scrollIntoView: typeof scrollIntoView;
+    }).scrollIntoView = scrollIntoView;
+
+    render(
+      <SourceTab
+        document={{ ...baseDoc, highlightedSubsection: "ZZZ" }}
+      />
+    );
+    // No matching data-subsection-id — scroll is a no-op.
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
   it("renders both contextText and highlightedSubsection correctly", () => {
     const doc: ViewerDocument = {
       ...baseDoc,

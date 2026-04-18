@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ViewerDocument } from "@/lib/atlas-utils";
 import type { RuleReference } from "@/lib/supabase";
 import { RuleBody } from "./rule-body";
@@ -117,6 +117,7 @@ export function SourceTab({
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null
   );
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // When the rule has a raw body (leaf rule), render it verbatim so any
   // outgoing citation refs slot in at their true offsets as inline links.
@@ -124,8 +125,25 @@ export function SourceTab({
   // lives in children.
   const renderInline = !!document.body;
 
+  // Deep-link polish: when navigating directly to
+  // ``/atlas/.../{parent}/{subsection-id}``, the viewer already
+  // highlights the matching subsection but leaves the user at the
+  // scroll-top of a potentially very long page. Scroll the highlighted
+  // node into view on mount (and whenever the highlight changes from a
+  // SPA navigation) so refs and back-links feel like proper anchors.
+  useEffect(() => {
+    const target = document.highlightedSubsection;
+    if (!target) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const el = root.querySelector(`[data-subsection-id="${target}"]`);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  }, [document.highlightedSubsection]);
+
   return (
-    <div className="max-w-[800px] mx-auto">
+    <div ref={rootRef} className="max-w-[800px] mx-auto">
       {document.contextText && (
         <div
           data-testid="context-intro"

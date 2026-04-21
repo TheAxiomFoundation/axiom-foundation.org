@@ -57,24 +57,27 @@ function RichText({ text }: { text: string }) {
   }
 
   return (
-    <div className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-[1.8]" style={{ fontFamily: "var(--f-serif)" }}>
+    <div
+      className="text-[1rem] text-[var(--color-ink-secondary)] leading-[1.8]"
+      style={{ fontFamily: "var(--f-serif)" }}
+    >
       {segments.map((seg, idx) => {
         if (seg.type === "text") {
           return (
-            <p key={idx} className="whitespace-pre-wrap">
+            <p key={idx} className="whitespace-pre-wrap m-0">
               {seg.content}
             </p>
           );
         }
         return (
-          <div key={idx} className="my-3 overflow-x-auto">
+          <div key={idx} className="my-4 overflow-x-auto">
             <table className="border-collapse text-sm w-full">
               <thead>
                 <tr className="border-b border-[var(--color-rule)]">
                   {seg.headers.map((h, hi) => (
                     <th
                       key={hi}
-                      className="text-left px-3 py-2 text-[var(--color-ink-muted)] font-medium text-xs uppercase tracking-wide"
+                      className="text-left px-3 py-2 text-[var(--color-ink-muted)] font-mono text-xs uppercase tracking-wider font-normal"
                     >
                       {h}
                     </th>
@@ -114,9 +117,7 @@ export function SourceTab({
   document: ViewerDocument;
   outgoingRefs?: RuleReference[];
 }) {
-  const [highlightedSection, setHighlightedSection] = useState<string | null>(
-    null
-  );
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // When the rule has a raw body (leaf rule), render it verbatim so any
@@ -125,12 +126,6 @@ export function SourceTab({
   // lives in children.
   const renderInline = !!document.body;
 
-  // Deep-link polish: when navigating directly to
-  // ``/atlas/.../{parent}/{subsection-id}``, the viewer already
-  // highlights the matching subsection but leaves the user at the
-  // scroll-top of a potentially very long page. Scroll the highlighted
-  // node into view on mount (and whenever the highlight changes from a
-  // SPA navigation) so refs and back-links feel like proper anchors.
   useEffect(() => {
     const target = document.highlightedSubsection;
     if (!target) return;
@@ -143,52 +138,60 @@ export function SourceTab({
   }, [document.highlightedSubsection]);
 
   return (
-    <div ref={rootRef} className="max-w-[800px] mx-auto">
+    <div ref={rootRef} className="max-w-[720px] mx-auto">
       {document.contextText && (
-        <div
+        <aside
           data-testid="context-intro"
-          className="px-4 py-3 mb-4 text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed italic border-l-2 border-[var(--color-rule)]"
+          className="mb-8 pl-5 border-l-2 border-[var(--color-rule)] italic text-[0.95rem] leading-relaxed text-[var(--color-ink-muted)]"
         >
           <RichText text={document.contextText} />
-        </div>
+        </aside>
       )}
+
       {renderInline ? (
-        <div className="p-4">
-          <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
-        </div>
+        <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
       ) : (
-        document.subsections.map((subsection) => {
-        const isHighlighted =
-          document.highlightedSubsection === subsection.id;
-        return (
-        <div
-          key={subsection.id}
-          data-subsection-id={subsection.id}
-          className={`flex gap-4 p-4 rounded-lg mb-3 transition-colors duration-150 cursor-default ${
-            isHighlighted
-              ? "border-l-2 border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-              : highlightedSection === subsection.id
-                ? "bg-[var(--color-accent-light)]"
-                : "hover:bg-[var(--color-code-bg)]"
-          }`}
-          onMouseEnter={() => setHighlightedSection(subsection.id)}
-          onMouseLeave={() => setHighlightedSection(null)}
-        >
-          <span className="font-mono text-xs text-[var(--color-accent)] pt-1 shrink-0">
-            ({subsection.id})
-          </span>
-          <RichText text={subsection.text} />
+        <div className="space-y-7">
+          {document.subsections.map((subsection) => {
+            const isHighlighted =
+              document.highlightedSubsection === subsection.id;
+            const isHovered = hoveredSection === subsection.id;
+            const containerClass = isHighlighted
+              ? "flex gap-5 -mx-5 px-5 py-2 border-l-2 border-[var(--color-accent)] bg-[var(--color-accent-light)] rounded-r"
+              : "flex gap-5 py-1 transition-colors";
+            return (
+              <section
+                key={subsection.id}
+                data-subsection-id={subsection.id}
+                className={containerClass}
+                onMouseEnter={() => setHoveredSection(subsection.id)}
+                onMouseLeave={() => setHoveredSection(null)}
+              >
+                <span
+                  className={`shrink-0 font-mono text-xs pt-[0.35em] tabular-nums transition-colors ${
+                    isHighlighted || isHovered
+                      ? "text-[var(--color-accent)]"
+                      : "text-[var(--color-ink-muted)]"
+                  }`}
+                  aria-hidden="true"
+                >
+                  ({subsection.id})
+                </span>
+                <div className="flex-1 min-w-0">
+                  <RichText text={subsection.text} />
+                </div>
+              </section>
+            );
+          })}
         </div>
-        );
-      })
       )}
 
       {document.archPath && (
-        <div className="mt-8 pt-4 border-t border-[var(--color-rule)]">
+        <div className="mt-10 pt-4 border-t border-[var(--color-rule)]">
           <span className="font-mono text-xs text-[var(--color-ink-muted)]">
             Source:{" "}
           </span>
-          <code className="font-mono text-xs text-[var(--color-accent)]">
+          <code className="font-mono text-xs text-[var(--color-accent)] break-all">
             {document.archPath}
           </code>
         </div>

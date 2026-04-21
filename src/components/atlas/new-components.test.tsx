@@ -133,14 +133,20 @@ describe('SourceTab', () => {
     expect(screen.queryByText('Source:')).not.toBeInTheDocument()
   })
 
-  it('highlights subsection on hover', () => {
+  it('lights up the subsection label on hover', () => {
+    // In the reader layout the hover affordance is a subtle colour shift
+    // on the ``(a)`` label, not a background fill on the whole block —
+    // background tints disrupt long-form reading.
     render(<SourceTab document={makeDoc()} />)
-    const subsection = screen.getByText('There is hereby imposed a tax.')
-    const container = subsection.closest('div[class*="transition"]')!
-    fireEvent.mouseEnter(container)
-    expect(container).toHaveClass('bg-[var(--color-accent-light)]')
-    fireEvent.mouseLeave(container)
-    expect(container).not.toHaveClass('bg-[var(--color-accent-light)]')
+    const subsection = screen
+      .getByText('There is hereby imposed a tax.')
+      .closest('[data-subsection-id]') as HTMLElement
+    const label = subsection.querySelector('span[aria-hidden="true"]')!
+    expect(label).toHaveClass('text-[var(--color-ink-muted)]')
+    fireEvent.mouseEnter(subsection)
+    expect(label).toHaveClass('text-[var(--color-accent)]')
+    fireEvent.mouseLeave(subsection)
+    expect(label).toHaveClass('text-[var(--color-ink-muted)]')
   })
 })
 

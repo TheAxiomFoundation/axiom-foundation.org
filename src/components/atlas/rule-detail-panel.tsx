@@ -105,8 +105,11 @@ export function RuleDetailPanel({
             <SourceTab document={document} outgoingRefs={outgoing} />
           </article>
 
-          {/* Rail: encoding + citation graph */}
-          <aside className="border-t xl:border-t-0 xl:border-l border-[var(--color-rule)] bg-[var(--color-paper)] overflow-y-auto">
+          {/* Rail: encoding + citation graph.
+              On xl+ we pin the rail so the encoding stays in view while
+              the source scrolls — the whole "prove faithfulness" story
+              depends on both being visible together. */}
+          <aside className="border-t xl:border-t-0 xl:border-l border-[var(--color-rule)] bg-[var(--color-paper)] xl:sticky xl:top-0 xl:self-start xl:max-h-screen xl:overflow-y-auto">
             <section className="px-6 py-8">
               <div className="eyebrow mb-6">Encoding</div>
               <EncodingTab
@@ -116,7 +119,7 @@ export function RuleDetailPanel({
               />
             </section>
             {(outgoing.length > 0 || incoming.length > 0) && (
-              <section className="px-6 pb-8">
+              <section className="px-6 pb-8 border-t border-[var(--color-rule)] pt-8">
                 <ReferencesPanel outgoing={outgoing} incoming={incoming} />
               </section>
             )}

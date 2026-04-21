@@ -74,21 +74,21 @@ function RefGroup({
   title,
   subtitle,
   refs,
+  isFirst,
 }: {
   title: string;
   subtitle: string;
   refs: RuleReference[];
+  isFirst: boolean;
 }) {
   if (refs.length === 0) return null;
   return (
-    <section className="mt-8 pt-6 border-t border-[var(--color-rule)]">
-      <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
-        {title}
-      </div>
-      <p className="text-sm text-[var(--color-ink-secondary)] mb-3">
+    <section className={isFirst ? "" : "mt-6 pt-6 border-t border-[var(--color-rule)]"}>
+      <div className="eyebrow mb-2">{title}</div>
+      <p className="text-xs text-[var(--color-ink-muted)] mb-3 leading-relaxed">
         {subtitle}
       </p>
-      <ul className="divide-y divide-[var(--color-rule)] m-0 p-0 list-none">
+      <ul className="divide-y divide-[var(--color-rule-subtle)] m-0 p-0 list-none">
         {refs.map((ref, i) => (
           <RefItem key={`${ref.direction}-${i}-${ref.other_citation_path}`} ref={ref} />
         ))}
@@ -107,13 +107,15 @@ export function ReferencesPanel({
   if (outgoing.length === 0 && incoming.length === 0) return null;
 
   return (
-    <div data-testid="references-panel" className="max-w-[800px] mx-auto">
+    <div data-testid="references-panel">
       <RefGroup
+        isFirst
         title="References"
         subtitle={`This rule cites ${outgoing.length} other ${outgoing.length === 1 ? "rule" : "rules"}.`}
         refs={outgoing}
       />
       <RefGroup
+        isFirst={outgoing.length === 0}
         title="Referenced by"
         subtitle={`${incoming.length} other ${incoming.length === 1 ? "rule cites" : "rules cite"} this one.`}
         refs={incoming}

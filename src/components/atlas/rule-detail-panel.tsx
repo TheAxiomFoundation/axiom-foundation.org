@@ -36,33 +36,64 @@ export function RuleDetailPanel({
   }, [encoding, rule.citation_path, rule.id]);
   /* v8 ignore stop */
 
+  const docKind =
+    document.jurisdiction === "us" || document.jurisdiction.startsWith("us-")
+      ? "Code"
+      : "Statute";
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
-        <div className="flex items-center gap-4">
+      <header className="px-8 py-6 border-b border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
+        <div className="flex items-start gap-4">
           {onBack && (
             <button
-              className="w-8 h-8 flex items-center justify-center bg-transparent border border-[var(--color-rule)] rounded text-[var(--color-ink-muted)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+              type="button"
               onClick={onBack}
-              title="Back to browser"
+              aria-label="Back to browser"
+              className="mt-1 inline-flex items-center justify-center w-8 h-8 rounded border border-[var(--color-rule)] bg-transparent text-[var(--color-ink-muted)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors shrink-0"
             >
-              ←
+              <svg
+                viewBox="0 0 20 20"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 15l-5-5 5-5" />
+              </svg>
             </button>
           )}
-          <div>
-            <h1 className="font-heading text-lg text-[var(--color-ink)] m-0">
-              {document.title}
-            </h1>
-            <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+          <div className="flex-1 min-w-0">
+            <div className="eyebrow flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+              <span>{getJurisdictionLabel(document.jurisdiction)}</span>
+              <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
+                ·
+              </span>
+              <span className="text-[var(--color-ink-muted)]">{docKind}</span>
+              {document.hasRac && (
+                <>
+                  <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
+                    ·
+                  </span>
+                  <span>Encoded</span>
+                </>
+              )}
+            </div>
+            <h1 className="heading-section text-[var(--color-ink)] m-0 break-words">
               {document.citation}
-            </span>
+            </h1>
+            <p
+              className="mt-3 text-[1.05rem] leading-snug text-[var(--color-ink-secondary)]"
+              style={{ fontFamily: "var(--f-serif)" }}
+            >
+              {document.title}
+            </p>
           </div>
         </div>
-
-        <span className="font-mono text-xs font-semibold text-[var(--color-accent)]">
-          {getJurisdictionLabel(document.jurisdiction)}
-        </span>
       </header>
 
       {/* Side-by-side: source + encoding */}
@@ -128,15 +159,12 @@ export function RuleDetailPanel({
         </div>
       )}
 
-      {/* Status bar */}
-      <footer className="flex items-center justify-between px-6 py-2 border-t border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
-        <div className="flex items-center gap-2 text-xs text-[var(--color-ink-muted)]">
-          <span className="w-1.5 h-1.5 bg-[var(--color-success)] rounded-full" />
-          <span>Connected to Atlas</span>
-        </div>
-        <span className="text-xs text-[var(--color-ink-muted)]">
-          {document.subsections.length} subsections
-          {encoding && " | RAC available"}
+      {/* Meta strip */}
+      <footer className="flex items-center justify-end px-8 py-2 border-t border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
+        <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+          {document.subsections.length} subsection
+          {document.subsections.length === 1 ? "" : "s"}
+          {encoding && " · RAC"}
         </span>
       </footer>
     </div>

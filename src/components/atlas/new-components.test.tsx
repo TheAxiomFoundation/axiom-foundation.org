@@ -466,14 +466,14 @@ describe('RuleDetailPanel', () => {
   it('shows back button when onBack is provided', () => {
     const onBack = vi.fn()
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} onBack={onBack} />)
-    const backBtn = screen.getByTitle('Back to browser')
+    const backBtn = screen.getByLabelText('Back to browser')
     fireEvent.click(backBtn)
     expect(onBack).toHaveBeenCalled()
   })
 
   it('does not show back button when onBack is not provided', () => {
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.queryByTitle('Back to browser')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Back to browser')).not.toBeInTheDocument()
   })
 
   it('shows agent logs drawer when session events exist', () => {
@@ -589,13 +589,12 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText('Agent logs')).toBeInTheDocument()
   })
 
-  it('shows status bar with subsection count', () => {
+  it('shows meta strip with subsection count', () => {
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
     expect(screen.getByText(/2 subsections/)).toBeInTheDocument()
-    expect(screen.getByText('Connected to Atlas')).toBeInTheDocument()
   })
 
-  it('shows RAC available in status bar when encoding exists', () => {
+  it('shows RAC marker in meta strip when encoding exists', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [],
@@ -604,7 +603,7 @@ describe('RuleDetailPanel', () => {
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('2 subsections | RAC available')).toBeInTheDocument()
+    expect(screen.getByText('2 subsections · RAC')).toBeInTheDocument()
   })
 
   it('fetches encoding data immediately', () => {

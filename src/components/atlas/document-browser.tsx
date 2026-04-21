@@ -222,20 +222,23 @@ function RuleTreeView({
       {/* Filter bar */}
       <div className="flex items-center justify-end mb-3">
         <button
+          type="button"
+          aria-pressed={encodedOnly}
           onClick={() => {
             setEncodedOnly((prev) => {
               trackAtlasEvent("atlas_filter_toggled", { filter: "encoded_only", enabled: !prev });
               return !prev;
             });
           }}
-          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs rounded-md border transition-colors ${
+          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
             encodedOnly
               ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-rule-hover)]"
+              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           }`}
         >
           <span
-            className={`inline-block w-2 h-2 rounded-full ${
+            aria-hidden="true"
+            className={`inline-block w-2 h-2 rounded-full transition-colors ${
               encodedOnly
                 ? "bg-[var(--color-accent)]"
                 : "bg-[var(--color-ink-muted)]"

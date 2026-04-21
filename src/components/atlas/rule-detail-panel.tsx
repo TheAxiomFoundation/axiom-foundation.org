@@ -96,29 +96,31 @@ export function RuleDetailPanel({
         </div>
       </header>
 
-      {/* Side-by-side: source + encoding */}
+      {/* Hero reader + rail */}
       <main className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-0">
-          {/* Source pane */}
-          <div className="p-6 overflow-y-auto lg:border-r border-[var(--color-rule)]">
-            <div className="font-mono text-xs text-[var(--color-ink-muted)] uppercase tracking-wider mb-4">
-              Source
-            </div>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] min-h-0">
+          {/* Source: the hero reading column */}
+          <article className="px-8 py-8 overflow-y-auto">
+            <div className="eyebrow mb-6">Source</div>
             <SourceTab document={document} outgoingRefs={outgoing} />
-            <ReferencesPanel outgoing={outgoing} incoming={incoming} />
-          </div>
+          </article>
 
-          {/* Encoding pane */}
-          <div className="p-6 overflow-y-auto border-t lg:border-t-0 border-[var(--color-rule)]">
-            <div className="font-mono text-xs text-[var(--color-ink-muted)] uppercase tracking-wider mb-4">
-              Encoding
-            </div>
-            <EncodingTab
-              encoding={encoding}
-              loading={loading}
-              jurisdiction={document.jurisdiction}
-            />
-          </div>
+          {/* Rail: encoding + citation graph */}
+          <aside className="border-t xl:border-t-0 xl:border-l border-[var(--color-rule)] bg-[var(--color-paper)] overflow-y-auto">
+            <section className="px-6 py-8">
+              <div className="eyebrow mb-6">Encoding</div>
+              <EncodingTab
+                encoding={encoding}
+                loading={loading}
+                jurisdiction={document.jurisdiction}
+              />
+            </section>
+            {(outgoing.length > 0 || incoming.length > 0) && (
+              <section className="px-6 pb-8">
+                <ReferencesPanel outgoing={outgoing} incoming={incoming} />
+              </section>
+            )}
+          </aside>
         </div>
       </main>
 

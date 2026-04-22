@@ -16,6 +16,17 @@ vi.mock('@/hooks/use-encoding', () => ({
   useEncoding: mockUseEncoding,
 }))
 
+// RuleDetailPanel now renders a SiblingStrip that uses useRouter and
+// a Supabase-backed getSiblings call; stub both so the panel renders
+// in isolation.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+}))
+
+vi.mock('@/lib/atlas/resolver', () => ({
+  getSiblings: vi.fn().mockResolvedValue([]),
+}))
+
 import { SourceTab } from './source-tab'
 import { EncodingTab } from './encoding-tab'
 import { AgentLogsTab } from './agent-logs-tab'

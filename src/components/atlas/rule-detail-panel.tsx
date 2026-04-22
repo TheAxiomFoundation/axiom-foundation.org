@@ -10,6 +10,7 @@ import { SourceTab } from "./source-tab";
 import { EncodingTab } from "./encoding-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
 import { ReferencesPanel } from "./references-panel";
+import { SiblingStrip } from "./sibling-strip";
 
 export function RuleDetailPanel({
   document,
@@ -95,6 +96,9 @@ export function RuleDetailPanel({
           </div>
         </div>
       </header>
+
+      {/* Sibling strip for lateral navigation */}
+      <SiblingStrip rule={rule} />
 
       {/* Hero reader + rail */}
       <main className="flex-1 overflow-y-auto">

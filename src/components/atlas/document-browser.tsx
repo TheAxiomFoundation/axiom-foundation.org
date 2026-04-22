@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
+import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
@@ -73,7 +74,9 @@ function RuleTreeView({
   hasCitationPaths: boolean;
 }) {
   const router = useRouter();
-  const [encodedOnly, setEncodedOnly] = useState(false);
+  const [encodedOnly, setEncodedOnly] = usePersistentToggle(
+    "atlas:encoded-only"
+  );
   const { nodes, loading, error, hasMore, loadMore, leafRule, currentRule } = useTreeNodes(
     dbJurisdictionId,
     ruleSegments,
@@ -235,10 +238,12 @@ function RuleTreeView({
           type="button"
           aria-pressed={encodedOnly}
           onClick={() => {
-            setEncodedOnly((prev) => {
-              trackAtlasEvent("atlas_filter_toggled", { filter: "encoded_only", enabled: !prev });
-              return !prev;
+            const next = !encodedOnly;
+            trackAtlasEvent("atlas_filter_toggled", {
+              filter: "encoded_only",
+              enabled: next,
             });
+            setEncodedOnly(next);
           }}
           className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
             encodedOnly

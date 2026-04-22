@@ -32,30 +32,37 @@ export function PaletteTrigger({
 
   if (variant === "hero") {
     return (
-      <button
-        type="button"
-        onClick={open}
-        className="group w-full max-w-[560px] mx-auto flex items-center gap-3 px-5 py-4 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] hover:border-[var(--color-accent)] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
-        aria-label="Open Atlas command palette"
-      >
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          aria-hidden="true"
-          className="w-5 h-5 text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors shrink-0"
+      <div className="w-full max-w-[640px] mx-auto">
+        <button
+          type="button"
+          onClick={open}
+          className="group w-full flex items-center gap-3 px-5 py-4 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] shadow-sm hover:border-[var(--color-accent)] hover:shadow-md transition-all cursor-text focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+          aria-label="Search Atlas"
         >
-          <circle cx="9" cy="9" r="6" />
-          <path d="M14 14l4 4" strokeLinecap="round" />
-        </svg>
-        <span className="flex-1 text-left text-base text-[var(--color-ink-muted)]">
-          Search citation, program, or topic…
-        </span>
-        <span className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] border border-[var(--color-rule)] rounded px-1.5 py-0.5 shrink-0">
-          {shortcut}
-        </span>
-      </button>
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            aria-hidden="true"
+            className="w-5 h-5 text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors shrink-0"
+          >
+            <circle cx="9" cy="9" r="6" />
+            <path d="M14 14l4 4" strokeLinecap="round" />
+          </svg>
+          <span className="flex-1 text-left text-base text-[var(--color-ink-muted)]">
+            Search Atlas — citation, program, or topic…
+          </span>
+          <span className="hidden sm:inline-flex font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] border border-[var(--color-rule)] rounded px-1.5 py-0.5 shrink-0">
+            {shortcut}
+          </span>
+        </button>
+        <p className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          Try <em className="not-italic text-[var(--color-accent)]">26 USC § 32</em>,{" "}
+          <em className="not-italic text-[var(--color-accent)]">SNAP</em>, or{" "}
+          <em className="not-italic text-[var(--color-accent)]">UKSI 2013/376 reg 22</em>
+        </p>
+      </div>
     );
   }
 

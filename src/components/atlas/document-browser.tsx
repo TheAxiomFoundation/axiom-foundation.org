@@ -7,7 +7,6 @@ import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
 import { JurisdictionPicker } from "./jurisdiction-picker";
-import { AtlasSearch } from "./atlas-search";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
@@ -316,13 +315,12 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           </p>
         </div>
 
-        {/* Primary entry — command palette */}
+        {/* Primary entry — unified search opens the command palette */}
         <div className="mb-12">
           <PaletteTrigger variant="hero" />
         </div>
 
         <AtlasStats />
-        <AtlasSearch />
         <JurisdictionPicker />
       </div>
     );

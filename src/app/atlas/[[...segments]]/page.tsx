@@ -3,6 +3,7 @@
 
 import { use } from "react";
 import { AtlasBrowser } from "@/components/atlas/document-browser";
+import { CommandPaletteProvider } from "@/components/atlas/command-palette-provider";
 
 export default function AtlasPage({
   params,
@@ -11,9 +12,11 @@ export default function AtlasPage({
 }) {
   const { segments } = use(params);
   return (
-    <div className="relative z-1 pt-24 pb-16">
-      <AtlasBrowser segments={segments || []} />
-    </div>
+    <CommandPaletteProvider>
+      <div className="relative z-1 pt-24 pb-16">
+        <AtlasBrowser segments={segments || []} />
+      </div>
+    </CommandPaletteProvider>
   );
 }
 /* v8 ignore stop */

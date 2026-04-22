@@ -9,6 +9,7 @@ import { RuleDetailPanel } from "./rule-detail-panel";
 import { JurisdictionPicker } from "./jurisdiction-picker";
 import { AtlasSearch } from "./atlas-search";
 import { AtlasStats } from "./atlas-stats";
+import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -141,7 +142,12 @@ function RuleTreeView({
 
     return (
       <div className="max-w-[1280px] mx-auto px-8">
-        <TreeBreadcrumbs items={breadcrumbs} />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <TreeBreadcrumbs items={breadcrumbs} />
+          </div>
+          <PaletteTrigger />
+        </div>
         <div className="min-h-[calc(100vh-200px)]">
           <RuleDetailPanel
             document={doc}
@@ -188,7 +194,12 @@ function RuleTreeView({
 
   return (
     <div className="max-w-[1280px] mx-auto px-8">
-      <TreeBreadcrumbs items={breadcrumbs} />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <TreeBreadcrumbs items={breadcrumbs} />
+        </div>
+        <PaletteTrigger />
+      </div>
 
       {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
         <div className="mb-6 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
@@ -294,10 +305,8 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   if (resolved.phase === "jurisdiction-picker") {
     return (
       <div className="max-w-[1280px] mx-auto px-8">
-        <TreeBreadcrumbs items={breadcrumbs} />
-
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className="heading-section text-[var(--color-ink)] mb-4">
             Atlas
           </h1>
@@ -305,6 +314,11 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
             Explore encoded law. Source documents, RAC encodings, and
             validation results across jurisdictions.
           </p>
+        </div>
+
+        {/* Primary entry — command palette */}
+        <div className="mb-12">
+          <PaletteTrigger variant="hero" />
         </div>
 
         <AtlasStats />

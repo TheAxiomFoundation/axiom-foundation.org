@@ -7,6 +7,8 @@ import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
+import { RuleInlineSummary } from "./rule-inline-summary";
+import { SiblingStrip } from "./sibling-strip";
 import { JurisdictionPicker } from "./jurisdiction-picker";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
@@ -150,7 +152,8 @@ function RuleTreeView({
           </div>
           <PaletteTrigger />
         </div>
-        <div className="min-h-[calc(100vh-200px)]">
+        <SiblingStrip rule={leafRule} />
+        <div className="min-h-[calc(100vh-200px)] mt-4 border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
           <RuleDetailPanel
             document={doc}
             rule={leafRule}
@@ -204,7 +207,7 @@ function RuleTreeView({
       </div>
 
       {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
-        <div className="mb-6 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
+        <div className="mb-6 mt-4 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
           <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
             {currentRuleDetail.citation_path}
           </div>
@@ -220,15 +223,19 @@ function RuleTreeView({
       )}
 
       {currentRule && !currentRuleIsNavigationContainer && (
-        <div className="mb-6 min-h-[240px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
-          {currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
-            <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
-              Loading...
-            </div>
-          ) : (
-            <RuleDetailPanel document={currentRuleDoc} rule={currentRuleDetail} />
-          )}
-        </div>
+        currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
+          <div className="mb-6 mt-4 flex items-center justify-center py-12 text-[var(--color-ink-muted)] border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+            Loading...
+          </div>
+        ) : (
+          <div className="mt-4">
+            <RuleInlineSummary
+              document={currentRuleDoc}
+              rule={currentRuleDetail}
+              childCount={currentRuleChildren.length}
+            />
+          </div>
+        )
       )}
 
       {/* v8 ignore start -- filter toggle UI */}

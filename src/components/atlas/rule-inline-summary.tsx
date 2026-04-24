@@ -171,7 +171,7 @@ function useTreeOrSeed(
   rule: Rule,
   immediateChildren: Rule[]
 ): RuleTreeNode {
-  const { descendants, loading } = useRuleDescendants(rule.citation_path);
+  const { descendants, loading } = useRuleDescendants(rule.id);
   // If the deep descendant query is still in flight, fall back to the
   // immediate-children list as a scaffold so the page paints real
   // structure on first frame — then swap in the full tree when it

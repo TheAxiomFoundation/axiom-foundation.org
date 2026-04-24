@@ -545,15 +545,14 @@ describe("AtlasBrowser", () => {
       render(<AtlasBrowser segments={["us", "statute", "26", "21", "d", "2"]} />);
 
       await waitFor(() => {
-        // Container rules no longer dump the parent body — they
-        // render a per-child preview block instead, which shows the
-        // child's own body text beneath its label.
+        // Container rules render each child inline as part of the
+        // atomic subsection tree (label + heading + body), and the
+        // drill-in tree list below is hidden because that inline
+        // tree already covers navigation.
         expect(
           screen.getByText(/\$250 if subsection/)
         ).toBeInTheDocument();
       });
-
-      expect(screen.getByText("§ A RAC")).toBeInTheDocument();
     });
 
     it("renders a compact navigation container (no inline body) when current rule has children but no body of its own", async () => {

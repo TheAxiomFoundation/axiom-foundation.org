@@ -249,59 +249,69 @@ function RuleTreeView({
         )
       )}
 
-      {/* v8 ignore start -- filter toggle UI */}
-      {/* Filter bar */}
-      <div className="flex items-center justify-end mb-3">
-        <button
-          type="button"
-          aria-pressed={encodedOnly}
-          onClick={() => {
-            const next = !encodedOnly;
-            trackAtlasEvent("atlas_filter_toggled", {
-              filter: "encoded_only",
-              enabled: next,
-            });
-            setEncodedOnly(next);
-          }}
-          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
-            encodedOnly
-              ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`inline-block w-2 h-2 rounded-full transition-colors ${
-              encodedOnly
-                ? "bg-[var(--color-accent)]"
-                : "bg-[var(--color-ink-muted)]"
-            }`}
-          />
-          Encoded only
-        </button>
-      </div>
-      {/* v8 ignore stop */}
-
-      {/* Tree node list */}
-      <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
-        <TreeNodeList
-          nodes={nodes}
-          onNavigate={handleNavigate}
-          loading={loading}
-          error={error}
-        />
-        {hasMore && (
-          <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
+      {/* Filter + tree list: only on browse levels where the inline
+          atomic tree of the current rule isn't already covering
+          navigation. At an actual rule with children, the inline
+          subsection breakdown above is the primary affordance, so
+          showing the same children again in a list below would be
+          redundant. */}
+      {!currentRule || currentRuleIsNavigationContainer ? (
+        <>
+          {/* v8 ignore start -- filter toggle UI */}
+          {/* Filter bar */}
+          <div className="flex items-center justify-end mb-3">
             <button
-              className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
-              onClick={loadMore}
-              disabled={loading}
+              type="button"
+              aria-pressed={encodedOnly}
+              onClick={() => {
+                const next = !encodedOnly;
+                trackAtlasEvent("atlas_filter_toggled", {
+                  filter: "encoded_only",
+                  enabled: next,
+                });
+                setEncodedOnly(next);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+                encodedOnly
+                  ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                  : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              }`}
             >
-              {loading ? "Loading..." : "Load more"}
+              <span
+                aria-hidden="true"
+                className={`inline-block w-2 h-2 rounded-full transition-colors ${
+                  encodedOnly
+                    ? "bg-[var(--color-accent)]"
+                    : "bg-[var(--color-ink-muted)]"
+                }`}
+              />
+              Encoded only
             </button>
           </div>
-        )}
-      </div>
+          {/* v8 ignore stop */}
+
+          {/* Tree node list */}
+          <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
+            <TreeNodeList
+              nodes={nodes}
+              onNavigate={handleNavigate}
+              loading={loading}
+              error={error}
+            />
+            {hasMore && (
+              <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
+                <button
+                  className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
+                  onClick={loadMore}
+                  disabled={loading}
+                >
+                  {loading ? "Loading..." : "Load more"}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

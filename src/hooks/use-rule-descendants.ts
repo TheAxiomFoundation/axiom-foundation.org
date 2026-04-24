@@ -5,14 +5,12 @@ import type { Rule } from "@/lib/supabase";
 import { getRuleDescendants } from "@/lib/atlas/rule-tree";
 
 /**
- * Fetch every descendant of a rule by citation_path prefix. Returns
- * a flat list ordered by level + ordinal so callers can hand it to
- * ``buildRuleTree`` or walk it directly.
- *
- * Drops stale responses via an inflight token so a slow query from
- * the previous rule can't overwrite the current one.
+ * Fetch every descendant of a rule up to a bounded depth via
+ * parent_id BFS (see ``getRuleDescendants``). Drops stale responses
+ * via an inflight token so a slow query from the previous rule
+ * can't overwrite the current one.
  */
-export function useRuleDescendants(citationPath: string | null): {
+export function useRuleDescendants(ruleId: string | null): {
   descendants: Rule[];
   loading: boolean;
 } {
@@ -21,14 +19,14 @@ export function useRuleDescendants(citationPath: string | null): {
   const inflight = useRef(0);
 
   useEffect(() => {
-    if (!citationPath) {
+    if (!ruleId) {
       setDescendants([]);
       setLoading(false);
       return;
     }
     const token = ++inflight.current;
     setLoading(true);
-    getRuleDescendants(citationPath)
+    getRuleDescendants(ruleId)
       .then((rows) => {
         if (token !== inflight.current) return;
         setDescendants(rows);
@@ -40,7 +38,7 @@ export function useRuleDescendants(citationPath: string | null): {
       .finally(() => {
         if (token === inflight.current) setLoading(false);
       });
-  }, [citationPath]);
+  }, [ruleId]);
 
   return { descendants, loading };
 }

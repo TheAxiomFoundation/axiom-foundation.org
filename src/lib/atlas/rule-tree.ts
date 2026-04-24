@@ -12,37 +12,37 @@ export interface RuleTreeNode {
 }
 
 /**
- * Fetch every descendant of a rule via citation_path prefix, capped
- * at ``limit`` rows so a surprisingly large subtree (say thousands)
- * can't wedge the browser. The result is a flat list — use
- * ``buildRuleTree`` to shape it into the recursive structure.
+ * Fetch every descendant of a rule up to ``maxDepth`` levels below,
+ * one BFS query per level keyed on ``parent_id``. This relies on the
+ * ``parent_id`` index rather than a prefix scan over ``citation_path``
+ * — the latter hits statement-timeout on the full corpus because no
+ * text_pattern_ops index is available for LIKE prefix matching.
  *
- * We query by citation_path (not parent_id recursion) because
- * ``rules.citation_path`` carries the full hierarchical address and
- * a single indexed LIKE scan is cheaper than a multi-round trip.
- * Ordering by level + ordinal means the caller can build the tree
- * deterministically without a sort pass.
+ * The depth cap keeps the round-trip cost bounded (3 queries at
+ * depth=3 regardless of subtree shape). Most USC sections bottom out
+ * within 2-3 levels of substantive text; deeper sub-subparagraphs are
+ * usually available as concatenated text within a level-2 body.
  */
 export async function getRuleDescendants(
-  rootCitationPath: string,
-  limit = 500
+  rootId: string,
+  maxDepth = 3
 ): Promise<Rule[]> {
-  if (!rootCitationPath) return [];
-  // Escape LIKE metacharacters so weird citation paths can't break
-  // the prefix match.
-  const escaped = rootCitationPath
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_");
-  const { data, error } = await supabaseAkn
-    .from("rules")
-    .select("*")
-    .like("citation_path", `${escaped}/%`)
-    .order("level", { ascending: true })
-    .order("ordinal", { ascending: true, nullsFirst: false })
-    .limit(limit);
-  if (error || !data) return [];
-  return data as Rule[];
+  if (!rootId) return [];
+  const all: Rule[] = [];
+  let frontier: string[] = [rootId];
+  for (let depth = 0; depth < maxDepth; depth++) {
+    if (frontier.length === 0) break;
+    const { data, error } = await supabaseAkn
+      .from("rules")
+      .select("*")
+      .in("parent_id", frontier)
+      .order("ordinal", { ascending: true, nullsFirst: false });
+    if (error || !data || data.length === 0) break;
+    const rows = data as Rule[];
+    all.push(...rows);
+    frontier = rows.map((r) => r.id);
+  }
+  return all;
 }
 
 /**

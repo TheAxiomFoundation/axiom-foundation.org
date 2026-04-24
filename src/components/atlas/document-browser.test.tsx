@@ -530,8 +530,11 @@ describe("AtlasBrowser", () => {
       render(<AtlasBrowser segments={["us", "statute", "26", "21", "d", "2"]} />);
 
       await waitFor(() => {
+        // Container rules no longer dump the parent body — they
+        // render a per-child preview block instead, which shows the
+        // child's own body text beneath its label.
         expect(
-          screen.getByText("Special rule for spouse who is a student or incapable of caring for himself.")
+          screen.getByText(/\$250 if subsection/)
         ).toBeInTheDocument();
       });
 

@@ -1,22 +1,22 @@
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Rule, RuleReference } from "@/lib/supabase";
 import { RuleBody } from "./rule-body";
 
 interface RuleInlineSummaryProps {
   rule: Rule;
   /**
-   * The rule's ingested children (if any). When the parent body is a
-   * stub — e.g. "(d) Married individuals" with no substantive text —
-   * we fall through to the children's bodies so the reader still has
-   * substantive text to look at on the page.
+   * The rule's ingested children (if any). At container rules we
+   * render them as an outline + atomic preview blocks so the reader
+   * can see the structure instead of a 10k-char wall of prose.
    */
   children: Rule[];
   /**
-   * Outgoing references for this rule. When the parent body is rendered
-   * via RuleBody, refs are spliced as inline citation links and the
-   * ``?mark=…`` query (set on incoming-reference clicks elsewhere)
-   * is honoured for scroll-to-highlight.
+   * Outgoing references for this rule. When we render the full body
+   * via RuleBody (stub-body or ``?mark=`` present), the refs are
+   * spliced as inline citation links.
    */
   outgoingRefs?: RuleReference[];
 }
@@ -24,12 +24,9 @@ interface RuleInlineSummaryProps {
 /**
  * Returns true when a rule's own body is essentially just its label
  * ("(d) Married individuals", "(2) Limitation", …) with no
- * substantive prose.
- *
- * Strips the leading "(id)" prefix and any repeat of the heading
- * before checking what's left — a rule whose body is just the label
- * plus heading is a stub; a rule with a real sentence of text is not,
- * regardless of length.
+ * substantive prose. Strips the "(id)" prefix + any repeated heading
+ * before checking what's left, so a rule with a real sentence is
+ * not misclassified just because it's short.
  */
 function isStubBody(rule: Rule): boolean {
   const body = rule.body?.replace(/\s+/g, " ").trim();
@@ -55,10 +52,9 @@ function trimBodyTail(tail: string): string {
 }
 
 /**
- * Given a child rule, produce a short human label and a serif body
- * chunk we can render inline on the parent page. We strip the
- * leading "(id) heading" prefix from the body so we don't repeat the
- * label beside the content.
+ * Short label + cleaned body for a child rule rendered inline on the
+ * parent page. We strip the leading "(id) heading" prefix from body
+ * so we don't repeat the label beside its content.
  */
 function childReaderChunk(child: Rule): {
   id: string;
@@ -68,12 +64,12 @@ function childReaderChunk(child: Rule): {
   const tail = child.citation_path?.split("/").pop() ?? "";
   const heading = child.heading?.trim() ?? "";
   const id = tail || "·";
-  const rawBody = (child.body ?? "").trim();
-  let body = rawBody;
-  // Strip "(id)" prefix if present.
-  const idRe = new RegExp(`^\\(\\s*${id.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s*\\)\\s*`);
+  let body = (child.body ?? "").trim();
+  const idRe = new RegExp(
+    `^\\(\\s*${id.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s*\\)\\s*`,
+    "i"
+  );
   body = body.replace(idRe, "");
-  // Strip a leading repeat of the heading if present.
   if (heading && body.toLowerCase().startsWith(heading.toLowerCase())) {
     body = body.slice(heading.length);
   }
@@ -81,61 +77,176 @@ function childReaderChunk(child: Rule): {
   return { id, label: heading || `(${id})`, body };
 }
 
+const PREVIEW_CHAR_LIMIT = 320;
+
+function truncatePreview(text: string): { preview: string; truncated: boolean } {
+  if (text.length <= PREVIEW_CHAR_LIMIT) {
+    return { preview: text, truncated: false };
+  }
+  const cut = text.slice(0, PREVIEW_CHAR_LIMIT);
+  const lastSpace = cut.lastIndexOf(" ");
+  const stop = lastSpace > PREVIEW_CHAR_LIMIT * 0.6 ? lastSpace : PREVIEW_CHAR_LIMIT;
+  return { preview: cut.slice(0, stop).trimEnd() + "…", truncated: true };
+}
+
+function RuleOutline({
+  childRules,
+}: {
+  childRules: Rule[];
+}) {
+  const items = childRules
+    .map((child) => {
+      const tail = child.citation_path?.split("/").pop() ?? "";
+      return {
+        id: child.id,
+        tail,
+        href: `/atlas/${child.citation_path ?? ""}`,
+        heading: child.heading?.trim() || "Untitled",
+        hasRac: child.has_rac,
+      };
+    })
+    .filter((item) => item.tail.length > 0 && item.href !== "/atlas/");
+
+  if (items.length === 0) return null;
+
+  return (
+    <nav
+      aria-label="Subsections"
+      className="mb-6 px-5 py-4 bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md"
+    >
+      <div className="flex items-baseline justify-between mb-3 gap-4">
+        <span className="eyebrow">In this section</span>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          {items.length} subsection{items.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <ol className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 m-0 p-0 list-none">
+        {items.map((item) => (
+          <li key={item.id}>
+            <Link
+              href={item.href}
+              className="group flex items-baseline gap-2 py-1 text-sm text-[var(--color-ink-secondary)] no-underline hover:text-[var(--color-accent)] transition-colors"
+            >
+              <span className="shrink-0 font-mono text-xs text-[var(--color-accent)] tabular-nums">
+                ({item.tail})
+              </span>
+              <span className="truncate">{item.heading}</span>
+              {item.hasRac && (
+                <span
+                  aria-hidden="true"
+                  className="ml-auto shrink-0 font-mono text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)] rounded px-1 py-px uppercase tracking-wider"
+                >
+                  RAC
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function ChildPreview({ child }: { child: Rule }) {
+  const chunk = childReaderChunk(child);
+  const { preview, truncated } = truncatePreview(chunk.body);
+  const href = `/atlas/${child.citation_path ?? ""}`;
+  const isEmptyPreview = preview.trim().length === 0;
+
+  return (
+    <section className="flex gap-5">
+      <Link
+        href={href}
+        aria-label={`Open ${chunk.id}`}
+        className="shrink-0 pt-[0.35em] font-mono text-xs text-[var(--color-accent)] tabular-nums no-underline hover:underline decoration-[var(--color-accent)]"
+      >
+        ({chunk.id})
+      </Link>
+      <div className="flex-1 min-w-0">
+        {chunk.label && (
+          <Link
+            href={href}
+            className="block mb-1 font-medium text-[var(--color-ink)] no-underline hover:text-[var(--color-accent)] transition-colors"
+            style={{ fontFamily: "var(--f-serif)" }}
+          >
+            {chunk.label}
+          </Link>
+        )}
+        {!isEmptyPreview && (
+          <p
+            className="m-0 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] whitespace-pre-wrap"
+            style={{ fontFamily: "var(--f-serif)" }}
+          >
+            {preview}
+          </p>
+        )}
+        {(truncated || isEmptyPreview) && (
+          <Link
+            href={href}
+            className="inline-flex items-center gap-1 mt-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-accent)] no-underline hover:underline"
+          >
+            {isEmptyPreview ? "Open subsection" : "Continue reading"}
+            <span aria-hidden="true">→</span>
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /**
- * A compact "you are here" card for container-rule pages — sections
- * and subsections that have their own heading/body *and* children.
+ * Container-rule hero content. Shows:
+ *   - an atomic outline of the rule's children (each one a drill-in
+ *     link), and
+ *   - by default, per-child preview blocks (first ~320 chars +
+ *     "Continue reading →"), so the page reads as a structured table
+ *     of contents rather than a wall of prose.
  *
- * Shows the same Axiom header treatment as the full reader (eyebrow
- * → gradient citation → serif title) followed by a body preview.
- * No encoding rail, no agent drawer, no sibling strip — those belong
- * in the leaf view. Here the job is to orient the reader before they
- * drill into the children list below.
+ * When a ``?mark=`` query is present (e.g. from an incoming-reference
+ * click), we flip to rendering the rule's full body via ``RuleBody``
+ * — so the cited passage can still scroll into view and highlight.
+ * That's the only mode where mark makes sense: the offsets in the DB
+ * index into the parent's body, which is the concatenation of child
+ * subsections, so we can't reliably translate them to any single
+ * child preview.
  *
- * Body is truncated to the first two paragraphs so the card stays
- * proportionate to the tree list beneath it. A subtle "continue
- * below" line nudges the reader to the children.
+ * For rules whose own body is just a label stub ("(d) Married
+ * individuals"), we fall through to a condensed chunk view of each
+ * child's body inline — this is a different code path from the
+ * browsable outline, used when the rule has children but no
+ * structural outline to surface.
  */
 export function RuleInlineSummary({
   rule,
   children,
   outgoingRefs,
 }: RuleInlineSummaryProps) {
+  const searchParams = useSearchParams();
+  const hasMark = !!searchParams?.get("mark");
   const bodyIsStub = isStubBody(rule);
 
-  // When the rule's own body is a stub, substitute the children's
-  // body text so the page doesn't read as empty.
-  const childChunks =
-    bodyIsStub && children.length > 0
-      ? children.map(childReaderChunk).filter((c) => c.body.length > 0)
-      : [];
+  const showFullBody = hasMark && !bodyIsStub && !!rule.body;
+  const showChildPreviews = !showFullBody && children.length > 0;
 
   return (
     <div data-testid="rule-inline-summary" className="max-w-[720px]">
-      {!bodyIsStub && rule.body && (
+      {children.length > 0 && <RuleOutline childRules={children} />}
+
+      {showFullBody && rule.body && (
         <RuleBody body={rule.body} refs={outgoingRefs ?? []} />
       )}
 
-      {childChunks.length > 0 && (
-        <div className="space-y-6">
-          {childChunks.map((chunk) => (
-            <section key={chunk.id} className="flex gap-5">
-              <span className="shrink-0 pt-[0.35em] font-mono text-xs text-[var(--color-accent)] tabular-nums">
-                ({chunk.id})
-              </span>
-              <div
-                className="flex-1 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] space-y-2"
-                style={{ fontFamily: "var(--f-serif)" }}
-              >
-                {chunk.label && (
-                  <p className="m-0 font-medium text-[var(--color-ink)]">
-                    {chunk.label}
-                  </p>
-                )}
-                <p className="m-0 whitespace-pre-wrap">{chunk.body}</p>
-              </div>
-            </section>
+      {showChildPreviews && (
+        <div className="space-y-8">
+          {children.map((child) => (
+            <ChildPreview key={child.id} child={child} />
           ))}
         </div>
+      )}
+
+      {/* Fallback: no children, substantive body — just render it. */}
+      {children.length === 0 && !bodyIsStub && rule.body && (
+        <RuleBody body={rule.body} refs={outgoingRefs ?? []} />
       )}
     </div>
   );

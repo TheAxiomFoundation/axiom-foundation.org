@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
 // Mock next/navigation
@@ -42,7 +42,15 @@ vi.mock("@/lib/supabase", () => ({
   supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
   getRuleReferences: vi.fn().mockResolvedValue([]),
-  getAtlasStats: vi.fn().mockResolvedValue(null),
+  getAtlasStats: vi.fn().mockResolvedValue({
+    rules_count: 1000,
+    references_count: 1000,
+    jurisdictions_count: 2,
+    jurisdictions: [
+      { jurisdiction: "us", count: 500 },
+      { jurisdiction: "uk", count: 500 },
+    ],
+  }),
 }));
 
 import { AtlasBrowser } from "@/components/atlas/document-browser";
@@ -56,8 +64,12 @@ describe("AtlasBrowser (tree-based)", () => {
     expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
   });
 
-  it("shows jurisdiction picker when no segments", () => {
+  it("shows the primary jurisdiction navigation when no segments", async () => {
     render(<AtlasBrowser segments={[]} />);
-    expect(screen.getByText("Choose a jurisdiction")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/Choose a jurisdiction/i)
+      ).toBeInTheDocument()
+    );
   });
 });

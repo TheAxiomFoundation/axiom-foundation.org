@@ -9,7 +9,6 @@ import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
 import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
-import { JurisdictionPicker } from "./jurisdiction-picker";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
@@ -345,7 +344,6 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
         </div>
 
         <AtlasStats />
-        <JurisdictionPicker />
       </div>
     );
   }

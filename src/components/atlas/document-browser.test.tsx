@@ -61,9 +61,17 @@ vi.mock("@/lib/supabase", () => ({
   // ReferencesPanel calls getRuleReferences via useRuleReferences; stub it
   // out so the leaf-render tests don't need to wire the RPC mock.
   getRuleReferences: vi.fn().mockResolvedValue([]),
-  // AtlasStats on the landing page calls this; return null so the
-  // component renders nothing instead of hitting a real RPC.
-  getAtlasStats: vi.fn().mockResolvedValue(null),
+  // AtlasStats on the landing page calls this; return a minimal
+  // shape so the jurisdiction pill navigation renders during tests.
+  getAtlasStats: vi.fn().mockResolvedValue({
+    rules_count: 1_000,
+    references_count: 1_000,
+    jurisdictions_count: 2,
+    jurisdictions: [
+      { jurisdiction: "us", count: 500 },
+      { jurisdiction: "uk", count: 500 },
+    ],
+  }),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
@@ -100,9 +108,15 @@ describe("AtlasBrowser", () => {
       expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
     });
 
-    it("renders jurisdiction picker heading", () => {
+    it("renders the primary jurisdiction navigation", async () => {
       render(<AtlasBrowser segments={[]} />);
-      expect(screen.getByText("Choose a jurisdiction")).toBeInTheDocument();
+      // AtlasStats renders the aria-labelled nav after its RPC
+      // resolves — wait for it.
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(/Choose a jurisdiction/i)
+        ).toBeInTheDocument()
+      );
     });
   });
 
@@ -290,9 +304,10 @@ describe("AtlasBrowser", () => {
 
       render(<AtlasBrowser segments={["uk"]} />);
       expect(screen.getByText("Legislation")).toBeInTheDocument();
-      // Should NOT show jurisdiction picker
+      // Should NOT show the landing-page jurisdiction navigation once
+      // we've drilled into a jurisdiction.
       expect(
-        screen.queryByText("Choose a jurisdiction")
+        screen.queryByLabelText(/Choose a jurisdiction/i)
       ).not.toBeInTheDocument();
     });
 

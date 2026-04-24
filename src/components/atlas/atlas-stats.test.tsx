@@ -7,6 +7,24 @@ vi.mock("@/lib/supabase", () => ({
   getAtlasStats: (...args: unknown[]) => mockGetAtlasStats(...args),
 }));
 
+// The pill nav uses next/link; use a plain anchor so hrefs land in
+// the DOM for assertion.
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [k: string]: unknown;
+  }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 import { AtlasStats, formatCompact, jurisdictionDisplay } from "./atlas-stats";
 
 describe("formatCompact", () => {
@@ -37,9 +55,12 @@ describe("jurisdictionDisplay", () => {
     expect(jurisdictionDisplay("us-dc")).toBe("DC");
     expect(jurisdictionDisplay("us-tx")).toBe("TX");
   });
-  it("maps uk and canada to 2-letter codes", () => {
+  it("maps uk and canada to short codes", () => {
+    // Canada goes to CAN (three letters) to avoid colliding with
+    // California's CA display — now that every ingested jurisdiction
+    // is a clickable pill on the landing, collisions are real.
     expect(jurisdictionDisplay("uk")).toBe("UK");
-    expect(jurisdictionDisplay("canada")).toBe("CA");
+    expect(jurisdictionDisplay("canada")).toBe("CAN");
   });
   it("falls back to uppercasing an unknown jurisdiction", () => {
     expect(jurisdictionDisplay("mars")).toBe("MARS");
@@ -101,34 +122,43 @@ describe("AtlasStats", () => {
     expect(rulesNumber).toHaveAttribute("title", "658,899");
   });
 
-  it("renders one pill per jurisdiction in the returned order", async () => {
+  it("renders one pill per jurisdiction as a clickable link", async () => {
     mockGetAtlasStats.mockResolvedValue(fullPayload);
     render(<AtlasStats />);
     await waitFor(() =>
       expect(screen.getByTestId("atlas-stats-pills")).toBeInTheDocument()
     );
-    expect(screen.getByText("USC+CFR")).toBeInTheDocument();
-    expect(screen.getByText("DC")).toBeInTheDocument();
-    expect(screen.getByText("NY")).toBeInTheDocument();
-    expect(screen.getByText("UK")).toBeInTheDocument();
-    // Sorted order preserved (us first).
+    // Federal / national band appears on top with full labels; US
+    // states render alphabetically beneath.
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
+    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
+    expect(screen.getByText("District of Columbia")).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+
+    // Every pill routes to /atlas/<slug>.
     const pills = screen
       .getByTestId("atlas-stats-pills")
-      .querySelectorAll("span[title]");
-    expect(pills[0]).toHaveTextContent("USC+CFR");
-    expect(pills[1]).toHaveTextContent("DC");
+      .querySelectorAll<HTMLAnchorElement>("a[href^='/atlas/']");
+    const hrefs = Array.from(pills).map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(
+      expect.arrayContaining([
+        "/atlas/us",
+        "/atlas/uk",
+        "/atlas/us-dc",
+        "/atlas/us-ny",
+      ])
+    );
   });
 
-  it("shows the full jurisdiction count on pill hover", async () => {
+  it("shows the full label + rule count in the pill title for hover", async () => {
     mockGetAtlasStats.mockResolvedValue(fullPayload);
     render(<AtlasStats />);
     await waitFor(() =>
       expect(screen.getByTestId("atlas-stats-pills")).toBeInTheDocument()
     );
-    const pills = screen.getByTestId("atlas-stats-pills");
-    const dcPill = pills.querySelector(
-      "span[title='130,617 documents']"
-    );
+    const dcPill = screen
+      .getByTestId("atlas-stats-pills")
+      .querySelector("a[title='District of Columbia — 130,617 rules']");
     expect(dcPill).not.toBeNull();
   });
 

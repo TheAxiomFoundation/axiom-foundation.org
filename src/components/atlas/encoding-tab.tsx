@@ -150,7 +150,11 @@ export function EncodingTab({
       {encoding.rac_content && (
         <div>
           <div className="eyebrow mb-3">RAC encoding</div>
-          <ExpandableCode code={encoding.rac_content} language={language} />
+          <ExpandableCode
+            code={encoding.rac_content}
+            language={language}
+            label={encoding.file_path}
+          />
         </div>
       )}
     </div>

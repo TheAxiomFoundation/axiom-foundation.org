@@ -217,6 +217,29 @@ export function RuleInlineSummary({
   );
 }
 
+/**
+ * True when the rule's own body already contains every immediate
+ * child's body text concatenated (as most section-level USC rules
+ * do — rule.body is the full section text including subsections).
+ * Rendering it AND the children recursively would duplicate.
+ *
+ * Detection: the stripped body contains an "(X)" marker matching
+ * any child's citation-path tail. If so, treat it as concatenated.
+ */
+function bodyConcatenatesChildren(
+  strippedBody: string,
+  children: Rule[]
+): boolean {
+  if (!strippedBody) return false;
+  for (const child of children) {
+    const tail = child.citation_path?.split("/").pop();
+    if (!tail) continue;
+    const marker = `(${tail})`;
+    if (strippedBody.includes(marker)) return true;
+  }
+  return false;
+}
+
 function RuleInlineTree({
   rule,
   immediateChildren,
@@ -225,9 +248,27 @@ function RuleInlineTree({
   immediateChildren: Rule[];
 }) {
   const tree = useTreeOrSeed(rule, immediateChildren);
+  const strippedBody = stripBodyLabel(rule);
+  // Render the root body only when it carries stand-alone content
+  // — e.g. an introductory sentence before a list of enumerated
+  // subsections. When the body already has the children
+  // concatenated (section-level USC bodies are assembled that way),
+  // we skip the body to avoid repeating the text.
+  const showRootBody =
+    strippedBody.length > 0 &&
+    !bodyConcatenatesChildren(strippedBody, immediateChildren);
+
   return (
     <div data-testid="rule-inline-summary" className="max-w-[720px]">
       <RuleOutline childRules={immediateChildren} />
+      {showRootBody && (
+        <p
+          className="mb-8 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] whitespace-pre-wrap"
+          style={{ fontFamily: "var(--f-serif)" }}
+        >
+          {strippedBody}
+        </p>
+      )}
       <div className="space-y-8">
         {tree.children.map((child) => (
           <TreeNode key={child.rule.id} node={child} depth={1} />

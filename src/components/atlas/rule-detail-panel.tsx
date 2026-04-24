@@ -15,10 +15,19 @@ export function RuleDetailPanel({
   document,
   rule,
   onBack,
+  heroSlot,
 }: {
   document: ViewerDocument;
   rule: Rule;
   onBack?: () => void;
+  /**
+   * Optional override for the hero (source) column. When provided, it
+   * renders in place of ``SourceTab`` — e.g. container-rule pages
+   * pass a ``RuleInlineSummary`` so children render inline while the
+   * encoding rail, references panel, and agent drawer stay alongside.
+   * When omitted, the default reader renders via ``SourceTab``.
+   */
+  heroSlot?: React.ReactNode;
 }) {
   const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
   const { outgoing, incoming } = useRuleReferences(rule.citation_path);
@@ -102,7 +111,9 @@ export function RuleDetailPanel({
           {/* Source: the hero reading column */}
           <article className="px-8 py-8 overflow-y-auto">
             <div className="eyebrow mb-6">Source</div>
-            <SourceTab document={document} outgoingRefs={outgoing} />
+            {heroSlot ?? (
+              <SourceTab document={document} outgoingRefs={outgoing} />
+            )}
           </article>
 
           {/* Rail: encoding + citation graph.

@@ -1,11 +1,8 @@
 "use client";
 
-import type { ViewerDocument } from "@/lib/atlas-utils";
 import type { Rule } from "@/lib/supabase";
-import { getJurisdictionLabel } from "@/lib/atlas-utils";
 
 interface RuleInlineSummaryProps {
-  document: ViewerDocument;
   rule: Rule;
   /**
    * The rule's ingested children (if any). When the parent body is a
@@ -91,24 +88,16 @@ function childReaderChunk(child: Rule): {
  * below" line nudges the reader to the children.
  */
 export function RuleInlineSummary({
-  document,
   rule,
   children,
 }: RuleInlineSummaryProps) {
-  const docKind =
-    document.jurisdiction === "us" ||
-    document.jurisdiction.startsWith("us-")
-      ? "Code"
-      : "Statute";
-
   const bodyIsStub = isStubBody(rule);
   const previewParagraphs = bodyIsStub
     ? []
     : (rule.body ?? "")
         .split(/\n\n+/)
         .map((p) => p.trim())
-        .filter(Boolean)
-        .slice(0, 2);
+        .filter(Boolean);
 
   // When the rule's own body is a stub, substitute the children's
   // body text so the page doesn't read as empty.
@@ -116,41 +105,12 @@ export function RuleInlineSummary({
     bodyIsStub && children.length > 0
       ? children.map(childReaderChunk).filter((c) => c.body.length > 0)
       : [];
-  const childCount = children.length;
 
   return (
-    <section
-      data-testid="rule-inline-summary"
-      className="mb-8 px-8 py-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md"
-    >
-      <div className="eyebrow flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
-        <span>{getJurisdictionLabel(document.jurisdiction)}</span>
-        <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
-          ·
-        </span>
-        <span className="text-[var(--color-ink-muted)]">{docKind}</span>
-        {document.hasRac && (
-          <>
-            <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
-              ·
-            </span>
-            <span>Encoded</span>
-          </>
-        )}
-      </div>
-      <h1 className="heading-section text-[var(--color-ink)] m-0 break-words">
-        {document.citation}
-      </h1>
-      <p
-        className="mt-3 text-[1.05rem] leading-snug text-[var(--color-ink-secondary)]"
-        style={{ fontFamily: "var(--f-serif)" }}
-      >
-        {document.title}
-      </p>
-
+    <div data-testid="rule-inline-summary" className="max-w-[720px]">
       {previewParagraphs.length > 0 && (
         <div
-          className="mt-5 pt-5 border-t border-[var(--color-rule)] text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)] space-y-3 max-w-[720px]"
+          className="text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] space-y-4"
           style={{ fontFamily: "var(--f-serif)" }}
         >
           {previewParagraphs.map((p, i) => (
@@ -162,37 +122,27 @@ export function RuleInlineSummary({
       )}
 
       {childChunks.length > 0 && (
-        <div className="mt-5 pt-5 border-t border-[var(--color-rule)] space-y-5 max-w-[720px]">
+        <div className="space-y-6">
           {childChunks.map((chunk) => (
-            <div key={chunk.id} className="flex gap-4">
+            <section key={chunk.id} className="flex gap-5">
               <span className="shrink-0 pt-[0.35em] font-mono text-xs text-[var(--color-accent)] tabular-nums">
                 ({chunk.id})
               </span>
               <div
-                className="flex-1 text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)] space-y-2"
+                className="flex-1 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] space-y-2"
                 style={{ fontFamily: "var(--f-serif)" }}
               >
                 {chunk.label && (
-                  <p
-                    className="m-0 font-medium text-[var(--color-ink)]"
-                    style={{ fontFamily: "var(--f-serif)" }}
-                  >
+                  <p className="m-0 font-medium text-[var(--color-ink)]">
                     {chunk.label}
                   </p>
                 )}
                 <p className="m-0 whitespace-pre-wrap">{chunk.body}</p>
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
-
-      {childCount > 0 && (
-        <p className="mt-5 font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {childCount} {childCount === 1 ? "subsection" : "subsections"} below
-          — select one to read the full text.
-        </p>
-      )}
-    </section>
+    </div>
   );
 }

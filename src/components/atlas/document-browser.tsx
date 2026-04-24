@@ -234,11 +234,16 @@ function RuleTreeView({
             Loading...
           </div>
         ) : (
-          <div className="mt-4">
-            <RuleInlineSummary
+          <div className="mt-4 mb-6 border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
+            <RuleDetailPanel
               document={currentRuleDoc}
               rule={currentRuleDetail}
-              children={currentRuleChildren}
+              heroSlot={
+                <RuleInlineSummary
+                  rule={currentRuleDetail}
+                  children={currentRuleChildren}
+                />
+              }
             />
           </div>
         )

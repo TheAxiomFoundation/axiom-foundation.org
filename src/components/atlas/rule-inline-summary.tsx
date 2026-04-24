@@ -137,24 +137,6 @@ function TreeNode({
             {body}
           </p>
         )}
-        {rule.has_rac && (
-          <Link
-            href={href}
-            className="inline-flex items-center gap-1 mt-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] no-underline hover:underline"
-          >
-            Open encoded subsection
-            <span aria-hidden="true">→</span>
-          </Link>
-        )}
-        {!hasBody && !rule.has_rac && node.children.length === 0 && (
-          <Link
-            href={href}
-            className="inline-flex items-center gap-1 mt-1 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] no-underline hover:underline"
-          >
-            Open subsection
-            <span aria-hidden="true">→</span>
-          </Link>
-        )}
         {node.children.length > 0 && (
           <div className="mt-4 space-y-5">
             {node.children.map((child) => (

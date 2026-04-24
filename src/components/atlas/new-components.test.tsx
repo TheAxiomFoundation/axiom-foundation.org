@@ -28,7 +28,7 @@ vi.mock('@/lib/atlas/resolver', () => ({
 }))
 
 import { SourceTab } from './source-tab'
-import { EncodingTab } from './encoding-tab'
+import { EncodingTab, languageFromPath } from './encoding-tab'
 import { AgentLogsTab } from './agent-logs-tab'
 import { RuleDetailPanel } from './rule-detail-panel'
 import type { ViewerDocument } from '@/lib/atlas-utils'
@@ -159,6 +159,24 @@ describe('SourceTab', () => {
     fireEvent.mouseLeave(subsection)
     expect(label).toHaveClass('text-[var(--color-ink-muted)]')
   })
+})
+
+describe('languageFromPath', () => {
+  it('maps .rac → rac', () => expect(languageFromPath('foo.rac')).toBe('rac'))
+  it('maps .catala_en → catala', () =>
+    expect(languageFromPath('foo.catala_en')).toBe('catala'))
+  it('maps .catala → catala', () =>
+    expect(languageFromPath('bar.catala')).toBe('catala'))
+  it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
+  it('maps .yaml / .yml → yaml', () => {
+    expect(languageFromPath('x.yaml')).toBe('yaml')
+    expect(languageFromPath('x.yml')).toBe('yaml')
+  })
+  it('maps .xml → xml', () => expect(languageFromPath('x.xml')).toBe('xml'))
+  it('falls back to plain for unknown extensions', () =>
+    expect(languageFromPath('x.txt')).toBe('plain'))
+  it('is case-insensitive', () =>
+    expect(languageFromPath('X.RAC')).toBe('rac'))
 })
 
 describe('EncodingTab', () => {

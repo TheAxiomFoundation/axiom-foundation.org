@@ -12,7 +12,7 @@ type CodeLang = "rac" | "catala" | "python" | "yaml" | "xml" | "plain";
  * encoding languages today (RAC and Catala); everything else falls back
  * to plain text so we don't mis-highlight.
  */
-function languageFromPath(path: string): CodeLang {
+export function languageFromPath(path: string): CodeLang {
   const lower = path.toLowerCase();
   if (lower.endsWith(".rac")) return "rac";
   if (lower.includes(".catala")) return "catala";

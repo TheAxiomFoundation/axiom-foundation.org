@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCitation } from "./index";
+import { parseCitation, _internalParsers } from "./index";
 
 describe("parseCitation — US Code", () => {
   it("parses a plain USC section", () => {
@@ -209,5 +209,14 @@ describe("parseCitation — misc", () => {
 
   it("returns null for gibberish", () => {
     expect(parseCitation("hello world")).toBeNull();
+  });
+});
+
+describe("_internalParsers", () => {
+  it("exposes the parser list ordered with specific parsers first", () => {
+    const parsers = _internalParsers();
+    expect(parsers.length).toBeGreaterThan(5);
+    expect(parsers[0].name).toBe("us-federal-usc");
+    expect(parsers[parsers.length - 1].name).toBe("direct-citation-path");
   });
 });

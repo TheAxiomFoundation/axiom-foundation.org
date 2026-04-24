@@ -92,8 +92,12 @@ function RuleTreeView({
   } = useRule(currentRule?.id ?? null);
 
   const [displayCtx, setDisplayCtx] = useState<DisplayContext | null>(null);
-  const useParentContext =
-    !hasCitationPaths || (leafRule?.level ?? 0) > 1;
+  // The SiblingStrip above the reader already covers lateral context
+  // for citation-path jurisdictions, so at a US/UK deep leaf we no
+  // longer render the parent's body + all siblings inline. Only
+  // non-citation-path jurisdictions (Canada today) still need the
+  // parent-context fallback because they navigate by UUID.
+  const useParentContext = !hasCitationPaths;
 
   useEffect(() => {
     if (leafRule) {

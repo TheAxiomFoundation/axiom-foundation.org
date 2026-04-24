@@ -344,7 +344,7 @@ describe("AtlasBrowser", () => {
       updated_at: "",
     };
 
-    it("calls resolveDisplayContext when useTreeNodes returns a leafRule", () => {
+    it("does not call resolveDisplayContext for citation-path jurisdictions — the SiblingStrip covers lateral context", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],
         loading: false,
@@ -353,16 +353,6 @@ describe("AtlasBrowser", () => {
         loadMore: mockLoadMore,
         leafRule,
         currentRule: null,
-      });
-
-      vi.mocked(resolveDisplayContext).mockResolvedValue({
-        rule: leafRule,
-        parentBody: "shall be increased by the lesser of—",
-        siblings: [
-          { ...leafRule, id: "leaf-1", body: "the credit determined under subsection (a)" },
-          { ...leafRule, id: "leaf-2", body: "the earned income of the taxpayer" },
-        ],
-        targetIndex: 0,
       });
 
       render(
@@ -371,28 +361,22 @@ describe("AtlasBrowser", () => {
         />
       );
 
-      expect(resolveDisplayContext).toHaveBeenCalledWith(leafRule);
+      expect(resolveDisplayContext).not.toHaveBeenCalled();
     });
 
-    it("renders parent body text as context after resolveDisplayContext resolves", async () => {
+    it("renders only the leaf's own body — no parent context, no siblings stacked inline", async () => {
+      const focusedLeaf = {
+        ...leafRule,
+        body: "the credit determined under subsection (a)",
+      };
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],
         loading: false,
         error: null,
         hasMore: false,
         loadMore: mockLoadMore,
-        leafRule,
+        leafRule: focusedLeaf,
         currentRule: null,
-      });
-
-      vi.mocked(resolveDisplayContext).mockResolvedValue({
-        rule: leafRule,
-        parentBody: "shall be increased by the lesser of—",
-        siblings: [
-          { ...leafRule, id: "leaf-1", body: "the credit determined under subsection (a)" },
-          { ...leafRule, id: "leaf-2", body: "the earned income of the taxpayer" },
-        ],
-        targetIndex: 0,
       });
 
       render(
@@ -403,7 +387,7 @@ describe("AtlasBrowser", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("shall be increased by the lesser of—")
+          screen.getByText("the credit determined under subsection (a)")
         ).toBeInTheDocument();
       });
     });

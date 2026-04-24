@@ -2,7 +2,7 @@
 
 import { isGitHubEncoding } from "@/lib/atlas-utils";
 import type { RuleEncodingData } from "@/lib/supabase";
-import CodeBlock from "@/components/code-block";
+import { ExpandableCode } from "./expandable-code";
 
 function getRepoForJurisdiction(jurisdiction: string): string | null {
   const repoMap: Record<string, string> = {
@@ -150,11 +150,7 @@ export function EncodingTab({
       {encoding.rac_content && (
         <div>
           <div className="eyebrow mb-3">RAC encoding</div>
-          <CodeBlock
-            code={encoding.rac_content}
-            language={language}
-            className="p-4 bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md overflow-x-auto text-xs text-[var(--color-code-text)] leading-relaxed whitespace-pre-wrap break-words"
-          />
+          <ExpandableCode code={encoding.rac_content} language={language} />
         </div>
       )}
     </div>

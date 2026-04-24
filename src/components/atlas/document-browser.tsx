@@ -238,12 +238,13 @@ function RuleTreeView({
             <RuleDetailPanel
               document={currentRuleDoc}
               rule={currentRuleDetail}
-              heroSlot={
+              heroSlot={({ outgoingRefs }) => (
                 <RuleInlineSummary
                   rule={currentRuleDetail}
                   children={currentRuleChildren}
+                  outgoingRefs={outgoingRefs}
                 />
-              }
+              )}
             />
           </div>
         )

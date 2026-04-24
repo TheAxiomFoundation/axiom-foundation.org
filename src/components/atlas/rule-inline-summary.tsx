@@ -1,6 +1,7 @@
 "use client";
 
-import type { Rule } from "@/lib/supabase";
+import type { Rule, RuleReference } from "@/lib/supabase";
+import { RuleBody } from "./rule-body";
 
 interface RuleInlineSummaryProps {
   rule: Rule;
@@ -11,6 +12,13 @@ interface RuleInlineSummaryProps {
    * substantive text to look at on the page.
    */
   children: Rule[];
+  /**
+   * Outgoing references for this rule. When the parent body is rendered
+   * via RuleBody, refs are spliced as inline citation links and the
+   * ``?mark=…`` query (set on incoming-reference clicks elsewhere)
+   * is honoured for scroll-to-highlight.
+   */
+  outgoingRefs?: RuleReference[];
 }
 
 /**
@@ -90,14 +98,9 @@ function childReaderChunk(child: Rule): {
 export function RuleInlineSummary({
   rule,
   children,
+  outgoingRefs,
 }: RuleInlineSummaryProps) {
   const bodyIsStub = isStubBody(rule);
-  const previewParagraphs = bodyIsStub
-    ? []
-    : (rule.body ?? "")
-        .split(/\n\n+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
 
   // When the rule's own body is a stub, substitute the children's
   // body text so the page doesn't read as empty.
@@ -108,17 +111,8 @@ export function RuleInlineSummary({
 
   return (
     <div data-testid="rule-inline-summary" className="max-w-[720px]">
-      {previewParagraphs.length > 0 && (
-        <div
-          className="text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] space-y-4"
-          style={{ fontFamily: "var(--f-serif)" }}
-        >
-          {previewParagraphs.map((p, i) => (
-            <p key={i} className="m-0 whitespace-pre-wrap">
-              {p}
-            </p>
-          ))}
-        </div>
+      {!bodyIsStub && rule.body && (
+        <RuleBody body={rule.body} refs={outgoingRefs ?? []} />
       )}
 
       {childChunks.length > 0 && (

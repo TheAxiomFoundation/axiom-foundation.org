@@ -10,6 +10,7 @@ import { SourceTab } from "./source-tab";
 import { EncodingTab } from "./encoding-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
 import { ReferencesPanel } from "./references-panel";
+import type { RuleReference } from "@/lib/supabase";
 
 export function RuleDetailPanel({
   document,
@@ -22,12 +23,13 @@ export function RuleDetailPanel({
   onBack?: () => void;
   /**
    * Optional override for the hero (source) column. When provided, it
-   * renders in place of ``SourceTab`` — e.g. container-rule pages
-   * pass a ``RuleInlineSummary`` so children render inline while the
-   * encoding rail, references panel, and agent drawer stay alongside.
+   * renders in place of ``SourceTab`` — container-rule pages pass a
+   * function that builds a ``RuleInlineSummary`` from the outgoing
+   * refs we already fetched, so the body still renders via RuleBody
+   * (and supports ``?mark=…`` highlighting + outgoing-ref splicing).
    * When omitted, the default reader renders via ``SourceTab``.
    */
-  heroSlot?: React.ReactNode;
+  heroSlot?: (ctx: { outgoingRefs: RuleReference[] }) => React.ReactNode;
 }) {
   const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
   const { outgoing, incoming } = useRuleReferences(rule.citation_path);
@@ -111,7 +113,9 @@ export function RuleDetailPanel({
           {/* Source: the hero reading column */}
           <article className="px-8 py-8 overflow-y-auto">
             <div className="eyebrow mb-6">Source</div>
-            {heroSlot ?? (
+            {heroSlot ? (
+              heroSlot({ outgoingRefs: outgoing })
+            ) : (
               <SourceTab document={document} outgoingRefs={outgoing} />
             )}
           </article>

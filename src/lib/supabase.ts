@@ -315,7 +315,7 @@ async function fetchRacFromGitHub(
     'us-co': 'rac-us-co',
     'us-ca': 'rac-us-ca',
     'us-ny': 'rac-us-ny',
-    ca: 'rac-ca',
+    canada: 'rac-ca',
     uk: 'rac-uk',
   }
   const repo = repoMap[jurisdiction]

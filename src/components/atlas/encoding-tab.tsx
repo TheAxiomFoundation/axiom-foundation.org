@@ -4,12 +4,19 @@ import { isGitHubEncoding } from "@/lib/atlas-utils";
 import type { RuleEncodingData } from "@/lib/supabase";
 import { ExpandableCode } from "./expandable-code";
 
+/**
+ * Map an atlas jurisdiction slug to its canonical ``rac-*`` GitHub
+ * repo. Kept in sync with the server-side map in
+ * ``lib/supabase.ts::fetchRacFromGitHub`` — the pair are the source
+ * of truth for "where does this jurisdiction's encoding live?".
+ */
 function getRepoForJurisdiction(jurisdiction: string): string | null {
   const repoMap: Record<string, string> = {
     us: "rac-us",
+    "us-co": "rac-us-co",
     "us-ca": "rac-us-ca",
     "us-ny": "rac-us-ny",
-    ca: "rac-ca",
+    canada: "rac-ca",
     uk: "rac-uk",
   };
 

@@ -30,7 +30,19 @@ export type AtlasEvent =
   | { event: "atlas_jurisdiction_selected"; properties: { jurisdiction: string } }
   | { event: "atlas_search"; properties: { query_length: number; doc_type: "all" | "statute" | "regulation"; result_count: number } }
   | { event: "atlas_tree_navigated"; properties: { depth: number; segment: string } }
-  | { event: "atlas_filter_toggled"; properties: { filter: string; enabled: boolean } };
+  | { event: "atlas_filter_toggled"; properties: { filter: string; enabled: boolean } }
+  | {
+      event: "atlas_palette_commit";
+      properties:
+        | { kind: "citation"; citation_path: string }
+        | {
+            kind: "program";
+            program: string;
+            role: string;
+            citation_path: string;
+          }
+        | { kind: "search"; citation_path: string };
+    };
 
 /* v8 ignore start -- env-dependent capture */
 export function trackAtlasEvent<T extends AtlasEvent>(

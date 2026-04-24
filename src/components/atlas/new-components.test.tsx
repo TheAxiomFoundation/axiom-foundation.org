@@ -16,8 +16,19 @@ vi.mock('@/hooks/use-encoding', () => ({
   useEncoding: mockUseEncoding,
 }))
 
+// RuleDetailPanel now renders a SiblingStrip that uses useRouter and
+// a Supabase-backed getSiblings call; stub both so the panel renders
+// in isolation.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+}))
+
+vi.mock('@/lib/atlas/resolver', () => ({
+  getSiblings: vi.fn().mockResolvedValue([]),
+}))
+
 import { SourceTab } from './source-tab'
-import { EncodingTab } from './encoding-tab'
+import { EncodingTab, languageFromPath } from './encoding-tab'
 import { AgentLogsTab } from './agent-logs-tab'
 import { RuleDetailPanel } from './rule-detail-panel'
 import type { ViewerDocument } from '@/lib/atlas-utils'
@@ -133,15 +144,39 @@ describe('SourceTab', () => {
     expect(screen.queryByText('Source:')).not.toBeInTheDocument()
   })
 
-  it('highlights subsection on hover', () => {
+  it('lights up the subsection label on hover', () => {
+    // In the reader layout the hover affordance is a subtle colour shift
+    // on the ``(a)`` label, not a background fill on the whole block —
+    // background tints disrupt long-form reading.
     render(<SourceTab document={makeDoc()} />)
-    const subsection = screen.getByText('There is hereby imposed a tax.')
-    const container = subsection.closest('div[class*="transition"]')!
-    fireEvent.mouseEnter(container)
-    expect(container).toHaveClass('bg-[var(--color-accent-light)]')
-    fireEvent.mouseLeave(container)
-    expect(container).not.toHaveClass('bg-[var(--color-accent-light)]')
+    const subsection = screen
+      .getByText('There is hereby imposed a tax.')
+      .closest('[data-subsection-id]') as HTMLElement
+    const label = subsection.querySelector('span[aria-hidden="true"]')!
+    expect(label).toHaveClass('text-[var(--color-ink-muted)]')
+    fireEvent.mouseEnter(subsection)
+    expect(label).toHaveClass('text-[var(--color-accent)]')
+    fireEvent.mouseLeave(subsection)
+    expect(label).toHaveClass('text-[var(--color-ink-muted)]')
   })
+})
+
+describe('languageFromPath', () => {
+  it('maps .rac → rac', () => expect(languageFromPath('foo.rac')).toBe('rac'))
+  it('maps .catala_en → catala', () =>
+    expect(languageFromPath('foo.catala_en')).toBe('catala'))
+  it('maps .catala → catala', () =>
+    expect(languageFromPath('bar.catala')).toBe('catala'))
+  it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
+  it('maps .yaml / .yml → yaml', () => {
+    expect(languageFromPath('x.yaml')).toBe('yaml')
+    expect(languageFromPath('x.yml')).toBe('yaml')
+  })
+  it('maps .xml → xml', () => expect(languageFromPath('x.xml')).toBe('xml'))
+  it('falls back to plain for unknown extensions', () =>
+    expect(languageFromPath('x.txt')).toBe('plain'))
+  it('is case-insensitive', () =>
+    expect(languageFromPath('X.RAC')).toBe('rac'))
 })
 
 describe('EncodingTab', () => {
@@ -164,7 +199,6 @@ describe('EncodingTab', () => {
     expect(screen.getByText('75')).toBeInTheDocument()
     expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
     expect(screen.getByText('Shown source')).toBeInTheDocument()
-    expect(screen.getByText('Stored encoding record')).toBeInTheDocument()
     expect(screen.getByText(/latest stored encoding run/i)).toBeInTheDocument()
     expect(screen.getByText('View canonical repo file')).toBeInTheDocument()
   })
@@ -186,7 +220,7 @@ describe('EncodingTab', () => {
       file_path: 'statute/26/32/b.rac',
       final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
     })} loading={false} jurisdiction="us" />)
-    expect(screen.getByText('Repository file')).toBeInTheDocument()
+    expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
     expect(screen.getByText('View on GitHub')).toBeInTheDocument()
     // Scores should be hidden for GitHub sources
     expect(screen.queryByText('90')).not.toBeInTheDocument()
@@ -466,14 +500,14 @@ describe('RuleDetailPanel', () => {
   it('shows back button when onBack is provided', () => {
     const onBack = vi.fn()
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} onBack={onBack} />)
-    const backBtn = screen.getByTitle('Back to browser')
+    const backBtn = screen.getByLabelText('Back to browser')
     fireEvent.click(backBtn)
     expect(onBack).toHaveBeenCalled()
   })
 
   it('does not show back button when onBack is not provided', () => {
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.queryByTitle('Back to browser')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Back to browser')).not.toBeInTheDocument()
   })
 
   it('shows agent logs drawer when session events exist', () => {
@@ -589,13 +623,12 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText('Agent logs')).toBeInTheDocument()
   })
 
-  it('shows status bar with subsection count', () => {
+  it('shows meta strip with subsection count', () => {
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
     expect(screen.getByText(/2 subsections/)).toBeInTheDocument()
-    expect(screen.getByText('Connected to Atlas')).toBeInTheDocument()
   })
 
-  it('shows RAC available in status bar when encoding exists', () => {
+  it('shows RAC marker in meta strip when encoding exists', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [],
@@ -604,7 +637,7 @@ describe('RuleDetailPanel', () => {
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('2 subsections | RAC available')).toBeInTheDocument()
+    expect(screen.getByText('2 subsections · RAC')).toBeInTheDocument()
   })
 
   it('fetches encoding data immediately', () => {

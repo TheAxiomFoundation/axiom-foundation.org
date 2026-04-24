@@ -26,7 +26,10 @@ export function TreeBreadcrumbs({ items }: TreeBreadcrumbsProps) {
               <span className="text-[var(--color-ink-muted)]">/</span>
             )}
             {isLast ? (
-              <span className="text-[var(--color-ink-secondary)]">
+              <span
+                aria-current="page"
+                className="text-[var(--color-ink-secondary)]"
+              >
                 {item.label}
               </span>
             ) : (

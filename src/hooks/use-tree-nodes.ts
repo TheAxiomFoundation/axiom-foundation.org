@@ -42,10 +42,19 @@ export function useTreeNodes(
   const pageRef = useRef(0);
   const cache = useRef<Map<string, CacheEntry>>(new Map());
   const encodedPathsRef = useRef<Set<string> | null>(null);
+  // Incrementing token so a stale fetch (e.g. one issued before the
+  // encoded-only filter flipped) cannot overwrite newer state. Any
+  // fetch whose token no longer matches ``inflight.current`` is
+  // silently dropped on resolution.
+  const inflight = useRef(0);
 
   const cacheKey = `${dbJurisdictionId}/${ruleSegments.join("/")}${encodedOnly ? ":encoded" : ""}`;
 
   useEffect(() => {
+    // Invalidate any in-flight fetch for the previous cacheKey —
+    // its result is no longer relevant.
+    inflight.current += 1;
+
     const cached = cache.current.get(cacheKey);
     if (cached) {
       setNodes(cached.nodes);
@@ -68,13 +77,23 @@ export function useTreeNodes(
     pageNum: number,
     append: boolean
   ) {
+    const token = ++inflight.current;
     setLoading(true);
     setError(null);
-    setLeafRule(null);
-    setCurrentRule(null);
 
     try {
-      let result: { nodes: TreeNode[]; hasMore: boolean; currentRule?: Rule | null };
+      // Intermediate data — don't touch React state until we've
+      // confirmed the token is still current. Otherwise a fetch
+      // issued before a filter toggle can blank setLeafRule / clear
+      // setCurrentRule after the fresh fetch has already populated
+      // them, which is exactly the "button lit but list unfiltered"
+      // glitch users hit.
+      let result: {
+        nodes: TreeNode[];
+        hasMore: boolean;
+        currentRule?: Rule | null;
+        leafRule?: Rule | null;
+      };
 
       if (segs.length === 0) {
         // Root of jurisdiction: show doc types or acts
@@ -113,11 +132,17 @@ export function useTreeNodes(
             encodedOnly
           );
           if (r.leafRule) {
-            setLeafRule(r.leafRule);
-            result = { nodes: [], hasMore: false };
+            result = {
+              nodes: [],
+              hasMore: false,
+              leafRule: r.leafRule,
+            };
           } else {
-            setCurrentRule(r.currentRule ?? null);
-            result = { nodes: r.nodes, hasMore: r.hasMore };
+            result = {
+              nodes: r.nodes,
+              hasMore: r.hasMore,
+              currentRule: r.currentRule ?? null,
+            };
           }
         }
       } else {
@@ -130,8 +155,7 @@ export function useTreeNodes(
           );
           if (r.nodes.length === 0) {
             const rule = await getRuleById(lastSegment);
-            setLeafRule(rule);
-            result = { nodes: [], hasMore: false };
+            result = { nodes: [], hasMore: false, leafRule: rule };
           } else {
             result = { nodes: r.nodes, hasMore: r.hasMore };
           }
@@ -140,11 +164,17 @@ export function useTreeNodes(
         }
       }
 
+      // Drop the result if a newer fetch has been issued (e.g. the
+      // user toggled "Encoded only" mid-flight, or navigated).
+      if (token !== inflight.current) return;
+
       if (append) {
         setNodes((prev) => [...prev, ...result.nodes]);
       } else {
         setNodes(result.nodes);
       }
+      setLeafRule(result.leafRule ?? null);
+      setCurrentRule(result.currentRule ?? null);
       setHasMore(result.hasMore);
       pageRef.current = pageNum;
 
@@ -161,9 +191,10 @@ export function useTreeNodes(
         });
       }
     } catch (err) {
+      if (token !== inflight.current) return;
       setError(err instanceof Error ? err.message : "Failed to fetch");
     } finally {
-      setLoading(false);
+      if (token === inflight.current) setLoading(false);
     }
   }
   /* v8 ignore stop */

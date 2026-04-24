@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
+import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
 import { RuleDetailPanel } from "./rule-detail-panel";
-import { JurisdictionPicker } from "./jurisdiction-picker";
-import { AtlasSearch } from "./atlas-search";
+import { RuleInlineSummary } from "./rule-inline-summary";
+import { SiblingStrip } from "./sibling-strip";
 import { AtlasStats } from "./atlas-stats";
+import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -73,7 +75,9 @@ function RuleTreeView({
   hasCitationPaths: boolean;
 }) {
   const router = useRouter();
-  const [encodedOnly, setEncodedOnly] = useState(false);
+  const [encodedOnly, setEncodedOnly] = usePersistentToggle(
+    "atlas:encoded-only"
+  );
   const { nodes, loading, error, hasMore, loadMore, leafRule, currentRule } = useTreeNodes(
     dbJurisdictionId,
     ruleSegments,
@@ -88,8 +92,12 @@ function RuleTreeView({
   } = useRule(currentRule?.id ?? null);
 
   const [displayCtx, setDisplayCtx] = useState<DisplayContext | null>(null);
-  const useParentContext =
-    !hasCitationPaths || (leafRule?.level ?? 0) > 1;
+  // The SiblingStrip above the reader already covers lateral context
+  // for citation-path jurisdictions, so at a US/UK deep leaf we no
+  // longer render the parent's body + all siblings inline. Only
+  // non-citation-path jurisdictions (Canada today) still need the
+  // parent-context fallback because they navigate by UUID.
+  const useParentContext = !hasCitationPaths;
 
   useEffect(() => {
     if (leafRule) {
@@ -141,8 +149,14 @@ function RuleTreeView({
 
     return (
       <div className="max-w-[1280px] mx-auto px-8">
-        <TreeBreadcrumbs items={breadcrumbs} />
-        <div className="min-h-[calc(100vh-200px)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <TreeBreadcrumbs items={breadcrumbs} />
+          </div>
+          <PaletteTrigger />
+        </div>
+        <SiblingStrip rule={leafRule} />
+        <div className="min-h-[calc(100vh-200px)] mt-4 border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
           <RuleDetailPanel
             document={doc}
             rule={leafRule}
@@ -188,10 +202,21 @@ function RuleTreeView({
 
   return (
     <div className="max-w-[1280px] mx-auto px-8">
-      <TreeBreadcrumbs items={breadcrumbs} />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <TreeBreadcrumbs items={breadcrumbs} />
+        </div>
+        <PaletteTrigger />
+      </div>
+
+      {currentRule && currentRuleDetail && (
+        <div className="mt-4">
+          <SiblingStrip rule={currentRuleDetail} />
+        </div>
+      )}
 
       {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
-        <div className="mb-6 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
+        <div className="mb-6 mt-4 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
           <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
             {currentRuleDetail.citation_path}
           </div>
@@ -207,65 +232,97 @@ function RuleTreeView({
       )}
 
       {currentRule && !currentRuleIsNavigationContainer && (
-        <div className="mb-6 min-h-[240px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
-          {currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
-            <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
-              Loading...
-            </div>
-          ) : (
-            <RuleDetailPanel document={currentRuleDoc} rule={currentRuleDetail} />
-          )}
-        </div>
+        currentRuleLoading || !currentRuleDoc || !currentRuleDetail ? (
+          <div className="mb-6 mt-4 flex items-center justify-center py-12 text-[var(--color-ink-muted)] border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+            Loading...
+          </div>
+        ) : (
+          <div className="mt-4 mb-6 border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
+            <RuleDetailPanel
+              document={currentRuleDoc}
+              rule={currentRuleDetail}
+              heroSlot={({ outgoingRefs }) => (
+                <RuleInlineSummary
+                  rule={currentRuleDetail}
+                  children={currentRuleChildren}
+                  outgoingRefs={outgoingRefs}
+                />
+              )}
+            />
+          </div>
+        )
       )}
 
-      {/* v8 ignore start -- filter toggle UI */}
-      {/* Filter bar */}
-      <div className="flex items-center justify-end mb-3">
-        <button
-          onClick={() => {
-            setEncodedOnly((prev) => {
-              trackAtlasEvent("atlas_filter_toggled", { filter: "encoded_only", enabled: !prev });
-              return !prev;
-            });
-          }}
-          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs rounded-md border transition-colors ${
-            encodedOnly
-              ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-rule-hover)]"
-          }`}
-        >
-          <span
-            className={`inline-block w-2 h-2 rounded-full ${
-              encodedOnly
-                ? "bg-[var(--color-accent)]"
-                : "bg-[var(--color-ink-muted)]"
-            }`}
-          />
-          Encoded only
-        </button>
-      </div>
-      {/* v8 ignore stop */}
-
-      {/* Tree node list */}
-      <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
-        <TreeNodeList
-          nodes={nodes}
-          onNavigate={handleNavigate}
-          loading={loading}
-          error={error}
-        />
-        {hasMore && (
-          <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
+      {/* Filter + tree list: only on browse levels where the inline
+          atomic tree of the current rule isn't already covering
+          navigation. At an actual rule with children, the inline
+          subsection breakdown above is the primary affordance, so
+          showing the same children again in a list below would be
+          redundant. */}
+      {!currentRule || currentRuleIsNavigationContainer ? (
+        <>
+          {/* v8 ignore start -- filter toggle UI */}
+          {/* Filter bar */}
+          <div className="flex items-center justify-end mb-3">
             <button
-              className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
-              onClick={loadMore}
-              disabled={loading}
+              type="button"
+              aria-pressed={encodedOnly}
+              // The stored value is read synchronously on the client,
+              // so the server-rendered "off" state can briefly
+              // disagree with the hydrated "on" state when the user
+              // has the filter enabled. Suppress the warning on the
+              // dynamic attrs; the actual UI settles correctly within
+              // the first commit.
+              suppressHydrationWarning
+              onClick={() => {
+                const next = !encodedOnly;
+                trackAtlasEvent("atlas_filter_toggled", {
+                  filter: "encoded_only",
+                  enabled: next,
+                });
+                setEncodedOnly(next);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+                encodedOnly
+                  ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                  : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              }`}
             >
-              {loading ? "Loading..." : "Load more"}
+              <span
+                aria-hidden="true"
+                className={`inline-block w-2 h-2 rounded-full transition-colors ${
+                  encodedOnly
+                    ? "bg-[var(--color-accent)]"
+                    : "bg-[var(--color-ink-muted)]"
+                }`}
+              />
+              Encoded only
             </button>
           </div>
-        )}
-      </div>
+          {/* v8 ignore stop */}
+
+          {/* Tree node list */}
+          <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
+            <TreeNodeList
+              nodes={nodes}
+              onNavigate={handleNavigate}
+              loading={loading}
+              error={error}
+            />
+            {hasMore && (
+              <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
+                <button
+                  className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
+                  onClick={loadMore}
+                  disabled={loading}
+                >
+                  {loading ? "Loading..." : "Load more"}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -291,10 +348,8 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   if (resolved.phase === "jurisdiction-picker") {
     return (
       <div className="max-w-[1280px] mx-auto px-8">
-        <TreeBreadcrumbs items={breadcrumbs} />
-
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className="heading-section text-[var(--color-ink)] mb-4">
             Atlas
           </h1>
@@ -304,9 +359,12 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           </p>
         </div>
 
+        {/* Primary entry — unified search opens the command palette */}
+        <div className="mb-12">
+          <PaletteTrigger variant="hero" />
+        </div>
+
         <AtlasStats />
-        <AtlasSearch />
-        <JurisdictionPicker />
       </div>
     );
   }

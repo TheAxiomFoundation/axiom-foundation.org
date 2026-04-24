@@ -2,6 +2,14 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { RuleReference } from "@/lib/supabase";
 
+const { searchParamsRef } = vi.hoisted(() => ({
+  searchParamsRef: { current: new URLSearchParams() },
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsRef.current,
+}));
+
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -276,5 +284,50 @@ describe("RuleBody", () => {
       "26 USC 32",
       "42 USC 9902",
     ]);
+  });
+
+  describe("?mark= highlighting", () => {
+    it("wraps the marked byte range in a <mark>", () => {
+      const body = "This rule refers to earned income credit somewhere.";
+      const start = body.indexOf("earned income credit");
+      const end = start + "earned income credit".length;
+      searchParamsRef.current = new URLSearchParams(`mark=${start}-${end}`);
+      const { container } = render(<RuleBody body={body} refs={[]} />);
+      const mark = container.querySelector("mark");
+      expect(mark?.textContent).toBe("earned income credit");
+      searchParamsRef.current = new URLSearchParams();
+    });
+
+    it("ignores malformed mark values", () => {
+      const body = "Body without any highlight.";
+      searchParamsRef.current = new URLSearchParams("mark=abc");
+      const { container } = render(<RuleBody body={body} refs={[]} />);
+      expect(container.querySelector("mark")).toBeNull();
+      searchParamsRef.current = new URLSearchParams();
+    });
+
+    it("keeps citation links when the mark overlaps a ref", () => {
+      const body = "See 42 U.S.C. 9902 for definitions.";
+      const refStart = body.indexOf("42 U.S.C. 9902");
+      const refEnd = refStart + "42 U.S.C. 9902".length;
+      searchParamsRef.current = new URLSearchParams(
+        `mark=${refStart}-${refEnd}`
+      );
+      render(
+        <RuleBody
+          body={body}
+          refs={[
+            ref({
+              start_offset: refStart,
+              end_offset: refEnd,
+              other_citation_path: "us/statute/42/9902",
+            }),
+          ]}
+        />
+      );
+      const link = screen.getByRole("link", { name: "42 U.S.C. 9902" });
+      expect(link.closest("mark")).not.toBeNull();
+      searchParamsRef.current = new URLSearchParams();
+    });
   });
 });

@@ -7,6 +7,7 @@ const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
   usePathname: () => "/atlas",
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock next/link
@@ -60,9 +61,17 @@ vi.mock("@/lib/supabase", () => ({
   // ReferencesPanel calls getRuleReferences via useRuleReferences; stub it
   // out so the leaf-render tests don't need to wire the RPC mock.
   getRuleReferences: vi.fn().mockResolvedValue([]),
-  // AtlasStats on the landing page calls this; return null so the
-  // component renders nothing instead of hitting a real RPC.
-  getAtlasStats: vi.fn().mockResolvedValue(null),
+  // AtlasStats on the landing page calls this; return a minimal
+  // shape so the jurisdiction pill navigation renders during tests.
+  getAtlasStats: vi.fn().mockResolvedValue({
+    rules_count: 1_000,
+    references_count: 1_000,
+    jurisdictions_count: 2,
+    jurisdictions: [
+      { jurisdiction: "us", count: 500 },
+      { jurisdiction: "uk", count: 500 },
+    ],
+  }),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
@@ -99,9 +108,15 @@ describe("AtlasBrowser", () => {
       expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
     });
 
-    it("renders jurisdiction picker heading", () => {
+    it("renders the primary jurisdiction navigation", async () => {
       render(<AtlasBrowser segments={[]} />);
-      expect(screen.getByText("Choose a jurisdiction")).toBeInTheDocument();
+      // AtlasStats renders the aria-labelled nav after its RPC
+      // resolves — wait for it.
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(/Choose a jurisdiction/i)
+        ).toBeInTheDocument()
+      );
     });
   });
 
@@ -289,9 +304,10 @@ describe("AtlasBrowser", () => {
 
       render(<AtlasBrowser segments={["uk"]} />);
       expect(screen.getByText("Legislation")).toBeInTheDocument();
-      // Should NOT show jurisdiction picker
+      // Should NOT show the landing-page jurisdiction navigation once
+      // we've drilled into a jurisdiction.
       expect(
-        screen.queryByText("Choose a jurisdiction")
+        screen.queryByLabelText(/Choose a jurisdiction/i)
       ).not.toBeInTheDocument();
     });
 
@@ -328,7 +344,7 @@ describe("AtlasBrowser", () => {
       updated_at: "",
     };
 
-    it("calls resolveDisplayContext when useTreeNodes returns a leafRule", () => {
+    it("does not call resolveDisplayContext for citation-path jurisdictions — the SiblingStrip covers lateral context", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],
         loading: false,
@@ -337,16 +353,6 @@ describe("AtlasBrowser", () => {
         loadMore: mockLoadMore,
         leafRule,
         currentRule: null,
-      });
-
-      vi.mocked(resolveDisplayContext).mockResolvedValue({
-        rule: leafRule,
-        parentBody: "shall be increased by the lesser of—",
-        siblings: [
-          { ...leafRule, id: "leaf-1", body: "the credit determined under subsection (a)" },
-          { ...leafRule, id: "leaf-2", body: "the earned income of the taxpayer" },
-        ],
-        targetIndex: 0,
       });
 
       render(
@@ -355,28 +361,22 @@ describe("AtlasBrowser", () => {
         />
       );
 
-      expect(resolveDisplayContext).toHaveBeenCalledWith(leafRule);
+      expect(resolveDisplayContext).not.toHaveBeenCalled();
     });
 
-    it("renders parent body text as context after resolveDisplayContext resolves", async () => {
+    it("renders only the leaf's own body — no parent context, no siblings stacked inline", async () => {
+      const focusedLeaf = {
+        ...leafRule,
+        body: "the credit determined under subsection (a)",
+      };
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],
         loading: false,
         error: null,
         hasMore: false,
         loadMore: mockLoadMore,
-        leafRule,
+        leafRule: focusedLeaf,
         currentRule: null,
-      });
-
-      vi.mocked(resolveDisplayContext).mockResolvedValue({
-        rule: leafRule,
-        parentBody: "shall be increased by the lesser of—",
-        siblings: [
-          { ...leafRule, id: "leaf-1", body: "the credit determined under subsection (a)" },
-          { ...leafRule, id: "leaf-2", body: "the earned income of the taxpayer" },
-        ],
-        targetIndex: 0,
       });
 
       render(
@@ -387,7 +387,7 @@ describe("AtlasBrowser", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("shall be increased by the lesser of—")
+          screen.getByText("the credit determined under subsection (a)")
         ).toBeInTheDocument();
       });
     });
@@ -529,12 +529,14 @@ describe("AtlasBrowser", () => {
       render(<AtlasBrowser segments={["us", "statute", "26", "21", "d", "2"]} />);
 
       await waitFor(() => {
+        // Container rules render each child inline as part of the
+        // atomic subsection tree (label + heading + body), and the
+        // drill-in tree list below is hidden because that inline
+        // tree already covers navigation.
         expect(
-          screen.getByText("Special rule for spouse who is a student or incapable of caring for himself.")
+          screen.getByText(/\$250 if subsection/)
         ).toBeInTheDocument();
       });
-
-      expect(screen.getByText("§ A RAC")).toBeInTheDocument();
     });
 
     it("renders a compact navigation container (no inline body) when current rule has children but no body of its own", async () => {

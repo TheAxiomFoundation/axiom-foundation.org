@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock next/navigation
@@ -43,7 +43,15 @@ vi.mock("@/lib/supabase", () => ({
   supabaseAkn: { from: vi.fn() },
   supabase: { from: vi.fn() },
   getRuleReferences: vi.fn().mockResolvedValue([]),
-  getAtlasStats: vi.fn().mockResolvedValue(null),
+  getAtlasStats: vi.fn().mockResolvedValue({
+    rules_count: 1000,
+    references_count: 1000,
+    jurisdictions_count: 2,
+    jurisdictions: [
+      { jurisdiction: "us", count: 500 },
+      { jurisdiction: "uk", count: 500 },
+    ],
+  }),
 }));
 
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
@@ -62,9 +70,13 @@ describe("AtlasBrowser integration", () => {
     expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
   });
 
-  it("shows jurisdiction picker at root", () => {
+  it("shows the primary jurisdiction navigation at root", async () => {
     render(<AtlasBrowser segments={[]} />);
-    expect(screen.getByText("Choose a jurisdiction")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/Choose a jurisdiction/i)
+      ).toBeInTheDocument()
+    );
   });
 
   it("renders nodes in rule tree phase", () => {

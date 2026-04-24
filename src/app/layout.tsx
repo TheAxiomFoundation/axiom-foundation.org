@@ -22,7 +22,11 @@ const serif = Newsreader({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://axiom-foundation.org";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Axiom Foundation — The world's rules, encoded",
   description:
     "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
@@ -41,6 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${mono.variable} ${GeistSans.variable} ${serif.variable}`}
     >
       <head>

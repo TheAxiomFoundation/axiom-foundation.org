@@ -77,13 +77,13 @@ export function JurisdictionPicker() {
                   router.push(card.href);
                 }
               }}
-              className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md cursor-pointer hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors"
+              className="card group p-5 cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
             >
-              <div className="text-base font-display text-[var(--color-ink)]">
+              <div className="font-display text-base text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
                 {card.label}
               </div>
               {card.count !== null && (
-                <div className="mt-2 font-mono text-xs text-[var(--color-ink-muted)]">
+                <div className="mt-3 font-mono text-xs text-[var(--color-ink-muted)] tabular-nums">
                   {card.count.toLocaleString()} rules
                 </div>
               )}

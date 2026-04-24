@@ -1,5 +1,9 @@
 import { supabase, supabaseAkn, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
+import {
+  JURISDICTIONS_SEED,
+  synthesiseJurisdiction,
+} from "@/lib/atlas/jurisdictions-seed";
 
 export type NodeType =
   | "jurisdiction"
@@ -44,18 +48,21 @@ export interface Jurisdiction {
   hasCitationPaths: boolean;
 }
 
-export const JURISDICTIONS: Jurisdiction[] = [
-  { slug: "us", label: "US Federal", hasCitationPaths: true },
-  { slug: "us-co", label: "Colorado", hasCitationPaths: true },
-  { slug: "us-oh", label: "Ohio", hasCitationPaths: true },
-  { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
-  { slug: "canada", label: "Canada", hasCitationPaths: false },
-];
+export const JURISDICTIONS: Jurisdiction[] = JURISDICTIONS_SEED;
 
+/**
+ * Resolve a URL slug into a Jurisdiction record. Falls through to a
+ * synthesised record for well-formed but uncurated slugs (e.g. a new
+ * US state we haven't labelled yet) so a direct URL or an incoming
+ * reference still lands on the rule page instead of the Atlas
+ * landing.
+ */
 export function getJurisdictionBySlug(
   slug: string
 ): Jurisdiction | undefined {
-  return JURISDICTIONS.find((j) => j.slug === slug);
+  const curated = JURISDICTIONS.find((j) => j.slug === slug);
+  if (curated) return curated;
+  return synthesiseJurisdiction(slug) ?? undefined;
 }
 
 // ---- Path resolution ----

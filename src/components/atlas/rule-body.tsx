@@ -189,7 +189,11 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
     markRange && markRange.end <= body.length ? markRange : null
   );
 
-  let markCursor = 0;
+  // Precompute the index of the first marked segment so the ref
+  // callback doesn't rely on a mutated closure variable during map
+  // — cleaner under React 19's concurrent rendering.
+  const firstMarkIndex = segments.findIndex((s) => s.marked);
+
   return (
     <div
       data-testid="rule-body-inline"
@@ -206,9 +210,7 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
         if (!seg.marked) {
           return <span key={`${i}-${seg.offset}`}>{inner}</span>;
         }
-        // Capture a ref to the first <mark> for scroll-into-view.
-        const isFirst = markCursor === 0;
-        markCursor += 1;
+        const isFirst = i === firstMarkIndex;
         return (
           <mark
             key={`${i}-${seg.offset}`}

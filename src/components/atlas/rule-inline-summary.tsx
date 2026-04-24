@@ -153,14 +153,11 @@ function useTreeOrSeed(
   rule: Rule,
   immediateChildren: Rule[]
 ): RuleTreeNode {
-  const { descendants, loading } = useRuleDescendants(rule.id);
-  // If the deep descendant query is still in flight, fall back to the
-  // immediate-children list as a scaffold so the page paints real
-  // structure on first frame — then swap in the full tree when it
-  // lands. This avoids the flash-to-nothing problem.
-  if (loading && descendants.length === 0) {
-    return buildRuleTree(rule, immediateChildren);
-  }
+  const { descendants } = useRuleDescendants(rule.id);
+  // While the deep descendant query is in flight (and even after it
+  // returns empty), fall back to the immediate-children list as a
+  // scaffold so the page paints real structure on first frame and
+  // degrades gracefully if the BFS can't resolve the subtree.
   return buildRuleTree(
     rule,
     descendants.length > 0 ? descendants : immediateChildren

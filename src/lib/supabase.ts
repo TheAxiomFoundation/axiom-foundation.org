@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { getRacRepoForJurisdiction } from '@/lib/atlas/repo-map'
 
 // Supabase configuration
 /* v8 ignore start -- env-dependent module initialization */
@@ -310,15 +311,7 @@ async function fetchRacFromGitHub(
   candidates: string[],
   jurisdiction: string
 ): Promise<RuleEncodingData | null> {
-  const repoMap: Record<string, string> = {
-    us: 'rac-us',
-    'us-co': 'rac-us-co',
-    'us-ca': 'rac-us-ca',
-    'us-ny': 'rac-us-ny',
-    canada: 'rac-ca',
-    uk: 'rac-uk',
-  }
-  const repo = repoMap[jurisdiction]
+  const repo = getRacRepoForJurisdiction(jurisdiction)
   if (!repo) return null
 
   for (const filePath of candidates) {

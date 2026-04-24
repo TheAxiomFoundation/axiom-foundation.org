@@ -267,6 +267,13 @@ function RuleTreeView({
             <button
               type="button"
               aria-pressed={encodedOnly}
+              // The stored value is read synchronously on the client,
+              // so the server-rendered "off" state can briefly
+              // disagree with the hydrated "on" state when the user
+              // has the filter enabled. Suppress the warning on the
+              // dynamic attrs; the actual UI settles correctly within
+              // the first commit.
+              suppressHydrationWarning
               onClick={() => {
                 const next = !encodedOnly;
                 trackAtlasEvent("atlas_filter_toggled", {

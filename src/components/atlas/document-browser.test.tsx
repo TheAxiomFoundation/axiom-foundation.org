@@ -7,6 +7,7 @@ const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
   usePathname: () => "/atlas",
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock next/link

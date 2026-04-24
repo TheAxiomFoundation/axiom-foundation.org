@@ -40,7 +40,14 @@ export function formatCitationLabel(path: string): string {
 }
 
 function RefItem({ ref }: { ref: RuleReference }) {
-  const href = `/atlas/${ref.other_citation_path}`;
+  // Incoming refs carry offsets into the citing rule's body; pass
+  // them through as ``?mark=start-end`` so the target page scrolls
+  // to and highlights the exact citing passage.
+  const markQuery =
+    ref.direction === "incoming"
+      ? `?mark=${ref.start_offset}-${ref.end_offset}`
+      : "";
+  const href = `/atlas/${ref.other_citation_path}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);
   const resolved = ref.direction === "incoming" ? true : ref.target_resolved;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 /**
  * A boolean toggle that survives navigation and page reloads by
@@ -11,26 +11,30 @@ import { useCallback, useEffect, useState } from "react";
  * folders — but we don't want the state living in the URL because
  * it's a personal filter, not something to share.
  *
- * The initial render returns ``false`` to avoid a hydration mismatch;
- * the stored value is applied on mount. Writes are best-effort —
- * a quota-exceeded or privacy-mode storage rejection is swallowed so
- * the toggle still works in-memory.
+ * The value is read **synchronously** on the first client render via
+ * a lazy useState initializer so downstream data fetches see the
+ * correct filter state on their first pass. This avoids the
+ * previous flash-of-unfiltered-data where a post-mount useEffect
+ * would flip the toggle on after a fetch had already started with
+ * the default.
+ *
+ * SSR returns ``false`` (no window); client hydration runs the lazy
+ * initializer and gets the stored value. That can produce a brief
+ * hydration mismatch on the button's visible state — callers mask
+ * it with ``suppressHydrationWarning`` on the presentational
+ * attributes they care about.
  */
 export function usePersistentToggle(
   storageKey: string
 ): [boolean, (next?: boolean) => void] {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [enabled, setEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
     try {
-      if (window.localStorage.getItem(storageKey) === "1") {
-        setEnabled(true);
-      }
+      return window.localStorage.getItem(storageKey) === "1";
     } catch {
-      // privacy mode / disabled storage — fall back to in-memory.
+      return false;
     }
-  }, [storageKey]);
+  });
 
   const set = useCallback(
     (next?: boolean) => {
@@ -39,7 +43,7 @@ export function usePersistentToggle(
         try {
           window.localStorage.setItem(storageKey, resolved ? "1" : "0");
         } catch {
-          // swallow — state still updates in-memory.
+          // privacy mode / disabled storage — fall back to in-memory.
         }
         return resolved;
       });

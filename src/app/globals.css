@@ -2,3 +2,18 @@
 @import "../lib/prism-rac/light.css";
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
+
+/* ── Atlas reference highlight (scroll-to-mark on incoming-ref click) */
+@keyframes atlas-mark-flash {
+  0% {
+    background-color: rgba(146, 64, 14, 0.55);
+    box-shadow: 0 0 0 4px rgba(146, 64, 14, 0.45);
+  }
+  100% {
+    background-color: rgba(146, 64, 14, 0.18);
+    box-shadow: 0 0 0 1px rgba(146, 64, 14, 0.35);
+  }
+}
+.atlas-mark-flash {
+  animation: atlas-mark-flash 1.4s ease-out;
+}

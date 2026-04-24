@@ -155,16 +155,32 @@ function Citation({ ref, text }: { ref: RuleReference; text: string }) {
 
 export function RuleBody({ body, refs }: RuleBodyProps) {
   const searchParams = useSearchParams();
-  const markRange = parseMark(searchParams?.get("mark") ?? null);
+  const markString = searchParams?.get("mark") ?? null;
+  const markRange = parseMark(markString);
   const firstMarkRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!markRange) return;
     const el = firstMarkRef.current;
-    if (el && typeof el.scrollIntoView === "function") {
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-  }, [markRange]);
+    if (!el) return;
+    // Defer one frame so layout has settled before we measure /
+    // scroll — the body is rendered after a Supabase fetch and
+    // the rail's sticky positioning can shift things mid-mount.
+    const handle = window.requestAnimationFrame(() => {
+      const headerOffset = 96; // nav bar height; scroll above the mark
+      const rect = el.getBoundingClientRect();
+      const top = window.scrollY + rect.top - headerOffset;
+      window.scrollTo({ top, behavior: "smooth" });
+      // Brief flash so the user clearly sees where they landed.
+      el.classList.add("atlas-mark-flash");
+      window.setTimeout(() => el.classList.remove("atlas-mark-flash"), 1600);
+    });
+    return () => window.cancelAnimationFrame(handle);
+    // markString (a primitive) is the right dependency — the parsed
+    // object would be a new reference every render and re-fire the
+    // effect for no reason.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markString]);
 
   if (!body) return null;
 
@@ -199,7 +215,7 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
             ref={(el) => {
               if (isFirst) firstMarkRef.current = el;
             }}
-            className="bg-[var(--color-accent-light)] text-[var(--color-ink)] px-0.5 rounded-sm"
+            className="atlas-mark bg-[rgba(146,64,14,0.18)] text-[var(--color-ink)] px-1 -mx-0.5 rounded-sm shadow-[0_0_0_1px_rgba(146,64,14,0.35)] decoration-[var(--color-accent)]"
           >
             {inner}
           </mark>

@@ -181,7 +181,6 @@ describe('EncodingTab', () => {
     expect(screen.getByText('75')).toBeInTheDocument()
     expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
     expect(screen.getByText('Shown source')).toBeInTheDocument()
-    expect(screen.getByText('Stored encoding record')).toBeInTheDocument()
     expect(screen.getByText(/latest stored encoding run/i)).toBeInTheDocument()
     expect(screen.getByText('View canonical repo file')).toBeInTheDocument()
   })
@@ -203,7 +202,7 @@ describe('EncodingTab', () => {
       file_path: 'statute/26/32/b.rac',
       final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
     })} loading={false} jurisdiction="us" />)
-    expect(screen.getByText('Repository file')).toBeInTheDocument()
+    expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
     expect(screen.getByText('View on GitHub')).toBeInTheDocument()
     // Scores should be hidden for GitHub sources
     expect(screen.queryByText('90')).not.toBeInTheDocument()

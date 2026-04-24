@@ -71,7 +71,6 @@ export function EncodingTab({
   const gitHubUrl = repo
     ? `https://github.com/TheAxiomFoundation/${repo}/blob/main/${encoding.file_path}`
     : null;
-  const sourceLabel = isGitHub ? "Repository file" : "Stored encoding record";
   const sourceDescription = isGitHub
     ? "Displaying the canonical repository encoding."
     : "Displaying the latest stored encoding run. It may differ from the repository file.";
@@ -80,13 +79,10 @@ export function EncodingTab({
 
   return (
     <div className="space-y-6">
-      {/* Source pill + path */}
+      {/* Source path */}
       <div>
         <div className="eyebrow mb-3">Shown source</div>
-        <span className="inline-flex items-center px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider rounded-sm border border-[var(--color-rule)] text-[var(--color-ink-secondary)] bg-[var(--color-paper-elevated)]">
-          {sourceLabel}
-        </span>
-        <code className="block mt-2 font-mono text-xs text-[var(--color-accent)] break-all">
+        <code className="block font-mono text-xs text-[var(--color-accent)] break-all">
           {encoding.file_path}
         </code>
         <p className="mt-2 text-xs text-[var(--color-ink-muted)] leading-relaxed">

@@ -7,7 +7,73 @@ import { getJurisdictionLabel } from "@/lib/atlas-utils";
 interface RuleInlineSummaryProps {
   document: ViewerDocument;
   rule: Rule;
-  childCount: number;
+  /**
+   * The rule's ingested children (if any). When the parent body is a
+   * stub — e.g. "(d) Married individuals" with no substantive text —
+   * we fall through to the children's bodies so the reader still has
+   * substantive text to look at on the page.
+   */
+  children: Rule[];
+}
+
+/**
+ * Returns true when a rule's own body is essentially just its label
+ * ("(d) Married individuals", "(2) Limitation", …) with no
+ * substantive prose.
+ *
+ * Strips the leading "(id)" prefix and any repeat of the heading
+ * before checking what's left — a rule whose body is just the label
+ * plus heading is a stub; a rule with a real sentence of text is not,
+ * regardless of length.
+ */
+function isStubBody(rule: Rule): boolean {
+  const body = rule.body?.replace(/\s+/g, " ").trim();
+  if (!body) return true;
+  const tail = rule.citation_path?.split("/").pop() ?? "";
+  let stripped = body;
+  if (tail) {
+    const re = new RegExp(
+      `^\\(\\s*${tail.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s*\\)\\s*`,
+      "i"
+    );
+    stripped = stripped.replace(re, "");
+  }
+  const heading = rule.heading?.trim();
+  if (heading && stripped.toLowerCase().startsWith(heading.toLowerCase())) {
+    stripped = stripped.slice(heading.length);
+  }
+  return stripped.trim().length < 20;
+}
+
+function trimBodyTail(tail: string): string {
+  return tail.trim().replace(/^[\s—–-]+/, "").trim();
+}
+
+/**
+ * Given a child rule, produce a short human label and a serif body
+ * chunk we can render inline on the parent page. We strip the
+ * leading "(id) heading" prefix from the body so we don't repeat the
+ * label beside the content.
+ */
+function childReaderChunk(child: Rule): {
+  id: string;
+  label: string;
+  body: string;
+} {
+  const tail = child.citation_path?.split("/").pop() ?? "";
+  const heading = child.heading?.trim() ?? "";
+  const id = tail || "·";
+  const rawBody = (child.body ?? "").trim();
+  let body = rawBody;
+  // Strip "(id)" prefix if present.
+  const idRe = new RegExp(`^\\(\\s*${id.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s*\\)\\s*`);
+  body = body.replace(idRe, "");
+  // Strip a leading repeat of the heading if present.
+  if (heading && body.toLowerCase().startsWith(heading.toLowerCase())) {
+    body = body.slice(heading.length);
+  }
+  body = trimBodyTail(body);
+  return { id, label: heading || `(${id})`, body };
 }
 
 /**
@@ -27,7 +93,7 @@ interface RuleInlineSummaryProps {
 export function RuleInlineSummary({
   document,
   rule,
-  childCount,
+  children,
 }: RuleInlineSummaryProps) {
   const docKind =
     document.jurisdiction === "us" ||
@@ -35,11 +101,22 @@ export function RuleInlineSummary({
       ? "Code"
       : "Statute";
 
-  const previewParagraphs = (rule.body ?? "")
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .slice(0, 2);
+  const bodyIsStub = isStubBody(rule);
+  const previewParagraphs = bodyIsStub
+    ? []
+    : (rule.body ?? "")
+        .split(/\n\n+/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .slice(0, 2);
+
+  // When the rule's own body is a stub, substitute the children's
+  // body text so the page doesn't read as empty.
+  const childChunks =
+    bodyIsStub && children.length > 0
+      ? children.map(childReaderChunk).filter((c) => c.body.length > 0)
+      : [];
+  const childCount = children.length;
 
   return (
     <section
@@ -80,6 +157,32 @@ export function RuleInlineSummary({
             <p key={i} className="m-0 whitespace-pre-wrap">
               {p}
             </p>
+          ))}
+        </div>
+      )}
+
+      {childChunks.length > 0 && (
+        <div className="mt-5 pt-5 border-t border-[var(--color-rule)] space-y-5 max-w-[720px]">
+          {childChunks.map((chunk) => (
+            <div key={chunk.id} className="flex gap-4">
+              <span className="shrink-0 pt-[0.35em] font-mono text-xs text-[var(--color-accent)] tabular-nums">
+                ({chunk.id})
+              </span>
+              <div
+                className="flex-1 text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)] space-y-2"
+                style={{ fontFamily: "var(--f-serif)" }}
+              >
+                {chunk.label && (
+                  <p
+                    className="m-0 font-medium text-[var(--color-ink)]"
+                    style={{ fontFamily: "var(--f-serif)" }}
+                  >
+                    {chunk.label}
+                  </p>
+                )}
+                <p className="m-0 whitespace-pre-wrap">{chunk.body}</p>
+              </div>
+            </div>
           ))}
         </div>
       )}

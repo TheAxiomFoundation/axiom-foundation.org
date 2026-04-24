@@ -206,6 +206,12 @@ function RuleTreeView({
         <PaletteTrigger />
       </div>
 
+      {currentRule && currentRuleDetail && (
+        <div className="mt-4">
+          <SiblingStrip rule={currentRuleDetail} />
+        </div>
+      )}
+
       {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
         <div className="mb-6 mt-4 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
           <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
@@ -232,7 +238,7 @@ function RuleTreeView({
             <RuleInlineSummary
               document={currentRuleDoc}
               rule={currentRuleDetail}
-              childCount={currentRuleChildren.length}
+              children={currentRuleChildren}
             />
           </div>
         )

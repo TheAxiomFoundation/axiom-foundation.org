@@ -507,7 +507,11 @@ export async function getActNodes(
   return {
     nodes: rules.map((r) => ({
       segment: r.id,
-      label: r.heading || "Untitled",
+      // Many ingested Canadian top-level rules carry an empty
+      // ``heading`` field (some are just "[Repealed]" markers).
+      // Fall through to the body preview so the picker reads as
+      // something other than a column of "Untitled".
+      label: pickActLabel(r),
       hasChildren: true,
       rule: r,
       nodeType: "act" as const,
@@ -515,6 +519,27 @@ export async function getActNodes(
     hasMore: hasNextPage(page, total),
     total,
   };
+}
+
+/**
+ * Best-effort human label for an act-level rule. Prefer the
+ * ingested heading; fall back to the first ~80 chars of body
+ * (covers ``"81[Repealed, 2003, c. 22, s. 285]"`` and similar
+ * stubs); fall back to the citation_path's last segment when both
+ * are absent; finally to a generic "Untitled" so the row is
+ * still selectable.
+ */
+function pickActLabel(rule: Rule): string {
+  const heading = rule.heading?.trim();
+  if (heading) return heading;
+  const body = rule.body?.trim();
+  if (body) {
+    const compact = body.replace(/\s+/g, " ");
+    return compact.length > 80 ? compact.slice(0, 80).trimEnd() + "…" : compact;
+  }
+  const tail = rule.citation_path?.split("/").pop()?.trim();
+  if (tail) return tail;
+  return "Untitled";
 }
 
 export async function getChildrenByParentId(

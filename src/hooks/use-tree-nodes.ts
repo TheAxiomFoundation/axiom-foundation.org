@@ -101,7 +101,11 @@ export function useTreeNodes(
           const fetched = await getDocTypeNodes(dbJurisdictionId);
           result = { nodes: fetched, hasMore: false };
         } else {
-          const r: TreeResult = await getActNodes(dbJurisdictionId, pageNum);
+          const r: TreeResult = await getActNodes(
+            dbJurisdictionId,
+            pageNum,
+            encodedOnly
+          );
           result = { nodes: r.nodes, hasMore: r.hasMore };
         }
       } else if (hasCitationPaths) {
@@ -151,7 +155,8 @@ export function useTreeNodes(
         if (isUUID(lastSegment)) {
           const r: TreeResult = await getChildrenByParentId(
             lastSegment,
-            pageNum
+            pageNum,
+            encodedOnly
           );
           if (r.nodes.length === 0) {
             const rule = await getRuleById(lastSegment);

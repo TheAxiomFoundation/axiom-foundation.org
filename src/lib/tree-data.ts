@@ -488,16 +488,25 @@ function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
 
 export async function getActNodes(
   jurisdiction: string,
-  page: number = 0
+  page: number = 0,
+  encodedOnly: boolean = false
 ): Promise<TreeResult> {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseAkn
+  let query = supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
     .eq("jurisdiction", jurisdiction)
-    .is("parent_id", null)
+    .is("parent_id", null);
+  if (encodedOnly) {
+    // UUID-navigated jurisdictions (Canada today) carry the
+    // encoding flag directly on the rule row. Filter at SQL when
+    // the toggle is on so empty-list pages aren't masked by
+    // client-side filtering of a paginated slice.
+    query = query.eq("has_rac", true);
+  }
+  const { data, count } = await query
     .order("heading")
     .range(from, to);
 
@@ -544,17 +553,20 @@ function pickActLabel(rule: Rule): string {
 
 export async function getChildrenByParentId(
   parentId: string,
-  page: number = 0
+  page: number = 0,
+  encodedOnly: boolean = false
 ): Promise<TreeResult> {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseAkn
+  let query = supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
-    .eq("parent_id", parentId)
-    .order("ordinal")
-    .range(from, to);
+    .eq("parent_id", parentId);
+  if (encodedOnly) {
+    query = query.eq("has_rac", true);
+  }
+  const { data, count } = await query.order("ordinal").range(from, to);
 
   const rules = (data || []) as Rule[];
   const total = count || 0;

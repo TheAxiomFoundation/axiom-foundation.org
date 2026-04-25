@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { BreadcrumbItem } from "@/lib/tree-data";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
 import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
@@ -374,35 +375,34 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   }
 
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
-  // Canada special case: until ITA / OAS / EI sections are ingested
-  // into akn.rules, the standard tree is mostly Untitled rows for
-  // acts that have no encodings. Replace it with the curated catalog
-  // of rules that actually have ``.cosilico`` files in rac-ca.
+  // Canada special case: surface the curated catalog of encoded
+  // sections (rac-ca cosilico files) alongside the standard tree of
+  // ingested rules. The Encoded-only toggle filters the second
+  // section out so power users can focus on what's actually encoded.
   if (resolved.jurisdiction?.slug === "canada") {
     if (resolved.ruleSegments.length === 0) {
       return (
-        <div className="max-w-[1280px] mx-auto px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <TreeBreadcrumbs items={breadcrumbs} />
-            </div>
-            <PaletteTrigger />
-          </div>
-          <CanadaCatalog />
-        </div>
+        <CanadaLanding segments={segments} breadcrumbs={breadcrumbs} />
       );
     }
     if (resolved.ruleSegments.length === 1) {
-      return (
-        <div>
-          <div className="max-w-[1280px] mx-auto px-8 mb-2">
-            <div className="flex items-start justify-end">
-              <PaletteTrigger />
+      const slug = resolved.ruleSegments[0];
+      // Curated catalog slugs (e.g. "ita-122.61") get the catalog
+      // detail view. Anything else (a UUID, an unknown slug) falls
+      // through to the standard RuleTreeView below.
+      const isCatalogEntry = /^(ita-|oas$|ei$|on-)/.test(slug);
+      if (isCatalogEntry) {
+        return (
+          <div>
+            <div className="max-w-[1280px] mx-auto px-8 mb-2">
+              <div className="flex items-start justify-end">
+                <PaletteTrigger />
+              </div>
             </div>
+            <CanadaCatalogEntryView slug={slug} />
           </div>
-          <CanadaCatalogEntryView slug={resolved.ruleSegments[0]} />
-        </div>
-      );
+        );
+      }
     }
   }
 
@@ -436,6 +436,121 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
           Return to Atlas
         </button>
       </div>
+    </div>
+  );
+}
+/* v8 ignore stop */
+
+/**
+ * /atlas/canada landing — renders the curated catalog of encoded
+ * sections from rac-ca alongside the standard tree of ingested
+ * Canadian rules. The shared "Encoded only" toggle hides the
+ * non-encoded tree when on, leaving just the catalog.
+ */
+function CanadaLanding({
+  segments,
+  breadcrumbs,
+}: {
+  segments: string[];
+  breadcrumbs: BreadcrumbItem[];
+}) {
+  const router = useRouter();
+  const [encodedOnly, setEncodedOnly] = usePersistentToggle(
+    "atlas:encoded-only"
+  );
+  const { nodes, loading, error, hasMore, loadMore } = useTreeNodes(
+    "canada",
+    [],
+    false,
+    false
+  );
+
+  const handleNavigate = (node: { segment: string }) => {
+    trackAtlasEvent("atlas_tree_navigated", {
+      depth: segments.length + 1,
+      segment: node.segment,
+    });
+    router.push(`/atlas/${[...segments, node.segment].join("/")}`);
+  };
+
+  const onToggleEncodedOnly = () => {
+    const next = !encodedOnly;
+    trackAtlasEvent("atlas_filter_toggled", {
+      filter: "encoded_only",
+      enabled: next,
+    });
+    setEncodedOnly(next);
+  };
+
+  return (
+    <div className="max-w-[1280px] mx-auto px-8">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <TreeBreadcrumbs items={breadcrumbs} />
+        </div>
+        <PaletteTrigger />
+      </div>
+
+      {/* Filter bar — always visible so users can flip back from
+          "Encoded only" without leaving the page. */}
+      <div className="flex items-center justify-end mb-3">
+        <button
+          type="button"
+          aria-pressed={encodedOnly}
+          suppressHydrationWarning
+          onClick={onToggleEncodedOnly}
+          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+            encodedOnly
+              ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-block w-2 h-2 rounded-full transition-colors ${
+              encodedOnly
+                ? "bg-[var(--color-accent)]"
+                : "bg-[var(--color-ink-muted)]"
+            }`}
+          />
+          Encoded only
+        </button>
+      </div>
+
+      <CanadaCatalog />
+
+      {!encodedOnly && (
+        <section className="mt-12">
+          <div className="mb-4">
+            <h2 className="font-display text-lg text-[var(--color-ink)] m-0">
+              All ingested Canadian rules
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-ink-secondary)]">
+              Act sections from <code>akn.rules</code> — text-only, no
+              encoding attached yet.
+            </p>
+          </div>
+          <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
+            <TreeNodeList
+              nodes={nodes}
+              onNavigate={handleNavigate}
+              loading={loading}
+              error={error}
+            />
+            {hasMore && (
+              <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
+                <button
+                  className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
+                  onClick={loadMore}
+                  disabled={loading}
+                >
+                  {loading ? "Loading..." : "Load more"}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

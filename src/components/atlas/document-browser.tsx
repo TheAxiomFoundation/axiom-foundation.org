@@ -13,10 +13,6 @@ import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
-import {
-  CanadaCatalog,
-  CanadaCatalogEntryView,
-} from "./canada-catalog";
 import { EncodedRulesList } from "./encoded-rules-list";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
@@ -390,50 +386,16 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
         jurisdictionSlug={resolved.jurisdiction.slug}
         jurisdictionLabel={resolved.jurisdiction.label}
         breadcrumbs={breadcrumbs}
-        renderTree={() => {
-          if (resolved.jurisdiction!.slug === "canada") {
-            return (
-              <CanadaLanding
-                segments={segments}
-                breadcrumbs={breadcrumbs}
-              />
-            );
-          }
-          return (
-            <RuleTreeView
-              segments={segments}
-              dbJurisdictionId={resolved.jurisdiction!.slug}
-              ruleSegments={resolved.ruleSegments}
-              hasCitationPaths={resolved.jurisdiction!.hasCitationPaths}
-            />
-          );
-        }}
+        renderTree={() => (
+          <RuleTreeView
+            segments={segments}
+            dbJurisdictionId={resolved.jurisdiction!.slug}
+            ruleSegments={resolved.ruleSegments}
+            hasCitationPaths={resolved.jurisdiction!.hasCitationPaths}
+          />
+        )}
       />
     );
-  }
-
-  // Canada catalog detail at /atlas/canada/<slug> (e.g.
-  // ``/atlas/canada/ita-122.61``). The /atlas/canada root case is
-  // handled by ``JurisdictionRoot`` above, which delegates the tree
-  // to ``CanadaLanding``.
-  if (
-    resolved.jurisdiction?.slug === "canada" &&
-    resolved.ruleSegments.length === 1
-  ) {
-    const slug = resolved.ruleSegments[0];
-    const isCatalogEntry = /^(ita-|oas$|ei$|on-)/.test(slug);
-    if (isCatalogEntry) {
-      return (
-        <div>
-          <div className="max-w-[1280px] mx-auto px-8 mb-2">
-            <div className="flex items-start justify-end">
-              <PaletteTrigger />
-            </div>
-          </div>
-          <CanadaCatalogEntryView slug={slug} />
-        </div>
-      );
-    }
   }
 
   // Rule phase
@@ -526,119 +488,5 @@ function JurisdictionRoot({
   }
 
   return <>{renderTree()}</>;
-}
-
-/**
- * /atlas/canada landing — renders the curated catalog of encoded
- * sections from rac-ca alongside the standard tree of ingested
- * Canadian rules. The shared "Encoded only" toggle hides the
- * non-encoded tree when on, leaving just the catalog.
- */
-function CanadaLanding({
-  segments,
-  breadcrumbs,
-}: {
-  segments: string[];
-  breadcrumbs: BreadcrumbItem[];
-}) {
-  const router = useRouter();
-  const [encodedOnly, setEncodedOnly] = usePersistentToggle(
-    "atlas:encoded-only"
-  );
-  const { nodes, loading, error, hasMore, loadMore } = useTreeNodes(
-    "canada",
-    [],
-    false,
-    false
-  );
-
-  const handleNavigate = (node: { segment: string }) => {
-    trackAtlasEvent("atlas_tree_navigated", {
-      depth: segments.length + 1,
-      segment: node.segment,
-    });
-    router.push(`/atlas/${[...segments, node.segment].join("/")}`);
-  };
-
-  const onToggleEncodedOnly = () => {
-    const next = !encodedOnly;
-    trackAtlasEvent("atlas_filter_toggled", {
-      filter: "encoded_only",
-      enabled: next,
-    });
-    setEncodedOnly(next);
-  };
-
-  return (
-    <div className="max-w-[1280px] mx-auto px-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <TreeBreadcrumbs items={breadcrumbs} />
-        </div>
-        <PaletteTrigger />
-      </div>
-
-      {/* Filter bar — always visible so users can flip back from
-          "Encoded only" without leaving the page. */}
-      <div className="flex items-center justify-end mb-3">
-        <button
-          type="button"
-          aria-pressed={encodedOnly}
-          suppressHydrationWarning
-          onClick={onToggleEncodedOnly}
-          className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
-            encodedOnly
-              ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-              : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`inline-block w-2 h-2 rounded-full transition-colors ${
-              encodedOnly
-                ? "bg-[var(--color-accent)]"
-                : "bg-[var(--color-ink-muted)]"
-            }`}
-          />
-          Encoded only
-        </button>
-      </div>
-
-      <CanadaCatalog />
-
-      {!encodedOnly && (
-        <section className="mt-12">
-          <div className="mb-4">
-            <h2 className="font-display text-lg text-[var(--color-ink)] m-0">
-              All ingested Canadian rules
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-secondary)]">
-              Act sections from <code>akn.rules</code> — text-only, no
-              encoding attached yet.
-            </p>
-          </div>
-          <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
-            <TreeNodeList
-              nodes={nodes}
-              onNavigate={handleNavigate}
-              loading={loading}
-              error={error}
-            />
-            {hasMore && (
-              <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">
-                <button
-                  className="px-6 py-2 font-mono text-xs text-[var(--color-accent)] bg-transparent border border-[var(--color-rule)] rounded-md hover:bg-[var(--color-accent-light)] transition-colors"
-                  onClick={loadMore}
-                  disabled={loading}
-                >
-                  {loading ? "Loading..." : "Load more"}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-    </div>
-  );
 }
 /* v8 ignore stop */

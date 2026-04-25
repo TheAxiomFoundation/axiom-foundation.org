@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  CANADA_CATALOG,
   findCanadaCatalogEntry,
   getCosilicoBlobUrl,
   getCosilicoRawUrl,
@@ -25,27 +24,6 @@ export function CanadaCatalog() {
 
   return (
     <div className="max-w-[920px] mx-auto">
-      <div className="mb-8 px-5 py-4 bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md">
-        <div className="eyebrow mb-2">Canada · Encoded rules</div>
-        <p
-          className="m-0 text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)]"
-          style={{ fontFamily: "var(--f-serif)" }}
-        >
-          {CANADA_CATALOG.length} encoded sections live in the{" "}
-          <a
-            href="https://github.com/TheAxiomFoundation/rac-ca"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--color-accent)] hover:underline"
-          >
-            rac-ca
-          </a>{" "}
-          repository as ``.cosilico`` files. The remaining Canadian
-          statutes from ``akn.rules`` aren't yet encoded and aren't
-          surfaced here while the ingestion pipeline catches up.
-        </p>
-      </div>
-
       <div className="space-y-10">
         {groups.map((group) => (
           <section key={group.group}>

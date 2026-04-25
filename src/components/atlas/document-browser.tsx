@@ -525,24 +525,7 @@ function JurisdictionRoot({
     );
   }
 
-  return (
-    <>
-      {/* Surface a discoverable link to the encoded-rules index from
-          every jurisdiction landing. Lives above whatever tree the
-          jurisdiction renders below. */}
-      <div className="max-w-[1280px] mx-auto px-8 pt-2">
-        <div className="flex items-center justify-end">
-          <Link
-            href={`/atlas/${jurisdictionSlug}?view=encoded`}
-            className="inline-flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors no-underline"
-          >
-            View all encoded rules →
-          </Link>
-        </div>
-      </div>
-      {renderTree()}
-    </>
-  );
+  return <>{renderTree()}</>;
 }
 
 /**

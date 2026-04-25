@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { BreadcrumbItem } from "@/lib/tree-data";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
 import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
@@ -16,6 +17,7 @@ import {
   CanadaCatalog,
   CanadaCatalogEntryView,
 } from "./canada-catalog";
+import { EncodedRulesList } from "./encoded-rules-list";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -375,34 +377,62 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   }
 
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
-  // Canada special case: surface the curated catalog of encoded
-  // sections (rac-ca cosilico files) alongside the standard tree of
-  // ingested rules. The Encoded-only toggle filters the second
-  // section out so power users can focus on what's actually encoded.
-  if (resolved.jurisdiction?.slug === "canada") {
-    if (resolved.ruleSegments.length === 0) {
+  // ?view=encoded shows the flat index of encoded rules for the
+  // current jurisdiction — useful at /atlas/uk where the standard
+  // tree only surfaces top-level "Legislation" and the actual
+  // encodings live many levels deep.
+  if (
+    resolved.jurisdiction &&
+    resolved.ruleSegments.length === 0
+  ) {
+    return (
+      <JurisdictionRoot
+        jurisdictionSlug={resolved.jurisdiction.slug}
+        jurisdictionLabel={resolved.jurisdiction.label}
+        breadcrumbs={breadcrumbs}
+        renderTree={() => {
+          if (resolved.jurisdiction!.slug === "canada") {
+            return (
+              <CanadaLanding
+                segments={segments}
+                breadcrumbs={breadcrumbs}
+              />
+            );
+          }
+          return (
+            <RuleTreeView
+              segments={segments}
+              dbJurisdictionId={resolved.jurisdiction!.slug}
+              ruleSegments={resolved.ruleSegments}
+              hasCitationPaths={resolved.jurisdiction!.hasCitationPaths}
+            />
+          );
+        }}
+      />
+    );
+  }
+
+  // Canada catalog detail at /atlas/canada/<slug> (e.g.
+  // ``/atlas/canada/ita-122.61``). The /atlas/canada root case is
+  // handled by ``JurisdictionRoot`` above, which delegates the tree
+  // to ``CanadaLanding``.
+  if (
+    resolved.jurisdiction?.slug === "canada" &&
+    resolved.ruleSegments.length === 1
+  ) {
+    const slug = resolved.ruleSegments[0];
+    const isCatalogEntry = /^(ita-|oas$|ei$|on-)/.test(slug);
+    if (isCatalogEntry) {
       return (
-        <CanadaLanding segments={segments} breadcrumbs={breadcrumbs} />
-      );
-    }
-    if (resolved.ruleSegments.length === 1) {
-      const slug = resolved.ruleSegments[0];
-      // Curated catalog slugs (e.g. "ita-122.61") get the catalog
-      // detail view. Anything else (a UUID, an unknown slug) falls
-      // through to the standard RuleTreeView below.
-      const isCatalogEntry = /^(ita-|oas$|ei$|on-)/.test(slug);
-      if (isCatalogEntry) {
-        return (
-          <div>
-            <div className="max-w-[1280px] mx-auto px-8 mb-2">
-              <div className="flex items-start justify-end">
-                <PaletteTrigger />
-              </div>
+        <div>
+          <div className="max-w-[1280px] mx-auto px-8 mb-2">
+            <div className="flex items-start justify-end">
+              <PaletteTrigger />
             </div>
-            <CanadaCatalogEntryView slug={slug} />
           </div>
-        );
-      }
+          <CanadaCatalogEntryView slug={slug} />
+        </div>
+      );
     }
   }
 
@@ -440,6 +470,80 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   );
 }
 /* v8 ignore stop */
+
+/**
+ * /atlas/<jurisdiction> landing wrapper. Decides between two views:
+ *
+ *   - ``?view=encoded``: a flat index of every encoded rule for
+ *     the jurisdiction, grouped by parent instrument. Useful at
+ *     /atlas/uk where the standard tree only surfaces top-level
+ *     "Legislation" and the actual encodings live many levels
+ *     below.
+ *   - default: the jurisdiction's normal tree (delegated via the
+ *     ``renderTree`` prop so the per-jurisdiction shape — Canada
+ *     catalog, US/UK tree, etc. — stays in the caller).
+ *
+ * A small toggle in the header switches between the two URLs.
+ */
+function JurisdictionRoot({
+  jurisdictionSlug,
+  jurisdictionLabel,
+  breadcrumbs,
+  renderTree,
+}: {
+  jurisdictionSlug: string;
+  jurisdictionLabel: string;
+  breadcrumbs: BreadcrumbItem[];
+  renderTree: () => React.ReactNode;
+}) {
+  const searchParams = useSearchParams();
+  const view = searchParams?.get("view");
+  const showingEncoded = view === "encoded";
+
+  if (showingEncoded) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-8">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <TreeBreadcrumbs items={breadcrumbs} />
+          </div>
+          <PaletteTrigger />
+        </div>
+        <div className="flex items-center justify-end mb-6">
+          <Link
+            href={`/atlas/${jurisdictionSlug}`}
+            className="inline-flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors no-underline"
+          >
+            ← Browse tree
+          </Link>
+        </div>
+        <EncodedRulesList
+          jurisdiction={jurisdictionSlug}
+          jurisdictionLabel={jurisdictionLabel}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Surface a discoverable link to the encoded-rules index from
+          every jurisdiction landing. Lives above whatever tree the
+          jurisdiction renders below. */}
+      <div className="max-w-[1280px] mx-auto px-8 pt-2">
+        <div className="flex items-center justify-end">
+          <Link
+            href={`/atlas/${jurisdictionSlug}?view=encoded`}
+            className="inline-flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors no-underline"
+          >
+            View all encoded rules →
+          </Link>
+        </div>
+      </div>
+      {renderTree()}
+    </>
+  );
+}
 
 /**
  * /atlas/canada landing — renders the curated catalog of encoded

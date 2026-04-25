@@ -11,6 +11,10 @@ import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
+import {
+  CanadaCatalog,
+  CanadaCatalogEntryView,
+} from "./canada-catalog";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -370,6 +374,38 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   }
 
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
+  // Canada special case: until ITA / OAS / EI sections are ingested
+  // into akn.rules, the standard tree is mostly Untitled rows for
+  // acts that have no encodings. Replace it with the curated catalog
+  // of rules that actually have ``.cosilico`` files in rac-ca.
+  if (resolved.jurisdiction?.slug === "canada") {
+    if (resolved.ruleSegments.length === 0) {
+      return (
+        <div className="max-w-[1280px] mx-auto px-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <TreeBreadcrumbs items={breadcrumbs} />
+            </div>
+            <PaletteTrigger />
+          </div>
+          <CanadaCatalog />
+        </div>
+      );
+    }
+    if (resolved.ruleSegments.length === 1) {
+      return (
+        <div>
+          <div className="max-w-[1280px] mx-auto px-8 mb-2">
+            <div className="flex items-start justify-end">
+              <PaletteTrigger />
+            </div>
+          </div>
+          <CanadaCatalogEntryView slug={resolved.ruleSegments[0]} />
+        </div>
+      );
+    }
+  }
+
   // Rule phase
   if (resolved.jurisdiction) {
     const useLegacyUuidRouting =

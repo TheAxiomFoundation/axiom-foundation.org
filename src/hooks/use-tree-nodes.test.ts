@@ -99,7 +99,7 @@ describe("useTreeNodes", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(mockGetActNodes).toHaveBeenCalledWith("canada", 0);
+      expect(mockGetActNodes).toHaveBeenCalledWith("canada", 0, false);
       expect(result.current.nodes).toEqual(actNodes);
       expect(result.current.hasMore).toBe(true);
     });
@@ -225,7 +225,11 @@ describe("useTreeNodes", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(mockGetChildrenByParentId).toHaveBeenCalledWith(SAMPLE_UUID, 0);
+      expect(mockGetChildrenByParentId).toHaveBeenCalledWith(
+        SAMPLE_UUID,
+        0,
+        false
+      );
       expect(result.current.nodes).toEqual(childNodes);
     });
   });
@@ -499,7 +503,7 @@ describe("useTreeNodes", () => {
 
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(mockGetActNodes).toHaveBeenCalledWith("uk", 1);
+      expect(mockGetActNodes).toHaveBeenCalledWith("uk", 1, false);
       expect(result.current.nodes).toEqual([...page0Nodes, ...page1Nodes]);
       expect(result.current.hasMore).toBe(false);
     });

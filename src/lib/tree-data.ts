@@ -488,16 +488,25 @@ function ruleToSectionNode(rule: Rule, encodedPaths?: Set<string>): TreeNode {
 
 export async function getActNodes(
   jurisdiction: string,
-  page: number = 0
+  page: number = 0,
+  encodedOnly: boolean = false
 ): Promise<TreeResult> {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseAkn
+  let query = supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
     .eq("jurisdiction", jurisdiction)
-    .is("parent_id", null)
+    .is("parent_id", null);
+  if (encodedOnly) {
+    // UUID-navigated jurisdictions (Canada today) carry the
+    // encoding flag directly on the rule row. Filter at SQL when
+    // the toggle is on so empty-list pages aren't masked by
+    // client-side filtering of a paginated slice.
+    query = query.eq("has_rac", true);
+  }
+  const { data, count } = await query
     .order("heading")
     .range(from, to);
 
@@ -507,7 +516,11 @@ export async function getActNodes(
   return {
     nodes: rules.map((r) => ({
       segment: r.id,
-      label: r.heading || "Untitled",
+      // Many ingested Canadian top-level rules carry an empty
+      // ``heading`` field (some are just "[Repealed]" markers).
+      // Fall through to the body preview so the picker reads as
+      // something other than a column of "Untitled".
+      label: pickActLabel(r),
       hasChildren: true,
       rule: r,
       nodeType: "act" as const,
@@ -517,19 +530,43 @@ export async function getActNodes(
   };
 }
 
+/**
+ * Best-effort human label for an act-level rule. Prefer the
+ * ingested heading; fall back to the first ~80 chars of body
+ * (covers ``"81[Repealed, 2003, c. 22, s. 285]"`` and similar
+ * stubs); fall back to the citation_path's last segment when both
+ * are absent; finally to a generic "Untitled" so the row is
+ * still selectable.
+ */
+function pickActLabel(rule: Rule): string {
+  const heading = rule.heading?.trim();
+  if (heading) return heading;
+  const body = rule.body?.trim();
+  if (body) {
+    const compact = body.replace(/\s+/g, " ");
+    return compact.length > 80 ? compact.slice(0, 80).trimEnd() + "…" : compact;
+  }
+  const tail = rule.citation_path?.split("/").pop()?.trim();
+  if (tail) return tail;
+  return "Untitled";
+}
+
 export async function getChildrenByParentId(
   parentId: string,
-  page: number = 0
+  page: number = 0,
+  encodedOnly: boolean = false
 ): Promise<TreeResult> {
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseAkn
+  let query = supabaseAkn
     .from("rules")
     .select("*", { count: "exact" })
-    .eq("parent_id", parentId)
-    .order("ordinal")
-    .range(from, to);
+    .eq("parent_id", parentId);
+  if (encodedOnly) {
+    query = query.eq("has_rac", true);
+  }
+  const { data, count } = await query.order("ordinal").range(from, to);
 
   const rules = (data || []) as Rule[];
   const total = count || 0;

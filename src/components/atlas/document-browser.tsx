@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { BreadcrumbItem } from "@/lib/tree-data";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
 import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
@@ -11,6 +13,7 @@ import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
 import { AtlasStats } from "./atlas-stats";
 import { PaletteTrigger } from "./palette-trigger";
+import { EncodedRulesList } from "./encoded-rules-list";
 import { transformRuleToViewerDoc } from "@/lib/atlas-utils";
 import {
   resolveAtlasPath,
@@ -370,6 +373,31 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
   }
 
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
+  // ?view=encoded shows the flat index of encoded rules for the
+  // current jurisdiction — useful at /atlas/uk where the standard
+  // tree only surfaces top-level "Legislation" and the actual
+  // encodings live many levels deep.
+  if (
+    resolved.jurisdiction &&
+    resolved.ruleSegments.length === 0
+  ) {
+    return (
+      <JurisdictionRoot
+        jurisdictionSlug={resolved.jurisdiction.slug}
+        jurisdictionLabel={resolved.jurisdiction.label}
+        breadcrumbs={breadcrumbs}
+        renderTree={() => (
+          <RuleTreeView
+            segments={segments}
+            dbJurisdictionId={resolved.jurisdiction!.slug}
+            ruleSegments={resolved.ruleSegments}
+            hasCitationPaths={resolved.jurisdiction!.hasCitationPaths}
+          />
+        )}
+      />
+    );
+  }
+
   // Rule phase
   if (resolved.jurisdiction) {
     const useLegacyUuidRouting =
@@ -402,5 +430,63 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
       </div>
     </div>
   );
+}
+/* v8 ignore stop */
+
+/**
+ * /atlas/<jurisdiction> landing wrapper. Decides between two views:
+ *
+ *   - ``?view=encoded``: a flat index of every encoded rule for
+ *     the jurisdiction, grouped by parent instrument. Useful at
+ *     /atlas/uk where the standard tree only surfaces top-level
+ *     "Legislation" and the actual encodings live many levels
+ *     below.
+ *   - default: the jurisdiction's normal tree (delegated via the
+ *     ``renderTree`` prop so the per-jurisdiction shape — Canada
+ *     catalog, US/UK tree, etc. — stays in the caller).
+ *
+ * A small toggle in the header switches between the two URLs.
+ */
+function JurisdictionRoot({
+  jurisdictionSlug,
+  jurisdictionLabel,
+  breadcrumbs,
+  renderTree,
+}: {
+  jurisdictionSlug: string;
+  jurisdictionLabel: string;
+  breadcrumbs: BreadcrumbItem[];
+  renderTree: () => React.ReactNode;
+}) {
+  const searchParams = useSearchParams();
+  const view = searchParams?.get("view");
+  const showingEncoded = view === "encoded";
+
+  if (showingEncoded) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-8">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <TreeBreadcrumbs items={breadcrumbs} />
+          </div>
+          <PaletteTrigger />
+        </div>
+        <div className="flex items-center justify-end mb-6">
+          <Link
+            href={`/atlas/${jurisdictionSlug}`}
+            className="inline-flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors no-underline"
+          >
+            ← Browse tree
+          </Link>
+        </div>
+        <EncodedRulesList
+          jurisdiction={jurisdictionSlug}
+          jurisdictionLabel={jurisdictionLabel}
+        />
+      </div>
+    );
+  }
+
+  return <>{renderTree()}</>;
 }
 /* v8 ignore stop */

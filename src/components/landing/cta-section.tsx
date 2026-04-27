@@ -46,7 +46,7 @@ export function CtaSection() {
             },
             {
               href: "https://github.com/TheAxiomFoundation/autorulespec",
-              label: "AutoRuleSpec encoder",
+              label: "AutoRuleSpec",
             },
             { href: "/about", label: "About us", internal: true },
           ].map((link) =>

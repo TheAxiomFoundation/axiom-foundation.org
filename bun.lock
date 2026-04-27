@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "rules-foundation",
+      "name": "axiom-foundation",
       "dependencies": {
         "@supabase/supabase-js": "^2.90.1",
         "geist": "^1.7.0",

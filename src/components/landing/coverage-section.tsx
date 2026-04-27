@@ -58,7 +58,7 @@ export function CoverageSection() {
         <div className="flex justify-center gap-12 flex-wrap mt-8 max-md:flex-col max-md:items-center max-md:gap-4">
           {[
             "100+ total .yaml files across 3 US jurisdictions",
-            "Canada benefits also encoded (.cosilico format)",
+            "Canada benefits encoded as RuleSpec YAML",
             "All encodings validated against external oracles",
           ].map((text) => (
             <div

@@ -44,7 +44,7 @@ describe('Landing sections', () => {
 
   it('renders the RuleSpec DSL section', () => {
     render(<RuleSpecSection />)
-    expect(screen.getByText(/rules as code/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /rulespec/i })).toBeInTheDocument()
   })
 
   it('renders the .yaml format section with code examples', () => {

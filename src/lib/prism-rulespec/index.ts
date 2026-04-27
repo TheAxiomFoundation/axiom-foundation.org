@@ -1,7 +1,7 @@
 import Prism from 'prismjs'
 
 // ─── RuleSpec Grammar ──────────────────────────────────────────────────────────────
-// RuleSpec (Rules as Code) is a YAML-structured DSL with Python-like formula
+// RuleSpec is a YAML-structured DSL with Python-like formula
 // expressions used to encode tax and benefit statutes.
 
 const sectionKeywords = [

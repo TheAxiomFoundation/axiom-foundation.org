@@ -40,7 +40,7 @@ export default function AboutPage() {
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>RuleSpec</h3>
               <p className={styles.cardText}>
-                Rules as Code DSL for encoding statutes with citations, temporal versioning, and tests.
+                RuleSpec DSL for encoding statutes with citations, temporal versioning, and tests.
                 Purpose-built for legal encoding.
               </p>
             </div>

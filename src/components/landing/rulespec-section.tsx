@@ -6,7 +6,7 @@ export function RuleSpecSection() {
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <h2 className="heading-section mb-6">
-            Rules as Code
+            RuleSpec
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
             A domain-specific language for encoding rules with auditability,

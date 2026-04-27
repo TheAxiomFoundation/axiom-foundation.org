@@ -83,7 +83,7 @@ export default function AboutPage() {
               },
               {
                 title: "RuleSpec",
-                desc: "Rules as Code DSL for encoding statutes with citations, temporal versioning, and tests. Purpose-built for legal encoding.",
+                desc: "RuleSpec DSL for encoding statutes with citations, temporal versioning, and tests. Purpose-built for legal encoding.",
               },
               {
                 title: "AutoRuleSpec",

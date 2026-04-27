@@ -54,9 +54,9 @@ vi.mock("@/lib/tree-data", async (importOriginal) => {
   };
 });
 
-// Mock supabaseAkn
+// Mock supabaseArch
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: { from: vi.fn() },
+  supabaseArch: { from: vi.fn() },
   supabase: { from: vi.fn() },
   // ReferencesPanel calls getRuleReferences via useRuleReferences; stub it
   // out so the leaf-render tests don't need to wire the RPC mock.
@@ -338,8 +338,8 @@ describe("AtlasBrowser", () => {
       source_url: null,
       source_path: "26 USC 24(d)(1)(A)",
       citation_path: "us/statute/26/24/d/1/A",
-      rac_path: null,
-      has_rac: false,
+      rulespec_path: null,
+      has_rulespec: false,
       created_at: "",
       updated_at: "",
     };
@@ -485,8 +485,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: "26 USC 21(d)(2)",
         citation_path: "us/statute/26/21/d/2",
-        rac_path: "statute/26/21/d/2.rac",
-        has_rac: true,
+        rulespec_path: "statute/26/21/d/2.yaml",
+        has_rulespec: true,
         created_at: "",
         updated_at: "",
       };
@@ -504,11 +504,11 @@ describe("AtlasBrowser", () => {
         nodes: [
           {
             segment: "A",
-            label: "§ A RAC",
+            label: "§ A RuleSpec",
             hasChildren: true,
             nodeType: "section",
             rule: childRuleA,
-            hasRac: true,
+            hasRuleSpec: true,
           },
         ],
         loading: false,
@@ -554,8 +554,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/regulation/7/273/subpart-d",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -579,7 +579,7 @@ describe("AtlasBrowser", () => {
             hasChildren: true,
             nodeType: "section",
             rule: childSection,
-            hasRac: false,
+            hasRuleSpec: false,
           },
         ],
         loading: false,
@@ -640,8 +640,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/statute/26/21",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -689,8 +689,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/regulation/7/273/subpart-ws",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -713,7 +713,7 @@ describe("AtlasBrowser", () => {
             hasChildren: true,
             nodeType: "section",
             rule: childSection,
-            hasRac: false,
+            hasRuleSpec: false,
           },
         ],
         loading: false,
@@ -769,8 +769,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/statute/26/999",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -820,8 +820,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/regulation/7/273",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -842,7 +842,7 @@ describe("AtlasBrowser", () => {
           hasChildren: true,
           nodeType: "section" as const,
           rule: c,
-          hasRac: false,
+          hasRuleSpec: false,
         })),
         loading: false,
         error: null,
@@ -881,8 +881,8 @@ describe("AtlasBrowser", () => {
         source_url: null,
         source_path: null,
         citation_path: "us/regulation/9/999/subpart-x",
-        rac_path: null,
-        has_rac: false,
+        rulespec_path: null,
+        has_rulespec: false,
         created_at: "",
         updated_at: "",
       };
@@ -905,7 +905,7 @@ describe("AtlasBrowser", () => {
             hasChildren: true,
             nodeType: "section" as const,
             rule: child,
-            hasRac: false,
+            hasRuleSpec: false,
           },
         ],
         loading: false,

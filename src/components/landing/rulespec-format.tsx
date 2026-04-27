@@ -13,9 +13,9 @@ import {
   TestIcon,
   VersionIcon,
 } from "@/components/icons";
-import { type ExampleType, racExamples } from "@/lib/rac-examples";
+import { type ExampleType, rulespecExamples } from "@/lib/rulespec-examples";
 
-type FormatTab = "rac" | "dmn" | "openfisca" | "catala";
+type FormatTab = "rulespec" | "dmn" | "openfisca" | "catala";
 
 const examples: Record<ExampleType, { label: string }> = {
   niit: { label: "NIIT" },
@@ -25,7 +25,7 @@ const examples: Record<ExampleType, { label: string }> = {
 };
 
 const formatLabels: Record<FormatTab, string> = {
-  rac: "RAC",
+  rulespec: "RuleSpec",
   dmn: "DMN",
   openfisca: "OpenFisca/PE",
   catala: "Catala",
@@ -34,28 +34,28 @@ const formatLabels: Record<FormatTab, string> = {
 const getFilename = (example: ExampleType, format: FormatTab): string => {
   const filenames: Record<ExampleType, Record<FormatTab, string>> = {
     niit: {
-      rac: "statute/26/1411/a.rac",
+      rulespec: "statute/26/1411/a.yaml",
       dmn: "niit.dmn",
       openfisca:
         "variables/gov/irs/tax/federal_income/net_investment_income_tax.py",
       catala: "niit.catala_en",
     },
     "aca-ptc": {
-      rac: "statute/26/36B/b/3/A.rac",
+      rulespec: "statute/26/36B/b/3/A.yaml",
       dmn: "aca_ptc.dmn",
       openfisca:
         "variables/gov/aca/ptc/aca_required_contribution_percentage.py",
       catala: "aca_ptc.catala_en",
     },
     "std-ded": {
-      rac: "statute/26/63/c/2/A.rac",
+      rulespec: "statute/26/63/c/2/A.yaml",
       dmn: "standard_deduction.dmn",
       openfisca:
         "variables/gov/irs/income/taxable_income/deductions/standard_deduction/basic_standard_deduction.py",
       catala: "standard_deduction.catala_en",
     },
     "ny-eitc": {
-      rac: "statute/ny/tax/606/d.rac",
+      rulespec: "statute/ny/tax/606/d.yaml",
       dmn: "ny_eitc.dmn",
       openfisca: "variables/gov/states/ny/tax/income/credits/ny_eitc.py",
       catala: "ny_eitc.catala_en",
@@ -66,7 +66,7 @@ const getFilename = (example: ExampleType, format: FormatTab): string => {
 
 const getNote = (format: FormatTab): string => {
   const notes: Record<FormatTab, string> = {
-    rac: "Single self-contained file",
+    rulespec: "Single self-contained file",
     dmn: "XML + FEEL expression language",
     openfisca: "Python + YAML (3 files)",
     catala: "Literate programming",
@@ -336,10 +336,10 @@ scope NYEITC:
 
 function getCodeLanguage(
   format: FormatTab
-): "rac" | "xml" | "python" | "catala" {
+): "rulespec" | "xml" | "python" | "catala" {
   switch (format) {
-    case "rac":
-      return "rac";
+    case "rulespec":
+      return "rulespec";
     case "dmn":
       return "xml";
     case "openfisca":
@@ -351,8 +351,8 @@ function getCodeLanguage(
 
 function getCodeContent(format: FormatTab, example: ExampleType): string {
   switch (format) {
-    case "rac":
-      return racExamples[example];
+    case "rulespec":
+      return rulespecExamples[example];
     case "dmn":
       return dmnExamples[example];
     case "openfisca":
@@ -364,7 +364,7 @@ function getCodeContent(format: FormatTab, example: ExampleType): string {
 
 function TabbedCodeExamples() {
   const [activeExample, setActiveExample] = useState<ExampleType>("niit");
-  const [activeTab, setActiveTab] = useState<FormatTab>("rac");
+  const [activeTab, setActiveTab] = useState<FormatTab>("rulespec");
 
   const filename = getFilename(activeExample, activeTab);
 
@@ -389,7 +389,7 @@ function TabbedCodeExamples() {
 
       {/* Format tabs */}
       <div className="flex border-b border-[var(--color-rule)] mb-0">
-        {(["rac", "dmn", "openfisca", "catala"] as FormatTab[]).map((tab) => (
+        {(["rulespec", "dmn", "openfisca", "catala"] as FormatTab[]).map((tab) => (
           <button
             key={tab}
             className={`px-5 py-3 font-mono text-xs font-medium border-b-2 transition-colors duration-150 bg-transparent ${
@@ -427,7 +427,7 @@ function TabbedCodeExamples() {
   );
 }
 
-export function RacFormat() {
+export function RuleSpecFormat() {
   return (
     <section
       id="format"
@@ -436,7 +436,7 @@ export function RacFormat() {
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <h2 className="heading-section mb-6">
-            .rac
+            .yaml
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
             Self-contained statute encoding format. One file captures the law:
@@ -452,7 +452,7 @@ export function RacFormat() {
             Format comparison
           </h3>
           <p className="font-body text-base text-[var(--color-ink-secondary)] text-center mb-8">
-            RAC is purpose-built for encoding law with auditability and temporal
+            RuleSpec is purpose-built for encoding law with auditability and temporal
             accuracy.
           </p>
 
@@ -473,26 +473,26 @@ export function RacFormat() {
                     Catala
                   </th>
                   <th className="px-5 py-3 text-left font-semibold bg-[var(--color-accent-light)] text-[var(--color-accent)] border-b border-[var(--color-rule)]">
-                    RAC
+                    RuleSpec
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { cap: "Legal citations", dmn: "no", of: "partial", cat: "partial", rac: "yes" },
-                  { cap: "Temporal versioning", dmn: "no", of: "yes", cat: "no", rac: "yes" },
-                  { cap: "Formula language", dmn: "FEEL", of: "Python", cat: "Custom", rac: "Python-like" },
-                  { cap: "File format", dmn: "XML", of: "Py + YAML", cat: "Custom", rac: "Custom DSL" },
-                  { cap: "Self-contained", dmn: "no", of: "no", cat: "yes", rac: "yes" },
-                  { cap: "Reform modeling", dmn: "no", of: "yes", cat: "no", rac: "yes" },
-                  { cap: "No magic numbers", dmn: "no", of: "no", cat: "no", rac: "yes" },
-                  { cap: "LLM-friendly", dmn: "no", of: "partial", cat: "partial", rac: "yes" },
+                  { cap: "Legal citations", dmn: "no", of: "partial", cat: "partial", rulespec: "yes" },
+                  { cap: "Temporal versioning", dmn: "no", of: "yes", cat: "no", rulespec: "yes" },
+                  { cap: "Formula language", dmn: "FEEL", of: "Python", cat: "Custom", rulespec: "Python-like" },
+                  { cap: "File format", dmn: "XML", of: "Py + YAML", cat: "Custom", rulespec: "Custom DSL" },
+                  { cap: "Self-contained", dmn: "no", of: "no", cat: "yes", rulespec: "yes" },
+                  { cap: "Reform modeling", dmn: "no", of: "yes", cat: "no", rulespec: "yes" },
+                  { cap: "No magic numbers", dmn: "no", of: "no", cat: "no", rulespec: "yes" },
+                  { cap: "LLM-friendly", dmn: "no", of: "partial", cat: "partial", rulespec: "yes" },
                 ].map((row, i, arr) => (
                   <tr key={row.cap}>
                     <td className={`px-5 py-3 text-[var(--color-ink-secondary)] ${i < arr.length - 1 ? "border-b border-[var(--color-rule-subtle)]" : ""}`}>
                       {row.cap}
                     </td>
-                    {(["dmn", "of", "cat", "rac"] as const).map((col) => {
+                    {(["dmn", "of", "cat", "rulespec"] as const).map((col) => {
                       const val = row[col];
                       let cls = "text-[var(--color-ink-muted)]";
                       let content: React.ReactNode = val;
@@ -529,7 +529,7 @@ export function RacFormat() {
                 <>
                   Filepath mirrors statute citation.{" "}
                   <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[var(--color-accent-light)] rounded text-[var(--color-accent)]">
-                    26/24/d/1/B.rac
+                    26/24/d/1/B.yaml
                   </code>{" "}
                   encodes 26 USC &sect; 24(d)(1)(B).
                 </>

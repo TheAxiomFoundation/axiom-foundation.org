@@ -16,7 +16,7 @@ import {
   VersionIcon,
 } from "@/components/icons";
 
-type SnippetLanguage = "rac" | "xml" | "python" | "yaml" | "catala" | "plain";
+type SnippetLanguage = "rulespec" | "xml" | "python" | "yaml" | "catala" | "plain";
 
 type StackLayer = {
   id: string;
@@ -76,38 +76,38 @@ const stackLayers: StackLayer[] = [
       "archive snapshots",
       "source specs and converters",
     ],
-    repos: ["atlas", "rac-uk", "rac-us", "rac-us-co"],
+    repos: ["atlas", "rules-uk", "rules-us", "rules-us-co"],
     outputs: ["official PDF and HTML snapshots", "source refs", "archived raw text"],
     snippetLabel: "source acquisition shape",
     snippetLanguage: "plain",
     snippet: `sources/
   official/
-    uksi/2002/1792/2025-03-31/source.akn
+    uksi/2002/1792/2025-03-31/source.xml
     statute/crs/26-2-703/2026-04-03/source.html
   slices/
     9-CCR-2503-6/3.606.1/I.txt`,
     icon: <FileIcon className="w-5 h-5" />,
   },
   {
-    id: "akomize",
+    id: "source-structure",
     step: "02",
     stageIds: ["input"],
-    title: "Normalize structure into Akoma Ntoso",
+    title: "Normalize source structure",
     summary:
-      "Akomize gives the system a structural representation of the law so later tools can target exact sections, paragraphs, and subparagraphs.",
+      "Source normalization gives the system a structural representation of the law so later tools can target exact sections, paragraphs, and subparagraphs.",
     details: [
-      "Documents are normalized into AKN or an equivalent tree with stable eIds and hierarchy.",
+      "Documents are normalized into source XML or an equivalent tree with stable eIds and hierarchy.",
       "That structure is what lets us talk about `regulation-13B-1-b` or `section 3ZA(3)` as concrete targets instead of fuzzy spans.",
       "For policy manuals and state materials, this step is what makes non-statute sources feel like first-class inputs.",
     ],
     components: [
-      "AKN normalization",
+      "source XML normalization",
       "eId generation",
       "hierarchy extraction",
     ],
-    repos: ["atlas", "rac-us-co"],
-    outputs: ["source.akn", "source.xml", "section and paragraph ids"],
-    snippetLabel: "AKN slice",
+    repos: ["atlas", "rules-us-co"],
+    outputs: ["source.xml", "source tree", "section and paragraph ids"],
+    snippetLabel: "source XML slice",
     snippetLanguage: "xml",
     snippet: `<section eId="regulation-13B-1-b">
   <num>(b)</num>
@@ -127,14 +127,14 @@ const stackLayers: StackLayer[] = [
     details: [
       "The source graph feeds Atlas browsing, section-level deep links, and encoder workspaces.",
       "Exact slices are copied into local workspaces as `source.txt` so benchmark runs are reproducible and inspectable.",
-      "This is also where canonical upstream homes exist before we decide whether a RAC import should resolve to a real file or a temporary stub.",
+      "This is also where canonical upstream homes exist before we decide whether a RuleSpec import should resolve to a real file or a temporary stub.",
     ],
     components: [
       "section selection",
       "slice extraction",
       "cross-reference resolution",
     ],
-    repos: ["atlas", "autorac"],
+    repos: ["atlas", "autorulespec"],
     outputs: ["source.txt", "context-manifest.json", "navigable source tree"],
     snippetLabel: "eval workspace context",
     snippetLanguage: "yaml",
@@ -146,27 +146,27 @@ context_files:
     icon: <FolderIcon className="w-5 h-5" />,
   },
   {
-    id: "rac",
+    id: "rulespec",
     step: "04",
     stageIds: ["encode"],
-    title: "Encode law into RAC corpora",
+    title: "Encode law into RuleSpec corpora",
     summary:
-      "RAC is the rules language and corpus layer. This is where statutes, regulations, and manuals become tested, versioned rule files.",
+      "RuleSpec is the rules language and corpus layer. This is where statutes, regulations, and manuals become tested, versioned rule files.",
     details: [
-      "The corpus repos hold `.rac` files, companion tests, imports, wave manifests, and provenance policies.",
+      "The corpus repos hold `.yaml` files, companion tests, imports, wave manifests, and provenance policies.",
       "The point is not just DSL syntax; it is durable, reviewable legal source-to-rule mapping.",
       "This is where manual leaves, statute leaves, and cross-document imports eventually live side by side.",
     ],
     components: [
-      ".rac files",
-      ".rac.test files",
+      ".yaml files",
+      ".yaml.test files",
       "wave manifests",
       "import graph",
     ],
-    repos: ["rac", "rac-uk", "rac-us", "rac-us-co"],
+    repos: ["rulespec", "rules-uk", "rules-us", "rules-us-co"],
     outputs: ["compileable rules", "tests", "provenance manifests"],
-    snippetLabel: "RAC leaf",
-    snippetLanguage: "rac",
+    snippetLabel: "RuleSpec leaf",
+    snippetLanguage: "rulespec",
     snippet: `claimant_or_partner_had_award_of_state_pension_credit:
   entity: Family
   period: Day
@@ -180,14 +180,14 @@ context_files:
     icon: <CodeIcon className="w-5 h-5" />,
   },
   {
-    id: "autorac",
+    id: "autorulespec",
     step: "05",
     stageIds: ["encode", "check"],
-    title: "Generate and evaluate with AutoRAC",
+    title: "Generate and evaluate with AutoRuleSpec",
     summary:
-      "AutoRAC is the harness layer: benchmark manifests, workspace construction, generation policy, deterministic CI, oracles, review, and readiness gates.",
+      "AutoRuleSpec is the harness layer: benchmark manifests, workspace construction, generation policy, deterministic CI, oracles, review, and readiness gates.",
     details: [
-      "AutoRAC consumes exact slices and canonical context, then emits candidate `.rac` and `.rac.test` bundles.",
+      "AutoRuleSpec consumes exact slices and canonical context, then emits candidate `.yaml` and `.yaml.test` bundles.",
       "This is where numeric grounding, import discipline, semantic review, and suite-level readiness live.",
       "It is also where `autoresearch` can mutate a narrow prompt surface and optimize against frozen benchmark sets.",
     ],
@@ -198,7 +198,7 @@ context_files:
       "generalist review",
       "autoresearch loop",
     ],
-    repos: ["autorac"],
+    repos: ["autorulespec"],
     outputs: ["suite-run.json", "summary.json", "trace files", "accepted harness changes"],
     snippetLabel: "suite gate summary",
     snippetLanguage: "plain",
@@ -217,24 +217,24 @@ context_files:
     stageIds: ["check", "run"],
     title: "Compile, validate, test, and execute",
     summary:
-      "The RAC engine is what turns encodings into something executable: validators, test runners, interpreters, and code generation targets.",
+      "The RuleSpec engine is what turns encodings into something executable: validators, test runners, interpreters, and code generation targets.",
     details: [
-      "`rac.validate` and `rac.test_runner` are the first execution surfaces every encoding sees.",
-      "The runtime and codegen layers are what make a `.rac` file more than documentation: they let the same encoding drive evaluation and external integrations.",
+      "`rulespec.validate` and `rulespec.test_runner` are the first execution surfaces every encoding sees.",
+      "The runtime and codegen layers are what make a `.yaml` file more than documentation: they let the same encoding drive evaluation and external integrations.",
       "This is where imports, periods, dtypes, formulas, and built-ins become machine behavior.",
     ],
     components: [
-      "rac.validate",
-      "rac.test_runner",
+      "rulespec.validate",
+      "rulespec.test_runner",
       "executor",
       "python/js/rust codegen",
     ],
-    repos: ["rac"],
+    repos: ["rulespec"],
     outputs: ["validation results", "test results", "runtime values", "generated code"],
     snippetLabel: "execution commands",
     snippetLanguage: "plain",
-    snippet: `uv run python -m rac.validate all /path/to/repo
-uv run python -m rac.test_runner /path/to/repo -v`,
+    snippet: `uv run python -m rulespec.validate all /path/to/repo
+uv run python -m rulespec.test_runner /path/to/repo -v`,
     icon: <TerminalIcon className="w-5 h-5" />,
   },
   {
@@ -243,7 +243,7 @@ uv run python -m rac.test_runner /path/to/repo -v`,
     stageIds: ["publish"],
     title: "Publish and inspect in Atlas",
     summary:
-      "Atlas is the public-facing inspection layer where source trees, RAC files, encodings, provenance, and agent logs become explorable.",
+      "Atlas is the public-facing inspection layer where source trees, RuleSpec files, encodings, provenance, and agent logs become explorable.",
     details: [
       "Atlas is downstream of the corpus and harness, not the source of truth.",
       "It exposes source documents, rule trees, encoding records, and agent logs in one place.",
@@ -261,7 +261,7 @@ uv run python -m rac.test_runner /path/to/repo -v`,
     snippetLanguage: "plain",
     snippet: `Atlas shows:
 - official source documents
-- RAC encodings
+- RuleSpec encodings
 - encoding_runs metadata
 - per-encoding agent logs`,
     icon: <TargetIcon className="w-5 h-5" />,
@@ -279,7 +279,7 @@ const runtimeStages: RuntimeStage[] = [
     id: "encode",
     label: "Encode",
     detail:
-      "AutoRAC generates `.rac` and `.rac.test` against explicit harness rules and hydrated context.",
+      "AutoRuleSpec generates `.yaml` and `.yaml.test` against explicit harness rules and hydrated context.",
   },
   {
     id: "check",
@@ -291,7 +291,7 @@ const runtimeStages: RuntimeStage[] = [
     id: "run",
     label: "Execute",
     detail:
-      "The RAC engine validates, tests, and executes the accepted encoding.",
+      "The RuleSpec engine validates, tests, and executes the accepted encoding.",
   },
   {
     id: "publish",
@@ -306,22 +306,22 @@ const repoLanes: RepoLane[] = [
     id: "source",
     title: "Source and structure",
     summary:
-      "Document acquisition, converters, and AKN structure live here before any rules encoding starts.",
-    repos: ["atlas", "rac-uk sources", "rac-us sources", "rac-us-co sources"],
+      "Document acquisition, converters, and source XML structure live here before any rules encoding starts.",
+    repos: ["atlas", "rules-uk sources", "rules-us sources", "rules-us-co sources"],
   },
   {
     id: "corpus",
     title: "Rule corpora",
     summary:
-      "Jurisdiction-specific `.rac` files, tests, imports, and provenance manifests.",
-    repos: ["rac-uk", "rac-us", "rac-us-co"],
+      "Jurisdiction-specific `.yaml` files, tests, imports, and provenance manifests.",
+    repos: ["rules-uk", "rules-us", "rules-us-co"],
   },
   {
     id: "tooling",
     title: "Language and harness",
     summary:
-      "The RAC engine executes rules, while AutoRAC builds, benchmarks, and repairs encodings.",
-    repos: ["rac", "autorac"],
+      "The RuleSpec engine executes rules, while AutoRuleSpec builds, benchmarks, and repairs encodings.",
+    repos: ["rulespec", "autorulespec"],
   },
   {
     id: "presentation",
@@ -346,10 +346,10 @@ const journeyArtifacts: JourneyArtifact[] = [
     title: "Official source snapshot",
     summary:
       "The point-in-time legal text comes from the official legislation source for the exact instrument and date.",
-    href: "https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.akn",
-    linkLabel: "Open official AKN source",
+    href: "https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.xml",
+    linkLabel: "Open official source XML source",
     previewLabel: "official source",
-    preview: `https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.akn
+    preview: `https://www.legislation.gov.uk/uksi/2002/1792/2025-03-31/data.xml
 
 Official point-in-time source for regulation 4A(1)(a).`,
   },
@@ -359,10 +359,10 @@ Official point-in-time source for regulation 4A(1)(a).`,
     title: "Repo source snapshot",
     summary:
       "The official source is mirrored into the corpus repo so later encoding and review steps use a stable input.",
-    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/sources/official/uksi/2002/1792/2025-03-31/source.akn",
+    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/sources/official/uksi/2002/1792/2025-03-31/source.xml",
     linkLabel: "Open repo source snapshot",
-    previewLabel: "repo source.akn",
-    preview: `sources/official/uksi/2002/1792/2025-03-31/source.akn
+    previewLabel: "repo source.xml",
+    preview: `sources/official/uksi/2002/1792/2025-03-31/source.xml
 
 Stable checked-in source snapshot used downstream by the stack.`,
   },
@@ -384,15 +384,15 @@ Stable checked-in source snapshot used downstream by the stack.`,
 (a) up to, but not including, the 1st September following the person's 16th birthday; and`,
   },
   {
-    id: "rac-file",
+    id: "rulespec-file",
     stage: "Encode",
-    title: "Promoted RAC rule",
+    title: "Promoted RuleSpec rule",
     summary:
-      "The encoded rule is checked in as a versioned `.rac` file in the jurisdiction corpus.",
-    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.rac",
-    linkLabel: "Open .rac file",
-    previewLabel: "4A(1)(a).rac",
-    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.rac
+      "The encoded rule is checked in as a versioned `.yaml` file in the jurisdiction corpus.",
+    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml",
+    linkLabel: "Open .yaml file",
+    previewLabel: "4A(1)(a).yaml",
+    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.yaml
 
 qualifying_young_person_4A_1_a:
   entity: Person
@@ -404,31 +404,31 @@ qualifying_young_person_4A_1_a:
       and date_is_before_1st_september_following_person_16th_birthday_4A_1_a`,
   },
   {
-    id: "rac-test",
+    id: "rulespec-test",
     stage: "Verify",
     title: "Companion execution test",
     summary:
-      "The rule ships with a checked-in `.rac.test` file so the execution engine can validate behavior deterministically.",
-    href: "https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.rac.test",
-    linkLabel: "Open .rac.test file",
-    previewLabel: "4A(1)(a).rac.test",
-    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.rac.test
+      "The rule ships with a checked-in `.yaml.test` file so the execution engine can validate behavior deterministically.",
+    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml.test",
+    linkLabel: "Open .yaml.test file",
+    previewLabel: "4A(1)(a).yaml.test",
+    preview: `legislation/uksi/2002/1792/regulation/4A/1/a.yaml.test
 
 The companion test file exercises the age and September cut-off behavior against concrete cases.`,
   },
   {
-    id: "autorac-summary",
+    id: "autorulespec-summary",
     stage: "Verify",
-    title: "AutoRAC run summary",
+    title: "AutoRuleSpec run summary",
     summary:
-      "Wave 16 promotion metadata ties this exact rule back to a concrete AutoRAC run, model, commit, and metrics.",
-    href: "/stack-examples/uk-regulation-4A-1-a-autorac-summary.json",
-    linkLabel: "Open AutoRAC summary JSON",
+      "Wave 16 promotion metadata ties this exact rule back to a concrete AutoRuleSpec run, model, commit, and metrics.",
+    href: "/stack-examples/uk-regulation-4A-1-a-autorulespec-summary.json",
+    linkLabel: "Open AutoRuleSpec summary JSON",
     previewLabel: "wave16 summary",
     preview: `{
   "wave": "2026-04-01-wave16",
-  "autorac_commit": "243d37f",
-  "autorac_version": "0.2.64",
+  "autorulespec_commit": "243d37f",
+  "autorulespec_version": "0.2.64",
   "runner": "openai-gpt-5.4",
   "compile_pass": true,
   "ci_pass": true
@@ -486,17 +486,17 @@ export function StackSystemPage() {
             <div className="flex flex-wrap items-start justify-between gap-8">
               <div className="max-w-[720px]">
                 <p className="font-body text-[1rem] text-[var(--color-ink)] leading-relaxed mb-4">
-                  AutoRAC is one layer in a longer chain. A provision moves from
+                  AutoRuleSpec is one layer in a longer chain. A provision moves from
                   official document capture, to structural normalization, to a
-                  reproducible source slice, to a tested RAC file, to harness
+                  reproducible source slice, to a tested RuleSpec file, to harness
                   evaluation, to runtime execution, and finally to Atlas. The
                   system is split this way so authority, transformation,
                   correctness, and presentation can each be inspected on their
                   own terms.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/autorac" className="btn-outline">
-                    Open AutoRAC system map
+                  <Link href="/autorulespec" className="btn-outline">
+                    Open AutoRuleSpec system map
                   </Link>
                   <Link href="/atlas" className="btn-primary">
                     Explore Atlas
@@ -513,7 +513,7 @@ export function StackSystemPage() {
                   <div className="font-mono text-xs text-[var(--color-code-text)] leading-6 overflow-x-auto">
                     Pension Credit regulation 4A(1)(a)
                     <br />
-                    official data.akn -&gt; extracted source slice -&gt; 4A/1/a.rac -&gt; wave16 AutoRAC summary -&gt; Atlas
+                    official data.xml -&gt; extracted source slice -&gt; 4A/1/a.yaml -&gt; wave16 AutoRuleSpec summary -&gt; Atlas
                   </div>
                 </div>
               </div>
@@ -979,7 +979,7 @@ export function StackSystemPage() {
                 post-encoding path, not a second architecture map.
               </p>
             </div>
-            <Link href="/autorac" className="btn-outline">
+            <Link href="/autorulespec" className="btn-outline">
               See the harness-only view
             </Link>
           </div>
@@ -1054,7 +1054,7 @@ export function StackSystemPage() {
                 <div className="flex flex-col gap-4">
                   {[
                     "If source ingestion is sloppy, every later layer inherits bad authority.",
-                    "If AKN structure is weak, you cannot target exact slices or build reliable imports.",
+                    "If source XML structure is weak, you cannot target exact slices or build reliable imports.",
                     "If the corpus layer is weak, the harness has nothing durable to promote into.",
                     "If the harness is weak, you get compileable but semantically unsafe encodings.",
                     "If the execution layer is weak, the rules are not actually usable.",
@@ -1076,8 +1076,8 @@ export function StackSystemPage() {
                   Cross-links
                 </p>
                 <div className="flex flex-col gap-3">
-                  <Link href="/autorac" className="btn-outline">
-                    AutoRAC system map
+                  <Link href="/autorulespec" className="btn-outline">
+                    AutoRuleSpec system map
                   </Link>
                   <Link href="/atlas" className="btn-outline">
                     Atlas encoding views

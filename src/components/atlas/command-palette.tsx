@@ -465,9 +465,9 @@ function Row({
           {row.hit.citation_path}
         </div>
       </div>
-      {row.hit.has_rac && (
+      {row.hit.has_rulespec && (
         <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] border border-[var(--color-accent)] rounded px-1.5 py-0.5 shrink-0">
-          RAC
+          RuleSpec
         </span>
       )}
     </button>

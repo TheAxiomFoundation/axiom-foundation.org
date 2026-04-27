@@ -11,7 +11,7 @@ import type { RuleReference } from "@/lib/supabase";
  *
  * The server-side extractor gives us ``(start_offset, end_offset)``
  * spans computed against the same body string stored in
- * ``akn.rules.body``, so splicing is a single pass: emit the
+ * ``arch.rules.body``, so splicing is a single pass: emit the
  * plain-text chunks between refs, wrap each ref's text in an anchor.
  *
  * Refs whose offsets fall outside the body (stale or mismatched),

@@ -2,22 +2,21 @@
 
 import { isGitHubEncoding } from "@/lib/atlas-utils";
 import type { RuleEncodingData } from "@/lib/supabase";
-import { getRacRepoForJurisdiction } from "@/lib/atlas/repo-map";
+import { getRuleSpecRepoForJurisdiction } from "@/lib/atlas/repo-map";
 import { ExpandableCode } from "./expandable-code";
 
-type CodeLang = "rac" | "catala" | "python" | "yaml" | "xml" | "plain";
+type CodeLang = "rulespec" | "catala" | "python" | "yaml" | "xml" | "plain";
 
 /**
  * Pick the right Prism grammar from a file path. The atlas ships two
- * encoding languages today (RAC and Catala); everything else falls back
+ * encoding languages today (RuleSpec and Catala); everything else falls back
  * to plain text so we don't mis-highlight.
  */
 export function languageFromPath(path: string): CodeLang {
   const lower = path.toLowerCase();
-  if (lower.endsWith(".rac")) return "rac";
   if (lower.includes(".catala")) return "catala";
   if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) return "yaml";
+  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) return "rulespec";
   if (lower.endsWith(".xml")) return "xml";
   return "plain";
 }
@@ -49,14 +48,14 @@ export function EncodingTab({
           Not yet encoded
         </div>
         <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
-          This rule has not been encoded into RAC format yet.
+          This rule has not been encoded into RuleSpec format yet.
         </p>
       </div>
     );
   }
 
   const isGitHub = isGitHubEncoding(encoding);
-  const repo = getRacRepoForJurisdiction(jurisdiction);
+  const repo = getRuleSpecRepoForJurisdiction(jurisdiction);
   const gitHubUrl = repo
     ? `https://github.com/TheAxiomFoundation/${repo}/blob/main/${encoding.file_path}`
     : null;
@@ -97,7 +96,7 @@ export function EncodingTab({
         )}
       </div>
 
-      {/* Scores — skip for GitHub sources (no AutoRAC metadata) */}
+      {/* Scores — skip for GitHub sources (no AutoRuleSpec metadata) */}
       {scores && !isGitHub && (
         <div>
           <div className="eyebrow mb-3">Scores</div>
@@ -131,12 +130,12 @@ export function EncodingTab({
         </div>
       )}
 
-      {/* RAC content */}
-      {encoding.rac_content && (
+      {/* RuleSpec content */}
+      {encoding.rulespec_content && (
         <div>
-          <div className="eyebrow mb-3">RAC encoding</div>
+          <div className="eyebrow mb-3">RuleSpec encoding</div>
           <ExpandableCode
-            code={encoding.rac_content}
+            code={encoding.rulespec_content}
             language={language}
             label={encoding.file_path}
           />

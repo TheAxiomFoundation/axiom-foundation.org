@@ -1,13 +1,13 @@
 /**
- * Single source of truth for RAC code examples used across the site.
+ * Single source of truth for RuleSpec code examples used across the site.
  *
- * Update these when the RAC syntax changes — the website, spec section,
+ * Update these when the RuleSpec syntax changes — the website, spec section,
  * and hero animation all pull from here.
  */
 
 // -- Hero animation snippet ---------------------------------------------------
 
-export const heroRacCode = `ctc_amount_per_child:
+export const heroRuleSpecCode = `ctc_amount_per_child:
   from 2018-01-01: 2000
 
 child_tax_credit:
@@ -21,7 +21,7 @@ child_tax_credit:
 
 export type ExampleType = 'niit' | 'aca-ptc' | 'std-ded' | 'ny-eitc'
 
-export const racExamples: Record<ExampleType, string> = {
+export const rulespecExamples: Record<ExampleType, string> = {
   'niit': `# 26 USC 1411(a) - Net Investment Income Tax
 
 # (a) In general.— There is hereby imposed a tax equal
@@ -119,7 +119,7 @@ ny_eitc:
 
 // -- Spec section content -----------------------------------------------------
 
-export const specContent = `# RAC file specification
+export const specContent = `# RuleSpec file specification
 
 Self-contained statute encoding format for tax and benefit rules.
 Parsed by a recursive descent parser into a typed AST.
@@ -127,7 +127,7 @@ Parsed by a recursive descent parser into a typed AST.
 ## File Structure
 
 \`\`\`
-# path/to/section.rac - Title
+# path/to/section.yaml - Title
 
 # Statute text in comments
 # (a) In general.— ...
@@ -241,7 +241,7 @@ amend gov/tax/personal_allowance:
 
 Filepath = legal citation:
 \`\`\`
-statute/7/2017/a.rac      -> 7 USC 2017(a)
-statute/26/24/d/1/B.rac   -> 26 USC 24(d)(1)(B)
-statute/26/32/b.rac       -> 26 USC 32(b)
+statute/7/2017/a.yaml      -> 7 USC 2017(a)
+statute/26/24/d/1/B.yaml   -> 26 USC 24(d)(1)(B)
+statute/26/32/b.yaml       -> 26 USC 32(b)
 \`\`\``

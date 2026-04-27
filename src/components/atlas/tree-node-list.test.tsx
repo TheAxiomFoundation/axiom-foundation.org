@@ -138,8 +138,8 @@ describe("TreeNodeList", () => {
     expect(screen.getByText("\u00B7")).toBeInTheDocument();
   });
 
-  it("shows RAC badge for nodes with hasRac", () => {
-    const nodes = [makeNode({ hasRac: true })];
+  it("shows RuleSpec badge for nodes with hasRuleSpec", () => {
+    const nodes = [makeNode({ hasRuleSpec: true })];
     render(
       <TreeNodeList
         nodes={nodes}
@@ -148,11 +148,11 @@ describe("TreeNodeList", () => {
         error={null}
       />
     );
-    expect(screen.getByText("RAC")).toBeInTheDocument();
+    expect(screen.getByText("RuleSpec")).toBeInTheDocument();
   });
 
-  it("does not show RAC badge for nodes without hasRac", () => {
-    const nodes = [makeNode({ hasRac: false })];
+  it("does not show RuleSpec badge for nodes without hasRuleSpec", () => {
+    const nodes = [makeNode({ hasRuleSpec: false })];
     render(
       <TreeNodeList
         nodes={nodes}
@@ -161,7 +161,7 @@ describe("TreeNodeList", () => {
         error={null}
       />
     );
-    expect(screen.queryByText("RAC")).not.toBeInTheDocument();
+    expect(screen.queryByText("RuleSpec")).not.toBeInTheDocument();
   });
 
   it("handles keyboard navigation with Enter", () => {

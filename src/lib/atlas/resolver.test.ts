@@ -4,7 +4,7 @@ import { citationPathPrefixes } from "./resolver";
 const { mockIn } = vi.hoisted(() => ({ mockIn: vi.fn() }));
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: {
+  supabaseArch: {
     from: () => ({
       select: () => ({
         in: mockIn,
@@ -14,7 +14,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // Import after mock registration so ``resolveCitationPath`` picks up
-// the mocked ``supabaseAkn``.
+// the mocked ``supabaseArch``.
 import { resolveCitationPath } from "./resolver";
 
 describe("citationPathPrefixes", () => {

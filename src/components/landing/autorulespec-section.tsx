@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { ArrowRightIcon, CheckIcon, XIcon } from "@/components/icons";
 import CodeBlock from "@/components/code-block";
-import { heroRacCode } from "@/lib/rac-examples";
+import { heroRuleSpecCode } from "@/lib/rulespec-examples";
 
-function AutoRACTransform() {
+function AutoRuleSpecTransform() {
   const [phase, setPhase] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -70,11 +70,11 @@ of the threshold amount.`;
               : "text-[var(--color-ink-muted)]"
           }`}
         >
-          AutoRAC
+          AutoRuleSpec
         </span>
       </div>
 
-      {/* RAC panel */}
+      {/* RuleSpec panel */}
       <div
         className={`flex-[0_0_380px] max-md:flex-[1_1_100%] max-md:max-w-full bg-[var(--color-code-bg)] border rounded-md overflow-hidden transition-all duration-500 flex flex-col ${
           phase === 2
@@ -85,12 +85,12 @@ of the threshold amount.`;
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2a2826]">
           <span className="w-2 h-2 bg-[var(--color-accent)] rounded-full" />
           <span className="font-mono text-xs text-[var(--color-code-text)]">
-            statute/26/1411/a.rac
+            statute/26/1411/a.yaml
           </span>
         </div>
         <CodeBlock
-          code={heroRacCode}
-          language="rac"
+          code={heroRuleSpecCode}
+          language="rulespec"
           className="p-6 font-mono text-[0.85rem] leading-relaxed whitespace-pre-wrap m-0 flex-1"
         />
       </div>
@@ -103,7 +103,7 @@ interface TerminalLine {
   delay: number;
 }
 
-function AutoRACTerminal() {
+function AutoRuleSpecTerminal() {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -125,7 +125,7 @@ function AutoRACTerminal() {
         <>
           <span className="text-[var(--color-success)]">$ </span>
           <span className="text-[var(--color-ink)] font-medium">
-            autorac encode &quot;26 USC 32&quot;
+            autorulespec encode &quot;26 USC 32&quot;
           </span>
         </>
       ),
@@ -296,7 +296,7 @@ function AutoRACTerminal() {
       content: (
         <>
           <span className="font-semibold text-[var(--color-success)]">[done]</span>
-          <span className="text-[var(--color-success)]"> 14 .rac files written to </span>
+          <span className="text-[var(--color-success)]"> 14 .yaml files written to </span>
           <span className="text-[var(--color-ink)] font-medium">statute/26/32/</span>
         </>
       ),
@@ -311,7 +311,7 @@ function AutoRACTerminal() {
           <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
           <span className="font-mono text-[0.7rem] text-[rgba(255,255,255,0.3)] ml-2">
-            autorac — zsh
+            autorulespec — zsh
           </span>
         </div>
         <div className="px-5 py-4 font-mono text-[0.82rem] leading-[1.8] overflow-x-auto min-h-[320px]">
@@ -337,22 +337,22 @@ function AutoRACTerminal() {
   );
 }
 
-export function AutoracSection() {
+export function AutoRuleSpecSection() {
   return (
-    <section id="autorac" className="relative z-1 py-32 px-8">
+    <section id="autorulespec" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <h2 className="heading-section text-[var(--color-ink)] mb-6">
-            AutoRAC
+            AutoRuleSpec
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
-            Point it at a statute. Get validated RAC.
+            Point it at a statute. Get validated RuleSpec.
           </p>
         </div>
 
-        <AutoRACTransform />
+        <AutoRuleSpecTransform />
 
-        <AutoRACTerminal />
+        <AutoRuleSpecTerminal />
 
         {/* 3-tier validation pipeline */}
         <div className="mt-12 mb-12">
@@ -372,7 +372,7 @@ export function AutoracSection() {
                 </h4>
                 <p className="font-body text-[0.9rem] text-[var(--color-ink-secondary)] mb-2">
                   <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[var(--color-accent-light)] rounded text-[var(--color-accent)]">
-                    rac pytest
+                    rulespec pytest
                   </code>{" "}
                   &mdash; instant, free
                 </p>
@@ -433,7 +433,7 @@ export function AutoracSection() {
                   LLM reviewers
                 </h4>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {["RAC Reviewer", "Formula Reviewer", "Parameter Reviewer", "Integration Reviewer"].map((tag) => (
+                  {["RuleSpec Reviewer", "Formula Reviewer", "Parameter Reviewer", "Integration Reviewer"].map((tag) => (
                     <span
                       key={tag}
                       className="px-2 py-1 bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded font-mono text-[0.75rem] text-[var(--color-code-text)]"
@@ -452,7 +452,7 @@ export function AutoracSection() {
 
         <div className="flex justify-center gap-8 flex-wrap max-md:flex-col max-md:items-center max-md:gap-3">
           {[
-            "14 subsections \u2192 14 parallel agents \u2192 14 .rac files",
+            "14 subsections \u2192 14 parallel agents \u2192 14 .yaml files",
             "Each agent sees only its subsection \u2014 no wasted context",
             "Validated against real-world calculators, not just syntax",
             "Every encoding decision logged for audit",
@@ -468,8 +468,8 @@ export function AutoracSection() {
         </div>
 
         <div className="mt-12 flex flex-wrap justify-center gap-3">
-          <Link href="/autorac" className="btn-outline">
-            Open the AutoRAC system map
+          <Link href="/autorulespec" className="btn-outline">
+            Open the AutoRuleSpec system map
             <ArrowRightIcon className="w-5 h-5" />
           </Link>
           <Link href="/stack" className="btn-outline">

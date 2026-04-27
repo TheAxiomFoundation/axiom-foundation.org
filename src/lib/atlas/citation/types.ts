@@ -3,9 +3,9 @@
  *
  * The parser's job is to turn an input string — typed by a user into a
  * command palette or a search box — into a canonical
- * ``citation_path`` that can be looked up in ``akn.rules``. The
+ * ``citation_path`` that can be looked up in ``arch.rules``. The
  * citation_path is the *only* address format Atlas uses internally;
- * every URL, every ``.rac`` file, every encoding record keys off it.
+ * every URL, every ``.yaml`` file, every encoding record keys off it.
  *
  * ``ParsedCitation`` captures the parser's output. ``displayLabel`` is
  * the human-facing short form (e.g. ``26 U.S.C. § 32(b)(1)``); the

@@ -4,7 +4,7 @@ import { transformRuleToViewerDoc } from "./atlas-utils";
 import type { Rule } from "@/lib/supabase";
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: { from: vi.fn() },
+  supabaseArch: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
 
@@ -22,8 +22,8 @@ const mockRule = (overrides: Partial<Rule> = {}): Rule => ({
   source_url: null,
   source_path: null,
   citation_path: null,
-  rac_path: null,
-  has_rac: false,
+  rulespec_path: null,
+  has_rulespec: false,
   created_at: "",
   updated_at: "",
   ...overrides,

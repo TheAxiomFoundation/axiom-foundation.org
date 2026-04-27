@@ -8,8 +8,8 @@
  * types "SNAP" into the palette gets the anchors, each one a
  * one-click jump to the corresponding citation_path.
  *
- * The shape mirrors the future ``akn.programs`` /
- * ``akn.program_anchors`` Supabase tables exactly so swapping the seed
+ * The shape mirrors the future ``arch.programs`` /
+ * ``arch.program_anchors`` Supabase tables exactly so swapping the seed
  * file for a live query is a one-line change when the tables land.
  */
 
@@ -26,7 +26,7 @@ export type AnchorRole =
 
 export interface ProgramAnchor {
   role: AnchorRole;
-  /** citation_path into ``akn.rules``; resolver handles the miss case. */
+  /** citation_path into ``arch.rules``; resolver handles the miss case. */
   citationPath: string;
   /** Short human label for the palette row (e.g. "Standard deduction"). */
   label: string;

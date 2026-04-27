@@ -25,12 +25,12 @@ describe('AboutPage', () => {
     expect(screen.getByText(/machine-readable, verifiable/i)).toBeInTheDocument()
   })
 
-  it('renders the what we do section with Atlas, RAC, and AutoRAC cards', () => {
+  it('renders the what we do section with Atlas, RuleSpec, and AutoRuleSpec cards', () => {
     render(<AboutPage />)
     expect(screen.getByRole('heading', { name: /what we do/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Atlas' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'RAC' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'AutoRAC' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'RuleSpec' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'AutoRuleSpec' })).toBeInTheDocument()
   })
 
   it('renders the team section with founder info', () => {

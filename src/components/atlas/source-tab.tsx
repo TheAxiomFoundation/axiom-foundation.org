@@ -186,13 +186,13 @@ export function SourceTab({
         </div>
       )}
 
-      {document.archPath && (
-        <div className="mt-10 pt-4 border-t border-[var(--color-rule)]">
+      {document.sourcePath && (
+        <div className="mt-8 pt-4 border-t border-[var(--color-rule)]">
           <span className="font-mono text-xs text-[var(--color-ink-muted)]">
             Source:{" "}
           </span>
           <code className="font-mono text-xs text-[var(--color-accent)] break-all">
-            {document.archPath}
+            {document.sourcePath}
           </code>
         </div>
       )}

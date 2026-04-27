@@ -48,8 +48,8 @@ function r(citationPath: string, id = citationPath): Rule {
     source_url: null,
     source_path: null,
     citation_path: citationPath,
-    rac_path: null,
-    has_rac: false,
+    rulespec_path: null,
+    has_rulespec: false,
     created_at: "",
     updated_at: "",
   };

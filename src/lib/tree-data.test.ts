@@ -10,10 +10,10 @@ import {
   JURISDICTIONS,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
-import { supabaseAkn } from "@/lib/supabase";
+import { supabaseArch } from "@/lib/supabase";
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: { from: vi.fn() },
+  supabaseArch: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
 
@@ -314,8 +314,8 @@ const mockRule = (overrides: Partial<Rule> = {}): Rule => ({
   source_url: null,
   source_path: null,
   citation_path: null,
-  rac_path: null,
-  has_rac: false,
+  rulespec_path: null,
+  has_rulespec: false,
   created_at: "",
   updated_at: "",
   ...overrides,
@@ -357,7 +357,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -375,7 +375,7 @@ describe("resolveDisplayContext", () => {
     const mockSelect = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({ single: mockSingle }),
     });
-    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -404,7 +404,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -427,7 +427,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -450,7 +450,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseAkn.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 

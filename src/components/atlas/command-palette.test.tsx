@@ -109,7 +109,7 @@ describe("CommandPalette", () => {
         citation_path: "us/statute/26/1",
         heading: "Tax imposed",
         snippet: "hits",
-        has_rac: true,
+        has_rulespec: true,
         rank: 1,
       },
     ]);

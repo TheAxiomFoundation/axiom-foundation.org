@@ -1,7 +1,7 @@
-import { supabaseAkn, type Rule } from "@/lib/supabase";
+import { supabaseArch, type Rule } from "@/lib/supabase";
 
 /**
- * Outcome of resolving a citation_path against ``akn.rules``.
+ * Outcome of resolving a citation_path against ``arch.rules``.
  *
  * - ``exact``: the full path exists as an atomic rule.
  * - ``ancestor``: the full path does not exist, but some prefix does;
@@ -80,7 +80,7 @@ export async function resolveCitationPath(
     return { match: "none", rule: null, missingTail: [], citationPath };
   }
 
-  const { data, error } = await supabaseAkn
+  const { data, error } = await supabaseArch
     .from("rules")
     .select("*")
     .in("citation_path", prefixes);
@@ -125,7 +125,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
   if (!rule.parent_id) {
     // Top-level rule — siblings are other top-level rules in the
     // same jurisdiction + doc_type + level 0.
-    const { data } = await supabaseAkn
+    const { data } = await supabaseArch
       .from("rules")
       .select("*")
       .eq("jurisdiction", rule.jurisdiction)
@@ -134,7 +134,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
       .order("ordinal", { ascending: true, nullsFirst: false });
     return (data as Rule[] | null) ?? [];
   }
-  const { data } = await supabaseAkn
+  const { data } = await supabaseArch
     .from("rules")
     .select("*")
     .eq("parent_id", rule.parent_id)

@@ -115,7 +115,7 @@ function RuleTreeView({
       trackAtlasEvent("atlas_rule_viewed", {
         citation_path: leafRule.citation_path || leafRule.id,
         jurisdiction: leafRule.jurisdiction,
-        has_rac: leafRule.has_rac,
+        has_rulespec: leafRule.has_rulespec,
       });
     } else {
       setDisplayCtx(null);
@@ -354,7 +354,7 @@ export function AtlasBrowser({ segments }: { segments: string[] }) {
             Atlas
           </h1>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto">
-            Explore encoded law. Source documents, RAC encodings, and
+            Explore encoded law. Source documents, RuleSpec encodings, and
             validation results across jurisdictions.
           </p>
         </div>

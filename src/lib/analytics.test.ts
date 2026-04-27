@@ -22,7 +22,7 @@ describe("trackAtlasEvent", () => {
     trackAtlasEvent("atlas_rule_viewed", {
       citation_path: "us/statute/26/1",
       jurisdiction: "us",
-      has_rac: false,
+      has_rulespec: false,
     });
     expect(mockCapture).not.toHaveBeenCalled();
   });

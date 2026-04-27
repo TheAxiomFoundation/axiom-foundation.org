@@ -10,7 +10,7 @@ export function GroundTruthSection() {
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
             AI systems answering questions about policy rules need ground truth.
-            RAC encodings provide verifiable correctness signals for training.
+            RuleSpec encodings provide verifiable correctness signals for training.
           </p>
         </div>
 
@@ -24,7 +24,7 @@ export function GroundTruthSection() {
             {
               icon: <CpuIcon className="w-6 h-6" />,
               title: "Verifier",
-              desc: "LLM generates answer, RAC executor checks correctness, binary reward signal. Real-time RLVR for policy rule accuracy.",
+              desc: "LLM generates answer, RuleSpec executor checks correctness, binary reward signal. Real-time RLVR for policy rule accuracy.",
             },
             {
               icon: <CheckIcon size={16} className="w-4 h-4" />,

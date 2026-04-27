@@ -1,11 +1,11 @@
 import type { Rule, RuleEncodingData } from "@/lib/supabase";
 
-/** True when the encoding was fetched from a GitHub rac-* repo (not from the encoding DB). */
+/** True when the encoding was fetched from a GitHub rulespec-* repo (not from the encoding DB). */
 export function isGitHubEncoding(encoding: RuleEncodingData | null): boolean {
   return !!encoding?.encoding_run_id.startsWith("github:");
 }
 
-/** True when the encoding comes from the encoding DB (has lab/AutoRAC metadata). */
+/** True when the encoding comes from the encoding DB (has lab/AutoRuleSpec metadata). */
 export function isLabEncoding(encoding: RuleEncodingData | null): boolean {
   return !!encoding && !encoding.encoding_run_id.startsWith("github:");
 }
@@ -14,9 +14,9 @@ export interface ViewerDocument {
   citation: string;
   title: string;
   subsections: Array<{ id: string; text: string }>;
-  hasRac: boolean;
+  hasRuleSpec: boolean;
   jurisdiction: string;
-  archPath: string | null;
+  sourcePath: string | null;
   contextText?: string;
   highlightedSubsection?: string;
   /**
@@ -173,9 +173,9 @@ export function transformRuleToViewerDoc(
     citation: getRuleCitation(rule),
     title: rule.heading || "Untitled",
     subsections,
-    hasRac: rule.has_rac,
+    hasRuleSpec: rule.has_rulespec,
     jurisdiction: rule.jurisdiction,
-    archPath: rule.source_path,
+    sourcePath: rule.source_path,
     ...(options?.contextText && { contextText: options.contextText }),
     ...(options?.highlightId && { highlightedSubsection: options.highlightId }),
     ...(isLeafWithBody && { body: rule.body! }),

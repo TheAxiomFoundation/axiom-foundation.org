@@ -234,7 +234,7 @@ export function AtlasSearch({ jurisdiction }: AtlasSearchProps) {
                     <div className="font-mono text-xs text-[var(--color-accent)]">
                       {formatCitationLabel(hit.citation_path)}
                     </div>
-                    {hit.has_rac && (
+                    {hit.has_rulespec && (
                       <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
                         Encoded
                       </span>

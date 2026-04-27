@@ -25,7 +25,7 @@ export function initPostHog() {
 // ---- Custom atlas events ----
 
 export type AtlasEvent =
-  | { event: "atlas_rule_viewed"; properties: { citation_path: string; jurisdiction: string; has_rac: boolean } }
+  | { event: "atlas_rule_viewed"; properties: { citation_path: string; jurisdiction: string; has_rulespec: boolean } }
   | { event: "atlas_encoding_viewed"; properties: { citation_path: string; source: "github" | "lab" } }
   | { event: "atlas_jurisdiction_selected"; properties: { jurisdiction: string } }
   | { event: "atlas_search"; properties: { query_length: number; doc_type: "all" | "statute" | "regulation"; result_count: number } }

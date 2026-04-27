@@ -3,23 +3,23 @@
 import { useState, useEffect } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import CodeBlock from "@/components/code-block";
-import { heroRacCode } from "@/lib/rac-examples";
+import { heroRuleSpecCode } from "@/lib/rulespec-examples";
 
 function HeroTransform() {
-  const [showRac, setShowRac] = useState(false);
+  const [showRuleSpec, setShowRuleSpec] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (isPaused) return;
     const interval = setInterval(() => {
-      setShowRac((v) => !v);
+      setShowRuleSpec((v) => !v);
     }, 4000);
     return () => clearInterval(interval);
   }, [isPaused]);
 
   const handleClick = () => {
     setIsPaused(true);
-    setShowRac((v) => !v);
+    setShowRuleSpec((v) => !v);
   };
 
   const statuteText = `(a) Allowance of credit.\u2014 There shall be allowed as a credit against the tax imposed by this chapter for the taxable year an amount equal to the sum of $2,000 multiplied by the number of qualifying children of the taxpayer.`;
@@ -35,7 +35,7 @@ function HeroTransform() {
         <div className="gradient-fill flex border-b border-[#2a2826]">
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm transition-colors duration-300 ${
-              !showRac
+              !showRuleSpec
                 ? "text-white border-b-2 border-white -mb-px"
                 : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
@@ -43,24 +43,24 @@ function HeroTransform() {
             onClick={(e) => {
               e.stopPropagation();
               setIsPaused(true);
-              setShowRac(false);
+              setShowRuleSpec(false);
             }}
           >
             26 USC &sect; 24(a)
           </button>
           <button
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-mono text-xs transition-colors duration-300 ${
-              showRac
+              showRuleSpec
                 ? "text-white border-b-2 border-white -mb-px"
                 : "text-[rgba(255,255,255,0.5)] hover:text-[rgba(255,255,255,0.8)]"
             }`}
             onClick={(e) => {
               e.stopPropagation();
               setIsPaused(true);
-              setShowRac(true);
+              setShowRuleSpec(true);
             }}
           >
-            statute/26/24/a.rac
+            statute/26/24/a.yaml
           </button>
         </div>
 
@@ -69,22 +69,22 @@ function HeroTransform() {
           {/* Statute view — serif font on gradient bg */}
           <div
             className={`gradient-fill absolute inset-0 p-6 text-[0.95rem] text-[var(--color-code-text)] leading-[1.8] transition-opacity duration-2000 ${
-              !showRac ? "opacity-100" : "opacity-0 pointer-events-none"
+              !showRuleSpec ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             style={{ fontFamily: "var(--f-serif)" }}
           >
             {statuteText}
           </div>
 
-          {/* RAC view — solid black bg */}
+          {/* RuleSpec view — solid black bg */}
           <div
             className={`absolute inset-0 bg-black transition-opacity duration-2000 ${
-              showRac ? "opacity-100" : "opacity-0 pointer-events-none"
+              showRuleSpec ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
             <CodeBlock
-              code={heroRacCode}
-              language="rac"
+              code={heroRuleSpecCode}
+              language="rulespec"
               className="p-6 font-mono text-[0.85rem] leading-relaxed whitespace-pre-wrap m-0 h-full"
             />
           </div>

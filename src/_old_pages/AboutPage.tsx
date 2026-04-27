@@ -38,7 +38,7 @@ export default function AboutPage() {
             </div>
 
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>RAC</h3>
+              <h3 className={styles.cardTitle}>RuleSpec</h3>
               <p className={styles.cardText}>
                 Rules as Code DSL for encoding statutes with citations, temporal versioning, and tests.
                 Purpose-built for legal encoding.
@@ -46,7 +46,7 @@ export default function AboutPage() {
             </div>
 
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>AutoRAC</h3>
+              <h3 className={styles.cardTitle}>AutoRuleSpec</h3>
               <p className={styles.cardText}>
                 AI-powered encoding pipeline with 3-tier validation. Automated statute encoding with
                 CI testing, oracle validation, and LLM review.

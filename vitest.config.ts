@@ -34,7 +34,7 @@ export default defineConfig({
         'src/_old_pages/**',
         'src/components/posthog-provider.tsx', // client-only PostHog init
         'src/components/gradient-sync.tsx', // client-only DOM effect
-        'src/components/landing/autorac-section.tsx', // client-only animated components
+        'src/components/landing/autorulespec-section.tsx', // client-only animated components
         'src/components/landing/hero.tsx', // client-only animated component
       ],
       thresholds: {

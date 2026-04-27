@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../lib/prism-rac/light.css";
+@import "../lib/prism-rulespec/light.css";
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 

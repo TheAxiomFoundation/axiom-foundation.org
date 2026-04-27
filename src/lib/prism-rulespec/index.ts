@@ -1,7 +1,7 @@
 import Prism from 'prismjs'
 
-// ─── RAC Grammar ──────────────────────────────────────────────────────────────
-// RAC (Rules as Code) is a YAML-structured DSL with Python-like formula
+// ─── RuleSpec Grammar ──────────────────────────────────────────────────────────────
+// RuleSpec (Rules as Code) is a YAML-structured DSL with Python-like formula
 // expressions used to encode tax and benefit statutes.
 
 const sectionKeywords = [
@@ -71,7 +71,7 @@ const typeKeywords = [
   'Money', 'Rate', 'Boolean', 'Integer', 'String', 'USD',
 ]
 
-const racGrammar: Prism.Grammar = {
+const rulespecGrammar: Prism.Grammar = {
   comment: {
     pattern: /#.*|\/\/.*/,
     greedy: true,
@@ -158,7 +158,7 @@ const racGrammar: Prism.Grammar = {
   punctuation: /[{}[\](),:\.]/,
 }
 
-Prism.languages.rac = racGrammar
+Prism.languages.rulespec = rulespecGrammar
 
-export { racGrammar }
-export default racGrammar
+export { rulespecGrammar }
+export default rulespecGrammar

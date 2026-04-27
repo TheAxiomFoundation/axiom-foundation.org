@@ -1,4 +1,4 @@
-import { supabaseAkn, type Rule } from "@/lib/supabase";
+import { supabaseArch, type Rule } from "@/lib/supabase";
 import { citationPathPrefixes } from "./resolver";
 
 /**
@@ -52,7 +52,7 @@ export async function getAtlasRuleMetadata(
       rule: null,
       title: "Atlas — Axiom Foundation",
       description:
-        "Browse every atomic rule in the encoded legal code: source text, RAC encoding, and the citation graph that ties them together.",
+        "Browse every atomic rule in the encoded legal code: source text, RuleSpec encoding, and the citation graph that ties them together.",
       canonicalUrl,
       citationPath: "",
       jurisdiction: null,
@@ -61,7 +61,7 @@ export async function getAtlasRuleMetadata(
   }
 
   const prefixes = citationPathPrefixes(citationPath);
-  const { data } = await supabaseAkn
+  const { data } = await supabaseArch
     .from("rules")
     .select("*")
     .in("citation_path", prefixes);

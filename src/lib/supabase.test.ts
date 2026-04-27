@@ -402,7 +402,7 @@ describe('supabase lib', () => {
 
   describe('getRuleEncoding', () => {
     it('returns encoding data when rule has citation_path and encoding exists', async () => {
-      // getRuleEncoding calls supabaseAkn.from('rules') then supabase.from('encoding_runs')
+      // getRuleEncoding calls supabaseArch.from('rules') then supabase.from('encoding_runs')
       // Both clients use the same mockFrom since createClient is mocked once
       mockFrom.mockImplementation((table: string) => {
         if (table === 'rules') {
@@ -410,7 +410,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -423,9 +423,9 @@ describe('supabase lib', () => {
             id: 'enc-1',
             citation: '26 USC 1',
             session_id: 'sess-1',
-            file_path: 'statute/26/1.rac',
-            rac_content: 'rule { ... }',
-            final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+            file_path: 'statute/26/1.yaml',
+            rulespec_content: 'rule { ... }',
+            final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
           }],
           error: null,
         })
@@ -436,9 +436,9 @@ describe('supabase lib', () => {
         encoding_run_id: 'enc-1',
         citation: '26 USC 1',
         session_id: 'sess-1',
-        file_path: 'statute/26/1.rac',
-        rac_content: 'rule { ... }',
-        final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+        file_path: 'statute/26/1.yaml',
+        rulespec_content: 'rule { ... }',
+        final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
         iterations: null,
         total_duration_ms: null,
         agent_type: null,
@@ -447,7 +447,7 @@ describe('supabase lib', () => {
         has_issues: null,
         note: null,
         timestamp: null,
-        autorac_version: null,
+        autorulespec_version: null,
       })
     })
 
@@ -458,7 +458,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/32/b/1', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/32/b/1', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -468,8 +468,8 @@ describe('supabase lib', () => {
         // Return both a parent and child match — should pick child (more specific)
         return mockEncodingRunsChain({
           data: [
-            { id: 'enc-parent', citation: '26 USC 32/b', session_id: null, file_path: 'statute/26/32/b.rac', rac_content: 'parent', final_scores: null },
-            { id: 'enc-child', citation: '26 USC 32/b/1', session_id: null, file_path: 'statute/26/32/b/1.rac', rac_content: 'child', final_scores: null },
+            { id: 'enc-parent', citation: '26 USC 32/b', session_id: null, file_path: 'statute/26/32/b.yaml', rulespec_content: 'parent', final_scores: null },
+            { id: 'enc-child', citation: '26 USC 32/b/1', session_id: null, file_path: 'statute/26/32/b/1.yaml', rulespec_content: 'child', final_scores: null },
           ],
           error: null,
         })
@@ -477,7 +477,7 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-1')
       expect(result?.encoding_run_id).toBe('enc-child')
-      expect(result?.file_path).toBe('statute/26/32/b/1.rac')
+      expect(result?.file_path).toBe('statute/26/32/b/1.yaml')
     })
 
     it('checks duplicated terminal section file paths for US section roots', async () => {
@@ -487,7 +487,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/24', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/24', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -499,8 +499,8 @@ describe('supabase lib', () => {
             id: 'enc-root',
             citation: '26 USC 24',
             session_id: null,
-            file_path: 'statute/26/24/24.rac',
-            rac_content: 'root section encoding',
+            file_path: 'statute/26/24/24.yaml',
+            rulespec_content: 'root section encoding',
             final_scores: null,
           }],
           error: null,
@@ -509,7 +509,7 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-root')
       expect(result?.encoding_run_id).toBe('enc-root')
-      expect(result?.file_path).toBe('statute/26/24/24.rac')
+      expect(result?.file_path).toBe('statute/26/24/24.yaml')
     })
 
     it('returns lab metadata fields from encoding_runs', async () => {
@@ -519,7 +519,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -531,12 +531,12 @@ describe('supabase lib', () => {
             id: 'enc-1',
             citation: '26 USC 1',
             session_id: 'sess-1',
-            file_path: 'statute/26/1.rac',
-            rac_content: 'rule { ... }',
+            file_path: 'statute/26/1.yaml',
+            rulespec_content: 'rule { ... }',
             final_scores: null,
             iterations: [{ attempt: 1, success: true, duration_ms: 5000, errors: [] }],
             total_duration_ms: 5000,
-            agent_type: 'autorac-v2',
+            agent_type: 'autorulespec-v2',
             agent_model: 'claude-sonnet-4',
             data_source: 'reviewer_agent',
             has_issues: false,
@@ -548,7 +548,7 @@ describe('supabase lib', () => {
       })
 
       const result = await getRuleEncoding('rule-1')
-      expect(result?.agent_type).toBe('autorac-v2')
+      expect(result?.agent_type).toBe('autorulespec-v2')
       expect(result?.agent_model).toBe('claude-sonnet-4')
       expect(result?.total_duration_ms).toBe(5000)
       expect(result?.data_source).toBe('reviewer_agent')
@@ -558,14 +558,14 @@ describe('supabase lib', () => {
       expect(result?.timestamp).toBe('2025-06-15T12:00:00Z')
     })
 
-    it('uses rac_path when citation_path is null', async () => {
+    it('uses rulespec_path when citation_path is null', async () => {
       mockFrom.mockImplementation((table: string) => {
         if (table === 'rules') {
           return {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: null, jurisdiction: 'uk', rac_path: 'legislation/uksi/2013/376/regulation/36/3/childcare-one-child.rac' },
+                  data: { citation_path: null, jurisdiction: 'uk', rulespec_path: 'legislation/uksi/2013/376/regulation/36/3/childcare-one-child.yaml' },
                   error: null,
                 }),
               }),
@@ -577,8 +577,8 @@ describe('supabase lib', () => {
             id: 'enc-uk-1',
             citation: 'uksi-2013-376 regulation 36(3) childcare one child',
             session_id: null,
-            file_path: 'legislation/uksi/2013/376/regulation/36/3/childcare-one-child.rac',
-            rac_content: 'uk rule',
+            file_path: 'legislation/uksi/2013/376/regulation/36/3/childcare-one-child.yaml',
+            rulespec_content: 'uk rule',
             final_scores: null,
           }],
           error: null,
@@ -587,15 +587,15 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-uk')
       expect(result?.encoding_run_id).toBe('enc-uk-1')
-      expect(result?.file_path).toBe('legislation/uksi/2013/376/regulation/36/3/childcare-one-child.rac')
+      expect(result?.file_path).toBe('legislation/uksi/2013/376/regulation/36/3/childcare-one-child.yaml')
     })
 
-    it('returns null when rule has neither citation_path nor rac_path', async () => {
+    it('returns null when rule has neither citation_path nor rulespec_path', async () => {
       mockFrom.mockReturnValue({
         select: () => ({
           eq: () => ({
             single: () => Promise.resolve({
-              data: { citation_path: null, jurisdiction: 'us', rac_path: null },
+              data: { citation_path: null, jurisdiction: 'us', rulespec_path: null },
               error: null,
             }),
           }),
@@ -629,7 +629,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/99', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/99', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -650,7 +650,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rac_path: null },
+                  data: { citation_path: 'us/statute/26/1', jurisdiction: 'us', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -664,7 +664,7 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('falls back to rac-us-co GitHub paths for Colorado rules', async () => {
+    it('falls back to rules-us-co GitHub paths for Colorado rules', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         text: async () => 'colorado rule',
@@ -677,7 +677,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us-co/statute/crs/26-2-703/2.5', jurisdiction: 'us-co', rac_path: null },
+                  data: { citation_path: 'us-co/statute/crs/26-2-703/2.5', jurisdiction: 'us-co', rulespec_path: null },
                   error: null,
                 }),
               }),
@@ -688,9 +688,9 @@ describe('supabase lib', () => {
       })
 
       const result = await getRuleEncoding('rule-us-co')
-      expect(result?.encoding_run_id).toBe('github:statute/crs/26-2-703/2.5.rac')
+      expect(result?.encoding_run_id).toBe('github:statute/crs/26-2-703/2.5.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rac-us-co/main/statute/crs/26-2-703/2.5.rac',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us-co/main/statute/crs/26-2-703/2.5.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()
@@ -713,7 +713,7 @@ describe('supabase lib', () => {
           citation_path: 'us/regulation/7/273/9',
           heading: 'Income and deductions',
           snippet: '<mark>SNAP</mark>',
-          has_rac: false,
+          has_rulespec: false,
           rank: 0.1,
         },
       ]

@@ -121,7 +121,7 @@ export function useTreeNodes(
         } else {
           // Deep navigation via citation path
           const pathPrefix = `${dbJurisdictionId}/${segs.join("/")}`;
-          // Lazy-load encoded paths once for RAC badge indicators
+          // Lazy-load encoded paths once for RuleSpec badge indicators
           if (!encodedPathsRef.current) {
             encodedPathsRef.current = await getEncodedPaths();
           }

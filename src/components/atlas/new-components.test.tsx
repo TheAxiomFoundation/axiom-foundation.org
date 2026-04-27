@@ -42,9 +42,9 @@ function makeDoc(overrides: Partial<ViewerDocument> = {}): ViewerDocument {
       { id: 'a', text: 'There is hereby imposed a tax.' },
       { id: 'b', text: 'The amount of tax shall be determined.' },
     ],
-    hasRac: true,
+    hasRuleSpec: true,
     jurisdiction: 'us',
-    archPath: 'statute/26/1.json',
+    sourcePath: 'statute/26/1.json',
     ...overrides,
   }
 }
@@ -64,8 +64,8 @@ function makeRule(overrides: Partial<Rule> = {}): Rule {
     source_url: null,
     source_path: 'statute/26/1',
     citation_path: 'us/statute/26/1',
-    rac_path: null,
-    has_rac: true,
+    rulespec_path: null,
+    has_rulespec: true,
     created_at: '2025-01-01',
     updated_at: '2025-01-01',
     ...overrides,
@@ -77,9 +77,9 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     encoding_run_id: 'enc-1',
     citation: '26 USC 1',
     session_id: 'sess-1',
-    file_path: 'statute/26/1.rac',
-    rac_content: 'rule tax_imposed { ... }',
-    final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+    file_path: 'statute/26/1.yaml',
+    rulespec_content: 'rule tax_imposed { ... }',
+    final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
     iterations: null,
     total_duration_ms: null,
     agent_type: null,
@@ -88,7 +88,7 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     has_issues: null,
     note: null,
     timestamp: null,
-    autorac_version: null,
+    autorulespec_version: null,
     ...overrides,
   }
 }
@@ -134,13 +134,13 @@ describe('SourceTab', () => {
     expect(screen.getByText('There is hereby imposed a tax.')).toBeInTheDocument()
   })
 
-  it('renders archPath when present', () => {
+  it('renders sourcePath when present', () => {
     render(<SourceTab document={makeDoc()} />)
     expect(screen.getByText('statute/26/1.json')).toBeInTheDocument()
   })
 
-  it('does not render source section when archPath is null', () => {
-    render(<SourceTab document={makeDoc({ archPath: null })} />)
+  it('does not render source section when sourcePath is null', () => {
+    render(<SourceTab document={makeDoc({ sourcePath: null })} />)
     expect(screen.queryByText('Source:')).not.toBeInTheDocument()
   })
 
@@ -162,21 +162,20 @@ describe('SourceTab', () => {
 })
 
 describe('languageFromPath', () => {
-  it('maps .rac → rac', () => expect(languageFromPath('foo.rac')).toBe('rac'))
   it('maps .catala_en → catala', () =>
     expect(languageFromPath('foo.catala_en')).toBe('catala'))
   it('maps .catala → catala', () =>
     expect(languageFromPath('bar.catala')).toBe('catala'))
   it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
-  it('maps .yaml / .yml → yaml', () => {
-    expect(languageFromPath('x.yaml')).toBe('yaml')
-    expect(languageFromPath('x.yml')).toBe('yaml')
+  it('maps .yaml / .yml → rulespec', () => {
+    expect(languageFromPath('x.yaml')).toBe('rulespec')
+    expect(languageFromPath('x.yml')).toBe('rulespec')
   })
   it('maps .xml → xml', () => expect(languageFromPath('x.xml')).toBe('xml'))
   it('falls back to plain for unknown extensions', () =>
     expect(languageFromPath('x.txt')).toBe('plain'))
   it('is case-insensitive', () =>
-    expect(languageFromPath('X.RAC')).toBe('rac'))
+    expect(languageFromPath('X.YAML')).toBe('rulespec'))
 })
 
 describe('EncodingTab', () => {
@@ -188,10 +187,10 @@ describe('EncodingTab', () => {
   it('shows empty state when no encoding', () => {
     render(<EncodingTab encoding={null} loading={false} jurisdiction="us" />)
     expect(screen.getByText('Not yet encoded')).toBeInTheDocument()
-    expect(screen.getByText('This rule has not been encoded into RAC format yet.')).toBeInTheDocument()
+    expect(screen.getByText('This rule has not been encoded into RuleSpec format yet.')).toBeInTheDocument()
   })
 
-  it('renders encoding with scores and RAC content', () => {
+  it('renders encoding with scores and RuleSpec content', () => {
     render(<EncodingTab encoding={makeEncoding()} loading={false} jurisdiction="us" />)
     expect(screen.getByText('90')).toBeInTheDocument()
     expect(screen.getByText('85')).toBeInTheDocument()
@@ -205,20 +204,20 @@ describe('EncodingTab', () => {
 
   it('renders encoding without scores', () => {
     render(<EncodingTab encoding={makeEncoding({ final_scores: null })} loading={false} jurisdiction="us" />)
-    expect(screen.getByText('RAC encoding')).toBeInTheDocument()
+    expect(screen.getByText('RuleSpec encoding')).toBeInTheDocument()
     expect(screen.queryByText('90')).not.toBeInTheDocument()
   })
 
-  it('renders encoding without RAC content', () => {
-    render(<EncodingTab encoding={makeEncoding({ rac_content: null })} loading={false} jurisdiction="us" />)
+  it('renders encoding without RuleSpec content', () => {
+    render(<EncodingTab encoding={makeEncoding({ rulespec_content: null })} loading={false} jurisdiction="us" />)
     expect(screen.queryByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).not.toBeInTheDocument()
   })
 
   it('shows GitHub link and hides scores for GitHub-sourced encoding', () => {
     render(<EncodingTab encoding={makeEncoding({
-      encoding_run_id: 'github:statute/26/32/b.rac',
-      file_path: 'statute/26/32/b.rac',
-      final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+      encoding_run_id: 'github:statute/26/32/b.yaml',
+      file_path: 'statute/26/32/b.yaml',
+      final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
     })} loading={false} jurisdiction="us" />)
     expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
     expect(screen.getByText('View on GitHub')).toBeInTheDocument()
@@ -229,7 +228,7 @@ describe('EncodingTab', () => {
   it('shows scores for non-GitHub encoding', () => {
     render(<EncodingTab encoding={makeEncoding({
       encoding_run_id: 'enc-1',
-      final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 },
+      final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
     })} loading={false} jurisdiction="us" />)
     expect(screen.queryByText('View on GitHub')).not.toBeInTheDocument()
     expect(screen.getByText('90')).toBeInTheDocument()
@@ -237,12 +236,12 @@ describe('EncodingTab', () => {
 
   it('renders the canonical repo link for UK encodings', () => {
     render(<EncodingTab encoding={makeEncoding({
-      file_path: 'legislation/uksi/2013/376/regulation/36/3/single-under-25.rac',
+      file_path: 'legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml',
     })} loading={false} jurisdiction="uk" />)
     const link = screen.getByText('View canonical repo file').closest('a')
     expect(link).toHaveAttribute(
       'href',
-      'https://github.com/TheAxiomFoundation/rac-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.rac'
+      'https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml'
     )
   })
 })
@@ -309,7 +308,7 @@ describe('AgentLogsTab', () => {
 
   it('shows encoding run summary when encoding has lab metadata', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorac-v2',
+      agent_type: 'autorulespec-v2',
       agent_model: 'claude-sonnet-4',
       total_duration_ms: 125000,
       data_source: 'reviewer_agent',
@@ -318,7 +317,7 @@ describe('AgentLogsTab', () => {
     })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
     // Encoding run section is open by default
-    expect(screen.getByText('autorac-v2')).toBeInTheDocument()
+    expect(screen.getByText('autorulespec-v2')).toBeInTheDocument()
     expect(screen.getByText('claude-sonnet-4')).toBeInTheDocument()
     expect(screen.getByText('2m 5s')).toBeInTheDocument()
     expect(screen.getByText('reviewer agent')).toBeInTheDocument()
@@ -327,7 +326,7 @@ describe('AgentLogsTab', () => {
 
   it('shows encoding run note when present', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorac-v2',
+      agent_type: 'autorulespec-v2',
       note: 'Manual review needed for edge cases',
     })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
@@ -336,7 +335,7 @@ describe('AgentLogsTab', () => {
 
   it('shows iterations when expanding the section', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorac-v2',
+      agent_type: 'autorulespec-v2',
       iterations: [
         { attempt: 1, success: false, duration_ms: 30000, errors: [{ type: 'ValidationError', message: 'Missing parameter' }] },
         { attempt: 2, success: true, duration_ms: 45000, errors: [] },
@@ -388,7 +387,7 @@ describe('AgentLogsTab', () => {
         id: 'e3',
         sequence: 3,
         event_type: 'provenance_artifact',
-        content: 'Artifact provenance for 26/24/a.rac',
+        content: 'Artifact provenance for 26/24/a.yaml',
         metadata: { phase: 'encoding' },
       }),
       makeEvent({
@@ -407,12 +406,12 @@ describe('AgentLogsTab', () => {
     expect(screen.getByText('artifact')).toBeInTheDocument()
     expect(screen.getByText('sidecar')).toBeInTheDocument()
     expect(screen.getByText('Need to reconcile subsection (a) with section 151 usage.')).toBeInTheDocument()
-    expect(screen.getByText('Artifact provenance for 26/24/a.rac')).toBeInTheDocument()
+    expect(screen.getByText('Artifact provenance for 26/24/a.yaml')).toBeInTheDocument()
     expect(screen.getByText('Provider sidecar trace for encoder')).toBeInTheDocument()
   })
 
   it('shows "No sessions" for GitHub-sourced encoding with no events', () => {
-    const encoding = makeEncoding({ encoding_run_id: 'github:statute/26/32/b.rac' })
+    const encoding = makeEncoding({ encoding_run_id: 'github:statute/26/32/b.yaml' })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
     expect(screen.getByText('No sessions')).toBeInTheDocument()
   })
@@ -523,28 +522,28 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText('(1 events)')).toBeInTheDocument()
   })
 
-  it('shows autorac version in agent logs drawer', () => {
+  it('shows autorulespec version in agent logs drawer', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ autorac_version: '0.4.2' }),
+      encoding: makeEncoding({ autorulespec_version: '0.4.2' }),
       sessionEvents: [makeEvent()],
       agentTranscripts: [],
       loading: false,
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('autorac 0.4.2')).toBeInTheDocument()
+    expect(screen.getByText('autorulespec 0.4.2')).toBeInTheDocument()
   })
 
-  it('does not show autorac version when not present', () => {
+  it('does not show autorulespec version when not present', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ autorac_version: null }),
+      encoding: makeEncoding({ autorulespec_version: null }),
       sessionEvents: [makeEvent()],
       agentTranscripts: [],
       loading: false,
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.queryByText(/autorac /)).not.toBeInTheDocument()
+    expect(screen.queryByText(/autorulespec /)).not.toBeInTheDocument()
   })
 
   it('toggles agent logs drawer open and closed', () => {
@@ -572,7 +571,7 @@ describe('RuleDetailPanel', () => {
 
   it('shows agent logs drawer when encoding has lab data but no session events', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ agent_type: 'autorac-v2', session_id: null }),
+      encoding: makeEncoding({ agent_type: 'autorulespec-v2', session_id: null }),
       sessionEvents: [],
       agentTranscripts: [],
       loading: false,
@@ -601,7 +600,7 @@ describe('RuleDetailPanel', () => {
 
   it('does not show agent logs drawer when encoding is from GitHub fallback', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ encoding_run_id: 'github:statute/26/1.rac', session_id: null }),
+      encoding: makeEncoding({ encoding_run_id: 'github:statute/26/1.yaml', session_id: null }),
       sessionEvents: [],
       agentTranscripts: [],
       loading: false,
@@ -628,7 +627,7 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText(/2 subsections/)).toBeInTheDocument()
   })
 
-  it('shows RAC marker in meta strip when encoding exists', () => {
+  it('shows RuleSpec available in status bar when encoding exists', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),
       sessionEvents: [],
@@ -637,7 +636,7 @@ describe('RuleDetailPanel', () => {
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('2 subsections · RAC')).toBeInTheDocument()
+    expect(screen.getByText('2 subsections | RuleSpec available')).toBeInTheDocument()
   })
 
   it('fetches encoding data immediately', () => {

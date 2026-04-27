@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import CodeBlock from "@/components/code-block";
 
 type CodeLang =
-  | "rac"
+  | "rulespec"
   | "catala"
   | "python"
   | "yaml"
@@ -31,7 +31,7 @@ const OVERLAY_CODE_CLASS =
 /**
  * Inline code block with an "Expand" control that opens the same code
  * in a near-full-viewport overlay — not a vertical unfolding. Long
- * RAC / Catala encodings typically also have long lines, so giving
+ * RuleSpec / Catala encodings typically also have long lines, so giving
  * them a wider reading surface (plus extra vertical room) is more
  * useful than just revealing more rows inside the 380px rail.
  *
@@ -137,7 +137,7 @@ function CodeOverlay({
         {/* Header */}
         <header className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-rule)] bg-[var(--color-paper)]">
           <div className="flex items-baseline gap-3 min-w-0">
-            <span className="eyebrow">RAC encoding</span>
+            <span className="eyebrow">RuleSpec encoding</span>
             {label && (
               <code className="font-mono text-xs text-[var(--color-accent)] truncate">
                 {label}

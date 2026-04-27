@@ -36,42 +36,6 @@
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rules.foundation" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rules.foundation" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rac.foundation" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rac.foundation" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rulesfoundation.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rulesfoundation.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],
       "destination": "https://axiom-foundation.org/:path",
       "permanent": true

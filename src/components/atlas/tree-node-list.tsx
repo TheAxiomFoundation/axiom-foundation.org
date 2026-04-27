@@ -50,7 +50,7 @@ export function TreeNodeList({
     <ul className="divide-y divide-[var(--color-rule-subtle)] list-none m-0 p-0">
       {nodes.map((node) => {
         const parts: string[] = [node.label];
-        if (node.hasRac) parts.push("encoded");
+        if (node.hasRuleSpec) parts.push("encoded");
         if (node.childCount !== undefined && node.childCount > 0) {
           parts.push(
             `${node.childCount} item${node.childCount === 1 ? "" : "s"}`
@@ -81,12 +81,12 @@ export function TreeNodeList({
             <span className="flex-1 text-sm text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] truncate transition-colors">
               {node.label}
             </span>
-            {node.hasRac && (
+            {node.hasRuleSpec && (
               <span
                 aria-hidden="true"
                 className="font-mono text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)] rounded px-1.5 py-0.5 uppercase tracking-wider shrink-0"
               >
-                RAC
+                RuleSpec
               </span>
             )}
             {node.childCount !== undefined && node.childCount > 0 && (

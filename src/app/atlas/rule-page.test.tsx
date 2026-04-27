@@ -17,8 +17,8 @@ function makeRule(overrides: Partial<Rule> = {}): Rule {
     source_url: null,
     source_path: "statute/26/1",
     citation_path: "us/statute/26/1",
-    rac_path: null,
-    has_rac: true,
+    rulespec_path: null,
+    has_rulespec: true,
     created_at: "2025-01-01",
     updated_at: "2025-01-01",
     ...overrides,
@@ -75,23 +75,23 @@ describe("transformRuleToViewerDoc", () => {
     expect(doc.citation).toBe("26 U.S.C. § 1");
   });
 
-  it("passes hasRac, jurisdiction, and archPath", () => {
+  it("passes hasRuleSpec, jurisdiction, and sourcePath", () => {
     const rule = makeRule({
-      has_rac: true,
+      has_rulespec: true,
       jurisdiction: "uk",
       source_path: "statute/uk/1",
     });
     const doc = transformRuleToViewerDoc(rule, []);
-    expect(doc.hasRac).toBe(true);
+    expect(doc.hasRuleSpec).toBe(true);
     expect(doc.jurisdiction).toBe("uk");
-    expect(doc.archPath).toBe("statute/uk/1");
+    expect(doc.sourcePath).toBe("statute/uk/1");
   });
 
   it("formats UK legislation citation paths when source_path is archival", () => {
     const rule = makeRule({
       jurisdiction: "uk",
       doc_type: "legislation",
-      source_path: "sources/official/uksi/2013/376/2025-04-01/data.akn",
+      source_path: "sources/official/uksi/2013/376/2025-04-01/source.xml",
       citation_path:
         "uk/legislation/uksi/2013/376/regulation/22/work-allowance-without-housing",
     });
@@ -127,7 +127,7 @@ describe("getJurisdictionLabel", () => {
 
 describe("isGitHubEncoding / isLabEncoding", () => {
   const labEncoding = { encoding_run_id: "enc-1" } as RuleEncodingData;
-  const ghEncoding = { encoding_run_id: "github:statute/26/1.rac" } as RuleEncodingData;
+  const ghEncoding = { encoding_run_id: "github:statute/26/1.yaml" } as RuleEncodingData;
 
   it("returns true for GitHub encoding IDs", () => {
     expect(isGitHubEncoding(ghEncoding)).toBe(true);

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { getRacRepoForJurisdiction } from '@/lib/atlas/repo-map'
+import { getRuleSpecRepoForJurisdiction } from '@/lib/atlas/repo-map'
 
 // Supabase configuration
 /* v8 ignore start -- env-dependent module initialization */
@@ -11,12 +11,12 @@ export const supabase: SupabaseClient = isTestEnv
   : createClient(supabaseUrl, supabaseAnonKey)
 
 // Arch schema client for atlas/rule browsing
-export const supabaseAkn = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'akn' } })
-  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'akn' } })
+export const supabaseArch = isTestEnv
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'arch' } })
+  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'arch' } })
 /* v8 ignore stop */
 
-// Types for encoding runs (AutoRAC Experiment Lab)
+// Types for encoding runs (AutoRuleSpec Experiment Lab)
 export interface EncodingRunIteration {
   attempt: number
   success: boolean
@@ -25,7 +25,7 @@ export interface EncodingRunIteration {
 }
 
 export interface EncodingRunScores {
-  rac: number
+  rulespec: number
   formula: number
   parameter: number
   integration: number
@@ -61,7 +61,7 @@ export async function getEncodingRuns(limit = 100, offset = 0): Promise<Encoding
   return (data || []) as EncodingRun[]
 }
 
-// Types for agent transcripts (AutoRAC Experiment Lab)
+// Types for agent transcripts (AutoRuleSpec Experiment Lab)
 export interface TranscriptMessage {
   type: string
   message?: {
@@ -132,7 +132,7 @@ export interface SDKSession {
   output_tokens: number
   cache_read_tokens: number
   estimated_cost_usd: number
-  autorac_version: string | null
+  autorulespec_version: string | null
 }
 
 export interface SDKSessionEvent {
@@ -244,8 +244,8 @@ export interface Rule {
   source_url: string | null
   source_path: string | null
   citation_path: string | null
-  rac_path: string | null
-  has_rac: boolean
+  rulespec_path: string | null
+  has_rulespec: boolean
   created_at: string
   updated_at: string
 }
@@ -256,7 +256,7 @@ export interface RuleEncodingData {
   citation: string
   session_id: string | null
   file_path: string
-  rac_content: string | null
+  rulespec_content: string | null
   final_scores: EncodingRunScores | null
   // Lab metadata (only present for encoding_runs sources)
   iterations: EncodingRunIteration[] | null
@@ -267,16 +267,16 @@ export interface RuleEncodingData {
   has_issues: boolean | null
   note: string | null
   timestamp: string | null
-  autorac_version: string | null
+  autorulespec_version: string | null
 }
 
 // Generate candidate file paths walking up the hierarchy
-// e.g. "statute/26/32/b/1" → ["statute/26/32/b/1.rac", "statute/26/32/b.rac", "statute/26/32.rac"]
+// e.g. "statute/26/32/b/1" → ["statute/26/32/b/1.yaml", "statute/26/32/b.yaml", "statute/26/32.yaml"]
 function parentPaths(basePath: string): string[] {
-  const paths: string[] = [basePath + '.rac']
+  const paths: string[] = [basePath + '.yaml']
   const parts = basePath.split('/')
   for (let i = parts.length - 1; i >= 2; i--) {
-    paths.push(parts.slice(0, i).join('/') + '.rac')
+    paths.push(parts.slice(0, i).join('/') + '.yaml')
   }
   return paths
 }
@@ -285,15 +285,20 @@ function duplicateTerminalSectionPath(basePath: string): string | null {
   const parts = basePath.split('/')
   if (parts.length !== 3 || parts[0] !== 'statute') return null
   const section = parts[2]
-  return `${basePath}/${section}.rac`
+  return `${basePath}/${section}.yaml`
 }
 
-// Fetch RAC content from GitHub rac-us repo (fallback for hand-written encodings)
+// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
 /* v8 ignore start -- network fetch to GitHub, tested via integration */
-function candidatePaths(basePath: string | null, racPath: string | null): string[] {
+function candidatePaths(
+  basePath: string | null,
+  rulespecPath: string | null,
+): string[] {
   const candidates: string[] = []
-  if (racPath) {
-    candidates.push(racPath.endsWith('.rac') ? racPath : `${racPath}.rac`)
+  if (rulespecPath) {
+    candidates.push(
+      rulespecPath.endsWith('.yaml') ? rulespecPath : `${rulespecPath}.yaml`,
+    )
   }
   if (basePath) {
     const duplicateSectionPath = duplicateTerminalSectionPath(basePath)
@@ -307,11 +312,11 @@ function candidatePaths(basePath: string | null, racPath: string | null): string
   return candidates
 }
 
-async function fetchRacFromGitHub(
+async function fetchRuleSpecFromGitHub(
   candidates: string[],
   jurisdiction: string
 ): Promise<RuleEncodingData | null> {
-  const repo = getRacRepoForJurisdiction(jurisdiction)
+  const repo = getRuleSpecRepoForJurisdiction(jurisdiction)
   if (!repo) return null
 
   for (const filePath of candidates) {
@@ -319,13 +324,13 @@ async function fetchRacFromGitHub(
     try {
       const res = await fetch(url, { next: { revalidate: 3600 } } as RequestInit)
       if (!res.ok) continue
-      const rac_content = await res.text()
+      const rulespec_content = await res.text()
       return {
         encoding_run_id: `github:${filePath}`,
-        citation: filePath.replace('.rac', ''),
+        citation: filePath.replace('.yaml', ''),
         session_id: null,
         file_path: filePath,
-        rac_content,
+        rulespec_content,
         final_scores: null,
         iterations: null,
         total_duration_ms: null,
@@ -335,7 +340,7 @@ async function fetchRacFromGitHub(
         has_issues: null,
         note: null,
         timestamp: null,
-        autorac_version: null,
+        autorulespec_version: null,
       }
     } catch {
       continue
@@ -347,28 +352,28 @@ async function fetchRacFromGitHub(
 
 // Fetch encoding data for a rule by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
-  // First get the rule's citation_path/rac_path and jurisdiction
-  const { data: rule, error: ruleError } = await supabaseAkn
+  // First get the rule's citation_path/rulespec_path and jurisdiction
+  const { data: rule, error: ruleError } = await supabaseArch
     .from('rules')
-    .select('citation_path, jurisdiction, rac_path')
+    .select('citation_path, jurisdiction, rulespec_path')
     .eq('id', ruleId)
     .single()
 
   if (ruleError || !rule) return null
 
   // Match citation_path to encoding_runs.file_path
-  // citation_path: "us/statute/26/1/j/2" → file_path: "statute/26/1/j/2.rac"
+  // citation_path: "us/statute/26/1/j/2" → file_path: "statute/26/1/j/2.yaml"
   const basePath = rule.citation_path
     ? rule.citation_path.replace(rule.jurisdiction + '/', '')
     : null
-  const candidates = candidatePaths(basePath, rule.rac_path)
+  const candidates = candidatePaths(basePath, rule.rulespec_path)
 
   if (candidates.length === 0) return null
 
   // Single query: try all candidate paths at once, pick the most specific match
   const { data, error } = await supabase
     .from('encoding_runs')
-    .select('id, citation, session_id, file_path, rac_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorac_version')
+    .select('id, citation, session_id, file_path, rulespec_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorulespec_version')
     .in('file_path', candidates)
     .order('timestamp', { ascending: false })
 
@@ -384,7 +389,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       citation: best.citation,
       session_id: best.session_id,
       file_path: best.file_path,
-      rac_content: best.rac_content,
+      rulespec_content: best.rulespec_content,
       final_scores: best.final_scores,
       iterations: best.iterations ?? null,
       total_duration_ms: best.total_duration_ms ?? null,
@@ -394,12 +399,12 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       has_issues: best.has_issues ?? null,
       note: best.note ?? null,
       timestamp: best.timestamp ?? null,
-      autorac_version: best.autorac_version ?? null,
+      autorulespec_version: best.autorulespec_version ?? null,
     }
   }
 
-  // Fallback: fetch from GitHub rac-* repo
-  return fetchRacFromGitHub(candidates, rule.jurisdiction)
+  // Fallback: fetch from GitHub rules-* repo
+  return fetchRuleSpecFromGitHub(candidates, rule.jurisdiction)
 }
 
 // ---- Atlas full-text search ----
@@ -411,7 +416,7 @@ export interface SearchHit {
   citation_path: string
   heading: string | null
   snippet: string
-  has_rac: boolean
+  has_rulespec: boolean
   rank: number
 }
 
@@ -422,7 +427,7 @@ export interface SearchOptions {
 }
 
 /**
- * Search akn.rules via the server-side `search_rules` RPC.
+ * Search arch.rules via the server-side `search_rules` RPC.
  *
  * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
  * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
@@ -440,7 +445,7 @@ export async function searchRules(
   const q = query.trim()
   if (!q) return []
 
-  const { data, error } = await supabaseAkn.rpc('search_rules', {
+  const { data, error } = await supabaseArch.rpc('search_rules', {
     q,
     jurisdiction_in: options.jurisdiction ?? null,
     doc_type_in: options.docType ?? null,
@@ -470,7 +475,7 @@ export interface RuleReference {
   other_citation_path: string
   other_rule_id: string | null
   other_heading: string | null
-  /** Outgoing only — whether the target is ingested in akn.rules. */
+  /** Outgoing only — whether the target is ingested in arch.rules. */
   target_resolved: boolean
 }
 
@@ -485,7 +490,7 @@ export interface RuleReference {
 export async function getRuleReferences(
   citationPath: string
 ): Promise<RuleReference[]> {
-  const { data, error } = await supabaseAkn.rpc('get_references', {
+  const { data, error } = await supabaseArch.rpc('get_references', {
     citation_path_in: citationPath,
   })
   if (error) {
@@ -515,9 +520,9 @@ export interface AtlasStats {
   jurisdictions: AtlasJurisdictionCount[]
 }
 
-/** Fetch landing-page stats via the akn.get_atlas_stats RPC. */
+/** Fetch landing-page stats via the arch.get_atlas_stats RPC. */
 export async function getAtlasStats(): Promise<AtlasStats | null> {
-  const { data, error } = await supabaseAkn.rpc('get_atlas_stats')
+  const { data, error } = await supabaseArch.rpc('get_atlas_stats')
   if (error) {
     console.error('get_atlas_stats RPC failed:', error)
     return null

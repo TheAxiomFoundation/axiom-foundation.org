@@ -1,6 +1,6 @@
 import { CodeIcon, CheckIcon, CpuIcon } from "@/components/icons";
 
-export function RacSection() {
+export function RuleSpecSection() {
   return (
     <section id="about" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">

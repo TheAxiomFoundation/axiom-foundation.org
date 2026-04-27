@@ -2,9 +2,32 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { usePersistentToggle } from "./use-persistent-toggle";
 
+function installLocalStorage() {
+  const store = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear: () => store.clear(),
+    getItem: (key) => store.get(key) ?? null,
+    key: (index) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key) => {
+      store.delete(key);
+    },
+    setItem: (key, value) => {
+      store.set(key, value);
+    },
+  };
+
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: storage,
+  });
+}
+
 describe("usePersistentToggle", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    installLocalStorage();
   });
 
   it("defaults to false", () => {

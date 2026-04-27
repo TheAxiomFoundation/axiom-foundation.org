@@ -14,9 +14,9 @@ vi.mock('next/link', () => ({
 
 import { Hero } from '@/components/landing/hero'
 import { AtlasSection } from '@/components/landing/atlas-section'
-import { RacSection } from '@/components/landing/rac-section'
-import { RacFormat } from '@/components/landing/rac-format'
-import { AutoracSection } from '@/components/landing/autorac-section'
+import { RuleSpecSection } from '@/components/landing/rulespec-section'
+import { RuleSpecFormat } from '@/components/landing/rulespec-format'
+import { AutoRuleSpecSection } from '@/components/landing/autorulespec-section'
 import { SpecSection } from '@/components/landing/spec-section'
 import { GroundTruthSection } from '@/components/landing/ground-truth-section'
 import { CoverageSection } from '@/components/landing/coverage-section'
@@ -42,28 +42,28 @@ describe('Landing sections', () => {
     expect(screen.getByText(/federal statutes/i)).toBeInTheDocument()
   })
 
-  it('renders the RAC DSL section', () => {
-    render(<RacSection />)
+  it('renders the RuleSpec DSL section', () => {
+    render(<RuleSpecSection />)
     expect(screen.getByText(/rules as code/i)).toBeInTheDocument()
   })
 
-  it('renders the .rac format section with code examples', () => {
-    render(<RacFormat />)
+  it('renders the .yaml format section with code examples', () => {
+    render(<RuleSpecFormat />)
     expect(screen.getAllByText(/file format/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/format comparison/i)).toBeInTheDocument()
   })
 
-  it('renders the AutoRAC section', () => {
-    render(<AutoracSection />)
-    expect(screen.getAllByText(/autorac/i).length).toBeGreaterThan(0)
+  it('renders the AutoRuleSpec section', () => {
+    render(<AutoRuleSpecSection />)
+    expect(screen.getAllByText(/autorulespec/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open the autorac system map/i })).toHaveAttribute('href', '/autorac')
+    expect(screen.getByRole('link', { name: /open the autorulespec system map/i })).toHaveAttribute('href', '/autorulespec')
     expect(screen.getByRole('link', { name: /view the broader stack/i })).toHaveAttribute('href', '/stack')
   })
 
-  it('renders the RAC specification section', () => {
+  it('renders the RuleSpec specification section', () => {
     render(<SpecSection />)
-    expect(screen.getAllByText(/RAC_SPEC\.md/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/RULESPEC_SPEC\.md/i).length).toBeGreaterThan(0)
   })
 
   it('renders the ground truth for AI section', () => {
@@ -74,9 +74,9 @@ describe('Landing sections', () => {
   it('renders encoding coverage section', () => {
     render(<CoverageSection />)
     expect(screen.getByText(/encoding coverage/i)).toBeInTheDocument()
-    expect(screen.getByText(/Federal \(rac-us\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/California \(rac-us-ca\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/New York \(rac-us-ny\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Federal \(rules-us\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/California \(rules-us-ca\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/New York \(rules-us-ny\)/i)).toBeInTheDocument()
   })
 
   it('renders get involved CTA', () => {
@@ -85,7 +85,7 @@ describe('Landing sections', () => {
   })
 })
 
-describe('RacFormat tabbed code examples', () => {
+describe('RuleSpecFormat tabbed code examples', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -95,9 +95,9 @@ describe('RacFormat tabbed code examples', () => {
   })
 
   it('switches format tabs to show different code examples', () => {
-    render(<RacFormat />)
+    render(<RuleSpecFormat />)
 
-    // Default is RAC tab - switch to DMN
+    // Default is RuleSpec tab - switch to DMN
     const dmnTab = screen.getByRole('button', { name: 'DMN' })
     fireEvent.click(dmnTab)
     expect(screen.getByText('niit.dmn')).toBeInTheDocument()
@@ -114,23 +114,23 @@ describe('RacFormat tabbed code examples', () => {
   })
 
   it('switches code examples between statutes', () => {
-    render(<RacFormat />)
+    render(<RuleSpecFormat />)
 
     // Click ACA PTC example
     fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    expect(screen.getByText('statute/26/36B/b/3/A.rac')).toBeInTheDocument()
+    expect(screen.getByText('statute/26/36B/b/3/A.yaml')).toBeInTheDocument()
 
     // Click Standard Deduction
     fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    expect(screen.getByText('statute/26/63/c/2/A.rac')).toBeInTheDocument()
+    expect(screen.getByText('statute/26/63/c/2/A.yaml')).toBeInTheDocument()
 
     // Click NY EITC
     fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-    expect(screen.getByText('statute/ny/tax/606/d.rac')).toBeInTheDocument()
+    expect(screen.getByText('statute/ny/tax/606/d.yaml')).toBeInTheDocument()
   })
 
-  it('switches non-RAC format tabs across different examples', () => {
-    render(<RacFormat />)
+  it('switches non-RuleSpec format tabs across different examples', () => {
+    render(<RuleSpecFormat />)
 
     // Switch to ACA PTC + DMN
     fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
@@ -148,7 +148,7 @@ describe('RacFormat tabbed code examples', () => {
   })
 
   it('shows all Catala examples', () => {
-    render(<RacFormat />)
+    render(<RuleSpecFormat />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Catala' }))
     expect(screen.getByText('niit.catala_en')).toBeInTheDocument()
@@ -164,7 +164,7 @@ describe('RacFormat tabbed code examples', () => {
   })
 
   it('shows all DMN examples', () => {
-    render(<RacFormat />)
+    render(<RuleSpecFormat />)
 
     fireEvent.click(screen.getByRole('button', { name: 'DMN' }))
     expect(screen.getByText('niit.dmn')).toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('RacFormat tabbed code examples', () => {
   })
 
   it('shows all OpenFisca examples', () => {
-    render(<RacFormat />)
+    render(<RuleSpecFormat />)
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenFisca/PE' }))
 
@@ -199,7 +199,7 @@ describe('Hero transform', () => {
     vi.useRealTimers()
   })
 
-  it('auto-toggles between statute and RAC views', () => {
+  it('auto-toggles between statute and RuleSpec views', () => {
     render(<Hero />)
 
     act(() => {
@@ -227,7 +227,7 @@ describe('Hero transform', () => {
 })
 
 describe('SpecSection expand/collapse', () => {
-  it('expands and collapses the RAC spec', () => {
+  it('expands and collapses the RuleSpec spec', () => {
     render(<SpecSection />)
 
     const expandBtn = screen.getByRole('button', { name: /expand full spec/i })

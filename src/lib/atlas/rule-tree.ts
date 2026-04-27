@@ -1,8 +1,8 @@
-import { supabaseAkn, type Rule } from "@/lib/supabase";
+import { supabaseArch, type Rule } from "@/lib/supabase";
 
 /**
  * Tree node for the recursive container-rule renderer. Mirrors the
- * atomic hierarchy of ``akn.rules`` under a single root — a section
+ * atomic hierarchy of ``arch.rules`` under a single root — a section
  * with all its subsections / paragraphs / subparagraphs flattened out
  * into a traversable structure.
  */
@@ -32,7 +32,7 @@ export async function getRuleDescendants(
   let frontier: string[] = [rootId];
   for (let depth = 0; depth < maxDepth; depth++) {
     if (frontier.length === 0) break;
-    const { data, error } = await supabaseAkn
+    const { data, error } = await supabaseArch
       .from("rules")
       .select("*")
       .in("parent_id", frontier)

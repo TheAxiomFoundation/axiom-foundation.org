@@ -20,9 +20,9 @@ const baseDoc: ViewerDocument = {
     { id: "A", text: "first subsection text" },
     { id: "B", text: "second subsection text" },
   ],
-  hasRac: false,
+  hasRuleSpec: false,
   jurisdiction: "us",
-  archPath: null,
+  sourcePath: null,
 };
 
 describe("SourceTab context rendering", () => {

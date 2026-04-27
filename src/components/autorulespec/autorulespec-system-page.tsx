@@ -20,7 +20,7 @@ import {
   XIcon,
 } from "@/components/icons";
 
-type SnippetLanguage = "rac" | "xml" | "python" | "yaml" | "catala" | "plain";
+type SnippetLanguage = "rulespec" | "xml" | "python" | "yaml" | "catala" | "plain";
 
 type PipelineStage = {
   id: string;
@@ -65,14 +65,14 @@ const pipelineStages: PipelineStage[] = [
     step: "01",
     title: "Ingest official source text first",
     summary:
-      "AutoRAC starts from real source documents, exact section identifiers, and copied slices. The source layer is never stubbed.",
+      "AutoRuleSpec starts from real source documents, exact section identifiers, and copied slices. The source layer is never stubbed.",
     details: [
-      "Official PDFs, HTML, AKN, and exact source slices are pulled into the workspace before generation.",
+      "Official PDFs, HTML, source XML, and exact source slices are pulled into the workspace before generation.",
       "Benchmarks point at concrete section ids or slice ids, not free-form prompts.",
       "This is what lets us say a later failure is a harness issue rather than a source-drift issue.",
     ],
     checks: [
-      "Source id resolves to a concrete file or AKN eId",
+      "Source id resolves to a concrete file or source XML eId",
       "Exact slice copied into ./source.txt",
       "No fake source placeholders",
     ],
@@ -121,7 +121,7 @@ gates:
   {
     id: "generate",
     step: "03",
-    title: "Generate RAC against explicit harness rules",
+    title: "Generate RuleSpec against explicit harness rules",
     summary:
       "The encoder prompt is not just 'translate this law.' It carries the current policy for numeric grounding, imports, branch naming, tests, and conditional leaf behavior.",
     details: [
@@ -132,11 +132,11 @@ gates:
     checks: [
       "Named scalar definitions for substantive numbers",
       "Canonical imports for defined terms when available",
-      "Companion .rac.test emitted with applicability cases",
+      "Companion .yaml.test emitted with applicability cases",
     ],
-    outputs: [".rac", ".rac.test", "trace json", "token usage"],
+    outputs: [".yaml", ".yaml.test", "trace json", "token usage"],
     snippetLabel: "generated leaf shape",
-    snippetLanguage: "rac",
+    snippetLanguage: "rulespec",
     snippet: `variation_determination_period_months:
   from 2025-03-31: 12
   entity: Person
@@ -164,7 +164,7 @@ assessed_income_period_satisfied:
     ],
     checks: [
       "compile",
-      "rac.test_runner",
+      "rulespec.test_runner",
       "embedded scalar detector",
       "numeric occurrence coverage",
       "decomposed date scalar rejection",
@@ -276,7 +276,7 @@ assessed_income_period_satisfied:
       "A successful suite is still not the end. Promotion records wave manifests, repo versions, and source lineage so the resulting corpus is auditable.",
     details: [
       "UK and Colorado now use wave manifests to record file sets, dates, commits, source eval runs, and provenance tier.",
-      "The latest UK promotion added 55 regulation 15 leaves and brought the checked-in corpus to 146 RAC files.",
+      "The latest UK promotion added 55 regulation 15 leaves and brought the checked-in corpus to 146 RuleSpec files.",
       "Atlas sync is downstream of validated corpus state, not the source of truth, and the UK replace-mode delete path now works without append-only fallback.",
     ],
     checks: [
@@ -291,8 +291,8 @@ assessed_income_period_satisfied:
   "wave": "2026-04-03-wave4",
   "provenance_tier": "manual_repo_change",
   "files": [
-    "regulation/9-CCR-2503-6/3.606.1/K.rac",
-    "statute/crs/26-2-703/10.5.rac"
+    "regulation/9-CCR-2503-6/3.606.1/K.yaml",
+    "statute/crs/26-2-703/10.5.yaml"
   ]
 }`,
     icon: <VersionIcon className="w-5 h-5" />,
@@ -310,13 +310,13 @@ const recentProofPoints: ProofPoint[] = [
     id: "wave20",
     label: "55-case UK bulk wave promoted",
     summary:
-      "Wave 20 cleared the real scale gate, then landed 55 new Pension Credit regulation 15 leaves in rac-uk.",
+      "Wave 20 cleared the real scale gate, then landed 55 new Pension Credit regulation 15 leaves in rules-uk.",
   },
   {
     id: "corpus",
     label: "Current UK corpus state",
     summary:
-      "The promoted UK repo now has 146 RAC files, companion tests complete, zero embedded scalar violations, and zero numeric-occurrence backlog.",
+      "The promoted UK repo now has 146 RuleSpec files, companion tests complete, zero embedded scalar violations, and zero numeric-occurrence backlog.",
   },
   {
     id: "sync",
@@ -331,13 +331,13 @@ const guardrails: Guardrail[] = [
     id: "numbers",
     label: "Repeated numbers must all appear as named scalars",
     symptom:
-      "A source said 55% twice or repeated a threshold amount, but the RAC collapsed it into a single generic helper.",
+      "A source said 55% twice or repeated a threshold amount, but the RuleSpec collapsed it into a single generic helper.",
     fix:
-      "Numeric occurrence coverage now counts substantive source-number repeats and fails when the RAC under-represents them.",
+      "Numeric occurrence coverage now counts substantive source-number repeats and fails when the RuleSpec under-represents them.",
     catches: [
       "numeric occurrence coverage",
       "named scalar occurrence extraction",
-      "repo baseline audit in rac-uk and rac-us",
+      "repo baseline audit in rules-uk and rules-us",
     ],
     recentExample: "UC taper rate and repeated UK benefit thresholds",
   },
@@ -387,7 +387,7 @@ const guardrails: Guardrail[] = [
   },
   {
     id: "stubs",
-    label: "Only stub RAC, and never after the source is ingested",
+    label: "Only stub RuleSpec, and never after the source is ingested",
     symptom:
       "A dependency stayed as a stub even though the official source was already in the repo.",
     fix:
@@ -515,11 +515,11 @@ cases:
     language: "plain",
     code: `{
   "wave": "2026-04-08-wave18",
-  "repo": "rac-uk",
+  "repo": "rules-uk",
   "provenance_tier": "benchmarked_promotion",
   "file_count": 55,
   "runner": "codex-gpt-5.4",
-  "autorac_commit": "d4114bd",
+  "autorulespec_commit": "d4114bd",
   "all_ready": true
 }`,
   },
@@ -532,7 +532,7 @@ const stageStats = [
   { label: "hard readiness gates", value: "7" },
 ];
 
-export function AutoracSystemPage() {
+export function AutoRuleSpecSystemPage() {
   const [selectedStageId, setSelectedStageId] = useState(pipelineStages[0].id);
   const [selectedGuardrailId, setSelectedGuardrailId] = useState(guardrails[0].id);
   const [selectedArtifactId, setSelectedArtifactId] = useState(artifactPanels[0].id);
@@ -551,14 +551,14 @@ export function AutoracSystemPage() {
           <div className="flex flex-wrap items-start justify-between gap-8 mb-10">
             <div className="max-w-[760px]">
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-accent)] mb-4">
-                AutoRAC system map
+                AutoRuleSpec system map
               </p>
               <h1 className="heading-page mb-6">
                 How the harness actually works
               </h1>
               <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed">
                 This is the operational path from official source text to a
-                promoted RAC file. It includes the deterministic CI checks,
+                promoted RuleSpec file. It includes the deterministic CI checks,
                 semantic review gates, import discipline, run ledgers,
                 provenance controls, and the new outer-loop autoresearch gate
                 that only keeps prompt mutations when they beat a separate
@@ -894,7 +894,7 @@ export function AutoracSystemPage() {
                 metadata. Right now the artifact list is curated, but it now
                 uses concrete current examples from the accepted autoresearch
                 run and the latest UK bulk promotion rather than abstract file
-                shapes. The actual per-encoding logs and RAC records still
+                shapes. The actual per-encoding logs and RuleSpec records still
                 belong in Atlas.
               </p>
             </div>

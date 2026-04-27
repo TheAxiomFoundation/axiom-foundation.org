@@ -8,9 +8,9 @@ describe('CodeBlock', () => {
     expect(screen.getByText('hello world')).toBeInTheDocument()
   })
 
-  it('renders rac code with Prism highlighting', () => {
+  it('renders rulespec code with Prism highlighting', () => {
     const { container } = render(
-      <CodeBlock code="niit_rate:\n  from 2013-01-01: 0.038" language="rac" />,
+      <CodeBlock code="niit_rate:\n  from 2013-01-01: 0.038" language="rulespec" />,
     )
     // Prism should inject HTML via dangerouslySetInnerHTML
     const codeEl = container.querySelector('code')

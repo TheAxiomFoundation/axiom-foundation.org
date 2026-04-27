@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { supabaseAkn } from "@/lib/supabase";
+import { supabaseArch } from "@/lib/supabase";
 import { SITE_URL } from "@/lib/atlas/metadata";
 
 /**
@@ -7,7 +7,7 @@ import { SITE_URL } from "@/lib/atlas/metadata";
  *
  * Each rule URL is addressed at its atomic ``citation_path`` — the
  * same atomic grammar the viewer uses. The atlas is large enough
- * that a ``count('exact')`` scan of ``akn.rules`` regularly hits
+ * that a ``count('exact')`` scan of ``arch.rules`` regularly hits
  * statement-timeout, so we skip the count and pre-declare a
  * generous upper bound of chunks. Empty tail chunks render as
  * empty sitemaps, which Google tolerates.
@@ -52,7 +52,7 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "monthly",
   },
   {
-    url: `${SITE_URL}/autorac`,
+    url: `${SITE_URL}/autorulespec`,
     priority: 0.6,
     changeFrequency: "weekly",
   },
@@ -68,9 +68,9 @@ export default async function sitemap({
   const chunk = typeof id === "number" ? id : Number.parseInt(id, 10);
   const safeChunk = Number.isFinite(chunk) ? chunk : 0;
   const offset = safeChunk * CHUNK_SIZE;
-  const { data, error } = await supabaseAkn
+  const { data, error } = await supabaseArch
     .from("rules")
-    .select("citation_path, updated_at, has_rac")
+    .select("citation_path, updated_at, has_rulespec")
     .not("citation_path", "is", null)
     .order("citation_path", { ascending: true })
     .range(offset, offset + CHUNK_SIZE - 1);
@@ -83,7 +83,7 @@ export default async function sitemap({
   }
 
   const ruleEntries: MetadataRoute.Sitemap = data
-    .filter((row): row is { citation_path: string; updated_at: string; has_rac: boolean } =>
+    .filter((row): row is { citation_path: string; updated_at: string; has_rulespec: boolean } =>
       Boolean(row.citation_path)
     )
     .map((row) => ({
@@ -92,7 +92,7 @@ export default async function sitemap({
       changeFrequency: "monthly" as const,
       // Encoded rules are higher-value destinations — give the crawler
       // a priority hint so freshly-encoded rules surface faster.
-      priority: row.has_rac ? 0.8 : 0.6,
+      priority: row.has_rulespec ? 0.8 : 0.6,
     }));
 
   return safeChunk === 0 ? [...STATIC_ENTRIES, ...ruleEntries] : ruleEntries;

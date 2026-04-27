@@ -85,7 +85,7 @@ export function RuleDetailPanel({
                 ·
               </span>
               <span className="text-[var(--color-ink-muted)]">{docKind}</span>
-              {document.hasRac && (
+              {document.hasRuleSpec && (
                 <>
                   <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
                     ·
@@ -157,9 +157,9 @@ export function RuleDetailPanel({
                   ({sessionEvents.length} events)
                 </span>
               )}
-              {encoding?.autorac_version && (
+              {encoding?.autorulespec_version && (
                 <span className="normal-case text-[var(--color-ink-muted)]">
-                  autorac {encoding.autorac_version}
+                  autorulespec {encoding.autorulespec_version}
                 </span>
               )}
             </span>
@@ -179,12 +179,16 @@ export function RuleDetailPanel({
         </div>
       )}
 
-      {/* Meta strip */}
-      <footer className="flex items-center justify-end px-8 py-2 border-t border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
-        <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+      {/* Status bar */}
+      <footer className="flex items-center justify-between px-6 py-2 border-t border-[var(--color-rule)] bg-[var(--color-paper-elevated)]">
+        <div className="flex items-center gap-2 text-xs text-[var(--color-ink-muted)]">
+          <span className="w-1.5 h-1.5 bg-[var(--color-success)] rounded-full" />
+          <span>Connected to Atlas</span>
+        </div>
+        <span className="text-xs text-[var(--color-ink-muted)]">
           {document.subsections.length} subsection
           {document.subsections.length === 1 ? "" : "s"}
-          {encoding && " · RAC"}
+          {encoding && " | RuleSpec available"}
         </span>
       </footer>
     </div>

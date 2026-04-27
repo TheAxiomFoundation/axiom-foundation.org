@@ -20,7 +20,7 @@ const hit = (overrides: Partial<{
   citation_path: string;
   heading: string | null;
   snippet: string;
-  has_rac: boolean;
+  has_rulespec: boolean;
   rank: number;
 }>) => ({
   id: "hit-1",
@@ -29,7 +29,7 @@ const hit = (overrides: Partial<{
   citation_path: "us/regulation/7/273/9",
   heading: "Income and deductions",
   snippet: "<mark>SNAP</mark> households with elderly or disabled members",
-  has_rac: false,
+  has_rulespec: false,
   rank: 0.1,
   ...overrides,
 });
@@ -69,7 +69,7 @@ describe("AtlasSearch", () => {
         id: "hit-2",
         citation_path: "us/statute/26/32",
         heading: "Earned income",
-        has_rac: true,
+        has_rulespec: true,
         snippet: "<mark>earned income</mark> tax credit",
       }),
     ]);
@@ -101,7 +101,7 @@ describe("AtlasSearch", () => {
     // Citation labels formatted correctly
     expect(screen.getByText("7 CFR § 273.9")).toBeInTheDocument();
     expect(screen.getByText("26 USC § 32")).toBeInTheDocument();
-    // Encoded badge only on the hit with has_rac: true
+    // Encoded badge only on the hit with has_rulespec: true
     expect(screen.getAllByText("Encoded").length).toBe(1);
   });
 

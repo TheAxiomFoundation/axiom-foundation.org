@@ -5,8 +5,8 @@ describe("Nav", () => {
   it("renders all default navigation links", () => {
     render(<Nav />);
     expect(screen.getByText("Browse")).toBeInTheDocument();
-    expect(screen.getByText(".rac")).toBeInTheDocument();
-    expect(screen.getByText("AutoRAC")).toBeInTheDocument();
+    expect(screen.getByText(".yaml")).toBeInTheDocument();
+    expect(screen.getByText("AutoRuleSpec")).toBeInTheDocument();
     expect(screen.getByText("Spec")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Docs")).toBeInTheDocument();

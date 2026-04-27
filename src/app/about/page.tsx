@@ -79,14 +79,14 @@ export default function AboutPage() {
             {[
               {
                 title: "Atlas",
-                desc: "Open platform for exploring encoded law. The Archive holds 53 USC titles, 570+ IRS guidance documents, and 48 states. Atlas brings together source documents, RAC encodings, and validation results.",
+                desc: "Open platform for exploring encoded law. The Archive holds 53 USC titles, 570+ IRS guidance documents, and 48 states. Atlas brings together source documents, RuleSpec encodings, and validation results.",
               },
               {
-                title: "RAC",
+                title: "RuleSpec",
                 desc: "Rules as Code DSL for encoding statutes with citations, temporal versioning, and tests. Purpose-built for legal encoding.",
               },
               {
-                title: "AutoRAC",
+                title: "AutoRuleSpec",
                 desc: "AI-powered encoding pipeline with 3-tier validation. Automated statute encoding with CI testing, oracle validation, and LLM review.",
               },
             ].map((card) => (

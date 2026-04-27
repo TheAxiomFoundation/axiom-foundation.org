@@ -38,7 +38,7 @@ function RuleOutline({ childRules }: { childRules: Rule[] }) {
         tail,
         href: `/atlas/${child.citation_path ?? ""}`,
         heading: child.heading?.trim() || "Untitled",
-        hasRac: child.has_rac,
+        hasRuleSpec: child.has_rulespec,
       };
     })
     .filter((item) => item.tail.length > 0 && item.href !== "/atlas/");
@@ -67,12 +67,12 @@ function RuleOutline({ childRules }: { childRules: Rule[] }) {
                 ({item.tail})
               </span>
               <span className="truncate">{item.heading}</span>
-              {item.hasRac && (
+              {item.hasRuleSpec && (
                 <span
                   aria-hidden="true"
                   className="ml-auto shrink-0 font-mono text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)] rounded px-1 py-px uppercase tracking-wider"
                 >
-                  RAC
+                  RuleSpec
                 </span>
               )}
             </Link>

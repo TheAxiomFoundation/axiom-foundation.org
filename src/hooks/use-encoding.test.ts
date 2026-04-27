@@ -21,8 +21,8 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     encoding_run_id: 'enc-1',
     citation: '26 USC 1',
     session_id: null,
-    file_path: 'statute/26/1.rac',
-    rac_content: 'rule { ... }',
+    file_path: 'statute/26/1.yaml',
+    rulespec_content: 'rule { ... }',
     final_scores: null,
     iterations: null,
     total_duration_ms: null,
@@ -32,7 +32,7 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     has_issues: null,
     note: null,
     timestamp: null,
-    autorac_version: null,
+    autorulespec_version: null,
     ...overrides,
   }
 }
@@ -51,7 +51,7 @@ describe('useEncoding', () => {
   })
 
   it('fetches encoding data for a valid ruleId', async () => {
-    const mockEncodingData = makeEncoding({ final_scores: { rac: 90, formula: 85, parameter: 80, integration: 75 } })
+    const mockEncodingData = makeEncoding({ final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 } })
     mockGetRuleEncoding.mockResolvedValue(mockEncodingData)
 
     const { result } = renderHook(() => useEncoding('rule-1'))
@@ -111,7 +111,7 @@ describe('useEncoding', () => {
   })
 
   it('resets agentTranscripts when ruleId changes to null', async () => {
-    mockGetRuleEncoding.mockResolvedValue(makeEncoding({ session_id: 'sess-1', rac_content: null }))
+    mockGetRuleEncoding.mockResolvedValue(makeEncoding({ session_id: 'sess-1', rulespec_content: null }))
     mockGetSDKSessionEvents.mockResolvedValue([])
     mockGetTranscriptsBySession.mockResolvedValue([{ id: 1 }])
 
@@ -176,7 +176,7 @@ describe('useEncoding', () => {
     rerender({ ruleId: 'rule-2' })
 
     // Resolve first request
-    resolveFirst!(makeEncoding({ encoding_run_id: 'stale', citation: 'stale', file_path: 'stale.rac', rac_content: null }))
+    resolveFirst!(makeEncoding({ encoding_run_id: 'stale', citation: 'stale', file_path: 'stale.yaml', rulespec_content: null }))
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -187,7 +187,7 @@ describe('useEncoding', () => {
   })
 
   it('resets state when ruleId changes to null', async () => {
-    mockGetRuleEncoding.mockResolvedValue(makeEncoding({ rac_content: null }))
+    mockGetRuleEncoding.mockResolvedValue(makeEncoding({ rulespec_content: null }))
 
     const { result, rerender } = renderHook(
       ({ ruleId }) => useEncoding(ruleId),

@@ -11,7 +11,7 @@ export function AtlasSection() {
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
             The open platform for exploring encoded law. Browse the Archive
-            of source documents, RAC encodings, and validation results
+            of source documents, RuleSpec encodings, and validation results
             across jurisdictions.
           </p>
         </div>

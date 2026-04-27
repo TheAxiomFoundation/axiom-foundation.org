@@ -27,8 +27,8 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     expect(screen.getByText('Browse')).toBeInTheDocument()
-    expect(screen.getByText('.rac')).toBeInTheDocument()
-    expect(screen.getByText('AutoRAC')).toBeInTheDocument()
+    expect(screen.getByText('.yaml')).toBeInTheDocument()
+    expect(screen.getByText('AutoRuleSpec')).toBeInTheDocument()
     expect(screen.queryByText('Lab')).not.toBeInTheDocument()
     expect(screen.getByText('Spec')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
@@ -38,15 +38,15 @@ describe('Nav', () => {
   it('renders anchor links on landing page (pathname /)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    const racLink = screen.getByText('.rac')
-    expect(racLink.closest('a')).toHaveAttribute('href', '#format')
+    const rulespecLink = screen.getByText('.yaml')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', '#format')
   })
 
   it('renders anchor links as Link on non-landing pages', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavWrapper />)
-    const racLink = screen.getByText('.rac')
-    expect(racLink.closest('a')).toHaveAttribute('href', '/#format')
+    const rulespecLink = screen.getByText('.yaml')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', '/#format')
   })
 
   it('highlights active link on /atlas', () => {

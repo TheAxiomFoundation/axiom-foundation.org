@@ -6,7 +6,7 @@ const { mockIn, mockOrder } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: {
+  supabaseArch: {
     from: () => ({
       select: () => ({
         in: (...args: unknown[]) => {

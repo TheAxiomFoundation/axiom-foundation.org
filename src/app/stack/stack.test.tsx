@@ -25,9 +25,9 @@ describe("StackPage", () => {
     expect(screen.getByRole("heading", { name: /repository map/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /choose a layer to inspect/i })).toBeInTheDocument();
     expect(screen.getByText(/pension credit regulation 4A\(1\)\(a\)/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /open autorac system map/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /open autorulespec system map/i })).toHaveAttribute(
       "href",
-      "/autorac"
+      "/autorulespec"
     );
   });
 
@@ -37,16 +37,16 @@ describe("StackPage", () => {
     expect(screen.getByText(/overview mode/i)).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getAllByRole("button", { name: /normalize structure into akoma ntoso/i })[0]
+      screen.getAllByRole("button", { name: /normalize source structure/i })[0]
     );
-    expect(screen.getAllByText(/AKN normalization/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/source\.akn/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/source XML normalization/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/source\.xml/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /back to overview/i })).toBeInTheDocument();
 
     fireEvent.click(
       screen.getAllByRole("button", { name: /compile, validate, test, and execute/i })[0]
     );
-    expect(screen.getAllByText(/rac\.validate/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/rulespec\.validate/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/python\/js\/rust codegen/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /exact source slice/i }));
@@ -55,10 +55,10 @@ describe("StackPage", () => {
       "/stack-examples/uk-regulation-4A-1-a-source-slice.txt"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /autorac run summary/i }));
-    expect(screen.getByRole("link", { name: /open autorac summary json/i })).toHaveAttribute(
+    fireEvent.click(screen.getByRole("button", { name: /autorulespec run summary/i }));
+    expect(screen.getByRole("link", { name: /open autorulespec summary json/i })).toHaveAttribute(
       "href",
-      "/stack-examples/uk-regulation-4A-1-a-autorac-summary.json"
+      "/stack-examples/uk-regulation-4A-1-a-autorulespec-summary.json"
     );
   });
 });

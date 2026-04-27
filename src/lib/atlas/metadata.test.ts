@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 const { mockIn } = vi.hoisted(() => ({ mockIn: vi.fn() }));
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseAkn: {
+  supabaseArch: {
     from: () => ({
       select: () => ({
         in: mockIn,

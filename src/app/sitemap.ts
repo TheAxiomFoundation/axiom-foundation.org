@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { supabaseCorpus } from "@/lib/supabase";
+import { AXIOM_SITEMAP_CHUNKS } from "@/lib/sitemap-config";
 import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
 
 /**
@@ -21,13 +22,11 @@ const CHUNK_SIZE = 1000;
  * Upper bound on paginated sitemap chunks. Each chunk is a
  * build-time Supabase query so leaving a lot of empty chunks just
  * wastes build time. Grow when the ingested corpus visibly exceeds
- * ``MAX_CHUNKS * CHUNK_SIZE``. The count RPC isn't indexable cheaply
+ * ``AXIOM_SITEMAP_CHUNKS * CHUNK_SIZE``. The count RPC isn't indexable cheaply
  * so we keep this static rather than auto-sized.
  */
-const MAX_CHUNKS = 20;
-
 export function generateSitemaps(): { id: number }[] {
-  return Array.from({ length: MAX_CHUNKS }, (_, id) => ({ id }));
+  return Array.from({ length: AXIOM_SITEMAP_CHUNKS }, (_, id) => ({ id }));
 }
 
 const STATIC_ENTRIES: MetadataRoute.Sitemap = [

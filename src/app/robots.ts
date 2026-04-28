@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { AXIOM_SITEMAP_CHUNKS } from "@/lib/sitemap-config";
 import { SITE_URL } from "@/lib/urls";
 
 /**
@@ -10,6 +11,9 @@ import { SITE_URL } from "@/lib/urls";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: "*", allow: "/" }],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: Array.from(
+      { length: AXIOM_SITEMAP_CHUNKS },
+      (_, id) => `${SITE_URL}/sitemap/${id}.xml`
+    ),
   };
 }

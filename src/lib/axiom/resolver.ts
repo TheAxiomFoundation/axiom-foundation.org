@@ -1,4 +1,5 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
+import { naturalCompare } from "@/lib/natural-sort";
 
 /**
  * Outcome of resolving a citation_path against ``corpus.provisions``.
@@ -123,16 +124,21 @@ export async function resolveCitationPath(
  */
 export async function getSiblings(rule: Rule): Promise<Rule[]> {
   if (!rule.parent_id) {
-    // Top-level rule — siblings are other top-level rules in the
-    // same jurisdiction + doc_type + level 0.
+    if (!rule.citation_path) return [rule];
+
+    const parts = rule.citation_path.split("/");
+    const parentPath = parts.slice(0, -1).join("/");
+    if (!parentPath) return [rule];
+
     const { data } = await supabaseCorpus
       .from("provisions")
       .select("*")
-      .eq("jurisdiction", rule.jurisdiction)
-      .eq("doc_type", rule.doc_type)
+      .gte("citation_path", `${parentPath}/`)
+      .lt("citation_path", `${parentPath}~`)
       .is("parent_id", null)
-      .order("ordinal", { ascending: true, nullsFirst: false });
-    return (data as Rule[] | null) ?? [];
+      .order("citation_path")
+      .range(0, 999);
+    return sortSiblings((data as Rule[] | null) ?? []);
   }
   const { data } = await supabaseCorpus
     .from("provisions")
@@ -140,4 +146,19 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
     .eq("parent_id", rule.parent_id)
     .order("ordinal", { ascending: true, nullsFirst: false });
   return (data as Rule[] | null) ?? [];
+}
+
+function sortSiblings(rules: Rule[]): Rule[] {
+  return [...rules].sort((a, b) => {
+    const aOrdinal = a.ordinal;
+    const bOrdinal = b.ordinal;
+
+    if (aOrdinal != null && bOrdinal != null && aOrdinal !== bOrdinal) {
+      return aOrdinal - bOrdinal;
+    }
+    if (aOrdinal != null && bOrdinal == null) return -1;
+    if (aOrdinal == null && bOrdinal != null) return 1;
+
+    return naturalCompare(a.citation_path ?? a.id, b.citation_path ?? b.id);
+  });
 }

@@ -6,7 +6,7 @@ describe("Nav", () => {
     render(<Nav />);
     expect(screen.getByText("Browse")).toBeInTheDocument();
     expect(screen.getByText(".yaml")).toBeInTheDocument();
-    expect(screen.getByText("AutoRuleSpec")).toBeInTheDocument();
+    expect(screen.getByText("Encoder")).toBeInTheDocument();
     expect(screen.getByText("Spec")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Docs")).toBeInTheDocument();

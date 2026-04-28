@@ -143,6 +143,8 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
 // ---- Pagination ----
 
 const PAGE_SIZE = 100;
+const PREFIX_SCAN_PAGE_SIZE = 1000;
+const PREFIX_SCAN_MAX_ROWS = 10000;
 
 // ---- Query functions ----
 
@@ -150,6 +152,77 @@ const PAGE_SIZE = 100;
 
 function hasNextPage(page: number, total: number): boolean {
   return (page + 1) * PAGE_SIZE < total;
+}
+
+function citationPrefixLowerBound(pathPrefix: string): string {
+  return `${pathPrefix}/`;
+}
+
+function citationPrefixUpperBound(pathPrefix: string): string {
+  return `${pathPrefix}~`;
+}
+
+function citationDepth(citationPath: string): number {
+  let depth = 1;
+  for (let i = 0; i < citationPath.length; i++) {
+    if (citationPath[i] === "/") depth++;
+  }
+  return depth;
+}
+
+function sortRulesByOrdinalThenCitation(rules: Rule[]): Rule[] {
+  return [...rules].sort((a, b) => {
+    const aOrdinal = a.ordinal;
+    const bOrdinal = b.ordinal;
+
+    if (aOrdinal != null && bOrdinal != null && aOrdinal !== bOrdinal) {
+      return aOrdinal - bOrdinal;
+    }
+    if (aOrdinal != null && bOrdinal == null) return -1;
+    if (aOrdinal == null && bOrdinal != null) return 1;
+
+    return naturalCompare(a.citation_path ?? a.id, b.citation_path ?? b.id);
+  });
+}
+
+async function fetchDirectRootChildrenByCitationPrefix(
+  pathPrefix: string
+): Promise<{ rows: Rule[]; truncated: boolean }> {
+  const expectedDepth = citationDepth(pathPrefix) + 1;
+  const rows: Rule[] = [];
+  let offset = 0;
+
+  while (offset < PREFIX_SCAN_MAX_ROWS) {
+    const { data, error } = await supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .gte("citation_path", citationPrefixLowerBound(pathPrefix))
+      .lt("citation_path", citationPrefixUpperBound(pathPrefix))
+      .is("parent_id", null)
+      .order("citation_path")
+      .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1);
+
+    if (error || !data || data.length === 0) {
+      return { rows, truncated: false };
+    }
+
+    for (const row of data as Rule[]) {
+      if (
+        row.citation_path &&
+        citationDepth(row.citation_path) === expectedDepth
+      ) {
+        rows.push(row);
+      }
+    }
+
+    if (data.length < PREFIX_SCAN_PAGE_SIZE) {
+      return { rows, truncated: false };
+    }
+
+    offset += PREFIX_SCAN_PAGE_SIZE;
+  }
+
+  return { rows, truncated: true };
 }
 
 /**
@@ -260,7 +333,7 @@ export async function getTitleNodes(
   for (const row of data) {
     if (!row.citation_path) continue;
     const parts = row.citation_path.split("/");
-    if (parts.length >= 3) {
+    if (parts.length >= 3 && parts[1] === _docType) {
       titleSet.add(parts[2]);
     }
   }
@@ -276,11 +349,12 @@ export async function getTitleNodes(
 
   const nodes = await Promise.all(
     titles.map(async (title) => {
-      const prefix = `${jurisdiction}/statute/${title}`;
+      const prefix = `${jurisdiction}/${_docType}/${title}`;
       const { count } = await supabaseCorpus
         .from("provisions")
         .select("*", { count: "exact", head: true })
-        .like("citation_path", `${prefix}/%`)
+        .gte("citation_path", citationPrefixLowerBound(prefix))
+        .lt("citation_path", citationPrefixUpperBound(prefix))
         .is("parent_id", null);
 
       return {
@@ -354,31 +428,14 @@ export async function getSectionNodes(
     };
   }
 
+  const { rows, truncated } =
+    await fetchDirectRootChildrenByCitationPrefix(pathPrefix);
+  const sortedRules = sortRulesByOrdinalThenCitation(rows);
   const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-  const { data, count } = await supabaseCorpus
-    .from("provisions")
-    .select("*", { count: "exact" })
-    .like("citation_path", `${pathPrefix}/%`)
-    .is("parent_id", null)
-    .order("ordinal")
-    .range(from, to);
+  const to = from + PAGE_SIZE;
+  const pageRules = sortedRules.slice(from, to);
 
-  const rules = (data || []) as Rule[];
-  const total = count || 0;
-
-  const expectedDepth = pathPrefix.split("/").length + 1;
-  const depthFiltered = rules.filter((r) => {
-    if (!r.citation_path) return false;
-    // Count slashes + 1 instead of splitting to avoid array allocations
-    let depth = 1;
-    for (let i = 0; i < r.citation_path.length; i++) {
-      if (r.citation_path[i] === "/") depth++;
-    }
-    return depth === expectedDepth;
-  });
-
-  let nodes = depthFiltered.map((r) => ruleToSectionNode(r));
+  let nodes = pageRules.map((r) => ruleToSectionNode(r));
 
   // Filter to nodes that have encoded descendants
   if (encodedOnly && encodedPaths) {
@@ -394,8 +451,8 @@ export async function getSectionNodes(
 
   return {
     nodes,
-    hasMore: hasNextPage(page, total),
-    total: encodedOnly ? nodes.length : total,
+    hasMore: truncated || to < sortedRules.length,
+    total: encodedOnly ? nodes.length : sortedRules.length,
   };
 }
 

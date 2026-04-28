@@ -133,7 +133,7 @@ export function Hero() {
 
         <div className="flex gap-6 justify-center mt-14 flex-wrap">
           <a href={axiomAppHref()} className="btn-primary">
-            Explore the axiom
+            Explore Axiom
             <ArrowRightIcon className="w-5 h-5" />
           </a>
         </div>

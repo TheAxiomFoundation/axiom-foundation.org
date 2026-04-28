@@ -36,7 +36,7 @@ describe('supabase lib', () => {
   })
 
   describe('schema clients', () => {
-    it('creates dedicated corpus, encodings, and lab clients', () => {
+    it('creates dedicated corpus, encodings, and telemetry clients', () => {
       expect(mockCreateClient).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
@@ -50,7 +50,7 @@ describe('supabase lib', () => {
       expect(mockCreateClient).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        expect.objectContaining({ db: { schema: 'lab' } })
+        expect.objectContaining({ db: { schema: 'telemetry' } })
       )
       expect(mockCreateClient).not.toHaveBeenCalledWith(
         expect.any(String),

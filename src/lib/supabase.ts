@@ -31,8 +31,11 @@ export const supabaseCorpus = createAxiomClient('axiom-corpus-auth-token', 'corp
 // Encoding metadata client for RuleSpec run summaries.
 export const supabaseEncodings = createAxiomClient('axiom-encodings-auth-token', 'encodings')
 
-// Lab client for encoder transcripts, SDK sessions, and event logs.
-export const supabaseLab = createAxiomClient('axiom-lab-auth-token', 'lab')
+// Telemetry client for encoder transcripts, SDK sessions, and event logs.
+export const supabaseTelemetry = createAxiomClient(
+  'axiom-telemetry-auth-token',
+  'telemetry'
+)
 /* v8 ignore stop */
 
 // Types for Encoder runs
@@ -109,7 +112,7 @@ export interface AgentTranscript {
 
 // Fetch agent transcripts from Supabase
 export async function getAgentTranscripts(limit = 100, offset = 0): Promise<AgentTranscript[]> {
-  const { data, error } = await supabaseLab
+  const { data, error } = await supabaseTelemetry
     .from('agent_transcripts')
     .select('*')
     .order('created_at', { ascending: false })
@@ -125,7 +128,7 @@ export async function getAgentTranscripts(limit = 100, offset = 0): Promise<Agen
 
 // Fetch transcripts for a specific session (linked to an encoding run)
 export async function getTranscriptsBySession(sessionId: string): Promise<AgentTranscript[]> {
-  const { data, error } = await supabaseLab
+  const { data, error } = await supabaseTelemetry
     .from('agent_transcripts')
     .select('*')
     .eq('session_id', sessionId)
@@ -167,7 +170,7 @@ export interface SDKSessionEvent {
 
 // Fetch SDK orchestrator sessions from Supabase
 export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
-  const { data, error } = await supabaseLab
+  const { data, error } = await supabaseTelemetry
     .from('sdk_sessions')
     .select('*')
     .order('started_at', { ascending: false })
@@ -190,14 +193,14 @@ export async function getSDKSessionMeta(
 ): Promise<Record<string, { title: string; lastEventAt: string | null }>> {
   if (sessionIds.length === 0) return {}
 
-  const { data: startEvents } = await supabaseLab
+  const { data: startEvents } = await supabaseTelemetry
     .from('sdk_session_events')
     .select('session_id, content')
     .in('session_id', sessionIds)
     .eq('event_type', 'agent_start')
     .order('sequence', { ascending: true })
 
-  const { data: lastEvents } = await supabaseLab
+  const { data: lastEvents } = await supabaseTelemetry
     .from('sdk_session_events')
     .select('session_id, timestamp')
     .in('session_id', sessionIds)
@@ -236,7 +239,7 @@ export async function getSDKSessionMeta(
 
 // Fetch events for a specific SDK session
 export async function getSDKSessionEvents(sessionId: string, limit = 2000): Promise<SDKSessionEvent[]> {
-  const { data, error } = await supabaseLab
+  const { data, error } = await supabaseTelemetry
     .from('sdk_session_events')
     .select('*')
     .eq('session_id', sessionId)

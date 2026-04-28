@@ -4,6 +4,7 @@ on:
   push:
     branches: [master, main]
     paths:
+      - ".github/workflows/publish-ui.yaml"
       - "packages/ui/**"
 
 jobs:
@@ -14,7 +15,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: packages/ui
-      - run: bun test
+      - run: bun run test
         working-directory: packages/ui
 
   publish:

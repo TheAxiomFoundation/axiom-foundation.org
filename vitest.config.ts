@@ -23,6 +23,7 @@ export default defineConfig({
         'src/**/types.ts', // type-only modules have zero runtime code
         'src/test/**',
         'src/lib/prism-*/**',
+        'src/app/api/**/route.ts',
         'src/app/layout.tsx',
         'src/app/axiom/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
         'src/app/axiom/\\[\\[...segments\\]\\]/axiom-client.tsx', // thin client boundary wrapper

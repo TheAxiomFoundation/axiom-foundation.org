@@ -5,7 +5,7 @@ export function isGitHubEncoding(encoding: RuleEncodingData | null): boolean {
   return !!encoding?.encoding_run_id.startsWith("github:");
 }
 
-/** True when the encoding comes from a stored AutoRuleSpec encoding run. */
+/** True when the encoding comes from a stored Encoder run. */
 export function isEncodingRun(encoding: RuleEncodingData | null): boolean {
   return !!encoding && !encoding.encoding_run_id.startsWith("github:");
 }

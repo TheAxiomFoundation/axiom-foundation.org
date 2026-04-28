@@ -6,7 +6,7 @@ import { ArrowRightIcon, CheckIcon, XIcon } from "@/components/icons";
 import CodeBlock from "@/components/code-block";
 import { heroRuleSpecCode } from "@/lib/rulespec-examples";
 
-function AutoRuleSpecTransform() {
+function EncoderTransform() {
   const [phase, setPhase] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -70,7 +70,7 @@ of the threshold amount.`;
               : "text-[var(--color-ink-muted)]"
           }`}
         >
-          AutoRuleSpec
+          Encoder
         </span>
       </div>
 
@@ -103,7 +103,7 @@ interface TerminalLine {
   delay: number;
 }
 
-function AutoRuleSpecTerminal() {
+function EncoderTerminal() {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -125,7 +125,7 @@ function AutoRuleSpecTerminal() {
         <>
           <span className="text-[var(--color-success)]">$ </span>
           <span className="text-[var(--color-ink)] font-medium">
-            autorulespec encode &quot;26 USC 32&quot;
+            axiom encode &quot;26 USC 32&quot;
           </span>
         </>
       ),
@@ -311,7 +311,7 @@ function AutoRuleSpecTerminal() {
           <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
           <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
           <span className="font-mono text-[0.7rem] text-[rgba(255,255,255,0.3)] ml-2">
-            autorulespec — zsh
+            axiom — zsh
           </span>
         </div>
         <div className="px-5 py-4 font-mono text-[0.82rem] leading-[1.8] overflow-x-auto min-h-[320px]">
@@ -337,22 +337,22 @@ function AutoRuleSpecTerminal() {
   );
 }
 
-export function AutoRuleSpecSection() {
+export function EncoderSection() {
   return (
-    <section id="autorulespec" className="relative z-1 py-32 px-8">
+    <section id="encoder" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <h2 className="heading-section text-[var(--color-ink)] mb-6">
-            AutoRuleSpec
+            Encoder
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
             Point it at a statute. Get validated RuleSpec.
           </p>
         </div>
 
-        <AutoRuleSpecTransform />
+        <EncoderTransform />
 
-        <AutoRuleSpecTerminal />
+        <EncoderTerminal />
 
         {/* 3-tier validation pipeline */}
         <div className="mt-12 mb-12">
@@ -468,8 +468,8 @@ export function AutoRuleSpecSection() {
         </div>
 
         <div className="mt-12 flex flex-wrap justify-center gap-3">
-          <Link href="/autorulespec" className="btn-outline">
-            Open the AutoRuleSpec system map
+          <Link href="/encoder" className="btn-outline">
+            Open the Encoder system map
             <ArrowRightIcon className="w-5 h-5" />
           </Link>
           <Link href="/stack" className="btn-outline">

@@ -179,7 +179,7 @@ describe('supabase lib', () => {
       mockFrom.mockReturnValue({ select: selectFn })
 
       const result = await getSDKSessions(10)
-      expect(result).toEqual(mockData)
+      expect(result).toEqual([{ id: 'sdk-1', encoder_version: null }])
       expect(mockFrom).toHaveBeenCalledWith('sdk_sessions')
       expect(limitFn).toHaveBeenCalledWith(10)
     })
@@ -470,7 +470,7 @@ describe('supabase lib', () => {
         has_issues: null,
         note: null,
         timestamp: null,
-        autorulespec_version: null,
+        encoder_version: null,
       })
     })
 
@@ -559,25 +559,27 @@ describe('supabase lib', () => {
             final_scores: null,
             iterations: [{ attempt: 1, success: true, duration_ms: 5000, errors: [] }],
             total_duration_ms: 5000,
-            agent_type: 'autorulespec-v2',
+            agent_type: 'encoder-v2',
             agent_model: 'claude-sonnet-4',
             data_source: 'reviewer_agent',
             has_issues: false,
             note: 'Clean run',
             timestamp: '2025-06-15T12:00:00Z',
+            encoder_version: '0.4.2',
           }],
           error: null,
         })
       })
 
       const result = await getRuleEncoding('rule-1')
-      expect(result?.agent_type).toBe('autorulespec-v2')
+      expect(result?.agent_type).toBe('encoder-v2')
       expect(result?.agent_model).toBe('claude-sonnet-4')
       expect(result?.total_duration_ms).toBe(5000)
       expect(result?.data_source).toBe('reviewer_agent')
       expect(result?.has_issues).toBe(false)
       expect(result?.note).toBe('Clean run')
       expect(result?.iterations).toHaveLength(1)
+      expect(result?.encoder_version).toBe('0.4.2')
       expect(result?.timestamp).toBe('2025-06-15T12:00:00Z')
     })
 

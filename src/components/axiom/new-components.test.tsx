@@ -88,7 +88,7 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     has_issues: null,
     note: null,
     timestamp: null,
-    autorulespec_version: null,
+    encoder_version: null,
     ...overrides,
   }
 }
@@ -308,7 +308,7 @@ describe('AgentLogsTab', () => {
 
   it('shows encoding run summary when encoding has encoding-run metadata', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorulespec-v2',
+      agent_type: 'encoder-v2',
       agent_model: 'claude-sonnet-4',
       total_duration_ms: 125000,
       data_source: 'reviewer_agent',
@@ -317,7 +317,7 @@ describe('AgentLogsTab', () => {
     })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
     // Encoding run section is open by default
-    expect(screen.getByText('autorulespec-v2')).toBeInTheDocument()
+    expect(screen.getByText('encoder-v2')).toBeInTheDocument()
     expect(screen.getByText('claude-sonnet-4')).toBeInTheDocument()
     expect(screen.getByText('2m 5s')).toBeInTheDocument()
     expect(screen.getByText('reviewer agent')).toBeInTheDocument()
@@ -326,7 +326,7 @@ describe('AgentLogsTab', () => {
 
   it('shows encoding run note when present', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorulespec-v2',
+      agent_type: 'encoder-v2',
       note: 'Manual review needed for edge cases',
     })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
@@ -335,7 +335,7 @@ describe('AgentLogsTab', () => {
 
   it('shows iterations when expanding the section', () => {
     const encoding = makeEncoding({
-      agent_type: 'autorulespec-v2',
+      agent_type: 'encoder-v2',
       iterations: [
         { attempt: 1, success: false, duration_ms: 30000, errors: [{ type: 'ValidationError', message: 'Missing parameter' }] },
         { attempt: 2, success: true, duration_ms: 45000, errors: [] },
@@ -522,28 +522,28 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText('(1 events)')).toBeInTheDocument()
   })
 
-  it('shows autorulespec version in agent logs drawer', () => {
+  it('shows encoder version in agent logs drawer', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ autorulespec_version: '0.4.2' }),
+      encoding: makeEncoding({ encoder_version: '0.4.2' }),
       sessionEvents: [makeEvent()],
       agentTranscripts: [],
       loading: false,
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.getByText('autorulespec 0.4.2')).toBeInTheDocument()
+    expect(screen.getByText('encoder 0.4.2')).toBeInTheDocument()
   })
 
-  it('does not show autorulespec version when not present', () => {
+  it('does not show encoder version when not present', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ autorulespec_version: null }),
+      encoding: makeEncoding({ encoder_version: null }),
       sessionEvents: [makeEvent()],
       agentTranscripts: [],
       loading: false,
       error: null,
     })
     render(<RuleDetailPanel document={makeDoc()} rule={makeRule()} />)
-    expect(screen.queryByText(/autorulespec /)).not.toBeInTheDocument()
+    expect(screen.queryByText(/encoder /)).not.toBeInTheDocument()
   })
 
   it('toggles agent logs drawer open and closed', () => {
@@ -571,7 +571,7 @@ describe('RuleDetailPanel', () => {
 
   it('shows agent logs drawer when encoding has encoding-run data but no session events', () => {
     mockUseEncoding.mockReturnValue({
-      encoding: makeEncoding({ agent_type: 'autorulespec-v2', session_id: null }),
+      encoding: makeEncoding({ agent_type: 'encoder-v2', session_id: null }),
       sessionEvents: [],
       agentTranscripts: [],
       loading: false,

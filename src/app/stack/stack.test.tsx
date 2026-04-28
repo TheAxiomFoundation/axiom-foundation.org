@@ -25,9 +25,9 @@ describe("StackPage", () => {
     expect(screen.getByRole("heading", { name: /repository map/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /choose a layer to inspect/i })).toBeInTheDocument();
     expect(screen.getByText(/pension credit regulation 4A\(1\)\(a\)/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /open autorulespec system map/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /open encoder system map/i })).toHaveAttribute(
       "href",
-      "/autorulespec"
+      "/encoder"
     );
   });
 
@@ -55,10 +55,10 @@ describe("StackPage", () => {
       "/stack-examples/uk-regulation-4A-1-a-source-slice.txt"
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /autorulespec run summary/i }));
-    expect(screen.getByRole("link", { name: /open autorulespec summary json/i })).toHaveAttribute(
+    fireEvent.click(screen.getByRole("button", { name: /encoder run summary/i }));
+    expect(screen.getByRole("link", { name: /open encoder summary json/i })).toHaveAttribute(
       "href",
-      "/stack-examples/uk-regulation-4A-1-a-autorulespec-summary.json"
+      "/stack-examples/uk-regulation-4A-1-a-encoder-summary.json"
     );
   });
 });

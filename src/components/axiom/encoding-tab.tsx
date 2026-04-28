@@ -96,7 +96,7 @@ export function EncodingTab({
         )}
       </div>
 
-      {/* Scores — skip for GitHub sources (no AutoRuleSpec metadata) */}
+      {/* Scores — skip for GitHub sources (no Encoder metadata) */}
       {scores && !isGitHub && (
         <div>
           <div className="eyebrow mb-3">Scores</div>

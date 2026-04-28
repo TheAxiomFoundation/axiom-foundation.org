@@ -32,7 +32,7 @@ function makeEncoding(overrides: Partial<RuleEncodingData> = {}): RuleEncodingDa
     has_issues: null,
     note: null,
     timestamp: null,
-    autorulespec_version: null,
+    encoder_version: null,
     ...overrides,
   }
 }

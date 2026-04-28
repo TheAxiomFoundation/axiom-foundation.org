@@ -5,11 +5,11 @@ vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
 
-import AutoRuleSpecPage from '@/app/autorulespec/page'
+import EncoderPage from '@/app/encoder/page'
 
-describe('AutoRuleSpecPage', () => {
+describe('EncoderPage', () => {
   it('renders the system map with pipeline and guardrails', () => {
-    render(<AutoRuleSpecPage />)
+    render(<EncoderPage />)
 
     expect(screen.getByRole('heading', { name: /how the harness actually works/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /recent proof points/i })).toBeInTheDocument()
@@ -23,7 +23,7 @@ describe('AutoRuleSpecPage', () => {
   })
 
   it('switches pipeline detail and guardrail detail panels', () => {
-    render(<AutoRuleSpecPage />)
+    render(<EncoderPage />)
 
     const ciStageButton = screen.getByRole('button', { name: /run deterministic ci, not just compilation/i })
     fireEvent.click(ciStageButton)
@@ -39,7 +39,7 @@ describe('AutoRuleSpecPage', () => {
   })
 
   it('labels artifact examples as representative rather than live-bound', () => {
-    render(<AutoRuleSpecPage />)
+    render(<EncoderPage />)
 
     expect(
       screen.getByText(/concrete current examples from the accepted autoresearch run and the latest uk bulk promotion/i)
@@ -47,7 +47,7 @@ describe('AutoRuleSpecPage', () => {
   })
 
   it('shows the autoresearch decision artifact and holdout guardrail', () => {
-    render(<AutoRuleSpecPage />)
+    render(<EncoderPage />)
 
     const holdoutButton = screen.getByRole('button', { name: /do not keep prompt mutations without a holdout check/i })
     fireEvent.click(holdoutButton)

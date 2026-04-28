@@ -2,10 +2,10 @@
   "wave": "2026-04-01-wave16",
   "citation": "uksi-2002-1792 regulation 4A(1)(a) qualifying young person up to September after 16th birthday",
   "source_eval_runs": [
-    "/tmp/autorules-uk-wave16-atomic-20260401d"
+    "/tmp/encoder-uk-wave16-atomic-20260401d"
   ],
-  "autorulespec_commit": "243d37f",
-  "autorulespec_version": "0.2.64",
+  "encoder_commit": "243d37f",
+  "encoder_version": "0.2.64",
   "runner": "openai-gpt-5.4",
   "all_ready": true,
   "suite_summary": {

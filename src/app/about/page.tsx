@@ -86,7 +86,7 @@ export default function AboutPage() {
                 desc: "RuleSpec DSL for encoding statutes with citations, temporal versioning, and tests. Purpose-built for legal encoding.",
               },
               {
-                title: "AutoRuleSpec",
+                title: "Encoder",
                 desc: "AI-powered encoding pipeline with 3-tier validation. Automated statute encoding with CI testing, oracle validation, and LLM review.",
               },
             ].map((card) => (

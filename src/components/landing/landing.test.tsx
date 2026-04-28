@@ -16,7 +16,7 @@ import { Hero } from '@/components/landing/hero'
 import { AxiomSection } from '@/components/landing/axiom-section'
 import { RuleSpecSection } from '@/components/landing/rulespec-section'
 import { RuleSpecFormat } from '@/components/landing/rulespec-format'
-import { AutoRuleSpecSection } from '@/components/landing/autorulespec-section'
+import { EncoderSection } from '@/components/landing/encoder-section'
 import { SpecSection } from '@/components/landing/spec-section'
 import { GroundTruthSection } from '@/components/landing/ground-truth-section'
 import { CoverageSection } from '@/components/landing/coverage-section'
@@ -53,11 +53,11 @@ describe('Landing sections', () => {
     expect(screen.getByText(/format comparison/i)).toBeInTheDocument()
   })
 
-  it('renders the AutoRuleSpec section', () => {
-    render(<AutoRuleSpecSection />)
-    expect(screen.getAllByText(/autorulespec/i).length).toBeGreaterThan(0)
+  it('renders the Encoder section', () => {
+    render(<EncoderSection />)
+    expect(screen.getAllByText(/encoder/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open the autorulespec system map/i })).toHaveAttribute('href', '/autorulespec')
+    expect(screen.getByRole('link', { name: /open the encoder system map/i })).toHaveAttribute('href', '/encoder')
     expect(screen.getByRole('link', { name: /view the broader stack/i })).toHaveAttribute('href', '/stack')
   })
 

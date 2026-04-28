@@ -66,7 +66,7 @@ const pipelineStages: PipelineStage[] = [
     step: "01",
     title: "Ingest official source text first",
     summary:
-      "AutoRuleSpec starts from real source documents, exact section identifiers, and copied slices. The source layer is never stubbed.",
+      "Encoder starts from real source documents, exact section identifiers, and copied slices. The source layer is never stubbed.",
     details: [
       "Official PDFs, HTML, source XML, and exact source slices are pulled into the workspace before generation.",
       "Benchmarks point at concrete section ids or slice ids, not free-form prompts.",
@@ -520,7 +520,7 @@ cases:
   "provenance_tier": "benchmarked_promotion",
   "file_count": 55,
   "runner": "codex-gpt-5.4",
-  "autorulespec_commit": "d4114bd",
+  "encoder_commit": "d4114bd",
   "all_ready": true
 }`,
   },
@@ -533,7 +533,7 @@ const stageStats = [
   { label: "hard readiness gates", value: "7" },
 ];
 
-export function AutoRuleSpecSystemPage() {
+export function EncoderSystemPage() {
   const [selectedStageId, setSelectedStageId] = useState(pipelineStages[0].id);
   const [selectedGuardrailId, setSelectedGuardrailId] = useState(guardrails[0].id);
   const [selectedArtifactId, setSelectedArtifactId] = useState(artifactPanels[0].id);
@@ -552,7 +552,7 @@ export function AutoRuleSpecSystemPage() {
           <div className="flex flex-wrap items-start justify-between gap-8 mb-10">
             <div className="max-w-[760px]">
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-accent)] mb-4">
-                AutoRuleSpec system map
+                Encoder system map
               </p>
               <h1 className="heading-page mb-6">
                 How the harness actually works

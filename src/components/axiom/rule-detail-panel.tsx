@@ -157,9 +157,9 @@ export function RuleDetailPanel({
                   ({sessionEvents.length} events)
                 </span>
               )}
-              {encoding?.autorulespec_version && (
+              {encoding?.encoder_version && (
                 <span className="normal-case text-[var(--color-ink-muted)]">
-                  autorulespec {encoding.autorulespec_version}
+                  encoder {encoding.encoder_version}
                 </span>
               )}
             </span>

@@ -33,6 +33,10 @@ describe("Nav", () => {
       "href",
       "https://app.axiom-foundation.org",
     );
+    expect(screen.getAllByText("Encoder")[0]).toHaveAttribute(
+      "href",
+      "https://axiom-foundation.org/#encoder",
+    );
   });
 
   it("highlights active link based on pathname", () => {

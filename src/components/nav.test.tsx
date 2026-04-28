@@ -41,6 +41,8 @@ describe('Nav', () => {
     render(<NavWrapper />)
     const rulespecLink = screen.getByText('RuleSpec')
     expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#rulespec')
+    const encoderLink = screen.getByText('Encoder')
+    expect(encoderLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoder')
   })
 
   it('renders anchor links as Link on non-landing pages', () => {

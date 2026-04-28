@@ -42,7 +42,7 @@ export const supabaseEncodings = isTestEnv
     })
 /* v8 ignore stop */
 
-// Types for encoding runs (AutoRuleSpec encoding runs)
+// Types for Encoder runs
 export interface EncodingRunIteration {
   attempt: number
   success: boolean
@@ -87,7 +87,7 @@ export async function getEncodingRuns(limit = 100, offset = 0): Promise<Encoding
   return (data || []) as EncodingRun[]
 }
 
-// Types for agent transcripts (AutoRuleSpec encoding runs)
+// Types for agent transcripts from Encoder runs
 export interface TranscriptMessage {
   type: string
   message?: {
@@ -158,7 +158,7 @@ export interface SDKSession {
   output_tokens: number
   cache_read_tokens: number
   estimated_cost_usd: number
-  autorulespec_version: string | null
+  encoder_version: string | null
 }
 
 export interface SDKSessionEvent {
@@ -185,7 +185,10 @@ export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
     return []
   }
 
-  return (data || []) as SDKSession[]
+  return ((data || []) as SDKSession[]).map((row) => ({
+    ...row,
+    encoder_version: row.encoder_version ?? null,
+  }))
 }
 
 // Fetch session metadata
@@ -294,7 +297,7 @@ export interface RuleEncodingData {
   has_issues: boolean | null
   note: string | null
   timestamp: string | null
-  autorulespec_version: string | null
+  encoder_version: string | null
 }
 
 // Generate candidate file paths walking up the hierarchy
@@ -367,7 +370,7 @@ async function fetchRuleSpecFromGitHub(
         has_issues: null,
         note: null,
         timestamp: null,
-        autorulespec_version: null,
+        encoder_version: null,
       }
     } catch {
       continue
@@ -400,7 +403,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   // Single query: try all candidate paths at once, pick the most specific match
   const { data, error } = await supabaseEncodings
     .from('encoding_runs')
-    .select('id, citation, session_id, file_path, rulespec_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorulespec_version')
+    .select('id, citation, session_id, file_path, rulespec_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, encoder_version')
     .in('file_path', candidates)
     .order('timestamp', { ascending: false })
 
@@ -426,7 +429,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       has_issues: best.has_issues ?? null,
       note: best.note ?? null,
       timestamp: best.timestamp ?? null,
-      autorulespec_version: best.autorulespec_version ?? null,
+      encoder_version: best.encoder_version ?? null,
     }
   }
 

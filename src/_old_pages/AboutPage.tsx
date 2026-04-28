@@ -46,7 +46,7 @@ export default function AboutPage() {
             </div>
 
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>AutoRuleSpec</h3>
+              <h3 className={styles.cardTitle}>Encoder</h3>
               <p className={styles.cardText}>
                 AI-powered encoding pipeline with 3-tier validation. Automated statute encoding with
                 CI testing, oracle validation, and LLM review.

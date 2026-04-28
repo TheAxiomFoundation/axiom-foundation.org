@@ -135,7 +135,7 @@ const stackLayers: StackLayer[] = [
       "slice extraction",
       "cross-reference resolution",
     ],
-    repos: ["axiom", "autorulespec"],
+    repos: ["axiom", "axiom-encode"],
     outputs: ["source.txt", "context-manifest.json", "navigable source tree"],
     snippetLabel: "eval workspace context",
     snippetLanguage: "yaml",
@@ -181,14 +181,14 @@ context_files:
     icon: <CodeIcon className="w-5 h-5" />,
   },
   {
-    id: "autorulespec",
+    id: "encoder",
     step: "05",
     stageIds: ["encode", "check"],
-    title: "Generate and evaluate with AutoRuleSpec",
+    title: "Generate and evaluate with Encoder",
     summary:
-      "AutoRuleSpec is the harness layer: benchmark manifests, workspace construction, generation policy, deterministic CI, oracles, review, and readiness gates.",
+      "Encoder is the harness layer: benchmark manifests, workspace construction, generation policy, deterministic CI, oracles, review, and readiness gates.",
     details: [
-      "AutoRuleSpec consumes exact slices and canonical context, then emits candidate `.yaml` and `.yaml.test` bundles.",
+      "Encoder consumes exact slices and canonical context, then emits candidate `.yaml` and `.yaml.test` bundles.",
       "This is where numeric grounding, import discipline, semantic review, and suite-level readiness live.",
       "It is also where `autoresearch` can mutate a narrow prompt surface and optimize against frozen benchmark sets.",
     ],
@@ -199,7 +199,7 @@ context_files:
       "generalist review",
       "autoresearch loop",
     ],
-    repos: ["autorulespec"],
+    repos: ["axiom-encode"],
     outputs: ["suite-run.json", "summary.json", "trace files", "accepted harness changes"],
     snippetLabel: "suite gate summary",
     snippetLanguage: "plain",
@@ -280,7 +280,7 @@ const runtimeStages: RuntimeStage[] = [
     id: "encode",
     label: "Encode",
     detail:
-      "AutoRuleSpec generates `.yaml` and `.yaml.test` against explicit harness rules and hydrated context.",
+      "Encoder generates `.yaml` and `.yaml.test` against explicit harness rules and hydrated context.",
   },
   {
     id: "check",
@@ -321,8 +321,8 @@ const repoLanes: RepoLane[] = [
     id: "tooling",
     title: "Language and harness",
     summary:
-      "The RuleSpec engine executes rules, while AutoRuleSpec builds, benchmarks, and repairs encodings.",
-    repos: ["rulespec", "autorulespec"],
+      "The RuleSpec engine executes rules, while Encoder builds, benchmarks, and repairs encodings.",
+    repos: ["rulespec", "axiom-encode"],
   },
   {
     id: "presentation",
@@ -418,18 +418,18 @@ qualifying_young_person_4A_1_a:
 The companion test file exercises the age and September cut-off behavior against concrete cases.`,
   },
   {
-    id: "autorulespec-summary",
+    id: "encoder-summary",
     stage: "Verify",
-    title: "AutoRuleSpec run summary",
+    title: "Encoder run summary",
     summary:
-      "Wave 16 promotion metadata ties this exact rule back to a concrete AutoRuleSpec run, model, commit, and metrics.",
-    href: "/stack-examples/uk-regulation-4A-1-a-autorulespec-summary.json",
-    linkLabel: "Open AutoRuleSpec summary JSON",
+      "Wave 16 promotion metadata ties this exact rule back to a concrete Encoder run, model, commit, and metrics.",
+    href: "/stack-examples/uk-regulation-4A-1-a-encoder-summary.json",
+    linkLabel: "Open Encoder summary JSON",
     previewLabel: "wave16 summary",
     preview: `{
   "wave": "2026-04-01-wave16",
-  "autorulespec_commit": "243d37f",
-  "autorulespec_version": "0.2.64",
+  "encoder_commit": "243d37f",
+  "encoder_version": "0.2.64",
   "runner": "openai-gpt-5.4",
   "compile_pass": true,
   "ci_pass": true
@@ -487,7 +487,7 @@ export function StackSystemPage() {
             <div className="flex flex-wrap items-start justify-between gap-8">
               <div className="max-w-[720px]">
                 <p className="font-body text-[1rem] text-[var(--color-ink)] leading-relaxed mb-4">
-                  AutoRuleSpec is one layer in a longer chain. A provision moves from
+                  Encoder is one layer in a longer chain. A provision moves from
                   official document capture, to structural normalization, to a
                   reproducible source slice, to a tested RuleSpec file, to harness
                   evaluation, to runtime execution, and finally to Axiom. The
@@ -496,8 +496,8 @@ export function StackSystemPage() {
                   own terms.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/autorulespec" className="btn-outline">
-                    Open AutoRuleSpec system map
+                  <Link href="/encoder" className="btn-outline">
+                    Open Encoder system map
                   </Link>
                   <a href={axiomAppHref()} className="btn-primary">
                     Explore Axiom
@@ -514,7 +514,7 @@ export function StackSystemPage() {
                   <div className="font-mono text-xs text-[var(--color-code-text)] leading-6 overflow-x-auto">
                     Pension Credit regulation 4A(1)(a)
                     <br />
-                    official data.xml -&gt; extracted source slice -&gt; 4A/1/a.yaml -&gt; wave16 AutoRuleSpec summary -&gt; Axiom
+                    official data.xml -&gt; extracted source slice -&gt; 4A/1/a.yaml -&gt; wave16 Encoder summary -&gt; Axiom
                   </div>
                 </div>
               </div>
@@ -980,7 +980,7 @@ export function StackSystemPage() {
                 post-encoding path, not a second architecture map.
               </p>
             </div>
-            <Link href="/autorulespec" className="btn-outline">
+            <Link href="/encoder" className="btn-outline">
               See the harness-only view
             </Link>
           </div>
@@ -1077,8 +1077,8 @@ export function StackSystemPage() {
                   Cross-links
                 </p>
                 <div className="flex flex-col gap-3">
-                  <Link href="/autorulespec" className="btn-outline">
-                    AutoRuleSpec system map
+                  <Link href="/encoder" className="btn-outline">
+                    Encoder system map
                   </Link>
                   <a href={axiomAppHref()} className="btn-outline">
                     Axiom encoding views

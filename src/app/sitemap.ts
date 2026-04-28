@@ -51,7 +51,7 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "monthly",
   },
   {
-    url: `${SITE_URL}/autorulespec`,
+    url: `${SITE_URL}/encoder`,
     priority: 0.6,
     changeFrequency: "weekly",
   },

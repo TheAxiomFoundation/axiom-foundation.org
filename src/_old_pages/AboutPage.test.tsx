@@ -19,12 +19,12 @@ describe('AboutPage', () => {
     expect(screen.getByText(/machine-readable, verifiable/i)).toBeInTheDocument()
   })
 
-  it('renders the what we do section with Axiom, RuleSpec, and AutoRuleSpec cards', () => {
+  it('renders the what we do section with Axiom, RuleSpec, and Encoder cards', () => {
     renderWithRouter(<AboutPage />)
     expect(screen.getByRole('heading', { name: /what we do/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Axiom' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'RuleSpec' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'AutoRuleSpec' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Encoder' })).toBeInTheDocument()
   })
 
   it('renders the team section with founder info', () => {

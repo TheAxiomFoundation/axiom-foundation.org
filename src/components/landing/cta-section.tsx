@@ -45,8 +45,8 @@ export function CtaSection() {
               label: "Axiom platform",
             },
             {
-              href: "https://github.com/TheAxiomFoundation/autorulespec",
-              label: "AutoRuleSpec",
+              href: "https://github.com/TheAxiomFoundation/axiom-encode",
+              label: "Encoder",
             },
             { href: "/about", label: "About us", internal: true },
           ].map((link) =>

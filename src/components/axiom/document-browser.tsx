@@ -15,53 +15,11 @@ import { transformRuleToViewerDoc } from "@/lib/axiom-utils";
 import {
   resolveAxiomPath,
   buildBreadcrumbs,
-  isUUID,
   resolveDisplayContext,
 } from "@/lib/tree-data";
 import type { DisplayContext } from "@/lib/tree-data";
 import { useRule } from "@/hooks/use-rules";
 import { trackAxiomEvent } from "@/lib/analytics";
-
-/* v8 ignore start -- UUID backward compat component */
-function UUIDRuleView({
-  ruleId,
-  onBack,
-}: {
-  ruleId: string;
-  onBack: () => void;
-}) {
-  const { rule, children, loading, error } = useRule(ruleId);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
-        Loading rule...
-      </div>
-    );
-  }
-
-  if (error || !rule) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-[var(--color-ink-muted)] mb-4">
-          {error || "Rule not found."}
-        </p>
-        <button className="btn-outline" onClick={onBack}>
-          Back to Axiom
-        </button>
-      </div>
-    );
-  }
-
-  const doc = transformRuleToViewerDoc(rule, children);
-
-  return (
-    <div className="min-h-[calc(100vh-200px)]">
-      <RuleDetailPanel document={doc} rule={rule} onBack={onBack} />
-    </div>
-  );
-}
-/* v8 ignore stop */
 
 function RuleTreeView({
   segments,
@@ -162,7 +120,7 @@ function RuleTreeView({
             rule={leafRule}
             onBack={() =>
               router.push(
-                breadcrumbs[breadcrumbs.length - 2]?.href ?? "/axiom"
+                breadcrumbs[breadcrumbs.length - 2]?.href ?? "/"
               )
             }
           />
@@ -197,7 +155,7 @@ function RuleTreeView({
       depth: segments.length + 1,
       segment: node.segment,
     });
-    router.push(`/axiom/${[...segments, node.segment].join("/")}`);
+    router.push(`/${[...segments, node.segment].join("/")}`);
   };
 
   return (
@@ -330,18 +288,6 @@ function RuleTreeView({
 export function AxiomBrowser({ segments }: { segments: string[] }) {
   const router = useRouter();
 
-  // Backward compat: single UUID segment → rule detail view
-  /* v8 ignore start -- UUID backward compat branch */
-  if (segments.length === 1 && isUUID(segments[0])) {
-    return (
-      <UUIDRuleView
-        ruleId={segments[0]}
-        onBack={() => router.push("/axiom")}
-      />
-    );
-  }
-  /* v8 ignore stop */
-
   const resolved = resolveAxiomPath(segments);
   const breadcrumbs = buildBreadcrumbs(segments);
 
@@ -372,19 +318,12 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
   /* v8 ignore start -- jurisdiction always defined in rule phase; else branch is unreachable */
   // Rule phase
   if (resolved.jurisdiction) {
-    const useLegacyUuidRouting =
-      resolved.jurisdiction.slug === "uk" &&
-      resolved.ruleSegments.length > 0 &&
-      resolved.ruleSegments.every((segment) => isUUID(segment));
-
     return (
       <RuleTreeView
         segments={segments}
         dbJurisdictionId={resolved.jurisdiction.slug}
         ruleSegments={resolved.ruleSegments}
-        hasCitationPaths={
-          useLegacyUuidRouting ? false : resolved.jurisdiction.hasCitationPaths
-        }
+        hasCitationPaths={resolved.jurisdiction.hasCitationPaths}
       />
     );
   }
@@ -395,7 +334,7 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
         Invalid path.{" "}
         <button
           className="ml-2 text-[var(--color-accent)] hover:underline"
-          onClick={() => router.push("/axiom")}
+          onClick={() => router.push("/")}
         >
           Return to Axiom
         </button>

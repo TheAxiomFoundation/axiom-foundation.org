@@ -80,7 +80,7 @@ describe("RuleBody", () => {
       />
     );
     const link = screen.getByRole("link", { name: "42 U.S.C. 9902(2)" });
-    expect(link).toHaveAttribute("href", "/axiom/us/statute/42/9902/2");
+    expect(link).toHaveAttribute("href", "/us/statute/42/9902/2");
   });
 
   it("renders the surrounding plain text in order", () => {

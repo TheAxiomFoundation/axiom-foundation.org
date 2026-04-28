@@ -96,7 +96,7 @@ describe("SiblingStrip", () => {
     );
     fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/axiom/us/statute/26/33")
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/33")
     );
   });
 
@@ -109,7 +109,7 @@ describe("SiblingStrip", () => {
     );
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/axiom/us/statute/26/32")
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32")
     );
   });
 

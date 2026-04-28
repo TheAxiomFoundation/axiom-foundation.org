@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { CheckIcon, GitHubIcon } from "@/components/icons";
+import { axiomAppHref } from "@/lib/urls";
 
 export function AxiomSection() {
   return (
@@ -67,9 +67,9 @@ export function AxiomSection() {
         </div>
 
         <div className="flex justify-center gap-4">
-          <Link href="/axiom" className="btn-primary">
+          <a href={axiomAppHref()} className="btn-primary">
             Explore Axiom
-          </Link>
+          </a>
           <a
             href="https://github.com/TheAxiomFoundation"
             className="btn-outline"

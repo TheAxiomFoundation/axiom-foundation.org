@@ -126,7 +126,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       all.push({
         kind: "citation",
         parsed,
-        href: `/axiom/${parsed.citationPath}`,
+        href: `/${parsed.citationPath}`,
       });
     }
 
@@ -138,7 +138,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             kind: "program-anchor",
             program,
             anchor,
-            href: `/axiom/${anchor.citationPath}`,
+            href: `/${anchor.citationPath}`,
           });
         }
       }
@@ -159,7 +159,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         all.push({
           kind: "search",
           hit,
-          href: `/axiom/${hit.citation_path}`,
+          href: `/${hit.citation_path}`,
         });
       }
       sectionRanges.push({

@@ -32,7 +32,7 @@ export interface NavProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
-  { href: "/axiom", label: "Browse" },
+  { href: "https://app.axiom-foundation.org", label: "Browse" },
   { href: "/#format", label: ".yaml" },
   { href: "/#autorulespec", label: "AutoRuleSpec" },
   { href: "/#spec", label: "Spec" },
@@ -67,9 +67,10 @@ export function Nav({
     const base = mobile ? MOBILE_LINK : NAV_LINK;
     const opacity = isActive ? "opacity-100" : "opacity-70 hover:opacity-100";
 
+    const isExternal = /^https?:\/\//.test(href) || href.startsWith("mailto:");
     const isHashLink = href.startsWith("/#");
     const isHomepageHash = isHashLink && !baseUrl && pathname === "/";
-    const useNativeAnchor = baseUrl || !LinkComponent || isHomepageHash;
+    const useNativeAnchor = isExternal || baseUrl || !LinkComponent || isHomepageHash;
 
     const finalHref = isHomepageHash
       ? href.replace("/", "")

@@ -30,13 +30,13 @@ describe("Nav", () => {
     const browseLink = screen.getAllByText("Browse")[0];
     expect(browseLink).toHaveAttribute(
       "href",
-      "https://axiom-foundation.org/axiom",
+      "https://app.axiom-foundation.org",
     );
   });
 
   it("highlights active link based on pathname", () => {
-    render(<Nav pathname="/axiom" />);
-    const browseLinks = screen.getAllByText("Browse");
+    render(<Nav pathname="/about" />);
+    const browseLinks = screen.getAllByText("About");
     // Desktop link should have opacity-100 (active)
     expect(browseLinks[0].className).toContain("opacity-100");
   });

@@ -5,7 +5,7 @@ const mockPush = vi.fn();
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/axiom",
+  usePathname: () => "/",
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -249,7 +249,7 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us"]} />);
       fireEvent.click(screen.getByText("Statutes"));
-      expect(mockPush).toHaveBeenCalledWith("/axiom/us/statute");
+      expect(mockPush).toHaveBeenCalledWith("/us/statute");
     });
 
     it("navigates with nested segments", () => {
@@ -272,7 +272,7 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us", "statute"]} />);
       fireEvent.click(screen.getByText("Title 26"));
-      expect(mockPush).toHaveBeenCalledWith("/axiom/us/statute/26");
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26");
     });
 
     it("renders breadcrumbs", () => {
@@ -311,13 +311,13 @@ describe("AxiomBrowser", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("preserves legacy UK UUID routes", () => {
+    it("uses citation-path navigation for UK routes", () => {
       render(<AxiomBrowser segments={["uk", "550e8400-e29b-41d4-a716-446655440000"]} />);
 
       expect(useTreeNodes).toHaveBeenCalledWith(
         "uk",
         ["550e8400-e29b-41d4-a716-446655440000"],
-        false,
+        true,
         false
       );
     });

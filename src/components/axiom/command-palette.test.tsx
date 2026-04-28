@@ -77,7 +77,7 @@ describe("CommandPalette", () => {
     fireEvent.change(input, { target: { value: "26 USC 32" } });
     const dialog = screen.getByRole("dialog");
     fireEvent.keyDown(dialog, { key: "Enter" });
-    expect(mockPush).toHaveBeenCalledWith("/axiom/us/statute/26/32");
+    expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32");
     expect(onClose).toHaveBeenCalled();
   });
 

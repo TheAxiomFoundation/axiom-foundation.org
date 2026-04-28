@@ -19,7 +19,7 @@ describe("TreeBreadcrumbs", () => {
 
   it("renders single item as non-link (current page)", () => {
     render(
-      <TreeBreadcrumbs items={[{ label: "Axiom", href: "/axiom" }]} />
+      <TreeBreadcrumbs items={[{ label: "Axiom", href: "/" }]} />
     );
     expect(screen.getByText("Axiom")).toBeInTheDocument();
     expect(screen.getByText("Axiom").closest("a")).toBeNull();
@@ -29,14 +29,14 @@ describe("TreeBreadcrumbs", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Axiom", href: "/axiom" },
-          { label: "United States", href: "/axiom/us" },
+          { label: "Axiom", href: "/" },
+          { label: "United States", href: "/us" },
         ]}
       />
     );
     const axiomLink = screen.getByText("Axiom").closest("a");
     expect(axiomLink).not.toBeNull();
-    expect(axiomLink?.getAttribute("href")).toBe("/axiom");
+    expect(axiomLink?.getAttribute("href")).toBe("/");
 
     // Last item is not a link
     expect(screen.getByText("United States").closest("a")).toBeNull();
@@ -46,9 +46,9 @@ describe("TreeBreadcrumbs", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Axiom", href: "/axiom" },
-          { label: "US", href: "/axiom/us" },
-          { label: "Statutes", href: "/axiom/us/statute" },
+          { label: "Axiom", href: "/" },
+          { label: "US", href: "/us" },
+          { label: "Statutes", href: "/us/statute" },
         ]}
       />
     );
@@ -60,9 +60,9 @@ describe("TreeBreadcrumbs", () => {
     render(
       <TreeBreadcrumbs
         items={[
-          { label: "Axiom", href: "/axiom" },
-          { label: "US", href: "/axiom/us" },
-          { label: "Title 26", href: "/axiom/us/statute/26" },
+          { label: "Axiom", href: "/" },
+          { label: "US", href: "/us" },
+          { label: "Title 26", href: "/us/statute/26" },
         ]}
       />
     );

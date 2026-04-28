@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import CodeBlock from "@/components/code-block";
 import { heroRuleSpecCode } from "@/lib/rulespec-examples";
+import { axiomAppHref } from "@/lib/urls";
 
 function HeroTransform() {
   const [showRuleSpec, setShowRuleSpec] = useState(false);
@@ -131,7 +132,7 @@ export function Hero() {
         <HeroTransform />
 
         <div className="flex gap-6 justify-center mt-14 flex-wrap">
-          <a href="/axiom" className="btn-primary">
+          <a href={axiomAppHref()} className="btn-primary">
             Explore the axiom
             <ArrowRightIcon className="w-5 h-5" />
           </a>

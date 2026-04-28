@@ -13,7 +13,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 import {
-  SITE_URL,
+  AXIOM_APP_URL,
   getAxiomRuleMetadata,
   buildLegislationJsonLd,
 } from "./metadata";
@@ -23,7 +23,7 @@ describe("getAxiomRuleMetadata", () => {
     const meta = await getAxiomRuleMetadata(undefined);
     expect(meta.rule).toBeNull();
     expect(meta.citationPath).toBe("");
-    expect(meta.canonicalUrl).toBe(`${SITE_URL}/axiom`);
+    expect(meta.canonicalUrl).toBe(AXIOM_APP_URL);
     expect(meta.title).toContain("Axiom");
     expect(meta.description).toContain("encoded legal code");
   });
@@ -31,7 +31,7 @@ describe("getAxiomRuleMetadata", () => {
   it("returns axiom payload for empty segments array", async () => {
     const meta = await getAxiomRuleMetadata([]);
     expect(meta.citationPath).toBe("");
-    expect(meta.canonicalUrl).toBe(`${SITE_URL}/axiom`);
+    expect(meta.canonicalUrl).toBe(AXIOM_APP_URL);
   });
 
   it("returns a rule-specific payload when the path resolves to an ingested rule", async () => {
@@ -52,7 +52,7 @@ describe("getAxiomRuleMetadata", () => {
     const meta = await getAxiomRuleMetadata(["us", "statute", "26", "32"]);
     expect(meta.rule?.id).toBe("r1");
     expect(meta.citationPath).toBe("us/statute/26/32");
-    expect(meta.canonicalUrl).toBe(`${SITE_URL}/axiom/us/statute/26/32`);
+    expect(meta.canonicalUrl).toBe(`${AXIOM_APP_URL}/us/statute/26/32`);
     expect(meta.title).toContain("Earned income");
     expect(meta.title).toContain("us/statute/26/32");
     expect(meta.description).toContain("There shall be allowed");

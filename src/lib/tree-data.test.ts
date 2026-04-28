@@ -52,7 +52,7 @@ describe("getJurisdictionBySlug", () => {
   });
 });
 
-describe("getJurisdiction (backward compat)", () => {
+describe("getJurisdiction", () => {
   it("returns config for known jurisdiction", () => {
     const us = getJurisdiction("us");
     expect(us).toEqual({
@@ -151,99 +151,99 @@ describe("resolveAxiomPath", () => {
 describe("buildBreadcrumbs", () => {
   it("returns only Axiom for empty segments", () => {
     const crumbs = buildBreadcrumbs([]);
-    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/" }]);
   });
 
   it("builds jurisdiction breadcrumb for US", () => {
     const crumbs = buildBreadcrumbs(["us"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "US Federal", href: "/axiom/us" },
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
     ]);
   });
 
   it("builds full path for US/statute/26/1", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "1"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "US Federal", href: "/axiom/us" },
-      { label: "Statutes", href: "/axiom/us/statute" },
-      { label: "Title 26", href: "/axiom/us/statute/26" },
-      { label: "§ 1", href: "/axiom/us/statute/26/1" },
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
+      { label: "Statutes", href: "/us/statute" },
+      { label: "Title 26", href: "/us/statute/26" },
+      { label: "§ 1", href: "/us/statute/26/1" },
     ]);
   });
 
   it("formats nested statute breadcrumbs with parenthetical subsections", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "24", "d", "1", "A"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "US Federal", href: "/axiom/us" },
-      { label: "Statutes", href: "/axiom/us/statute" },
-      { label: "Title 26", href: "/axiom/us/statute/26" },
-      { label: "§ 24", href: "/axiom/us/statute/26/24" },
-      { label: "(d)", href: "/axiom/us/statute/26/24/d" },
-      { label: "(1)", href: "/axiom/us/statute/26/24/d/1" },
-      { label: "(A)", href: "/axiom/us/statute/26/24/d/1/A" },
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
+      { label: "Statutes", href: "/us/statute" },
+      { label: "Title 26", href: "/us/statute/26" },
+      { label: "§ 24", href: "/us/statute/26/24" },
+      { label: "(d)", href: "/us/statute/26/24/d" },
+      { label: "(1)", href: "/us/statute/26/24/d/1" },
+      { label: "(A)", href: "/us/statute/26/24/d/1/A" },
     ]);
   });
 
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "United Kingdom", href: "/axiom/uk" },
+      { label: "Axiom", href: "/" },
+      { label: "United Kingdom", href: "/uk" },
     ]);
   });
 
   it("builds breadcrumb for UK with rule segments", () => {
     const crumbs = buildBreadcrumbs(["uk", "legislation", "uksi", "2013", "376"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "United Kingdom", href: "/axiom/uk" },
-      { label: "Legislation", href: "/axiom/uk/legislation" },
-      { label: "UK Statutory Instruments", href: "/axiom/uk/legislation/uksi" },
-      { label: "2013", href: "/axiom/uk/legislation/uksi/2013" },
-      { label: "376", href: "/axiom/uk/legislation/uksi/2013/376" },
+      { label: "Axiom", href: "/" },
+      { label: "United Kingdom", href: "/uk" },
+      { label: "Legislation", href: "/uk/legislation" },
+      { label: "UK Statutory Instruments", href: "/uk/legislation/uksi" },
+      { label: "2013", href: "/uk/legislation/uksi/2013" },
+      { label: "376", href: "/uk/legislation/uksi/2013/376" },
     ]);
   });
 
   it("builds breadcrumb for Ohio path", () => {
     const crumbs = buildBreadcrumbs(["us-oh", "statute", "26"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "Ohio", href: "/axiom/us-oh" },
-      { label: "Statutes", href: "/axiom/us-oh/statute" },
-      { label: "Title 26", href: "/axiom/us-oh/statute/26" },
+      { label: "Axiom", href: "/" },
+      { label: "Ohio", href: "/us-oh" },
+      { label: "Statutes", href: "/us-oh/statute" },
+      { label: "Title 26", href: "/us-oh/statute/26" },
     ]);
   });
 
   it("builds breadcrumb for Colorado regulation path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "regulation", "9-CCR-2503-6", "3.606.1", "I"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "Colorado", href: "/axiom/us-co" },
-      { label: "Regulations", href: "/axiom/us-co/regulation" },
-      { label: "9 CCR 2503-6", href: "/axiom/us-co/regulation/9-CCR-2503-6" },
-      { label: "§ 3.606.1", href: "/axiom/us-co/regulation/9-CCR-2503-6/3.606.1" },
-      { label: "(I)", href: "/axiom/us-co/regulation/9-CCR-2503-6/3.606.1/I" },
+      { label: "Axiom", href: "/" },
+      { label: "Colorado", href: "/us-co" },
+      { label: "Regulations", href: "/us-co/regulation" },
+      { label: "9 CCR 2503-6", href: "/us-co/regulation/9-CCR-2503-6" },
+      { label: "§ 3.606.1", href: "/us-co/regulation/9-CCR-2503-6/3.606.1" },
+      { label: "(I)", href: "/us-co/regulation/9-CCR-2503-6/3.606.1/I" },
     ]);
   });
 
   it("builds breadcrumb for Colorado statute path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "statute", "crs", "26-2-703", "2.5"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/axiom" },
-      { label: "Colorado", href: "/axiom/us-co" },
-      { label: "Statutes", href: "/axiom/us-co/statute" },
-      { label: "Colorado Revised Statutes", href: "/axiom/us-co/statute/crs" },
-      { label: "§ 26-2-703", href: "/axiom/us-co/statute/crs/26-2-703" },
-      { label: "(2.5)", href: "/axiom/us-co/statute/crs/26-2-703/2.5" },
+      { label: "Axiom", href: "/" },
+      { label: "Colorado", href: "/us-co" },
+      { label: "Statutes", href: "/us-co/statute" },
+      { label: "Colorado Revised Statutes", href: "/us-co/statute/crs" },
+      { label: "§ 26-2-703", href: "/us-co/statute/crs/26-2-703" },
+      { label: "(2.5)", href: "/us-co/statute/crs/26-2-703/2.5" },
     ]);
   });
 
   it("returns only Axiom for unknown jurisdiction", () => {
     const crumbs = buildBreadcrumbs(["mars"]);
-    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/" }]);
   });
 
   it("uses raw segment for unknown doc_type", () => {

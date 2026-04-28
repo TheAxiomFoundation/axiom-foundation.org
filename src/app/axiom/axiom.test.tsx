@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
-  usePathname: () => "/axiom",
+  usePathname: () => "/",
 }));
 
 // Mock next/link

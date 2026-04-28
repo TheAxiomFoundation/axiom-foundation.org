@@ -139,7 +139,7 @@ function Citation({ ref, text }: { ref: RuleReference; text: string }) {
     ref.direction === "incoming"
       ? `?mark=${ref.start_offset}-${ref.end_offset}`
       : "";
-  const href = `/axiom/${ref.other_citation_path}${markQuery}`;
+  const href = `/${ref.other_citation_path}${markQuery}`;
   const title = ref.target_resolved
     ? `${ref.other_citation_path}${ref.other_heading ? ` — ${ref.other_heading}` : ""}`
     : `${ref.other_citation_path} — not yet ingested`;

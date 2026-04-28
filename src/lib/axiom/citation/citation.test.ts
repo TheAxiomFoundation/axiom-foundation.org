@@ -190,12 +190,6 @@ describe("parseCitation — direct citation_path slug", () => {
     );
   });
 
-  it("tolerates a /axiom/ route prefix", () => {
-    expect(
-      parseCitation("/axiom/us/statute/26/32/b/1")?.citationPath
-    ).toBe("us/statute/26/32/b/1");
-  });
-
   it("rejects slugs whose second segment is not a known doc type", () => {
     expect(parseCitation("us/bananas/26/32")).toBeNull();
   });

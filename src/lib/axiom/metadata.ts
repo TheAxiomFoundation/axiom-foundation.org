@@ -1,12 +1,12 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
+import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
 import { citationPathPrefixes } from "./resolver";
 
 /**
- * Canonical base URL for absolute links in OpenGraph, sitemap, and
- * JSON-LD. Overridable via NEXT_PUBLIC_SITE_URL for previews.
+ * Canonical base URL for Axiom app links in OpenGraph, sitemap, and
+ * JSON-LD. Overridable via NEXT_PUBLIC_AXIOM_APP_URL for previews.
  */
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://axiom-foundation.org";
+export { AXIOM_APP_URL, SITE_URL };
 
 /**
  * Shape the viewer + external share surfaces consume for a single
@@ -44,8 +44,8 @@ export async function getAxiomRuleMetadata(
 ): Promise<AxiomRuleMetadata> {
   const citationPath = (segments ?? []).join("/");
   const canonicalUrl = citationPath
-    ? `${SITE_URL}/axiom/${citationPath}`
-    : `${SITE_URL}/axiom`;
+    ? `${AXIOM_APP_URL}/${citationPath}`
+    : AXIOM_APP_URL;
 
   if (!citationPath) {
     return {

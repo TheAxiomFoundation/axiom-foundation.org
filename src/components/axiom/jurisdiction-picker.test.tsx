@@ -112,7 +112,7 @@ describe("JurisdictionPicker", () => {
     );
 
     fireEvent.click(screen.getByText("US Federal"));
-    expect(mockPush).toHaveBeenCalledWith("/axiom/us");
+    expect(mockPush).toHaveBeenCalledWith("/us");
   });
 
   it("navigates on Enter key", async () => {
@@ -128,7 +128,7 @@ describe("JurisdictionPicker", () => {
     fireEvent.keyDown(screen.getByText("United Kingdom"), {
       key: "Enter",
     });
-    expect(mockPush).toHaveBeenCalledWith("/axiom/uk");
+    expect(mockPush).toHaveBeenCalledWith("/uk");
   });
 
   it("navigates on Space key", async () => {
@@ -144,7 +144,7 @@ describe("JurisdictionPicker", () => {
     fireEvent.keyDown(screen.getByText("United Kingdom"), {
       key: " ",
     });
-    expect(mockPush).toHaveBeenCalledWith("/axiom/uk");
+    expect(mockPush).toHaveBeenCalledWith("/uk");
   });
 
   it("does not navigate on other keys", async () => {

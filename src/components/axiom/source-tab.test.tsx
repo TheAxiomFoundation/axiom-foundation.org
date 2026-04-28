@@ -98,7 +98,7 @@ describe("SourceTab context rendering", () => {
     render(<SourceTab document={doc} outgoingRefs={refs} />);
     expect(screen.queryByText("should not render")).not.toBeInTheDocument();
     const link = screen.getByRole("link", { name: "42 U.S.C. 9902" });
-    expect(link).toHaveAttribute("href", "/axiom/us/statute/42/9902");
+    expect(link).toHaveAttribute("href", "/us/statute/42/9902");
   });
 
   it("falls back to the subsection list when document.body is absent", () => {

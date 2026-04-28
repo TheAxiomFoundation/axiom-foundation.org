@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import CodeBlock from "@/components/code-block";
+import { axiomAppHref } from "@/lib/urls";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -567,10 +568,10 @@ export function AutoRuleSpecSystemPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/axiom" className="btn-primary">
+              <a href={axiomAppHref()} className="btn-primary">
                 Inspect encoding records in Axiom
                 <ArrowRightIcon className="w-5 h-5" />
-              </Link>
+              </a>
               <Link href="/stack" className="btn-outline">
                 View broader technical stack
               </Link>
@@ -898,9 +899,9 @@ export function AutoRuleSpecSystemPage() {
                 belong in Axiom.
               </p>
             </div>
-            <Link href="/axiom" className="btn-outline">
+            <a href={axiomAppHref()} className="btn-outline">
               Open Axiom encoding views
-            </Link>
+            </a>
           </div>
 
           <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-6">

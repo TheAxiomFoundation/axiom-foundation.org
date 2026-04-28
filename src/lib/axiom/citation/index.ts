@@ -14,13 +14,12 @@ export type { ParsedCitation, JurisdictionParser } from "./types";
  * Direct citation_path input — users pasting URLs or slugs.
  *
  *   us/statute/26/32              → exact citation_path
- *   /axiom/us/statute/26/32       → tolerate a route prefix
  *   us/statute/26/32/b/1          → deep path
  *
  * We intentionally accept only lowercase kebab-safe slugs here; any
  * human-typed citation goes through the richer parsers above.
  */
-const DIRECT_SLUG_RE = /^\s*\/?(?:axiom\/)?([a-z0-9\-]+(?:\/[a-z0-9.\-]+)+)\s*$/i;
+const DIRECT_SLUG_RE = /^\s*\/?([a-z0-9\-]+(?:\/[a-z0-9.\-]+)+)\s*$/i;
 
 const directSlugParser: JurisdictionParser = {
   name: "direct-citation-path",

@@ -47,7 +47,7 @@ function RefItem({ ref }: { ref: RuleReference }) {
     ref.direction === "incoming"
       ? `?mark=${ref.start_offset}-${ref.end_offset}`
       : "";
-  const href = `/axiom/${ref.other_citation_path}${markQuery}`;
+  const href = `/${ref.other_citation_path}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);
   const resolved = ref.direction === "incoming" ? true : ref.target_resolved;
 

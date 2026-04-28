@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import CodeBlock from "@/components/code-block";
+import { axiomAppHref } from "@/lib/urls";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -440,10 +441,10 @@ The companion test file exercises the age and September cut-off behavior against
     title: "Live Axiom page",
     summary:
       "The promoted rule is then available in Axiom with source context, encoding metadata, and inspection surfaces.",
-    href: "https://axiom-foundation.org/axiom/uk/legislation/uksi/2002/1792/regulation/4A/1/a",
+    href: axiomAppHref("uk/legislation/uksi/2002/1792/regulation/4A/1/a"),
     linkLabel: "Open live Axiom page",
     previewLabel: "axiom route",
-    preview: `https://axiom-foundation.org/axiom/uk/legislation/uksi/2002/1792/regulation/4A/1/a
+    preview: `${axiomAppHref("uk/legislation/uksi/2002/1792/regulation/4A/1/a")}
 
 Live public page for the promoted encoding.`,
   },
@@ -498,10 +499,10 @@ export function StackSystemPage() {
                   <Link href="/autorulespec" className="btn-outline">
                     Open AutoRuleSpec system map
                   </Link>
-                  <Link href="/axiom" className="btn-primary">
+                  <a href={axiomAppHref()} className="btn-primary">
                     Explore Axiom
                     <ArrowRightIcon className="w-5 h-5" />
-                  </Link>
+                  </a>
                 </div>
                 <div className="mt-5 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-4">
                   <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)] mb-2">
@@ -1079,9 +1080,9 @@ export function StackSystemPage() {
                   <Link href="/autorulespec" className="btn-outline">
                     AutoRuleSpec system map
                   </Link>
-                  <Link href="/axiom" className="btn-outline">
+                  <a href={axiomAppHref()} className="btn-outline">
                     Axiom encoding views
-                  </Link>
+                  </a>
                   <Link href="/about" className="btn-outline">
                     About the project
                   </Link>

@@ -12,30 +12,6 @@
   "redirects": [
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "ruleatlas.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.ruleatlas.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "rulesatlas.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.rulesatlas.org" }],
-      "destination": "https://axiom-foundation.org/:path",
-      "permanent": true
-    },
-    {
-      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],
       "destination": "https://axiom-foundation.org/:path",
       "permanent": true

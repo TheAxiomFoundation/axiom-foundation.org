@@ -223,7 +223,7 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
           aria-label="Search results"
         >
           {results.map((hit) => {
-            const href = `/axiom/${hit.citation_path}`;
+            const href = `/${hit.citation_path}`;
             return (
               <li key={hit.id}>
                 <Link

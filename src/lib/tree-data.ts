@@ -92,7 +92,7 @@ export function resolveAxiomPath(segments: string[]): ResolvedPath {
   };
 }
 
-// ---- Backward compat ----
+// ---- Jurisdiction lookup ----
 
 /** Look up jurisdiction config by DB ID (same as slug in flat model) */
 export function getJurisdiction(
@@ -568,7 +568,7 @@ export interface BreadcrumbItem {
 }
 
 export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = [{ label: "Axiom", href: "/axiom" }];
+  const items: BreadcrumbItem[] = [{ label: "Axiom", href: "/" }];
 
   if (segments.length === 0) return items;
 
@@ -578,13 +578,13 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
   // Jurisdiction breadcrumb
   items.push({
     label: jurisdiction.label,
-    href: `/axiom/${jurisdiction.slug}`,
+    href: `/${jurisdiction.slug}`,
   });
 
   // Rule segments start at index 1
   for (let i = 1; i < segments.length; i++) {
     const ruleIndex = i - 1;
-    const href = "/axiom/" + segments.slice(0, i + 1).join("/");
+    const href = "/" + segments.slice(0, i + 1).join("/");
     const label = formatRuleSegmentLabel(
       segments[i],
       ruleIndex,

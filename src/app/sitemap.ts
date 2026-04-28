@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { supabaseCorpus } from "@/lib/supabase";
-import { SITE_URL } from "@/lib/axiom/metadata";
+import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
 
 /**
  * Sitemap pagination for the Axiom.
@@ -37,7 +37,7 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "weekly",
   },
   {
-    url: `${SITE_URL}/axiom`,
+    url: AXIOM_APP_URL,
     priority: 0.9,
     changeFrequency: "daily",
   },
@@ -87,7 +87,7 @@ export default async function sitemap({
       Boolean(row.citation_path)
     )
     .map((row) => ({
-      url: `${SITE_URL}/axiom/${row.citation_path}`,
+      url: `${AXIOM_APP_URL}/${row.citation_path}`,
       lastModified: row.updated_at ? new Date(row.updated_at) : undefined,
       changeFrequency: "monthly" as const,
       // Encoded rules are higher-value destinations — give the crawler

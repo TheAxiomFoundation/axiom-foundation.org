@@ -20,7 +20,7 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     const logo = screen.getByAltText('Axiom Foundation')
-    expect(logo.closest('a')).toHaveAttribute('href', '/')
+    expect(logo.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org')
   })
 
   it('renders navigation links', () => {
@@ -39,21 +39,14 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     const rulespecLink = screen.getByText('.yaml')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', '#format')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#format')
   })
 
   it('renders anchor links as Link on non-landing pages', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavWrapper />)
     const rulespecLink = screen.getByText('.yaml')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', '/#format')
-  })
-
-  it('highlights active link on /axiom', () => {
-    mockUsePathname.mockReturnValue('/axiom')
-    render(<NavWrapper />)
-    const axiomLink = screen.getByText('Browse')
-    expect(axiomLink.closest('a')).toHaveClass('opacity-100')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#format')
   })
 
   it('highlights active link on /about', () => {
@@ -73,11 +66,11 @@ describe('Nav', () => {
     expect(githubLink).toBeInTheDocument()
   })
 
-  it('renders Browse link to /axiom', () => {
+  it('renders Browse link to the app subdomain', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     const axiomLink = screen.getByText('Browse')
-    expect(axiomLink.closest('a')).toHaveAttribute('href', '/axiom')
+    expect(axiomLink.closest('a')).toHaveAttribute('href', 'https://app.axiom-foundation.org')
   })
 
   it('renders hamburger button for mobile', () => {

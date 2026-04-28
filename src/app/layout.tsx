@@ -6,6 +6,7 @@ import "./globals.css";
 import { NavWrapper } from "@/components/nav-wrapper";
 import { Footer, GradientSync } from "@axiom-foundation/ui";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { SITE_URL } from "@/lib/urls";
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -21,9 +22,6 @@ const serif = Newsreader({
   variable: "--font-serif",
   display: "swap",
 });
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://axiom-foundation.org";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -56,7 +54,7 @@ export default function RootLayout({
         <GradientSync />
         <NavWrapper />
         <main className="relative z-10">{children}</main>
-        <Footer renderLink={Link} />
+        <Footer baseUrl={SITE_URL} renderLink={Link} />
       </body>
     </html>
   );

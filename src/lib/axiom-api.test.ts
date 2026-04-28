@@ -142,7 +142,7 @@ describe("axiom API helpers", () => {
       body: "Section text",
       links: {
         self: "/api/axiom/documents/us/statute/26/32",
-        html: "/axiom/us/statute/26/32",
+        html: "/us/statute/26/32",
         children: "/api/axiom/documents?parent_id=rule-1",
       },
     });
@@ -160,7 +160,7 @@ describe("axiom API helpers", () => {
 
     expect(result.citation_segments).toEqual([]);
     expect(result.links.self).toBe("/api/axiom/documents?id=uuid-1");
-    expect(result.links.html).toBe("/axiom/uuid-1");
+    expect(result.links.html).toBe("/uuid-1");
   });
 
   it("builds a self-describing discovery payload", () => {

@@ -153,7 +153,7 @@ function JurisdictionPill({
 }) {
   return (
     <Link
-      href={`/axiom/${slug}`}
+      href={`/${slug}`}
       title={`${label} — ${count.toLocaleString()} rules`}
       className="group inline-flex items-baseline gap-2 px-4 py-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-sm text-[var(--color-ink-secondary)] no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
     >
@@ -177,8 +177,7 @@ function JurisdictionPill({
  *   'canada' → 'CAN'
  *
  * Kept as the single source of truth for the short-code form even
- * though the primary pill nav now shows full labels — some tests
- * and legacy surfaces still reach for it.
+ * though the primary pill nav now shows full labels.
  */
 export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction === "us") return "USC+CFR";

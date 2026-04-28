@@ -1,4 +1,5 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
+import { AXIOM_APP_URL } from "@/lib/urls";
 
 export const AXIOM_API_SCHEMA_VERSION = "2026-04-25";
 export const AXIOM_API_DEFAULT_LIMIT = 100;
@@ -209,8 +210,8 @@ export function publicAxiomRuleFromRule(
     ? `/api/axiom/documents/${encodeCitationPath(citationPath)}`
     : `/api/axiom/documents?id=${encodeURIComponent(rule.id)}`;
   const htmlPath = citationPath
-    ? `/axiom/${encodeCitationPath(citationPath)}`
-    : `/axiom/${encodeURIComponent(rule.id)}`;
+    ? `/${encodeCitationPath(citationPath)}`
+    : `/${encodeURIComponent(rule.id)}`;
 
   return {
     id: rule.id,
@@ -297,7 +298,7 @@ export function axiomApiErrorResponse(error: unknown): Response {
   });
 }
 
-export function makeAxiomApiDiscovery(origin = "https://axiom-foundation.org") {
+export function makeAxiomApiDiscovery(origin = AXIOM_APP_URL) {
   const base = origin.replace(/\/+$/, "") + "/api/axiom";
   return {
     name: "Axiom API",

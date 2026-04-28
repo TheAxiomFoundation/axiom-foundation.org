@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/axiom/metadata";
+import { SITE_URL } from "@/lib/urls";
 
 /**
  * Open policy — we actively want axiom rule pages to be crawled and

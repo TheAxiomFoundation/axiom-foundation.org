@@ -32,7 +32,7 @@ export function JurisdictionPicker() {
     const jurisdictionCards: CardData[] = JURISDICTIONS.map((j) => ({
       slug: j.slug,
       label: j.label,
-      href: `/axiom/${j.slug}`,
+      href: `/${j.slug}`,
       count: counts.get(j.slug) || 0,
     })).filter((c) => (c.count ?? 0) > 0);
 

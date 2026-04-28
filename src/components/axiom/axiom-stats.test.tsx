@@ -135,17 +135,17 @@ describe("AxiomStats", () => {
     expect(screen.getByText("District of Columbia")).toBeInTheDocument();
     expect(screen.getByText("New York")).toBeInTheDocument();
 
-    // Every pill routes to /axiom/<slug>.
+    // Every pill routes to /<slug>.
     const pills = screen
       .getByTestId("axiom-stats-pills")
-      .querySelectorAll<HTMLAnchorElement>("a[href^='/axiom/']");
+      .querySelectorAll<HTMLAnchorElement>("a[href^='/']");
     const hrefs = Array.from(pills).map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        "/axiom/us",
-        "/axiom/uk",
-        "/axiom/us-dc",
-        "/axiom/us-ny",
+        "/us",
+        "/uk",
+        "/us-dc",
+        "/us-ny",
       ])
     );
   });

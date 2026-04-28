@@ -36,12 +36,12 @@ function RuleOutline({ childRules }: { childRules: Rule[] }) {
       return {
         id: child.id,
         tail,
-        href: `/axiom/${child.citation_path ?? ""}`,
+        href: `/${child.citation_path ?? ""}`,
         heading: child.heading?.trim() || "Untitled",
         hasRuleSpec: child.has_rulespec,
       };
     })
-    .filter((item) => item.tail.length > 0 && item.href !== "/axiom/");
+    .filter((item) => item.tail.length > 0 && item.href !== "/");
 
   if (items.length === 0) return null;
 
@@ -100,7 +100,7 @@ function TreeNode({
   const heading = rule.heading?.trim();
   const body = stripBodyLabel(rule);
   const hasBody = body.length > 0;
-  const href = `/axiom/${rule.citation_path ?? ""}`;
+  const href = `/${rule.citation_path ?? ""}`;
 
   // Left indent per depth level. Depth 0 is the root (never rendered
   // here — the parent page owns that header), so the first recursive

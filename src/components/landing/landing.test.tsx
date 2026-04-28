@@ -47,9 +47,9 @@ describe('Landing sections', () => {
     expect(screen.getByRole('heading', { name: /rulespec/i })).toBeInTheDocument()
   })
 
-  it('renders the .yaml format section with code examples', () => {
+  it('renders the RuleSpec format section with code examples', () => {
     render(<RuleSpecFormat />)
-    expect(screen.getAllByText(/file format/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: /rulespec format/i })).toBeInTheDocument()
     expect(screen.getByText(/format comparison/i)).toBeInTheDocument()
   })
 

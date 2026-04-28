@@ -436,10 +436,10 @@ export function RuleSpecFormat() {
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <h2 className="heading-section mb-6">
-            .yaml
+            RuleSpec format
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
-            Self-contained statute encoding format. One file captures the law:
+            Self-contained rule encoding format. One file captures the law:
             statute text, parameters, and computed values.
           </p>
         </div>

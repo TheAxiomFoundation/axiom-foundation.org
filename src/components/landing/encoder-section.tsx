@@ -296,7 +296,7 @@ function EncoderTerminal() {
       content: (
         <>
           <span className="font-semibold text-[var(--color-success)]">[done]</span>
-          <span className="text-[var(--color-success)]"> 14 .yaml files written to </span>
+          <span className="text-[var(--color-success)]"> 14 RuleSpec files written to </span>
           <span className="text-[var(--color-ink)] font-medium">statute/26/32/</span>
         </>
       ),
@@ -452,7 +452,7 @@ export function EncoderSection() {
 
         <div className="flex justify-center gap-8 flex-wrap max-md:flex-col max-md:items-center max-md:gap-3">
           {[
-            "14 subsections \u2192 14 parallel agents \u2192 14 .yaml files",
+            "14 subsections \u2192 14 parallel agents \u2192 14 RuleSpec files",
             "Each agent sees only its subsection \u2014 no wasted context",
             "Validated against real-world calculators, not just syntax",
             "Every encoding decision logged for audit",

@@ -15,7 +15,7 @@ export function SpecSection() {
             RULESPEC_SPEC.md
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
-            Complete specification for the .yaml file format
+            Complete specification for the RuleSpec file format
           </p>
         </div>
 

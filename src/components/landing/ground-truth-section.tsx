@@ -4,8 +4,17 @@ export function GroundTruthSection() {
   return (
     <section className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
+        <div className="flex justify-center mb-24" aria-hidden="true">
+          <span className="fleuron">
+            <span className="fleuron-mark">∀</span>
+          </span>
+        </div>
         <div className="text-center mb-20">
-          <h2 className="heading-section text-[var(--color-ink)] mb-6">
+          <span className="kicker mb-6 inline-flex">
+            <span className="kicker-mark">§</span>
+            VI &middot; For AI
+          </span>
+          <h2 className="heading-section text-[var(--color-ink)] mb-6 mt-2">
             Verifiable rewards
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
@@ -34,12 +43,12 @@ export function GroundTruthSection() {
           ].map((card) => (
             <div
               key={card.title}
-              className="p-12 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(26,122,109,0.1)]"
+              className="card-edition p-10"
             >
-              <div className="w-14 h-14 flex items-center justify-center bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md text-[var(--color-accent)] mb-6">
+              <div className="w-12 h-12 flex items-center justify-center border border-[var(--color-rule)] rounded-sm text-[var(--color-accent)] mb-6">
                 {card.icon}
               </div>
-              <h3 className="font-body text-[1.35rem] text-[var(--color-ink)] mb-4">
+              <h3 className="font-body text-[1.3rem] text-[var(--color-ink)] mb-3">
                 {card.title}
               </h3>
               <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed">

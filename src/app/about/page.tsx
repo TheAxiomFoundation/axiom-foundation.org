@@ -58,7 +58,7 @@ export default function AboutPage() {
             ].map((card) => (
               <div
                 key={card.title}
-                className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md"
+                className="card-edition p-6"
               >
                 <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
                   {card.title}
@@ -92,7 +92,7 @@ export default function AboutPage() {
             ].map((card) => (
               <div
                 key={card.title}
-                className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md"
+                className="card-edition p-6"
               >
                 <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
                   {card.title}

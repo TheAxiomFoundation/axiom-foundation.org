@@ -110,7 +110,7 @@ export function Hero() {
   return (
     <section className="relative z-1 min-h-screen flex items-center justify-center py-24 px-8">
       <div
-        className={`max-w-[1100px] transition-all duration-800 ${
+        className={`max-w-[1100px] w-full transition-all duration-800 ${
           mounted
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-10"
@@ -118,23 +118,38 @@ export function Hero() {
         style={{ transitionTimingFunction: "var(--ease-out)" }}
       >
         <div className="text-center mb-14">
-          <h1 className="heading-page mb-6">
+          <span className="kicker mb-7 inline-flex">
+            <span className="kicker-mark">∀</span>
+            Open infrastructure for encoded law
+          </span>
+
+          <h1 className="heading-page mb-6 mt-1">
             The world&apos;s rules, encoded
           </h1>
 
-          <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[540px] mx-auto">
-            Axiom Foundation is the nonprofit home of The Axiom Project. We build
-            open, machine-readable encodings of statutes, regulations, and policy
-            rules, with Axiom Labs prototyping the applied layer on top.
+          <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[560px] mx-auto">
+            We publish machine-readable encodings of statutes, regulations, and
+            policy rules &mdash; <span className="serif-italic text-[var(--color-ink)]">verifiable by design</span>,
+            free for anyone to read, run, or reform.
           </p>
         </div>
 
         <HeroTransform />
 
-        <div className="flex gap-6 justify-center mt-14 flex-wrap">
+        <div className="flex gap-4 justify-center items-center mt-14 flex-wrap">
           <a href={axiomAppHref()} className="btn-primary">
             Explore Axiom
             <ArrowRightIcon className="w-5 h-5" />
+          </a>
+          <a href="#axiom" className="btn-outline">
+            How it works
+          </a>
+        </div>
+
+        <div className="flex justify-center mt-20">
+          <a href="#axiom" className="scroll-cue" aria-label="Scroll to next section">
+            <span>Read on</span>
+            <span className="scroll-cue-line" aria-hidden="true" />
           </a>
         </div>
       </div>

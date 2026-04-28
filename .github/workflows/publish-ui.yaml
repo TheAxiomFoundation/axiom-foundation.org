@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/publish-ui.yaml"
       - "packages/ui/**"
+  workflow_dispatch:
 
 jobs:
   test:
@@ -19,6 +20,7 @@ jobs:
         working-directory: packages/ui
 
   publish:
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     permissions:

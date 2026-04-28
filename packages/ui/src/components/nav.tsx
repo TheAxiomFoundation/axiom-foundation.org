@@ -33,9 +33,9 @@ export interface NavProps {
 
 const DEFAULT_LINKS: NavLink[] = [
   { href: "https://app.axiom-foundation.org", label: "Browse" },
-  { href: "/#format", label: ".yaml" },
+  { href: "/#rulespec", label: "RuleSpec" },
   { href: "/#autorulespec", label: "Encoder" },
-  { href: "/#spec", label: "Spec" },
+  { href: "/#spec", label: "Reference" },
   { href: "/about", label: "About" },
 ];
 

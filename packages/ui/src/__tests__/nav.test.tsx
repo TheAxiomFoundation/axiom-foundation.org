@@ -5,9 +5,10 @@ describe("Nav", () => {
   it("renders all default navigation links", () => {
     render(<Nav />);
     expect(screen.getByText("Browse")).toBeInTheDocument();
-    expect(screen.getByText(".yaml")).toBeInTheDocument();
+    expect(screen.getByText("RuleSpec")).toBeInTheDocument();
     expect(screen.getByText("Encoder")).toBeInTheDocument();
-    expect(screen.getByText("Spec")).toBeInTheDocument();
+    expect(screen.queryByText(".yaml")).not.toBeInTheDocument();
+    expect(screen.getByText("Reference")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Docs")).toBeInTheDocument();
   });

@@ -27,10 +27,11 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     expect(screen.getByText('Browse')).toBeInTheDocument()
-    expect(screen.getByText('.yaml')).toBeInTheDocument()
+    expect(screen.getByText('RuleSpec')).toBeInTheDocument()
     expect(screen.getByText('Encoder')).toBeInTheDocument()
+    expect(screen.queryByText('.yaml')).not.toBeInTheDocument()
     expect(screen.queryByText('Encoding runs')).not.toBeInTheDocument()
-    expect(screen.getByText('Spec')).toBeInTheDocument()
+    expect(screen.getByText('Reference')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Docs')).toBeInTheDocument()
   })
@@ -38,15 +39,15 @@ describe('Nav', () => {
   it('renders anchor links on landing page (pathname /)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    const rulespecLink = screen.getByText('.yaml')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#format')
+    const rulespecLink = screen.getByText('RuleSpec')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#rulespec')
   })
 
   it('renders anchor links as Link on non-landing pages', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavWrapper />)
-    const rulespecLink = screen.getByText('.yaml')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#format')
+    const rulespecLink = screen.getByText('RuleSpec')
+    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#rulespec')
   })
 
   it('highlights active link on /about', () => {

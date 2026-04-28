@@ -32,7 +32,7 @@ export interface NavProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
-  { href: "/atlas", label: "Browse" },
+  { href: "/axiom", label: "Browse" },
   { href: "/#format", label: ".yaml" },
   { href: "/#autorulespec", label: "AutoRuleSpec" },
   { href: "/#spec", label: "Spec" },

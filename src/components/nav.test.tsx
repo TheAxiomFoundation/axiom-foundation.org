@@ -29,7 +29,7 @@ describe('Nav', () => {
     expect(screen.getByText('Browse')).toBeInTheDocument()
     expect(screen.getByText('.yaml')).toBeInTheDocument()
     expect(screen.getByText('AutoRuleSpec')).toBeInTheDocument()
-    expect(screen.queryByText('Lab')).not.toBeInTheDocument()
+    expect(screen.queryByText('Encoding runs')).not.toBeInTheDocument()
     expect(screen.getByText('Spec')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Docs')).toBeInTheDocument()
@@ -49,11 +49,11 @@ describe('Nav', () => {
     expect(rulespecLink.closest('a')).toHaveAttribute('href', '/#format')
   })
 
-  it('highlights active link on /atlas', () => {
-    mockUsePathname.mockReturnValue('/atlas')
+  it('highlights active link on /axiom', () => {
+    mockUsePathname.mockReturnValue('/axiom')
     render(<NavWrapper />)
-    const atlasLink = screen.getByText('Browse')
-    expect(atlasLink.closest('a')).toHaveClass('opacity-100')
+    const axiomLink = screen.getByText('Browse')
+    expect(axiomLink.closest('a')).toHaveClass('opacity-100')
   })
 
   it('highlights active link on /about', () => {
@@ -73,11 +73,11 @@ describe('Nav', () => {
     expect(githubLink).toBeInTheDocument()
   })
 
-  it('renders Browse link to /atlas', () => {
+  it('renders Browse link to /axiom', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    const atlasLink = screen.getByText('Browse')
-    expect(atlasLink.closest('a')).toHaveAttribute('href', '/atlas')
+    const axiomLink = screen.getByText('Browse')
+    expect(axiomLink.closest('a')).toHaveAttribute('href', '/axiom')
   })
 
   it('renders hamburger button for mobile', () => {

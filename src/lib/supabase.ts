@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { getRuleSpecRepoForJurisdiction } from '@/lib/atlas/repo-map'
+import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
 
 // Supabase configuration
 /* v8 ignore start -- env-dependent module initialization */
@@ -10,13 +10,18 @@ export const supabase: SupabaseClient = isTestEnv
   ? createClient('https://placeholder.supabase.co', 'placeholder-key')
   : createClient(supabaseUrl, supabaseAnonKey)
 
-// Arch schema client for atlas/rule browsing
-export const supabaseArch = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'arch' } })
-  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'arch' } })
+// Source corpus client for browsable provisions and citation graph RPCs.
+export const supabaseCorpus = isTestEnv
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'corpus' } })
+  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'corpus' } })
+
+// Encoding metadata client for RuleSpec runs, transcripts, and SDK sessions.
+export const supabaseEncodings = isTestEnv
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'encodings' } })
+  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'encodings' } })
 /* v8 ignore stop */
 
-// Types for encoding runs (AutoRuleSpec Experiment Lab)
+// Types for encoding runs (AutoRuleSpec encoding runs)
 export interface EncodingRunIteration {
   attempt: number
   success: boolean
@@ -50,7 +55,7 @@ export interface EncodingRun {
 
 // Fetch encoding runs from Supabase
 export async function getEncodingRuns(limit = 100, offset = 0): Promise<EncodingRun[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .rpc('get_encoding_runs', { limit_count: limit, offset_count: offset })
 
   if (error) {
@@ -61,7 +66,7 @@ export async function getEncodingRuns(limit = 100, offset = 0): Promise<Encoding
   return (data || []) as EncodingRun[]
 }
 
-// Types for agent transcripts (AutoRuleSpec Experiment Lab)
+// Types for agent transcripts (AutoRuleSpec encoding runs)
 export interface TranscriptMessage {
   type: string
   message?: {
@@ -90,7 +95,7 @@ export interface AgentTranscript {
 
 // Fetch agent transcripts from Supabase
 export async function getAgentTranscripts(limit = 100, offset = 0): Promise<AgentTranscript[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .from('agent_transcripts')
     .select('*')
     .order('created_at', { ascending: false })
@@ -106,7 +111,7 @@ export async function getAgentTranscripts(limit = 100, offset = 0): Promise<Agen
 
 // Fetch transcripts for a specific session (linked to an encoding run)
 export async function getTranscriptsBySession(sessionId: string): Promise<AgentTranscript[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .from('agent_transcripts')
     .select('*')
     .eq('session_id', sessionId)
@@ -148,7 +153,7 @@ export interface SDKSessionEvent {
 
 // Fetch SDK orchestrator sessions from Supabase
 export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .from('sdk_sessions')
     .select('*')
     .order('started_at', { ascending: false })
@@ -168,14 +173,14 @@ export async function getSDKSessionMeta(
 ): Promise<Record<string, { title: string; lastEventAt: string | null }>> {
   if (sessionIds.length === 0) return {}
 
-  const { data: startEvents } = await supabase
+  const { data: startEvents } = await supabaseEncodings
     .from('sdk_session_events')
     .select('session_id, content')
     .in('session_id', sessionIds)
     .eq('event_type', 'agent_start')
     .order('sequence', { ascending: true })
 
-  const { data: lastEvents } = await supabase
+  const { data: lastEvents } = await supabaseEncodings
     .from('sdk_session_events')
     .select('session_id, timestamp')
     .in('session_id', sessionIds)
@@ -214,7 +219,7 @@ export async function getSDKSessionMeta(
 
 // Fetch events for a specific SDK session
 export async function getSDKSessionEvents(sessionId: string, limit = 2000): Promise<SDKSessionEvent[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .from('sdk_session_events')
     .select('*')
     .eq('session_id', sessionId)
@@ -229,7 +234,8 @@ export async function getSDKSessionEvents(sessionId: string, limit = 2000): Prom
   return (data || []) as SDKSessionEvent[]
 }
 
-// Atlas/Rule types (from atlas-viewer)
+// Source corpus provision rows. The UI still presents these as rules where
+// that is the clearer user-facing term.
 export interface Rule {
   id: string
   jurisdiction: string
@@ -250,7 +256,7 @@ export interface Rule {
   updated_at: string
 }
 
-// Encoding data linked to a rule via citation_path
+// Encoding data linked to a source provision via citation_path
 export interface RuleEncodingData {
   encoding_run_id: string
   citation: string
@@ -258,7 +264,7 @@ export interface RuleEncodingData {
   file_path: string
   rulespec_content: string | null
   final_scores: EncodingRunScores | null
-  // Lab metadata (only present for encoding_runs sources)
+  // Encoding-run metadata (only present for encoding_runs sources)
   iterations: EncodingRunIteration[] | null
   total_duration_ms: number | null
   agent_type: string | null
@@ -350,11 +356,11 @@ async function fetchRuleSpecFromGitHub(
 }
 /* v8 ignore stop */
 
-// Fetch encoding data for a rule by its ID
+// Fetch encoding data for a source provision by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
-  // First get the rule's citation_path/rulespec_path and jurisdiction
-  const { data: rule, error: ruleError } = await supabaseArch
-    .from('rules')
+  // First get the provision's citation_path/rulespec_path and jurisdiction
+  const { data: rule, error: ruleError } = await supabaseCorpus
+    .from('provisions')
     .select('citation_path, jurisdiction, rulespec_path')
     .eq('id', ruleId)
     .single()
@@ -371,7 +377,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   if (candidates.length === 0) return null
 
   // Single query: try all candidate paths at once, pick the most specific match
-  const { data, error } = await supabase
+  const { data, error } = await supabaseEncodings
     .from('encoding_runs')
     .select('id, citation, session_id, file_path, rulespec_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, autorulespec_version')
     .in('file_path', candidates)
@@ -407,7 +413,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   return fetchRuleSpecFromGitHub(candidates, rule.jurisdiction)
 }
 
-// ---- Atlas full-text search ----
+// ---- Axiom full-text search ----
 
 export interface SearchHit {
   id: string
@@ -427,7 +433,7 @@ export interface SearchOptions {
 }
 
 /**
- * Search arch.rules via the server-side `search_rules` RPC.
+ * Search corpus.provisions via the server-side `search_provisions` RPC.
  *
  * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
  * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
@@ -445,7 +451,7 @@ export async function searchRules(
   const q = query.trim()
   if (!q) return []
 
-  const { data, error } = await supabaseArch.rpc('search_rules', {
+  const { data, error } = await supabaseCorpus.rpc('search_provisions', {
     q,
     jurisdiction_in: options.jurisdiction ?? null,
     doc_type_in: options.docType ?? null,
@@ -453,14 +459,14 @@ export async function searchRules(
   })
 
   if (error) {
-    console.error('search_rules RPC failed:', error)
+    console.error('search_provisions RPC failed:', error)
     return []
   }
 
   return (data || []) as SearchHit[]
 }
 
-// ---- Atlas cross-references (get_references RPC) ----
+// ---- Axiom cross-references (get_provision_references RPC) ----
 
 export type RefDirection = 'outgoing' | 'incoming'
 
@@ -471,61 +477,61 @@ export interface RuleReference {
   confidence: number
   start_offset: number
   end_offset: number
-  /** For outgoing: the cited rule. For incoming: the citing rule. */
+  /** For outgoing: the cited provision. For incoming: the citing provision. */
   other_citation_path: string
-  other_rule_id: string | null
+  other_provision_id: string | null
   other_heading: string | null
-  /** Outgoing only — whether the target is ingested in arch.rules. */
+  /** Outgoing only — whether the target is ingested in corpus.provisions. */
   target_resolved: boolean
 }
 
 /**
- * Fetch the citation graph around a single rule.
+ * Fetch the citation graph around a single source provision.
  *
  * Returns one row per outgoing and incoming reference. Outgoing rows
  * carry `start_offset` / `end_offset` so the caller can splice `<a>`
  * tags at those positions when rendering the body. Incoming rows point
- * back to the citing rule for a "referenced by" panel.
+ * back to the citing provision for a "referenced by" panel.
  */
 export async function getRuleReferences(
   citationPath: string
 ): Promise<RuleReference[]> {
-  const { data, error } = await supabaseArch.rpc('get_references', {
+  const { data, error } = await supabaseCorpus.rpc('get_provision_references', {
     citation_path_in: citationPath,
   })
   if (error) {
-    console.error('get_references RPC failed:', error)
+    console.error('get_provision_references RPC failed:', error)
     return []
   }
   return (data || []) as RuleReference[]
 }
 
 /**
- * High-level corpus + graph stats surfaced on the Atlas landing page.
+ * High-level corpus + graph stats surfaced on the Axiom landing page.
  *
- * ``rules_count`` / ``references_count`` are planner estimates from
+ * ``provisions_count`` / ``references_count`` are planner estimates from
  * ``pg_class.reltuples`` — fast and fresh enough for an at-a-glance
  * stat block. ``jurisdictions_count`` is an exact distinct count.
  */
-export interface AtlasJurisdictionCount {
+export interface AxiomJurisdictionCount {
   jurisdiction: string
   count: number
 }
 
-export interface AtlasStats {
-  rules_count: number
+export interface AxiomStats {
+  provisions_count: number
   references_count: number
   jurisdictions_count: number
-  /** Per-jurisdiction rule counts, sorted DESC. */
-  jurisdictions: AtlasJurisdictionCount[]
+  /** Per-jurisdiction provision counts, sorted DESC. */
+  jurisdictions: AxiomJurisdictionCount[]
 }
 
-/** Fetch landing-page stats via the arch.get_atlas_stats RPC. */
-export async function getAtlasStats(): Promise<AtlasStats | null> {
-  const { data, error } = await supabaseArch.rpc('get_atlas_stats')
+/** Fetch landing-page stats via the corpus.get_corpus_stats RPC. */
+export async function getAxiomStats(): Promise<AxiomStats | null> {
+  const { data, error } = await supabaseCorpus.rpc('get_corpus_stats')
   if (error) {
-    console.error('get_atlas_stats RPC failed:', error)
+    console.error('get_corpus_stats RPC failed:', error)
     return null
   }
-  return (data || null) as AtlasStats | null
+  return (data || null) as AxiomStats | null
 }

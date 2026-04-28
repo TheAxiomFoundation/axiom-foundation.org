@@ -5,7 +5,7 @@ const { mockGetDescendants } = vi.hoisted(() => ({
   mockGetDescendants: vi.fn(),
 }));
 
-vi.mock("@/lib/atlas/rule-tree", () => ({
+vi.mock("@/lib/axiom/rule-tree", () => ({
   getRuleDescendants: mockGetDescendants,
 }));
 

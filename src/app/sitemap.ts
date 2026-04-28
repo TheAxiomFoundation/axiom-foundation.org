@@ -1,13 +1,13 @@
 import type { MetadataRoute } from "next";
-import { supabaseArch } from "@/lib/supabase";
-import { SITE_URL } from "@/lib/atlas/metadata";
+import { supabaseCorpus } from "@/lib/supabase";
+import { SITE_URL } from "@/lib/axiom/metadata";
 
 /**
- * Sitemap pagination for the Atlas.
+ * Sitemap pagination for the Axiom.
  *
  * Each rule URL is addressed at its atomic ``citation_path`` — the
- * same atomic grammar the viewer uses. The atlas is large enough
- * that a ``count('exact')`` scan of ``arch.rules`` regularly hits
+ * same atomic grammar the viewer uses. The axiom is large enough
+ * that a ``count('exact')`` scan of ``corpus.provisions`` regularly hits
  * statement-timeout, so we skip the count and pre-declare a
  * generous upper bound of chunks. Empty tail chunks render as
  * empty sitemaps, which Google tolerates.
@@ -37,7 +37,7 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "weekly",
   },
   {
-    url: `${SITE_URL}/atlas`,
+    url: `${SITE_URL}/axiom`,
     priority: 0.9,
     changeFrequency: "daily",
   },
@@ -68,8 +68,8 @@ export default async function sitemap({
   const chunk = typeof id === "number" ? id : Number.parseInt(id, 10);
   const safeChunk = Number.isFinite(chunk) ? chunk : 0;
   const offset = safeChunk * CHUNK_SIZE;
-  const { data, error } = await supabaseArch
-    .from("rules")
+  const { data, error } = await supabaseCorpus
+    .from("provisions")
     .select("citation_path, updated_at, has_rulespec")
     .not("citation_path", "is", null)
     .order("citation_path", { ascending: true })
@@ -87,7 +87,7 @@ export default async function sitemap({
       Boolean(row.citation_path)
     )
     .map((row) => ({
-      url: `${SITE_URL}/atlas/${row.citation_path}`,
+      url: `${SITE_URL}/axiom/${row.citation_path}`,
       lastModified: row.updated_at ? new Date(row.updated_at) : undefined,
       changeFrequency: "monthly" as const,
       // Encoded rules are higher-value destinations — give the crawler

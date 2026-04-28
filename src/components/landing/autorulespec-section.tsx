@@ -135,7 +135,7 @@ function AutoRuleSpecTerminal() {
       delay: 0.6,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[var(--color-ink-muted)]"> Loading 26 USC 32...</span>
           <span className="text-[var(--color-ink)] font-medium"> 81,247 characters</span>
         </>
@@ -145,7 +145,7 @@ function AutoRuleSpecTerminal() {
       delay: 0.9,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[var(--color-ink-muted)]"> Parsing subsection tree...</span>
         </>
       ),
@@ -154,7 +154,7 @@ function AutoRuleSpecTerminal() {
       delay: 1.2,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[rgba(255,255,255,0.35)]">   (a) Allowance of credit </span>
           <span className="text-[var(--color-ink-muted)]">           2,341 chars</span>
         </>
@@ -164,7 +164,7 @@ function AutoRuleSpecTerminal() {
       delay: 1.35,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[rgba(255,255,255,0.35)]">   (b) Percentages and amounts </span>
           <span className="text-[var(--color-ink-muted)]">       4,892 chars</span>
         </>
@@ -174,7 +174,7 @@ function AutoRuleSpecTerminal() {
       delay: 1.5,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[rgba(255,255,255,0.35)]">   (c) Definitions and special rules </span>
           <span className="text-[var(--color-ink-muted)]"> 5,675 chars</span>
         </>
@@ -184,7 +184,7 @@ function AutoRuleSpecTerminal() {
       delay: 1.65,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[rgba(255,255,255,0.35)]">   ...</span>
         </>
       ),
@@ -193,7 +193,7 @@ function AutoRuleSpecTerminal() {
       delay: 1.8,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[rgba(255,255,255,0.35)]">   (n) Supplemental child credit </span>
           <span className="text-[var(--color-ink-muted)]">     1,203 chars</span>
         </>
@@ -203,7 +203,7 @@ function AutoRuleSpecTerminal() {
       delay: 2.0,
       content: (
         <>
-          <span className="font-semibold text-[var(--color-warning)]">[atlas]</span>
+          <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
           <span className="text-[var(--color-ink)] font-medium"> 14 subsections extracted</span>
         </>
       ),

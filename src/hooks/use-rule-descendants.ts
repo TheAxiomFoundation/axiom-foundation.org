@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Rule } from "@/lib/supabase";
-import { getRuleDescendants } from "@/lib/atlas/rule-tree";
+import { getRuleDescendants } from "@/lib/axiom/rule-tree";
 
 /**
  * Fetch every descendant of a rule up to a bounded depth via

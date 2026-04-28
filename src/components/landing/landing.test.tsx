@@ -13,7 +13,7 @@ vi.mock('next/link', () => ({
 }))
 
 import { Hero } from '@/components/landing/hero'
-import { AtlasSection } from '@/components/landing/atlas-section'
+import { AxiomSection } from '@/components/landing/axiom-section'
 import { RuleSpecSection } from '@/components/landing/rulespec-section'
 import { RuleSpecFormat } from '@/components/landing/rulespec-format'
 import { AutoRuleSpecSection } from '@/components/landing/autorulespec-section'
@@ -36,9 +36,9 @@ describe('Landing sections', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/the world.*rules.*encoded/i)
   })
 
-  it('renders the Atlas section', () => {
-    render(<AtlasSection />)
-    expect(screen.getByRole('heading', { name: /atlas/i })).toBeInTheDocument()
+  it('renders the Axiom section', () => {
+    render(<AxiomSection />)
+    expect(screen.getByRole('heading', { name: /axiom/i })).toBeInTheDocument()
     expect(screen.getByText(/federal statutes/i)).toBeInTheDocument()
   })
 

@@ -11,15 +11,15 @@ vi.mock("posthog-js", () => ({
   },
 }));
 
-import { trackAtlasEvent } from "./analytics";
+import { trackAxiomEvent } from "./analytics";
 
-describe("trackAtlasEvent", () => {
+describe("trackAxiomEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("does not call posthog.capture when POSTHOG_KEY is not set", () => {
-    trackAtlasEvent("atlas_rule_viewed", {
+    trackAxiomEvent("axiom_rule_viewed", {
       citation_path: "us/statute/26/1",
       jurisdiction: "us",
       has_rulespec: false,
@@ -27,7 +27,7 @@ describe("trackAtlasEvent", () => {
     expect(mockCapture).not.toHaveBeenCalled();
   });
 
-  it("exports trackAtlasEvent as a function", () => {
-    expect(typeof trackAtlasEvent).toBe("function");
+  it("exports trackAxiomEvent as a function", () => {
+    expect(typeof trackAxiomEvent).toBe("function");
   });
 });

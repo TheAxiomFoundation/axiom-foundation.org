@@ -76,7 +76,7 @@ const stackLayers: StackLayer[] = [
       "archive snapshots",
       "source specs and converters",
     ],
-    repos: ["atlas", "rules-uk", "rules-us", "rules-us-co"],
+    repos: ["axiom", "rules-uk", "rules-us", "rules-us-co"],
     outputs: ["official PDF and HTML snapshots", "source refs", "archived raw text"],
     snippetLabel: "source acquisition shape",
     snippetLanguage: "plain",
@@ -105,7 +105,7 @@ const stackLayers: StackLayer[] = [
       "eId generation",
       "hierarchy extraction",
     ],
-    repos: ["atlas", "rules-us-co"],
+    repos: ["axiom", "rules-us-co"],
     outputs: ["source.xml", "source tree", "section and paragraph ids"],
     snippetLabel: "source XML slice",
     snippetLanguage: "xml",
@@ -125,7 +125,7 @@ const stackLayers: StackLayer[] = [
     summary:
       "Once the documents are structured, the stack can expose source trees, exact slices, and cross-document references to both humans and the harness.",
     details: [
-      "The source graph feeds Atlas browsing, section-level deep links, and encoder workspaces.",
+      "The source graph feeds Axiom browsing, section-level deep links, and encoder workspaces.",
       "Exact slices are copied into local workspaces as `source.txt` so benchmark runs are reproducible and inspectable.",
       "This is also where canonical upstream homes exist before we decide whether a RuleSpec import should resolve to a real file or a temporary stub.",
     ],
@@ -134,7 +134,7 @@ const stackLayers: StackLayer[] = [
       "slice extraction",
       "cross-reference resolution",
     ],
-    repos: ["atlas", "autorulespec"],
+    repos: ["axiom", "autorulespec"],
     outputs: ["source.txt", "context-manifest.json", "navigable source tree"],
     snippetLabel: "eval workspace context",
     snippetLanguage: "yaml",
@@ -238,14 +238,14 @@ uv run python -m rulespec.test_runner /path/to/repo -v`,
     icon: <TerminalIcon className="w-5 h-5" />,
   },
   {
-    id: "atlas",
+    id: "axiom",
     step: "07",
     stageIds: ["publish"],
-    title: "Publish and inspect in Atlas",
+    title: "Publish and inspect in Axiom",
     summary:
-      "Atlas is the public-facing inspection layer where source trees, RuleSpec files, encodings, provenance, and agent logs become explorable.",
+      "Axiom is the public-facing inspection layer where source trees, RuleSpec files, encodings, provenance, and agent logs become explorable.",
     details: [
-      "Atlas is downstream of the corpus and harness, not the source of truth.",
+      "Axiom is downstream of the corpus and harness, not the source of truth.",
       "It exposes source documents, rule trees, encoding records, and agent logs in one place.",
       "This is also where funders, researchers, and engineers can inspect how a specific rule got from text to executable encoding.",
     ],
@@ -255,11 +255,11 @@ uv run python -m rulespec.test_runner /path/to/repo -v`,
       "agent logs",
       "source document browser",
     ],
-    repos: ["atlas", "axiom-foundation.org"],
+    repos: ["axiom", "axiom-foundation.org"],
     outputs: ["public rule pages", "encoding views", "document browser"],
     snippetLabel: "live surface",
     snippetLanguage: "plain",
-    snippet: `Atlas shows:
+    snippet: `Axiom shows:
 - official source documents
 - RuleSpec encodings
 - encoding_runs metadata
@@ -297,7 +297,7 @@ const runtimeStages: RuntimeStage[] = [
     id: "publish",
     label: "Inspect",
     detail:
-      "Wave manifests and Atlas sync expose the result as a durable, inspectable rule artifact.",
+      "Wave manifests and Axiom sync expose the result as a durable, inspectable rule artifact.",
   },
 ];
 
@@ -307,7 +307,7 @@ const repoLanes: RepoLane[] = [
     title: "Source and structure",
     summary:
       "Document acquisition, converters, and source XML structure live here before any rules encoding starts.",
-    repos: ["atlas", "rules-uk sources", "rules-us sources", "rules-us-co sources"],
+    repos: ["axiom", "rules-uk sources", "rules-us sources", "rules-us-co sources"],
   },
   {
     id: "corpus",
@@ -327,8 +327,8 @@ const repoLanes: RepoLane[] = [
     id: "presentation",
     title: "Presentation and inspection",
     summary:
-      "Atlas and the site expose source, encodings, provenance, and logs to users.",
-    repos: ["atlas", "axiom-foundation.org"],
+      "Axiom and the site expose source, encodings, provenance, and logs to users.",
+    repos: ["axiom", "axiom-foundation.org"],
   },
 ];
 
@@ -435,15 +435,15 @@ The companion test file exercises the age and September cut-off behavior against
 }`,
   },
   {
-    id: "atlas-page",
+    id: "axiom-page",
     stage: "Inspect",
-    title: "Live Atlas page",
+    title: "Live Axiom page",
     summary:
-      "The promoted rule is then available in Atlas with source context, encoding metadata, and inspection surfaces.",
-    href: "https://axiom-foundation.org/atlas/uk/legislation/uksi/2002/1792/regulation/4A/1/a",
-    linkLabel: "Open live Atlas page",
-    previewLabel: "atlas route",
-    preview: `https://axiom-foundation.org/atlas/uk/legislation/uksi/2002/1792/regulation/4A/1/a
+      "The promoted rule is then available in Axiom with source context, encoding metadata, and inspection surfaces.",
+    href: "https://axiom-foundation.org/axiom/uk/legislation/uksi/2002/1792/regulation/4A/1/a",
+    linkLabel: "Open live Axiom page",
+    previewLabel: "axiom route",
+    preview: `https://axiom-foundation.org/axiom/uk/legislation/uksi/2002/1792/regulation/4A/1/a
 
 Live public page for the promoted encoding.`,
   },
@@ -489,7 +489,7 @@ export function StackSystemPage() {
                   AutoRuleSpec is one layer in a longer chain. A provision moves from
                   official document capture, to structural normalization, to a
                   reproducible source slice, to a tested RuleSpec file, to harness
-                  evaluation, to runtime execution, and finally to Atlas. The
+                  evaluation, to runtime execution, and finally to Axiom. The
                   system is split this way so authority, transformation,
                   correctness, and presentation can each be inspected on their
                   own terms.
@@ -498,8 +498,8 @@ export function StackSystemPage() {
                   <Link href="/autorulespec" className="btn-outline">
                     Open AutoRuleSpec system map
                   </Link>
-                  <Link href="/atlas" className="btn-primary">
-                    Explore Atlas
+                  <Link href="/axiom" className="btn-primary">
+                    Explore Axiom
                     <ArrowRightIcon className="w-5 h-5" />
                   </Link>
                 </div>
@@ -513,7 +513,7 @@ export function StackSystemPage() {
                   <div className="font-mono text-xs text-[var(--color-code-text)] leading-6 overflow-x-auto">
                     Pension Credit regulation 4A(1)(a)
                     <br />
-                    official data.xml -&gt; extracted source slice -&gt; 4A/1/a.yaml -&gt; wave16 AutoRuleSpec summary -&gt; Atlas
+                    official data.xml -&gt; extracted source slice -&gt; 4A/1/a.yaml -&gt; wave16 AutoRuleSpec summary -&gt; Axiom
                   </div>
                 </div>
               </div>
@@ -1079,8 +1079,8 @@ export function StackSystemPage() {
                   <Link href="/autorulespec" className="btn-outline">
                     AutoRuleSpec system map
                   </Link>
-                  <Link href="/atlas" className="btn-outline">
-                    Atlas encoding views
+                  <Link href="/axiom" className="btn-outline">
+                    Axiom encoding views
                   </Link>
                   <Link href="/about" className="btn-outline">
                     About the project

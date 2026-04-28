@@ -4,16 +4,16 @@ import {
   isUUID,
   getJurisdiction,
   getJurisdictionBySlug,
-  resolveAtlasPath,
+  resolveAxiomPath,
   hasEncodedDescendant,
   resolveDisplayContext,
   JURISDICTIONS,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
-import { supabaseArch } from "@/lib/supabase";
+import { supabaseCorpus } from "@/lib/supabase";
 
 vi.mock("@/lib/supabase", () => ({
-  supabaseArch: { from: vi.fn() },
+  supabaseCorpus: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
 
@@ -86,62 +86,62 @@ describe("getJurisdiction (backward compat)", () => {
   });
 });
 
-describe("resolveAtlasPath", () => {
+describe("resolveAxiomPath", () => {
   it("returns jurisdiction-picker for empty segments", () => {
-    const result = resolveAtlasPath([]);
+    const result = resolveAxiomPath([]);
     expect(result.phase).toBe("jurisdiction-picker");
     expect(result.ruleSegments).toEqual([]);
   });
 
   it("returns jurisdiction-picker for unknown jurisdiction", () => {
-    const result = resolveAtlasPath(["mars"]);
+    const result = resolveAxiomPath(["mars"]);
     expect(result.phase).toBe("jurisdiction-picker");
   });
 
   it("returns rule phase for US", () => {
-    const result = resolveAtlasPath(["us"]);
+    const result = resolveAxiomPath(["us"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("us");
     expect(result.ruleSegments).toEqual([]);
   });
 
   it("returns rule phase for US with rule segments", () => {
-    const result = resolveAtlasPath(["us", "statute", "26"]);
+    const result = resolveAxiomPath(["us", "statute", "26"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("us");
     expect(result.ruleSegments).toEqual(["statute", "26"]);
   });
 
   it("returns rule phase for Ohio", () => {
-    const result = resolveAtlasPath(["us-oh", "statute"]);
+    const result = resolveAxiomPath(["us-oh", "statute"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("us-oh");
     expect(result.ruleSegments).toEqual(["statute"]);
   });
 
   it("returns rule phase for Colorado", () => {
-    const result = resolveAtlasPath(["us-co", "regulation"]);
+    const result = resolveAxiomPath(["us-co", "regulation"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("us-co");
     expect(result.ruleSegments).toEqual(["regulation"]);
   });
 
   it("returns rule phase for UK", () => {
-    const result = resolveAtlasPath(["uk"]);
+    const result = resolveAxiomPath(["uk"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("uk");
     expect(result.ruleSegments).toEqual([]);
   });
 
   it("returns rule phase for UK with rule segments", () => {
-    const result = resolveAtlasPath(["uk", "legislation"]);
+    const result = resolveAxiomPath(["uk", "legislation"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("uk");
     expect(result.ruleSegments).toEqual(["legislation"]);
   });
 
   it("returns rule phase for Canada", () => {
-    const result = resolveAtlasPath(["canada"]);
+    const result = resolveAxiomPath(["canada"]);
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("canada");
     expect(result.ruleSegments).toEqual([]);
@@ -149,101 +149,101 @@ describe("resolveAtlasPath", () => {
 });
 
 describe("buildBreadcrumbs", () => {
-  it("returns only Atlas for empty segments", () => {
+  it("returns only Axiom for empty segments", () => {
     const crumbs = buildBreadcrumbs([]);
-    expect(crumbs).toEqual([{ label: "Atlas", href: "/atlas" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
   });
 
   it("builds jurisdiction breadcrumb for US", () => {
     const crumbs = buildBreadcrumbs(["us"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "US Federal", href: "/atlas/us" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "US Federal", href: "/axiom/us" },
     ]);
   });
 
   it("builds full path for US/statute/26/1", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "1"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "US Federal", href: "/atlas/us" },
-      { label: "Statutes", href: "/atlas/us/statute" },
-      { label: "Title 26", href: "/atlas/us/statute/26" },
-      { label: "§ 1", href: "/atlas/us/statute/26/1" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "US Federal", href: "/axiom/us" },
+      { label: "Statutes", href: "/axiom/us/statute" },
+      { label: "Title 26", href: "/axiom/us/statute/26" },
+      { label: "§ 1", href: "/axiom/us/statute/26/1" },
     ]);
   });
 
   it("formats nested statute breadcrumbs with parenthetical subsections", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "24", "d", "1", "A"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "US Federal", href: "/atlas/us" },
-      { label: "Statutes", href: "/atlas/us/statute" },
-      { label: "Title 26", href: "/atlas/us/statute/26" },
-      { label: "§ 24", href: "/atlas/us/statute/26/24" },
-      { label: "(d)", href: "/atlas/us/statute/26/24/d" },
-      { label: "(1)", href: "/atlas/us/statute/26/24/d/1" },
-      { label: "(A)", href: "/atlas/us/statute/26/24/d/1/A" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "US Federal", href: "/axiom/us" },
+      { label: "Statutes", href: "/axiom/us/statute" },
+      { label: "Title 26", href: "/axiom/us/statute/26" },
+      { label: "§ 24", href: "/axiom/us/statute/26/24" },
+      { label: "(d)", href: "/axiom/us/statute/26/24/d" },
+      { label: "(1)", href: "/axiom/us/statute/26/24/d/1" },
+      { label: "(A)", href: "/axiom/us/statute/26/24/d/1/A" },
     ]);
   });
 
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "United Kingdom", href: "/atlas/uk" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "United Kingdom", href: "/axiom/uk" },
     ]);
   });
 
   it("builds breadcrumb for UK with rule segments", () => {
     const crumbs = buildBreadcrumbs(["uk", "legislation", "uksi", "2013", "376"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "United Kingdom", href: "/atlas/uk" },
-      { label: "Legislation", href: "/atlas/uk/legislation" },
-      { label: "UK Statutory Instruments", href: "/atlas/uk/legislation/uksi" },
-      { label: "2013", href: "/atlas/uk/legislation/uksi/2013" },
-      { label: "376", href: "/atlas/uk/legislation/uksi/2013/376" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "United Kingdom", href: "/axiom/uk" },
+      { label: "Legislation", href: "/axiom/uk/legislation" },
+      { label: "UK Statutory Instruments", href: "/axiom/uk/legislation/uksi" },
+      { label: "2013", href: "/axiom/uk/legislation/uksi/2013" },
+      { label: "376", href: "/axiom/uk/legislation/uksi/2013/376" },
     ]);
   });
 
   it("builds breadcrumb for Ohio path", () => {
     const crumbs = buildBreadcrumbs(["us-oh", "statute", "26"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "Ohio", href: "/atlas/us-oh" },
-      { label: "Statutes", href: "/atlas/us-oh/statute" },
-      { label: "Title 26", href: "/atlas/us-oh/statute/26" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "Ohio", href: "/axiom/us-oh" },
+      { label: "Statutes", href: "/axiom/us-oh/statute" },
+      { label: "Title 26", href: "/axiom/us-oh/statute/26" },
     ]);
   });
 
   it("builds breadcrumb for Colorado regulation path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "regulation", "9-CCR-2503-6", "3.606.1", "I"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "Colorado", href: "/atlas/us-co" },
-      { label: "Regulations", href: "/atlas/us-co/regulation" },
-      { label: "9 CCR 2503-6", href: "/atlas/us-co/regulation/9-CCR-2503-6" },
-      { label: "§ 3.606.1", href: "/atlas/us-co/regulation/9-CCR-2503-6/3.606.1" },
-      { label: "(I)", href: "/atlas/us-co/regulation/9-CCR-2503-6/3.606.1/I" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "Colorado", href: "/axiom/us-co" },
+      { label: "Regulations", href: "/axiom/us-co/regulation" },
+      { label: "9 CCR 2503-6", href: "/axiom/us-co/regulation/9-CCR-2503-6" },
+      { label: "§ 3.606.1", href: "/axiom/us-co/regulation/9-CCR-2503-6/3.606.1" },
+      { label: "(I)", href: "/axiom/us-co/regulation/9-CCR-2503-6/3.606.1/I" },
     ]);
   });
 
   it("builds breadcrumb for Colorado statute path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "statute", "crs", "26-2-703", "2.5"]);
     expect(crumbs).toEqual([
-      { label: "Atlas", href: "/atlas" },
-      { label: "Colorado", href: "/atlas/us-co" },
-      { label: "Statutes", href: "/atlas/us-co/statute" },
-      { label: "Colorado Revised Statutes", href: "/atlas/us-co/statute/crs" },
-      { label: "§ 26-2-703", href: "/atlas/us-co/statute/crs/26-2-703" },
-      { label: "(2.5)", href: "/atlas/us-co/statute/crs/26-2-703/2.5" },
+      { label: "Axiom", href: "/axiom" },
+      { label: "Colorado", href: "/axiom/us-co" },
+      { label: "Statutes", href: "/axiom/us-co/statute" },
+      { label: "Colorado Revised Statutes", href: "/axiom/us-co/statute/crs" },
+      { label: "§ 26-2-703", href: "/axiom/us-co/statute/crs/26-2-703" },
+      { label: "(2.5)", href: "/axiom/us-co/statute/crs/26-2-703/2.5" },
     ]);
   });
 
-  it("returns only Atlas for unknown jurisdiction", () => {
+  it("returns only Axiom for unknown jurisdiction", () => {
     const crumbs = buildBreadcrumbs(["mars"]);
-    expect(crumbs).toEqual([{ label: "Atlas", href: "/atlas" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
   });
 
   it("uses raw segment for unknown doc_type", () => {
@@ -357,7 +357,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseCorpus.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -375,7 +375,7 @@ describe("resolveDisplayContext", () => {
     const mockSelect = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({ single: mockSingle }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseCorpus.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -404,7 +404,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseCorpus.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -427,7 +427,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseCorpus.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 
@@ -450,7 +450,7 @@ describe("resolveDisplayContext", () => {
         return { single: mockSingle };
       }),
     });
-    vi.mocked(supabaseArch.from).mockReturnValue({ select: mockSelect } as any);
+    vi.mocked(supabaseCorpus.from).mockReturnValue({ select: mockSelect } as any);
 
     const result = await resolveDisplayContext(leaf);
 

@@ -131,8 +131,8 @@ export function Hero() {
         <HeroTransform />
 
         <div className="flex gap-6 justify-center mt-14 flex-wrap">
-          <a href="/atlas" className="btn-primary">
-            Explore the atlas
+          <a href="/axiom" className="btn-primary">
+            Explore the axiom
             <ArrowRightIcon className="w-5 h-5" />
           </a>
         </div>

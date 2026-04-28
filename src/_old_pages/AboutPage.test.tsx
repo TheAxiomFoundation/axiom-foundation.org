@@ -10,7 +10,7 @@ const renderWithRouter = (ui: React.ReactElement) => {
 describe('AboutPage', () => {
   it('renders the page title', () => {
     renderWithRouter(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /about rule atlas/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /about rule axiom/i })).toBeInTheDocument()
   })
 
   it('renders the mission section', () => {
@@ -19,10 +19,10 @@ describe('AboutPage', () => {
     expect(screen.getByText(/machine-readable, verifiable/i)).toBeInTheDocument()
   })
 
-  it('renders the what we do section with Atlas, RuleSpec, and AutoRuleSpec cards', () => {
+  it('renders the what we do section with Axiom, RuleSpec, and AutoRuleSpec cards', () => {
     renderWithRouter(<AboutPage />)
     expect(screen.getByRole('heading', { name: /what we do/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Atlas' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Axiom' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'RuleSpec' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'AutoRuleSpec' })).toBeInTheDocument()
   })
@@ -37,7 +37,7 @@ describe('AboutPage', () => {
   it('renders the contact section', () => {
     renderWithRouter(<AboutPage />)
     expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@ruleatlas.org')).toBeInTheDocument()
+    expect(screen.getByText('hello@axiom-foundation.org')).toBeInTheDocument()
   })
 
   it('renders GitHub link in team section', () => {

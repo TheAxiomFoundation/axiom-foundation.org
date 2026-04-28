@@ -271,20 +271,20 @@ assessed_income_period_satisfied:
   {
     id: "promote",
     step: "08",
-    title: "Promote with provenance, then sync Atlas",
+    title: "Promote with provenance, then sync Axiom",
     summary:
       "A successful suite is still not the end. Promotion records wave manifests, repo versions, and source lineage so the resulting corpus is auditable.",
     details: [
       "UK and Colorado now use wave manifests to record file sets, dates, commits, source eval runs, and provenance tier.",
       "The latest UK promotion added 55 regulation 15 leaves and brought the checked-in corpus to 146 RuleSpec files.",
-      "Atlas sync is downstream of validated corpus state, not the source of truth, and the UK replace-mode delete path now works without append-only fallback.",
+      "Axiom sync is downstream of validated corpus state, not the source of truth, and the UK replace-mode delete path now works without append-only fallback.",
     ],
     checks: [
       "wave manifest present",
       "changed files listed in manifest",
       "repo validators pass before sync",
     ],
-    outputs: ["manifest.json", "encoding_runs", "Atlas rule tree"],
+    outputs: ["manifest.json", "encoding_runs", "Axiom rule tree"],
     snippetLabel: "wave manifest",
     snippetLanguage: "plain",
     snippet: `{
@@ -320,7 +320,7 @@ const recentProofPoints: ProofPoint[] = [
   },
   {
     id: "sync",
-    label: "Replace-mode Atlas sync repaired",
+    label: "Replace-mode Axiom sync repaired",
     summary:
       "UK sync no longer depends on append-only recovery. Managed uk/legislation rows are deleted and republished in normal mode.",
   },
@@ -567,8 +567,8 @@ export function AutoRuleSpecSystemPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/atlas" className="btn-primary">
-                Inspect encoding records in Atlas
+              <Link href="/axiom" className="btn-primary">
+                Inspect encoding records in Axiom
                 <ArrowRightIcon className="w-5 h-5" />
               </Link>
               <Link href="/stack" className="btn-outline">
@@ -779,7 +779,7 @@ export function AutoRuleSpecSystemPage() {
               <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[760px] leading-relaxed">
                 These are real failure classes from recent UK, US, and Colorado
                 work. Each one maps to a concrete harness or repo validator
-                change. Atlas is where per-rule encoding records and agent logs
+                change. Axiom is where per-rule encoding records and agent logs
                 are meant to be inspected, while autoresearch sits one level up
                 and decides whether prompt-surface changes should be kept at
                 all.
@@ -895,11 +895,11 @@ export function AutoRuleSpecSystemPage() {
                 uses concrete current examples from the accepted autoresearch
                 run and the latest UK bulk promotion rather than abstract file
                 shapes. The actual per-encoding logs and RuleSpec records still
-                belong in Atlas.
+                belong in Axiom.
               </p>
             </div>
-            <Link href="/atlas" className="btn-outline">
-              Open Atlas encoding views
+            <Link href="/axiom" className="btn-outline">
+              Open Axiom encoding views
             </Link>
           </div>
 

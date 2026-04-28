@@ -6,20 +6,6 @@ const nextConfig: NextConfig = {
       { hostname: "maxghenis.com" },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: "/atlas/us/federal/:path*",
-        destination: "/atlas/us/:path*",
-        permanent: true,
-      },
-      {
-        source: "/atlas/us/oh/:path*",
-        destination: "/atlas/us-oh/:path*",
-        permanent: true,
-      },
-    ];
-  },
   async rewrites() {
     return [
       {

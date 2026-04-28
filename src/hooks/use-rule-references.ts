@@ -37,11 +37,12 @@ export function useRuleReferences(
       return;
     }
     const token = ++inflight.current;
+    let cancelled = false;
     setLoading(true);
     setError(null);
     getRuleReferences(citationPath)
       .then((rows) => {
-        if (token !== inflight.current) return;
+        if (cancelled || token !== inflight.current) return;
         const out = rows
           .filter((r) => r.direction === "outgoing")
           .sort((a, b) => a.start_offset - b.start_offset);
@@ -56,12 +57,16 @@ export function useRuleReferences(
         setIncoming(inc);
       })
       .catch((e) => {
-        if (token !== inflight.current) return;
+        if (cancelled || token !== inflight.current) return;
         setError(e instanceof Error ? e.message : "Failed to fetch references");
       })
       .finally(() => {
-        if (token === inflight.current) setLoading(false);
+        if (!cancelled && token === inflight.current) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [citationPath]);
 
   return { outgoing, incoming, loading, error };

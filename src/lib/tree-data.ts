@@ -1,9 +1,9 @@
-import { supabase, supabaseArch, type Rule } from "@/lib/supabase";
+import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
 import {
   JURISDICTIONS_SEED,
   synthesiseJurisdiction,
-} from "@/lib/atlas/jurisdictions-seed";
+} from "@/lib/axiom/jurisdictions-seed";
 
 export type NodeType =
   | "jurisdiction"
@@ -54,7 +54,7 @@ export const JURISDICTIONS: Jurisdiction[] = JURISDICTIONS_SEED;
  * Resolve a URL slug into a Jurisdiction record. Falls through to a
  * synthesised record for well-formed but uncurated slugs (e.g. a new
  * US state we haven't labelled yet) so a direct URL or an incoming
- * reference still lands on the rule page instead of the Atlas
+ * reference still lands on the rule page instead of the Axiom
  * landing.
  */
 export function getJurisdictionBySlug(
@@ -67,15 +67,15 @@ export function getJurisdictionBySlug(
 
 // ---- Path resolution ----
 
-export type AtlasPhase = "jurisdiction-picker" | "rule";
+export type AxiomPhase = "jurisdiction-picker" | "rule";
 
 export interface ResolvedPath {
-  phase: AtlasPhase;
+  phase: AxiomPhase;
   jurisdiction?: Jurisdiction;
   ruleSegments: string[];
 }
 
-export function resolveAtlasPath(segments: string[]): ResolvedPath {
+export function resolveAxiomPath(segments: string[]): ResolvedPath {
   if (segments.length === 0) {
     return { phase: "jurisdiction-picker", ruleSegments: [] };
   }
@@ -116,8 +116,8 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   if (!rule.parent_id) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const parentResult = await supabaseArch
-    .from("rules")
+  const parentResult = await supabaseCorpus
+    .from("provisions")
     .select("*")
     .eq("id", rule.parent_id)
     .single();
@@ -125,8 +125,8 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   if (!parent) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const siblingsResult = await supabaseArch
-    .from("rules")
+  const siblingsResult = await supabaseCorpus
+    .from("provisions")
     .select("*")
     .eq("parent_id", rule.parent_id)
     .order("ordinal");
@@ -162,8 +162,8 @@ export async function getJurisdictionCounts(
   const counts = new Map<string, number>();
   await Promise.all(
     dbIds.map(async (id) => {
-      const { count } = await supabaseArch
-        .from("rules")
+      const { count } = await supabaseCorpus
+        .from("provisions")
         .select("*", { count: "exact", head: true })
         .eq("jurisdiction", id);
       counts.set(id, count || 0);
@@ -175,8 +175,8 @@ export async function getJurisdictionCounts(
 export async function getDocTypeNodes(
   jurisdiction: string
 ): Promise<TreeNode[]> {
-  const { data } = await supabaseArch
-    .from("rules")
+  const { data } = await supabaseCorpus
+    .from("provisions")
     .select("citation_path")
     .eq("jurisdiction", jurisdiction)
     .not("citation_path", "is", null)
@@ -214,15 +214,15 @@ export async function getTitleNodes(
   encodedOnly?: boolean
 ): Promise<TreeNode[]> {
   const rootPath = `${jurisdiction}/${_docType}`;
-  const { data: parentRule } = await supabaseArch
-    .from("rules")
+  const { data: parentRule } = await supabaseCorpus
+    .from("provisions")
     .select("*")
     .eq("citation_path", rootPath)
     .single();
 
   if (parentRule) {
-    const { data } = await supabaseArch
-      .from("rules")
+    const { data } = await supabaseCorpus
+      .from("provisions")
       .select("*")
       .eq("parent_id", parentRule.id)
       .order("ordinal");
@@ -246,8 +246,8 @@ export async function getTitleNodes(
     return nodes;
   }
 
-  const { data } = await supabaseArch
-    .from("rules")
+  const { data } = await supabaseCorpus
+    .from("provisions")
     .select("citation_path")
     .eq("jurisdiction", jurisdiction)
     .not("citation_path", "is", null)
@@ -277,8 +277,8 @@ export async function getTitleNodes(
   const nodes = await Promise.all(
     titles.map(async (title) => {
       const prefix = `${jurisdiction}/statute/${title}`;
-      const { count } = await supabaseArch
-        .from("rules")
+      const { count } = await supabaseCorpus
+        .from("provisions")
         .select("*", { count: "exact", head: true })
         .like("citation_path", `${prefix}/%`)
         .is("parent_id", null);
@@ -302,8 +302,8 @@ export async function getSectionNodes(
   encodedPaths?: Set<string>,
   encodedOnly?: boolean
 ): Promise<TreeResult> {
-  const { data: parentRule } = await supabaseArch
-    .from("rules")
+  const { data: parentRule } = await supabaseCorpus
+    .from("provisions")
     .select("*")
     .eq("citation_path", pathPrefix)
     .single();
@@ -311,8 +311,8 @@ export async function getSectionNodes(
   if (parentRule) {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const { data, count } = await supabaseArch
-      .from("rules")
+    const { data, count } = await supabaseCorpus
+      .from("provisions")
       .select("*", { count: "exact" })
       .eq("parent_id", parentRule.id)
       .order("ordinal")
@@ -356,8 +356,8 @@ export async function getSectionNodes(
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
-  const { data, count } = await supabaseArch
-    .from("rules")
+  const { data, count } = await supabaseCorpus
+    .from("provisions")
     .select("*", { count: "exact" })
     .like("citation_path", `${pathPrefix}/%`)
     .is("parent_id", null)
@@ -400,12 +400,12 @@ export async function getSectionNodes(
 }
 
 /**
- * Fetch citation paths of all rules with has_rulespec=true from arch.rules.
+ * Fetch citation paths of all rules with has_rulespec=true from corpus.provisions.
  * Returns paths without jurisdiction prefix, e.g. "statute/26/1/j/2".
  */
 export async function getEncodedPaths(): Promise<Set<string>> {
-  const { data } = await supabaseArch
-    .from("rules")
+  const { data } = await supabaseCorpus
+    .from("provisions")
     .select("citation_path")
     .eq("has_rulespec", true);
 
@@ -493,8 +493,8 @@ export async function getActNodes(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseArch
-    .from("rules")
+  const { data, count } = await supabaseCorpus
+    .from("provisions")
     .select("*", { count: "exact" })
     .eq("jurisdiction", jurisdiction)
     .is("parent_id", null)
@@ -524,8 +524,8 @@ export async function getChildrenByParentId(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseArch
-    .from("rules")
+  const { data, count } = await supabaseCorpus
+    .from("provisions")
     .select("*", { count: "exact" })
     .eq("parent_id", parentId)
     .order("ordinal")
@@ -548,8 +548,8 @@ export async function getChildrenByParentId(
 }
 
 export async function getRuleById(id: string): Promise<Rule | null> {
-  const { data, error } = await supabaseArch
-    .from("rules")
+  const { data, error } = await supabaseCorpus
+    .from("provisions")
     .select("*")
     .eq("id", id)
     .single();
@@ -568,7 +568,7 @@ export interface BreadcrumbItem {
 }
 
 export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = [{ label: "Atlas", href: "/atlas" }];
+  const items: BreadcrumbItem[] = [{ label: "Axiom", href: "/axiom" }];
 
   if (segments.length === 0) return items;
 
@@ -578,13 +578,13 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
   // Jurisdiction breadcrumb
   items.push({
     label: jurisdiction.label,
-    href: `/atlas/${jurisdiction.slug}`,
+    href: `/axiom/${jurisdiction.slug}`,
   });
 
   // Rule segments start at index 1
   for (let i = 1; i < segments.length; i++) {
     const ruleIndex = i - 1;
-    const href = "/atlas/" + segments.slice(0, i + 1).join("/");
+    const href = "/axiom/" + segments.slice(0, i + 1).join("/");
     const label = formatRuleSegmentLabel(
       segments[i],
       ruleIndex,

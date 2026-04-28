@@ -78,8 +78,8 @@ export default function AboutPage() {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
             {[
               {
-                title: "Atlas",
-                desc: "Open platform for exploring encoded law. The Archive holds 53 USC titles, 570+ IRS guidance documents, and 48 states. Atlas brings together source documents, RuleSpec encodings, and validation results.",
+                title: "Axiom",
+                desc: "Open platform for exploring encoded law. The Archive holds 53 USC titles, 570+ IRS guidance documents, and 48 states. Axiom brings together source documents, RuleSpec encodings, and validation results.",
               },
               {
                 title: "RuleSpec",

@@ -24,13 +24,10 @@ export default defineConfig({
         'src/test/**',
         'src/lib/prism-*/**',
         'src/app/layout.tsx',
-        'src/app/atlas/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
-        'src/app/atlas/\\[\\[...segments\\]\\]/atlas-client.tsx', // thin client boundary wrapper
+        'src/app/axiom/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
+        'src/app/axiom/\\[\\[...segments\\]\\]/axiom-client.tsx', // thin client boundary wrapper
         'src/app/robots.ts', // Next metadata route, no branching logic
         'src/app/sitemap.ts', // Next metadata route driven by Supabase pagination
-        'src/app/lab/**', // lab page route
-        'src/components/lab/session-card.tsx', // lab page component (tested via lab-components.test)
-        'src/hooks/use-sessions.ts', // lab page hook
         'src/_old_pages/**',
         'src/components/posthog-provider.tsx', // client-only PostHog init
         'src/components/gradient-sync.tsx', // client-only DOM effect
@@ -38,7 +35,7 @@ export default defineConfig({
         'src/components/landing/hero.tsx', // client-only animated component
       ],
       thresholds: {
-        // was 98.5; small drop after the atlas-ux-redesign branch
+        // was 98.5; small drop after the browser redesign branch
         // added ~5k lines of feature code. Remaining gap is in
         // defensive null-coalescing branches and one-shot scroll
         // effects inside RAFs, neither of which is worth the test

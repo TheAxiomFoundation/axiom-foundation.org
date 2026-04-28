@@ -49,7 +49,7 @@ export default function PrivacyPage() {
             <h2 className={styles.sectionTitle}>Contact</h2>
             <p className={styles.text}>
               For privacy questions, email{' '}
-              <a href="mailto:hello@ruleatlas.org">hello@ruleatlas.org</a>
+              <a href="mailto:hello@axiom-foundation.org">hello@axiom-foundation.org</a>
             </p>
           </section>
         </div>

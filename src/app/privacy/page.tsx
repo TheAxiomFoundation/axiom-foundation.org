@@ -18,7 +18,7 @@ export default function PrivacyPage() {
             </h2>
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
               We collect minimal data. Our website uses PostHog for anonymous usage analytics.
-              We track page views and atlas browsing interactions (which rules are viewed, navigation patterns)
+              We track page views and axiom browsing interactions (which rules are viewed, navigation patterns)
               to understand how our tools are used. All data is anonymous — we do not collect personal information
               or use cookies for tracking. We respect Do Not Track browser settings.
             </p>

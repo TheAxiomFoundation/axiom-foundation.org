@@ -17,7 +17,7 @@ const refRow = (overrides: Record<string, unknown>) => ({
   start_offset: 0,
   end_offset: 10,
   other_citation_path: "us/statute/42/9902",
-  other_rule_id: "x",
+  other_provision_id: "x",
   other_heading: "x",
   target_resolved: true,
   ...overrides,
@@ -97,5 +97,22 @@ describe("useRuleReferences", () => {
     expect(result.current.outgoing.map((r) => r.other_citation_path)).not.toContain(
       "us/statute/old/stale"
     );
+  });
+
+  it("ignores responses after unmount", async () => {
+    let resolveRows!: (v: unknown) => void;
+    mockGetRuleReferences.mockReturnValue(
+      new Promise((r) => (resolveRows = r))
+    );
+
+    const { unmount } = renderHook(() =>
+      useRuleReferences("us/statute/7/2014")
+    );
+
+    unmount();
+    resolveRows([refRow({ other_citation_path: "us/statute/26/32" })]);
+    await Promise.resolve();
+
+    expect(mockGetRuleReferences).toHaveBeenCalledTimes(1);
   });
 });

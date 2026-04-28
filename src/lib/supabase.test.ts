@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Use vi.hoisted to create mock functions that are available during vi.mock hoisting
-const { mockFrom, mockRpc } = vi.hoisted(() => ({
-  mockFrom: vi.fn(),
-  mockRpc: vi.fn(),
-}))
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({
+const { mockCreateClient, mockFrom, mockRpc } = vi.hoisted(() => {
+  const mockFrom = vi.fn()
+  const mockRpc = vi.fn()
+  const mockCreateClient = vi.fn(() => ({
     from: mockFrom,
     rpc: mockRpc,
-  }),
+  }))
+  return { mockCreateClient, mockFrom, mockRpc }
+})
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: mockCreateClient,
 }))
 
 // Now import the functions (they'll use the mocked supabase client)
@@ -24,12 +26,33 @@ import {
   getRuleEncoding,
   searchRules,
   getRuleReferences,
-  getAtlasStats,
+  getAxiomStats,
 } from './supabase'
 
 describe('supabase lib', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockFrom.mockClear()
+    mockRpc.mockClear()
+  })
+
+  describe('schema clients', () => {
+    it('creates dedicated corpus and encodings clients', () => {
+      expect(mockCreateClient).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        { db: { schema: 'corpus' } }
+      )
+      expect(mockCreateClient).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        { db: { schema: 'encodings' } }
+      )
+      expect(mockCreateClient).not.toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        { db: { schema: 'app' } }
+      )
+    })
   })
 
   describe('getEncodingRuns', () => {
@@ -402,10 +425,10 @@ describe('supabase lib', () => {
 
   describe('getRuleEncoding', () => {
     it('returns encoding data when rule has citation_path and encoding exists', async () => {
-      // getRuleEncoding calls supabaseArch.from('rules') then supabase.from('encoding_runs')
+      // getRuleEncoding calls supabaseCorpus.from('provisions') then supabaseEncodings.from('encoding_runs')
       // Both clients use the same mockFrom since createClient is mocked once
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -453,7 +476,7 @@ describe('supabase lib', () => {
 
     it('picks the most specific path when multiple matches exist', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -482,7 +505,7 @@ describe('supabase lib', () => {
 
     it('checks duplicated terminal section file paths for US section roots', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -512,9 +535,9 @@ describe('supabase lib', () => {
       expect(result?.file_path).toBe('statute/26/24/24.yaml')
     })
 
-    it('returns lab metadata fields from encoding_runs', async () => {
+    it('returns encoding-run metadata fields from encoding_runs', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -560,7 +583,7 @@ describe('supabase lib', () => {
 
     it('uses rulespec_path when citation_path is null', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -624,7 +647,7 @@ describe('supabase lib', () => {
 
     it('returns null when no encoding run matches', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -645,7 +668,7 @@ describe('supabase lib', () => {
 
     it('returns null when encoding_runs query errors', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -672,7 +695,7 @@ describe('supabase lib', () => {
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'rules') {
+        if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -704,7 +727,7 @@ describe('supabase lib', () => {
       expect(mockRpc).not.toHaveBeenCalled()
     })
 
-    it('calls the search_rules RPC with trimmed query and default options', async () => {
+    it('calls the search_provisions RPC with trimmed query and default options', async () => {
       const hits = [
         {
           id: 'a',
@@ -720,7 +743,7 @@ describe('supabase lib', () => {
       mockRpc.mockResolvedValue({ data: hits, error: null })
 
       const result = await searchRules('  SNAP standard  ')
-      expect(mockRpc).toHaveBeenCalledWith('search_rules', {
+      expect(mockRpc).toHaveBeenCalledWith('search_provisions', {
         q: 'SNAP standard',
         jurisdiction_in: null,
         doc_type_in: null,
@@ -732,7 +755,7 @@ describe('supabase lib', () => {
     it('forwards jurisdiction, docType, and clamps the limit', async () => {
       mockRpc.mockResolvedValue({ data: [], error: null })
       await searchRules('x', { jurisdiction: 'us', docType: 'statute', limit: 500 })
-      expect(mockRpc).toHaveBeenCalledWith('search_rules', {
+      expect(mockRpc).toHaveBeenCalledWith('search_provisions', {
         q: 'x',
         jurisdiction_in: 'us',
         doc_type_in: 'statute',
@@ -744,7 +767,7 @@ describe('supabase lib', () => {
       mockRpc.mockResolvedValue({ data: [], error: null })
       await searchRules('x', { limit: 0 })
       expect(mockRpc).toHaveBeenCalledWith(
-        'search_rules',
+        'search_provisions',
         expect.objectContaining({ limit_in: 1 })
       )
     })
@@ -766,7 +789,7 @@ describe('supabase lib', () => {
   })
 
   describe('getRuleReferences', () => {
-    it('calls the get_references RPC with citation_path_in', async () => {
+    it('calls the get_provision_references RPC with citation_path_in', async () => {
       const rows = [
         {
           direction: 'outgoing',
@@ -776,14 +799,14 @@ describe('supabase lib', () => {
           start_offset: 0,
           end_offset: 10,
           other_citation_path: 'us/statute/42/9902',
-          other_rule_id: 'x',
+          other_provision_id: 'x',
           other_heading: 'Definitions',
           target_resolved: true,
         },
       ]
       mockRpc.mockResolvedValue({ data: rows, error: null })
       const result = await getRuleReferences('us/statute/7/2014')
-      expect(mockRpc).toHaveBeenCalledWith('get_references', {
+      expect(mockRpc).toHaveBeenCalledWith('get_provision_references', {
         citation_path_in: 'us/statute/7/2014',
       })
       expect(result).toEqual(rows)
@@ -804,10 +827,10 @@ describe('supabase lib', () => {
     })
   })
 
-  describe('getAtlasStats', () => {
-    it('calls the get_atlas_stats RPC and returns its payload', async () => {
+  describe('getAxiomStats', () => {
+    it('calls the get_corpus_stats RPC and returns its payload', async () => {
       const stats = {
-        rules_count: 658899,
+        provisions_count: 658899,
         references_count: 148604,
         jurisdictions_count: 17,
         jurisdictions: [
@@ -816,15 +839,15 @@ describe('supabase lib', () => {
         ],
       }
       mockRpc.mockResolvedValue({ data: stats, error: null })
-      const result = await getAtlasStats()
-      expect(mockRpc).toHaveBeenCalledWith('get_atlas_stats')
+      const result = await getAxiomStats()
+      expect(mockRpc).toHaveBeenCalledWith('get_corpus_stats')
       expect(result).toEqual(stats)
     })
 
     it('returns null on RPC error', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mockRpc.mockResolvedValue({ data: null, error: new Error('timeout') })
-      const result = await getAtlasStats()
+      const result = await getAxiomStats()
       expect(result).toBeNull()
       expect(errorSpy).toHaveBeenCalled()
       errorSpy.mockRestore()
@@ -832,7 +855,7 @@ describe('supabase lib', () => {
 
     it('returns null when the RPC returns null data', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
-      expect(await getAtlasStats()).toBeNull()
+      expect(await getAxiomStats()).toBeNull()
     })
   })
 })

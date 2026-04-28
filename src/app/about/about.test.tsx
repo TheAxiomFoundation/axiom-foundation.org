@@ -25,10 +25,10 @@ describe('AboutPage', () => {
     expect(screen.getByText(/machine-readable, verifiable/i)).toBeInTheDocument()
   })
 
-  it('renders the what we do section with Atlas, RuleSpec, and AutoRuleSpec cards', () => {
+  it('renders the what we do section with Axiom, RuleSpec, and AutoRuleSpec cards', () => {
     render(<AboutPage />)
     expect(screen.getByRole('heading', { name: /what we do/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Atlas' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Axiom' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'RuleSpec' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'AutoRuleSpec' })).toBeInTheDocument()
   })

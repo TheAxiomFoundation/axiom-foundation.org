@@ -19,7 +19,7 @@ describe('Home page', () => {
     render(<Home />)
     // Hero
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    // Atlas section
+    // Axiom section
     expect(screen.getByText(/federal statutes/i)).toBeInTheDocument()
     // CTA section
     expect(screen.getByRole('heading', { name: /get involved/i })).toBeInTheDocument()

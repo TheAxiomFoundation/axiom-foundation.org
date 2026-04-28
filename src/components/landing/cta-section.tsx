@@ -41,8 +41,8 @@ export function CtaSection() {
               label: "RuleSpec specification",
             },
             {
-              href: "https://github.com/TheAxiomFoundation/atlas",
-              label: "Atlas platform",
+              href: "https://github.com/TheAxiomFoundation",
+              label: "Axiom platform",
             },
             {
               href: "https://github.com/TheAxiomFoundation/autorulespec",

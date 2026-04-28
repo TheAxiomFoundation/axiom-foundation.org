@@ -291,7 +291,7 @@ export async function getTitleNodes(
     .from("provisions")
     .select("*")
     .eq("citation_path", rootPath)
-    .single();
+    .maybeSingle();
 
   if (parentRule) {
     const { data } = await supabaseCorpus
@@ -380,7 +380,7 @@ export async function getSectionNodes(
     .from("provisions")
     .select("*")
     .eq("citation_path", pathPrefix)
-    .single();
+    .maybeSingle();
 
   if (parentRule) {
     const from = page * PAGE_SIZE;

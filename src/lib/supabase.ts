@@ -361,7 +361,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   // First get the provision's citation_path/rulespec_path and jurisdiction
   const { data: rule, error: ruleError } = await supabaseCorpus
     .from('provisions')
-    .select('citation_path, jurisdiction, rulespec_path')
+    .select('citation_path, jurisdiction, rulespec_path, has_rulespec')
     .eq('id', ruleId)
     .single()
 
@@ -409,7 +409,11 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   }
 
-  // Fallback: fetch from GitHub rules-* repo
+  // Fallback: fetch from GitHub rules-* repo only when the corpus says an
+  // encoding exists or gives us an explicit file path. Otherwise unencoded
+  // provisions would generate noisy 404 probes for every ancestor path.
+  if (!rule.has_rulespec && !rule.rulespec_path) return null
+
   return fetchRuleSpecFromGitHub(candidates, rule.jurisdiction)
 }
 

@@ -646,13 +646,16 @@ describe('supabase lib', () => {
     })
 
     it('returns null when no encoding run matches', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+
       mockFrom.mockImplementation((table: string) => {
         if (table === 'provisions') {
           return {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us/statute/26/99', jurisdiction: 'us', rulespec_path: null },
+                  data: { citation_path: 'us/statute/26/99', jurisdiction: 'us', rulespec_path: null, has_rulespec: false },
                   error: null,
                 }),
               }),
@@ -664,6 +667,8 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-no-encoding')
       expect(result).toBeNull()
+      expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
     })
 
     it('returns null when encoding_runs query errors', async () => {
@@ -700,7 +705,7 @@ describe('supabase lib', () => {
             select: () => ({
               eq: () => ({
                 single: () => Promise.resolve({
-                  data: { citation_path: 'us-co/statute/crs/26-2-703/2.5', jurisdiction: 'us-co', rulespec_path: null },
+                  data: { citation_path: 'us-co/statute/crs/26-2-703/2.5', jurisdiction: 'us-co', rulespec_path: null, has_rulespec: true },
                   error: null,
                 }),
               }),

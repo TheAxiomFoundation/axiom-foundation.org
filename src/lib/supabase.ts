@@ -6,19 +6,40 @@ import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const isTestEnv = !supabaseUrl || process.env.NODE_ENV === 'test'
+const baseAuthOptions = {
+  autoRefreshToken: false,
+  detectSessionInUrl: false,
+  persistSession: false,
+}
 export const supabase: SupabaseClient = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key')
-  : createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-public-auth-token' },
+    })
+  : createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-public-auth-token' },
+    })
 
 // Source corpus client for browsable provisions and citation graph RPCs.
 export const supabaseCorpus = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'corpus' } })
-  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'corpus' } })
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-corpus-auth-token' },
+      db: { schema: 'corpus' },
+    })
+  : createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-corpus-auth-token' },
+      db: { schema: 'corpus' },
+    })
 
 // Encoding metadata client for RuleSpec runs, transcripts, and SDK sessions.
 export const supabaseEncodings = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', { db: { schema: 'encodings' } })
-  : createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'encodings' } })
+  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-encodings-auth-token' },
+      db: { schema: 'encodings' },
+    })
+  : createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { ...baseAuthOptions, storageKey: 'axiom-encodings-auth-token' },
+      db: { schema: 'encodings' },
+    })
 /* v8 ignore stop */
 
 // Types for encoding runs (AutoRuleSpec encoding runs)

@@ -40,12 +40,12 @@ describe('supabase lib', () => {
       expect(mockCreateClient).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        { db: { schema: 'corpus' } }
+        expect.objectContaining({ db: { schema: 'corpus' } })
       )
       expect(mockCreateClient).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        { db: { schema: 'encodings' } }
+        expect.objectContaining({ db: { schema: 'encodings' } })
       )
       expect(mockCreateClient).not.toHaveBeenCalledWith(
         expect.any(String),

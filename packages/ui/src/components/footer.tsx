@@ -10,7 +10,7 @@ export interface FooterProps {
 }
 
 const LINK_CLASS =
-  "text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-ink)] transition-colors duration-150";
+  "link-quiet text-[0.9rem] text-[var(--color-ink-secondary)] inline-block";
 
 const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
@@ -45,24 +45,62 @@ export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: Foo
     );
   }
 
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="relative z-10 py-16 px-8 border-t border-[var(--color-rule)]">
-      <div className="max-w-[1280px] mx-auto text-center">
-        <div className="flex justify-center mb-4">
-          <img
-            src={resolvedLogoSrc}
-            alt="Axiom Foundation"
-            className="h-9 w-auto"
-          />
+    <footer className="relative z-10 px-8 border-t border-[var(--color-rule)]">
+      <div className="max-w-[1280px] mx-auto py-16">
+        <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-16 mb-14">
+          <div>
+            <img
+              src={resolvedLogoSrc}
+              alt="Axiom Foundation"
+              className="h-9 w-auto mb-5"
+            />
+            <p
+              className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed max-w-[280px]"
+              style={{ fontFamily: "var(--f-serif)", fontStyle: "italic" }}
+            >
+              The world&apos;s rules, encoded.
+            </p>
+            <p className="text-[0.8rem] text-[var(--color-ink-muted)] mt-4 leading-relaxed max-w-[280px]">
+              An open, machine-readable archive of statutes, regulations, and
+              policy rules.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)] mb-4">
+              Project
+            </h3>
+            <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+              <li>{renderFooterLink("/about", "About")}</li>
+              <li>{renderFooterLink("https://app.axiom-foundation.org", "Axiom platform")}</li>
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/rulespec", "RuleSpec")}</li>
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-encode", "Encoder")}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)] mb-4">
+              Connect
+            </h3>
+            <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation", "GitHub")}</li>
+              <li>{renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}</li>
+              <li>{renderFooterLink("/privacy", "Privacy")}</li>
+            </ul>
+          </div>
         </div>
-        <p className="text-[0.9rem] text-[var(--color-ink-muted)] mb-6">
-          The world&apos;s rules, encoded.
-        </p>
-        <div className="flex justify-center gap-8">
-          {renderFooterLink("/about", "About")}
-          {renderFooterLink("https://github.com/TheAxiomFoundation", "GitHub")}
-          {renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}
-          {renderFooterLink("/privacy", "Privacy")}
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pt-6 border-t border-[var(--color-rule-subtle)]">
+          <p className="font-mono text-[0.7rem] tracking-[0.08em] text-[var(--color-ink-muted)] m-0">
+            &copy; {year} Axiom Foundation &middot; A 501(c)(3) nonprofit
+          </p>
+          <p className="font-mono text-[0.7rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)] m-0">
+            <span className="text-[var(--color-accent)]" aria-hidden="true">∀</span>{" "}
+            Open infrastructure for encoded law
+          </p>
         </div>
       </div>
     </footer>

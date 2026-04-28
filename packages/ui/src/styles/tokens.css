@@ -46,9 +46,41 @@ html {
 
 body {
   font-family: var(--f-body);
+  font-feature-settings: "kern", "liga", "calt", "ss01";
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Subtle paper grain — fixed, behind content. Gives the cream stock its texture
+   without ever moving on scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.10  0 0 0 0 0.09  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Hairline vintage rules that frame the content column — only visible on wide
+   screens so they read as marginalia rather than chrome. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(to right, transparent calc(50% - 720px), var(--color-rule-subtle) calc(50% - 720px), var(--color-rule-subtle) calc(50% - 719px), transparent calc(50% - 719px)),
+    linear-gradient(to right, transparent calc(50% + 719px), var(--color-rule-subtle) calc(50% + 719px), var(--color-rule-subtle) calc(50% + 720px), transparent calc(50% + 720px));
+}
+
+@media (max-width: 1500px) {
+  body::after { display: none; }
 }
 
 ::selection {
@@ -155,13 +187,66 @@ pre {
   color: var(--color-accent);
 }
 
+/* Editorial kicker — section ordinal, e.g. "§ 01 · ARCHIVE" */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.kicker::before,
+.kicker::after {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--color-rule);
+}
+
+.kicker .kicker-mark {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-accent);
+}
+
+/* Serif italic accent — for in-flow editorial emphasis */
+.serif-italic {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Tabular numerals — for stats and figures */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "lnum";
+}
+
+/* Hanging serial — small numbered tag for cards */
+.serial {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+}
+
 /* Page-level heading — thin geometric uppercase */
 .heading-page {
   font-family: var(--f-body);
   font-weight: 300;
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
-  line-height: 1.2;
-  letter-spacing: 0.12em;
+  font-size: clamp(1.85rem, 3.4vw, 2.6rem);
+  line-height: 1.15;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
@@ -169,8 +254,8 @@ pre {
 .heading-section {
   font-family: var(--f-body);
   font-weight: 300;
-  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
-  line-height: 1.2;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.15;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -228,6 +313,74 @@ pre {
   transform: translateY(-1px);
 }
 
+/* Editorial card — hairline top rule (cooler than full borders).
+   Use when the card is content-rich (stats, copy) rather than a button. */
+.card-edition {
+  position: relative;
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  transition:
+    border-color 240ms var(--ease-out),
+    transform 240ms var(--ease-out),
+    box-shadow 240ms var(--ease-out);
+}
+
+.card-edition::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--color-accent), var(--color-ink));
+  background-size: 100vw 1em;
+  background-position-x: var(--gx, 0px);
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out);
+}
+
+.card-edition:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 var(--color-rule),
+    0 18px 40px -28px rgba(28, 25, 23, 0.25);
+}
+
+.card-edition:hover::before { opacity: 1; }
+
+/* Fleuron divider — ornamental break between sections. The ∀ glyph alone
+   on a faint hairline rule. Centered. */
+.fleuron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 0;
+  color: var(--color-ink-muted);
+}
+
+.fleuron::before,
+.fleuron::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-rule);
+}
+
+.fleuron-mark {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--color-accent);
+  opacity: 0.85;
+}
+
 /* ── Button utilities ── */
 
 .btn-primary {
@@ -267,13 +420,81 @@ pre {
   color: var(--color-ink);
   background: transparent;
   text-decoration: none;
-  transition: all 150ms;
+  transition:
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
   cursor: pointer;
 }
 
 .btn-outline:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -10px rgba(146, 64, 14, 0.4);
+}
+
+/* Quiet underlined link — for editorial body copy and footers */
+.link-quiet {
+  color: inherit;
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition:
+    background-size 220ms var(--ease-out),
+    color 150ms var(--ease-out);
+  padding-bottom: 1px;
+}
+
+.link-quiet:hover {
+  background-size: 100% 1px;
+  color: var(--color-accent);
+}
+
+/* Scroll-down cue for the hero — animated thin line */
+.scroll-cue {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  transition: color 200ms var(--ease-out);
+}
+
+.scroll-cue:hover { color: var(--color-accent); }
+
+.scroll-cue-line {
+  position: relative;
+  width: 1px;
+  height: 36px;
+  background: var(--color-rule);
+  overflow: hidden;
+}
+
+.scroll-cue-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 14px;
+  background: var(--color-accent);
+  animation: scroll-cue-fall 1.8s var(--ease-out) infinite;
+}
+
+@keyframes scroll-cue-fall {
+  0% { transform: translateY(-14px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(36px); opacity: 0; }
 }
 
 /* ── Nav bar ── */

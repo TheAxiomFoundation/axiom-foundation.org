@@ -434,8 +434,17 @@ export function RuleSpecFormat() {
       className="relative z-1 py-32 px-8 border-t border-[var(--color-rule-subtle)]"
     >
       <div className="max-w-[1280px] mx-auto">
+        <div className="flex justify-center mb-24" aria-hidden="true">
+          <span className="fleuron">
+            <span className="fleuron-mark">∀</span>
+          </span>
+        </div>
         <div className="text-center mb-20">
-          <h2 className="heading-section mb-6">
+          <span className="kicker mb-6 inline-flex">
+            <span className="kicker-mark">§</span>
+            III &middot; Compared
+          </span>
+          <h2 className="heading-section mb-6 mt-2">
             RuleSpec format
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
@@ -589,9 +598,9 @@ export function RuleSpecFormat() {
           ].map((f) => (
             <div
               key={f.title}
-              className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md transition-all duration-200 hover:bg-[var(--color-accent-light)] hover:border-[var(--color-accent)] hover:-translate-y-1"
+              className="card-edition p-6"
             >
-              <div className="w-12 h-12 flex items-center justify-center bg-[var(--color-accent-light)] rounded-md text-[var(--color-accent)] mb-5">
+              <div className="w-10 h-10 flex items-center justify-center border border-[var(--color-rule)] rounded-sm text-[var(--color-accent)] mb-5">
                 {f.icon}
               </div>
               <h3 className="font-body text-[1.1rem] text-[var(--color-ink)] mb-2">

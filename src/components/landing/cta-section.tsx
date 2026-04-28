@@ -6,16 +6,27 @@ export function CtaSection() {
     <section
       className="relative z-1 py-32 px-8 border-t border-[var(--color-rule-subtle)]"
     >
-      <div className="max-w-[700px] mx-auto text-center">
-        <h2 className="heading-section mb-6">
+      <div className="max-w-[720px] mx-auto text-center">
+        <div className="flex justify-center mb-16" aria-hidden="true">
+          <span className="fleuron">
+            <span className="fleuron-mark">∀</span>
+          </span>
+        </div>
+
+        <span className="kicker mb-6 inline-flex">
+          <span className="kicker-mark">§</span>
+          Coda &middot; Get Involved
+        </span>
+        <h2 className="heading-section mb-6 mt-2">
           Get involved
         </h2>
         <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed mb-12">
-          The Axiom Project builds the canonical rules layer. Axiom Labs prototypes
-          the applied layer. Both depend on an open community.
+          The Axiom Project builds the canonical rules layer. Axiom Labs
+          prototypes <span className="serif-italic text-[var(--color-ink)]">the applied layer</span>.
+          Both depend on an open community.
         </p>
 
-        <div className="flex justify-center gap-6 mb-12 flex-wrap">
+        <div className="flex justify-center gap-4 mb-14 flex-wrap">
           <a
             href="https://github.com/TheAxiomFoundation/rules-us"
             className="btn-primary"
@@ -34,7 +45,7 @@ export function CtaSection() {
           </a>
         </div>
 
-        <div className="flex justify-center gap-8 flex-wrap">
+        <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap pt-8 border-t border-[var(--color-rule-subtle)]">
           {[
             {
               href: "https://github.com/TheAxiomFoundation/rulespec",
@@ -54,7 +65,7 @@ export function CtaSection() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="font-mono text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
+                className="font-mono text-[0.8rem] tracking-[0.04em] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
               >
                 {link.label}
               </Link>
@@ -62,7 +73,7 @@ export function CtaSection() {
               <a
                 key={link.label}
                 href={link.href}
-                className="font-mono text-[0.85rem] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
+                className="font-mono text-[0.8rem] tracking-[0.04em] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
               >
                 {link.label}
               </a>

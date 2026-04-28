@@ -23,7 +23,7 @@ export interface TreeNode {
   /** The underlying DB rule, if this node maps to one */
   rule?: Rule;
   nodeType: NodeType;
-  /** Whether this node has a RuleSpec encoding in encoding_runs */
+  /** Whether this node has a RuleSpec encoding in encodings.encoding_runs */
   hasRuleSpec?: boolean;
 }
 

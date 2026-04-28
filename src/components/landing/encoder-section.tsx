@@ -341,8 +341,17 @@ export function EncoderSection() {
   return (
     <section id="encoder" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
+        <div className="flex justify-center mb-24" aria-hidden="true">
+          <span className="fleuron">
+            <span className="fleuron-mark">∀</span>
+          </span>
+        </div>
         <div className="text-center mb-20">
-          <h2 className="heading-section text-[var(--color-ink)] mb-6">
+          <span className="kicker mb-6 inline-flex">
+            <span className="kicker-mark">§</span>
+            IV &middot; The Pipeline
+          </span>
+          <h2 className="heading-section text-[var(--color-ink)] mb-6 mt-2">
             Encoder
           </h2>
           <p className="font-body text-lg font-light text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">

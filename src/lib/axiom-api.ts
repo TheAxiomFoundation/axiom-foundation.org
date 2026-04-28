@@ -382,10 +382,10 @@ export async function listAxiomDocuments(
   if (parentId) {
     query = query.eq("parent_id", parentId);
   } else if (options.root) {
-    query = query.is("parent_id", null);
+    query = query.is("parent_id", null).not("citation_path", "is", null);
   }
 
-  if (parentId) {
+  if (parentId || options.root) {
     query = query.order("ordinal");
   }
 

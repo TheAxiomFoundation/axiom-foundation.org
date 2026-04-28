@@ -21,6 +21,7 @@ import {
   axiomApiJson,
   axiomApiOptions,
   encodeCitationPath,
+  listAxiomDocuments,
   makeAxiomApiDiscovery,
   normalizeCitationPath,
   parseAxiomDocumentListOptions,
@@ -198,5 +199,30 @@ describe("axiom API helpers", () => {
       status: 500,
       body: { error: "Axiom API request failed." },
     });
+  });
+
+  it("filters root list responses to citation-path documents", async () => {
+    const chain: any = {
+      select: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      is: vi.fn(() => chain),
+      not: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      range: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    mockFrom.mockReturnValue(chain);
+
+    await listAxiomDocuments({
+      jurisdiction: "us",
+      docType: "statute",
+      root: true,
+      includeBody: false,
+      limit: 25,
+      offset: 0,
+    });
+
+    expect(chain.is).toHaveBeenCalledWith("parent_id", null);
+    expect(chain.not).toHaveBeenCalledWith("citation_path", "is", null);
+    expect(chain.order).toHaveBeenCalledWith("ordinal");
   });
 });

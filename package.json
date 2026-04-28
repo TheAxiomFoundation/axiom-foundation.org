@@ -5,12 +5,13 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
+    "build:ui": "bun run --cwd packages/ui build",
+    "dev": "bun run build:ui && next dev --turbopack",
+    "build": "bun run build:ui && next build",
     "start": "next start",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "bun run build:ui && vitest",
+    "test:run": "bun run build:ui && vitest run",
+    "test:coverage": "bun run build:ui && vitest run --coverage",
     "deploy": "vercel --prod"
   },
   "dependencies": {

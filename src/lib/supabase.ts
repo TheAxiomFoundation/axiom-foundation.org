@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
 
 // Supabase configuration
@@ -11,35 +11,28 @@ const baseAuthOptions = {
   detectSessionInUrl: false,
   persistSession: false,
 }
-export const supabase: SupabaseClient = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-public-auth-token' },
-    })
-  : createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-public-auth-token' },
-    })
+
+function createAxiomClient(storageKey: string, schema?: string) {
+  const options = {
+    auth: { ...baseAuthOptions, storageKey },
+    ...(schema ? { db: { schema } } : {}),
+  }
+
+  return isTestEnv
+    ? createClient('https://placeholder.supabase.co', 'placeholder-key', options)
+    : createClient(supabaseUrl, supabaseAnonKey, options)
+}
+
+export const supabase = createAxiomClient('axiom-public-auth-token')
 
 // Source corpus client for browsable provisions and citation graph RPCs.
-export const supabaseCorpus = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-corpus-auth-token' },
-      db: { schema: 'corpus' },
-    })
-  : createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-corpus-auth-token' },
-      db: { schema: 'corpus' },
-    })
+export const supabaseCorpus = createAxiomClient('axiom-corpus-auth-token', 'corpus')
 
-// Encoding metadata client for RuleSpec runs, transcripts, and SDK sessions.
-export const supabaseEncodings = isTestEnv
-  ? createClient('https://placeholder.supabase.co', 'placeholder-key', {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-encodings-auth-token' },
-      db: { schema: 'encodings' },
-    })
-  : createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { ...baseAuthOptions, storageKey: 'axiom-encodings-auth-token' },
-      db: { schema: 'encodings' },
-    })
+// Encoding metadata client for RuleSpec run summaries.
+export const supabaseEncodings = createAxiomClient('axiom-encodings-auth-token', 'encodings')
+
+// Lab client for encoder transcripts, SDK sessions, and event logs.
+export const supabaseLab = createAxiomClient('axiom-lab-auth-token', 'lab')
 /* v8 ignore stop */
 
 // Types for Encoder runs
@@ -116,7 +109,7 @@ export interface AgentTranscript {
 
 // Fetch agent transcripts from Supabase
 export async function getAgentTranscripts(limit = 100, offset = 0): Promise<AgentTranscript[]> {
-  const { data, error } = await supabaseEncodings
+  const { data, error } = await supabaseLab
     .from('agent_transcripts')
     .select('*')
     .order('created_at', { ascending: false })
@@ -132,7 +125,7 @@ export async function getAgentTranscripts(limit = 100, offset = 0): Promise<Agen
 
 // Fetch transcripts for a specific session (linked to an encoding run)
 export async function getTranscriptsBySession(sessionId: string): Promise<AgentTranscript[]> {
-  const { data, error } = await supabaseEncodings
+  const { data, error } = await supabaseLab
     .from('agent_transcripts')
     .select('*')
     .eq('session_id', sessionId)
@@ -174,7 +167,7 @@ export interface SDKSessionEvent {
 
 // Fetch SDK orchestrator sessions from Supabase
 export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
-  const { data, error } = await supabaseEncodings
+  const { data, error } = await supabaseLab
     .from('sdk_sessions')
     .select('*')
     .order('started_at', { ascending: false })
@@ -197,14 +190,14 @@ export async function getSDKSessionMeta(
 ): Promise<Record<string, { title: string; lastEventAt: string | null }>> {
   if (sessionIds.length === 0) return {}
 
-  const { data: startEvents } = await supabaseEncodings
+  const { data: startEvents } = await supabaseLab
     .from('sdk_session_events')
     .select('session_id, content')
     .in('session_id', sessionIds)
     .eq('event_type', 'agent_start')
     .order('sequence', { ascending: true })
 
-  const { data: lastEvents } = await supabaseEncodings
+  const { data: lastEvents } = await supabaseLab
     .from('sdk_session_events')
     .select('session_id, timestamp')
     .in('session_id', sessionIds)
@@ -243,7 +236,7 @@ export async function getSDKSessionMeta(
 
 // Fetch events for a specific SDK session
 export async function getSDKSessionEvents(sessionId: string, limit = 2000): Promise<SDKSessionEvent[]> {
-  const { data, error } = await supabaseEncodings
+  const { data, error } = await supabaseLab
     .from('sdk_session_events')
     .select('*')
     .eq('session_id', sessionId)

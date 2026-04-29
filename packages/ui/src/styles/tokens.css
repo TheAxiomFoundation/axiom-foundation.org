@@ -504,3 +504,8 @@ pre {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-rule);
 }
+
+.nav-bar a,
+.nav-bar a:hover {
+  text-decoration: none;
+}

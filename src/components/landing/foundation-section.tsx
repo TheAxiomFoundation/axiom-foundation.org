@@ -100,8 +100,9 @@ export function FoundationSection() {
         <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap pt-8 border-t border-[var(--color-rule-subtle)]">
           {[
             {
-              href: "https://github.com/TheAxiomFoundation/rulespec",
-              label: "RuleSpec format",
+              href: "/format",
+              label: "Format comparison",
+              internal: true,
             },
             {
               href: "https://github.com/TheAxiomFoundation/axiom-encode",

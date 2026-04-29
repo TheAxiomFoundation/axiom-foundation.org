@@ -26,12 +26,11 @@ describe('Landing sections', () => {
     vi.useRealTimers()
   })
 
-  it('renders the hero with mission framing', () => {
+  it('renders the hero with the tagline', () => {
     render(<Hero />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /publish the world.*laws.*as code/i,
+      /computable law for all/i,
     )
-    expect(screen.getByText(/501\(c\)\(3\)/i)).toBeInTheDocument()
   })
 
   it('renders the gap section with problem framing', () => {

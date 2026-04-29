@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { axiomAppHref } from "@/lib/urls";
 
@@ -170,11 +171,14 @@ export function EncodedLawSection() {
               See it in Axiom
               <ArrowRightIcon className="w-5 h-5" />
             </a>
+            <Link href="/format" className="btn-outline">
+              Compare formats
+            </Link>
             <a
               href="https://github.com/TheAxiomFoundation/rulespec"
               className="btn-outline"
             >
-              Read the format spec
+              Spec on GitHub
             </a>
           </div>
         </div>

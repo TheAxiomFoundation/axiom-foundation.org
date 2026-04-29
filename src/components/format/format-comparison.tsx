@@ -433,7 +433,6 @@ export function FormatComparison() {
       <div className="max-w-[1280px] mx-auto">
         <div className="text-center mb-20">
           <span className="kicker mb-6 inline-flex">
-            <span className="kicker-mark">&forall;</span>
             The format
           </span>
           <h1 className="heading-page mb-6 mt-2">

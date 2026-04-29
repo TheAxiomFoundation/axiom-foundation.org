@@ -98,7 +98,7 @@ export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: Foo
             &copy; {year} Axiom Foundation &middot; A 501(c)(3) nonprofit
           </p>
           <p className="font-mono text-[0.7rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)] m-0">
-            <span className="text-[var(--color-accent)]" aria-hidden="true">∀</span>{" "}
+            <span className="glyph-axiom text-[var(--color-accent)]" aria-hidden="true">∀</span>{" "}
             Open infrastructure for encoded law
           </p>
         </div>

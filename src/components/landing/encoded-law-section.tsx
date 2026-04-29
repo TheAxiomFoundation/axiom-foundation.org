@@ -2,30 +2,34 @@ import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { axiomAppHref } from "@/lib/urls";
 
-const PRINCIPLES = [
+const LAYERS = [
   {
     n: "01",
-    title: "Cited",
+    kicker: "Source documents",
+    title: "An open archive of the law as written",
     body:
-      "Every value points back to a section. No magic numbers. If you change a number, you change a citation too.",
+      "Statutes, regulations, and IRS guidance — fetched from official sources, versioned, and made publicly available with provenance metadata. The reference layer everything else cites.",
+    bullets: [
+      "United States Code (federal statutes)",
+      "Code of Federal Regulations",
+      "IRS revenue procedures, rulings, and notices",
+      "State codes and tax law",
+    ],
+    cta: { label: "Browse the archive", href: axiomAppHref(), external: true },
   },
   {
     n: "02",
-    title: "Time-aware",
+    kicker: "Encodings",
+    title: "Encoded so they can be computed",
     body:
-      "Effective dates on every clause. Ask what the law said in 2019, in 2024, after the next reform — and get a different answer to each.",
-  },
-  {
-    n: "03",
-    title: "Composable",
-    body:
-      "Reform a parameter without rewriting the surrounding rules. Layer counterfactuals on top of enacted law.",
-  },
-  {
-    n: "04",
-    title: "Verified",
-    body:
-      "Every encoding is cross-checked against the calculators of record — PolicyEngine, TAXSIM — before it ships.",
+      "The same rules turned into machine-readable form — every value cites a section, every clause is dated, formulas are executable. Compiles to native code; runs anywhere.",
+    bullets: [
+      "Cited — every value traces to a statute",
+      "Time-aware — effective dates on every clause",
+      "Composable — reform a parameter without rewriting",
+      "Verified — cross-checked against PolicyEngine and TAXSIM",
+    ],
+    cta: { label: "Compare formats", href: "/format", external: false },
   },
 ];
 
@@ -55,46 +59,62 @@ export function EncodedLawSection() {
   return (
     <section id="encoded" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="flex justify-center mb-24" aria-hidden="true">
-          <span className="fleuron">
-            <span className="fleuron-mark">&forall;</span>
-          </span>
-        </div>
-
         <div className="text-center mb-20">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
-            II &middot; Encoded law
+            II &middot; What we publish
           </span>
           <h2 className="heading-section mb-6 mt-2">
-            What it means to encode a law
+            Two layers, both in the open
           </h2>
-          <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[640px] mx-auto leading-relaxed">
-            Not just text in a database. A working encoding has to know{" "}
+          <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[680px] mx-auto leading-relaxed">
+            Source documents anyone can fetch and cite, plus the encodings that
+            make those rules{" "}
             <span className="serif-italic text-[var(--color-ink)]">
-              what it cites, when it applies, and how to compute its own answer
+              computable, time-aware, and verifiable
             </span>
             .
           </p>
         </div>
 
-        {/* Four principles */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 max-w-[1100px] mx-auto mb-24">
-          {PRINCIPLES.map((p) => (
-            <div key={p.title} className="card-edition p-6">
-              <div className="flex items-baseline justify-between mb-4">
-                <span className="serial">{p.n}</span>
-                <span className="serif-italic text-[0.95rem] text-[var(--color-ink-muted)]">
-                  &para;
+        <div className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto mb-28">
+          {LAYERS.map((layer) => (
+            <article key={layer.n} className="card-edition p-8 flex flex-col">
+              <div className="flex items-baseline justify-between mb-5">
+                <span className="serial">{layer.n}</span>
+                <span className="font-mono text-[0.65rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)]">
+                  {layer.kicker}
                 </span>
               </div>
-              <h3 className="font-body text-[1.05rem] font-medium text-[var(--color-ink)] mb-2">
-                {p.title}
+              <h3 className="font-display text-[1.4rem] font-light tracking-[0.02em] text-[var(--color-ink)] mb-4 leading-snug">
+                {layer.title}
               </h3>
-              <p className="font-body text-[0.85rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
-                {p.body}
+              <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed mb-5">
+                {layer.body}
               </p>
-            </div>
+              <ul className="space-y-1.5 mb-7 m-0 p-0 list-none font-mono text-[0.78rem] text-[var(--color-ink-muted)] tracking-[0.04em]">
+                {layer.bullets.map((b) => (
+                  <li key={b}>&middot; {b}</li>
+                ))}
+              </ul>
+              {layer.cta.external ? (
+                <a
+                  href={layer.cta.href}
+                  className="mt-auto inline-flex items-center gap-2 font-mono text-[0.78rem] tracking-[0.16em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+                >
+                  {layer.cta.label}
+                  <ArrowRightIcon className="w-4 h-4" />
+                </a>
+              ) : (
+                <Link
+                  href={layer.cta.href}
+                  className="mt-auto inline-flex items-center gap-2 font-mono text-[0.78rem] tracking-[0.16em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+                >
+                  {layer.cta.label}
+                  <ArrowRightIcon className="w-4 h-4" />
+                </Link>
+              )}
+            </article>
           ))}
         </div>
 
@@ -102,7 +122,7 @@ export function EncodedLawSection() {
         <div className="max-w-[920px] mx-auto">
           <div className="text-center mb-10">
             <span className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)]">
-              An example, time-aware
+              An encoding, in detail
             </span>
             <h3 className="font-display font-light text-[1.6rem] tracking-[0.04em] text-[var(--color-ink)] mt-3 mb-3">
               ACA Premium Tax Credit, three eras
@@ -128,9 +148,7 @@ export function EncodedLawSection() {
               <div
                 key={row.period}
                 className={`grid grid-cols-[1.2fr_1fr_1fr_1.4fr] border-b border-[var(--color-rule-subtle)] last:border-b-0 transition-colors ${
-                  row.highlight
-                    ? "bg-[var(--color-accent-light)]"
-                    : ""
+                  row.highlight ? "bg-[var(--color-accent-light)]" : ""
                 }`}
               >
                 <div
@@ -171,9 +189,6 @@ export function EncodedLawSection() {
               See it in Axiom
               <ArrowRightIcon className="w-5 h-5" />
             </a>
-            <Link href="/format" className="btn-outline">
-              Compare formats
-            </Link>
             <a
               href="https://github.com/TheAxiomFoundation/rulespec"
               className="btn-outline"

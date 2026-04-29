@@ -15,14 +15,6 @@ export default function FormatPage() {
       <FormatComparison />
       <section className="relative z-1 pb-32 px-8">
         <div className="max-w-[720px] mx-auto text-center">
-          <div
-            className="flex justify-center mb-12"
-            aria-hidden="true"
-          >
-            <span className="fleuron">
-              <span className="fleuron-mark">&forall;</span>
-            </span>
-          </div>
           <p className="font-body text-[0.95rem] text-[var(--color-ink-muted)] leading-relaxed mb-6">
             The encoded files are written for compilers, not for casual reading.
             The human-readable view of any encoded law lives in the app.

@@ -4,11 +4,11 @@ import { Nav } from "../components/nav";
 describe("Nav", () => {
   it("renders all default navigation links", () => {
     render(<Nav />);
-    expect(screen.getByText("Browse")).toBeInTheDocument();
-    expect(screen.getByText("RuleSpec")).toBeInTheDocument();
+    expect(screen.getByText("Axiom")).toBeInTheDocument();
+    expect(screen.getByText("Why")).toBeInTheDocument();
+    expect(screen.getByText("Encoding")).toBeInTheDocument();
     expect(screen.getByText("Encoder")).toBeInTheDocument();
     expect(screen.queryByText(".yaml")).not.toBeInTheDocument();
-    expect(screen.getByText("Reference")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Docs")).toBeInTheDocument();
   });
@@ -28,8 +28,8 @@ describe("Nav", () => {
 
   it("applies baseUrl to links", () => {
     render(<Nav baseUrl="https://axiom-foundation.org" />);
-    const browseLink = screen.getAllByText("Browse")[0];
-    expect(browseLink).toHaveAttribute(
+    const axiomLink = screen.getAllByText("Axiom")[0];
+    expect(axiomLink).toHaveAttribute(
       "href",
       "https://app.axiom-foundation.org",
     );

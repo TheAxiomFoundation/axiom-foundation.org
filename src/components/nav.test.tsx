@@ -3,12 +3,10 @@ import { describe, it, expect, vi } from 'vitest'
 
 const mockUsePathname = vi.fn()
 
-// Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }))
 
-// Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
@@ -26,12 +24,12 @@ describe('Nav', () => {
   it('renders navigation links', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    expect(screen.getByText('Browse')).toBeInTheDocument()
-    expect(screen.getByText('RuleSpec')).toBeInTheDocument()
+    expect(screen.getByText('Axiom')).toBeInTheDocument()
+    expect(screen.getByText('Why')).toBeInTheDocument()
+    expect(screen.getByText('Encoding')).toBeInTheDocument()
     expect(screen.getByText('Encoder')).toBeInTheDocument()
     expect(screen.queryByText('.yaml')).not.toBeInTheDocument()
     expect(screen.queryByText('Encoding runs')).not.toBeInTheDocument()
-    expect(screen.getByText('Reference')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Docs')).toBeInTheDocument()
   })
@@ -39,8 +37,8 @@ describe('Nav', () => {
   it('renders anchor links on landing page (pathname /)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    const rulespecLink = screen.getByText('RuleSpec')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#rulespec')
+    const encodingLink = screen.getByText('Encoding')
+    expect(encodingLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoded')
     const encoderLink = screen.getByText('Encoder')
     expect(encoderLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoder')
   })
@@ -48,8 +46,8 @@ describe('Nav', () => {
   it('renders anchor links as Link on non-landing pages', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavWrapper />)
-    const rulespecLink = screen.getByText('RuleSpec')
-    expect(rulespecLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#rulespec')
+    const encodingLink = screen.getByText('Encoding')
+    expect(encodingLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoded')
   })
 
   it('highlights active link on /about', () => {
@@ -69,10 +67,10 @@ describe('Nav', () => {
     expect(githubLink).toBeInTheDocument()
   })
 
-  it('renders Browse link to the app subdomain', () => {
+  it('renders Axiom link to the app subdomain', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
-    const axiomLink = screen.getByText('Browse')
+    const axiomLink = screen.getByText('Axiom')
     expect(axiomLink.closest('a')).toHaveAttribute('href', 'https://app.axiom-foundation.org')
   })
 
@@ -88,9 +86,8 @@ describe('Nav', () => {
     render(<NavWrapper />)
     const button = screen.getByLabelText('Open menu')
     fireEvent.click(button)
-    // Mobile drawer renders duplicate links
-    const browseLinks = screen.getAllByText('Browse')
-    expect(browseLinks.length).toBe(2)
+    const axiomLinks = screen.getAllByText('Axiom')
+    expect(axiomLinks.length).toBe(2)
     expect(screen.getByLabelText('Close menu')).toBeInTheDocument()
   })
 
@@ -98,9 +95,8 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     fireEvent.click(screen.getByLabelText('Open menu'))
-    const browseLinks = screen.getAllByText('Browse')
-    fireEvent.click(browseLinks[1]) // click mobile link
-    // Drawer should close, back to single link
-    expect(screen.getAllByText('Browse').length).toBe(1)
+    const axiomLinks = screen.getAllByText('Axiom')
+    fireEvent.click(axiomLinks[1])
+    expect(screen.getAllByText('Axiom').length).toBe(1)
   })
 })

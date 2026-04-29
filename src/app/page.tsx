@@ -1,25 +1,19 @@
 import { Hero } from "@/components/landing/hero";
-import { AxiomSection } from "@/components/landing/axiom-section";
-import { RuleSpecSection } from "@/components/landing/rulespec-section";
-import { RuleSpecFormat } from "@/components/landing/rulespec-format";
+import { TheGapSection } from "@/components/landing/the-gap-section";
+import { EncodedLawSection } from "@/components/landing/encoded-law-section";
 import { EncoderSection } from "@/components/landing/encoder-section";
-import { SpecSection } from "@/components/landing/spec-section";
-import { GroundTruthSection } from "@/components/landing/ground-truth-section";
-import { CoverageSection } from "@/components/landing/coverage-section";
-import { CtaSection } from "@/components/landing/cta-section";
+import { ApplicationsSection } from "@/components/landing/applications-section";
+import { FoundationSection } from "@/components/landing/foundation-section";
 
 export default function Home() {
   return (
     <>
       <Hero />
-      <AxiomSection />
-      <RuleSpecSection />
-      <RuleSpecFormat />
+      <TheGapSection />
+      <EncodedLawSection />
       <EncoderSection />
-      <SpecSection />
-      <GroundTruthSection />
-      <CoverageSection />
-      <CtaSection />
+      <ApplicationsSection />
+      <FoundationSection />
     </>
   );
 }

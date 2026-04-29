@@ -1,13 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
-// Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }))
 
-// Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
@@ -19,9 +17,15 @@ describe('Home page', () => {
     render(<Home />)
     // Hero
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    // Axiom section
-    expect(screen.getByText(/federal statutes/i)).toBeInTheDocument()
-    // CTA section
-    expect(screen.getByRole('heading', { name: /get involved/i })).toBeInTheDocument()
+    // The gap
+    expect(screen.getByRole('heading', { name: /laws that govern everyday life/i })).toBeInTheDocument()
+    // Encoded law
+    expect(screen.getByRole('heading', { name: /what it means to encode a law/i })).toBeInTheDocument()
+    // Encoder
+    expect(screen.getByRole('heading', { name: /encoded automatically/i })).toBeInTheDocument()
+    // Applications
+    expect(screen.getByRole('heading', { name: /one encoding\. many places/i })).toBeInTheDocument()
+    // Foundation
+    expect(screen.getByRole('heading', { name: /501\(c\)\(3\)/i })).toBeInTheDocument()
   })
 })

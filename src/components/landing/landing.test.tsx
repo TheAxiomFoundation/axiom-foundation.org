@@ -1,26 +1,21 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }))
 
-// Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
 
 import { Hero } from '@/components/landing/hero'
-import { AxiomSection } from '@/components/landing/axiom-section'
-import { RuleSpecSection } from '@/components/landing/rulespec-section'
-import { RuleSpecFormat } from '@/components/landing/rulespec-format'
+import { TheGapSection } from '@/components/landing/the-gap-section'
+import { EncodedLawSection } from '@/components/landing/encoded-law-section'
 import { EncoderSection } from '@/components/landing/encoder-section'
-import { SpecSection } from '@/components/landing/spec-section'
-import { GroundTruthSection } from '@/components/landing/ground-truth-section'
-import { CoverageSection } from '@/components/landing/coverage-section'
-import { CtaSection } from '@/components/landing/cta-section'
+import { ApplicationsSection } from '@/components/landing/applications-section'
+import { FoundationSection } from '@/components/landing/foundation-section'
 
 describe('Landing sections', () => {
   beforeEach(() => {
@@ -31,61 +26,82 @@ describe('Landing sections', () => {
     vi.useRealTimers()
   })
 
-  it('renders the hero section with mission statement', () => {
+  it('renders the hero with mission framing', () => {
     render(<Hero />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/the world.*rules.*encoded/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /publish the world.*laws.*as code/i,
+    )
+    expect(screen.getByText(/501\(c\)\(3\)/i)).toBeInTheDocument()
   })
 
-  it('renders the Axiom section', () => {
-    render(<AxiomSection />)
-    expect(screen.getByRole('heading', { name: /axiom/i })).toBeInTheDocument()
-    expect(screen.getByText(/federal statutes/i)).toBeInTheDocument()
+  it('renders the gap section with problem framing', () => {
+    render(<TheGapSection />)
+    expect(
+      screen.getByRole('heading', { name: /laws that govern everyday life/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/each system reimplements the law/i)).toBeInTheDocument()
+    expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()
   })
 
-  it('renders the RuleSpec DSL section', () => {
-    render(<RuleSpecSection />)
-    expect(screen.getByRole('heading', { name: /rulespec/i })).toBeInTheDocument()
+  it('renders the encoded-law section with the four principles', () => {
+    render(<EncodedLawSection />)
+    expect(
+      screen.getByRole('heading', { name: /what it means to encode a law/i }),
+    ).toBeInTheDocument()
+    for (const principle of ['Cited', 'Time-aware', 'Composable', 'Verified']) {
+      expect(screen.getByRole('heading', { name: principle })).toBeInTheDocument()
+    }
+    expect(
+      screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
+    ).toBeInTheDocument()
   })
 
-  it('renders the RuleSpec format section with code examples', () => {
-    render(<RuleSpecFormat />)
-    expect(screen.getByRole('heading', { name: /rulespec format/i })).toBeInTheDocument()
-    expect(screen.getByText(/format comparison/i)).toBeInTheDocument()
-  })
-
-  it('renders the Encoder section', () => {
+  it('renders the encoder section with terminal + steps', () => {
     render(<EncoderSection />)
-    expect(screen.getAllByText(/encoder/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/3-tier validation pipeline/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open the encoder system map/i })).toHaveAttribute('href', '/encoder')
-    expect(screen.getByRole('link', { name: /view the broader stack/i })).toHaveAttribute('href', '/stack')
+    expect(
+      screen.getByRole('heading', { name: /encoded automatically/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/axiom encode "26 USC 32"/i)).toBeInTheDocument()
+    for (const step of ['Read', 'Encode', 'Verify']) {
+      expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
+    }
   })
 
-  it('renders the RuleSpec specification section', () => {
-    render(<SpecSection />)
-    expect(screen.getAllByText(/RULESPEC_SPEC\.md/i).length).toBeGreaterThan(0)
+  it('renders the applications section with four use cases', () => {
+    render(<ApplicationsSection />)
+    expect(
+      screen.getByRole('heading', { name: /one encoding\. many places/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /calculators that audit themselves/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /ground truth for AI/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /reform without rewriting/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /government in plain sight/i }),
+    ).toBeInTheDocument()
   })
 
-  it('renders the ground truth for AI section', () => {
-    render(<GroundTruthSection />)
-    expect(screen.getByText(/verifiable rewards/i)).toBeInTheDocument()
-  })
-
-  it('renders encoding coverage section', () => {
-    render(<CoverageSection />)
-    expect(screen.getByText(/encoding coverage/i)).toBeInTheDocument()
-    expect(screen.getByText(/Federal \(rules-us\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/California \(rules-us-ca\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/New York \(rules-us-ny\)/i)).toBeInTheDocument()
-  })
-
-  it('renders get involved CTA', () => {
-    render(<CtaSection />)
-    expect(screen.getByRole('heading', { name: /get involved/i })).toBeInTheDocument()
+  it('renders the foundation coda with 501(c)(3) framing', () => {
+    render(<FoundationSection />)
+    expect(screen.getByRole('heading', { name: /501\(c\)\(3\)/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /encode your jurisdiction/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /validate our work/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /underwrite the public layer/i }),
+    ).toBeInTheDocument()
   })
 })
 
-describe('RuleSpecFormat tabbed code examples', () => {
+describe('Hero demo cycle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -94,148 +110,29 @@ describe('RuleSpecFormat tabbed code examples', () => {
     vi.useRealTimers()
   })
 
-  it('switches format tabs to show different code examples', () => {
-    render(<RuleSpecFormat />)
-
-    // Default is RuleSpec tab - switch to DMN
-    const dmnTab = screen.getByRole('button', { name: 'DMN' })
-    fireEvent.click(dmnTab)
-    expect(screen.getByText('niit.dmn')).toBeInTheDocument()
-
-    // Switch to OpenFisca
-    const ofTab = screen.getByRole('button', { name: 'OpenFisca/PE' })
-    fireEvent.click(ofTab)
-    expect(screen.getAllByText(/net_investment_income_tax/i).length).toBeGreaterThan(0)
-
-    // Switch to Catala
-    const catalaTab = screen.getByRole('button', { name: 'Catala' })
-    fireEvent.click(catalaTab)
-    expect(screen.getByText('niit.catala_en')).toBeInTheDocument()
-  })
-
-  it('switches code examples between statutes', () => {
-    render(<RuleSpecFormat />)
-
-    // Click ACA PTC example
-    fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    expect(screen.getByText('statute/26/36B/b/3/A.yaml')).toBeInTheDocument()
-
-    // Click Standard Deduction
-    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    expect(screen.getByText('statute/26/63/c/2/A.yaml')).toBeInTheDocument()
-
-    // Click NY EITC
-    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-    expect(screen.getByText('statute/ny/tax/606/d.yaml')).toBeInTheDocument()
-  })
-
-  it('switches non-RuleSpec format tabs across different examples', () => {
-    render(<RuleSpecFormat />)
-
-    // Switch to ACA PTC + DMN
-    fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    fireEvent.click(screen.getByRole('button', { name: 'DMN' }))
-    expect(screen.getByText('aca_ptc.dmn')).toBeInTheDocument()
-
-    // Switch to Standard Deduction + OpenFisca
-    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    fireEvent.click(screen.getByRole('button', { name: 'OpenFisca/PE' }))
-
-    // Switch to NY EITC + Catala
-    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Catala' }))
-    expect(screen.getByText('ny_eitc.catala_en')).toBeInTheDocument()
-  })
-
-  it('shows all Catala examples', () => {
-    render(<RuleSpecFormat />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Catala' }))
-    expect(screen.getByText('niit.catala_en')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    expect(screen.getByText('aca_ptc.catala_en')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    expect(screen.getByText('standard_deduction.catala_en')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-    expect(screen.getByText('ny_eitc.catala_en')).toBeInTheDocument()
-  })
-
-  it('shows all DMN examples', () => {
-    render(<RuleSpecFormat />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'DMN' }))
-    expect(screen.getByText('niit.dmn')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    expect(screen.getByText('aca_ptc.dmn')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    expect(screen.getByText('standard_deduction.dmn')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-    expect(screen.getByText('ny_eitc.dmn')).toBeInTheDocument()
-  })
-
-  it('shows all OpenFisca examples', () => {
-    render(<RuleSpecFormat />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'OpenFisca/PE' }))
-
-    fireEvent.click(screen.getByRole('button', { name: 'ACA Premium Tax Credit' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
-  })
-})
-
-describe('Hero transform', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('auto-toggles between statute and RuleSpec views', () => {
+  it('auto-advances through statute, household, computed', () => {
     render(<Hero />)
+    expect(screen.getByRole('button', { name: /statute/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /household/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /computed/i })).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimersByTime(4000)
+      vi.advanceTimersByTime(4500)
     })
-
     act(() => {
-      vi.advanceTimersByTime(4000)
+      vi.advanceTimersByTime(4500)
     })
   })
 
-  it('click pauses auto-toggle and switches view', () => {
+  it('clicking a tab pauses auto-advance and switches view', () => {
     render(<Hero />)
-
-    const transform = screen.getByTitle('Click to toggle')
-
-    fireEvent.click(transform)
+    const computedTab = screen.getByRole('button', { name: /computed/i })
+    fireEvent.click(computedTab)
 
     act(() => {
-      vi.advanceTimersByTime(8000)
+      vi.advanceTimersByTime(9000)
     })
 
-    fireEvent.click(transform)
-  })
-})
-
-describe('SpecSection expand/collapse', () => {
-  it('expands and collapses the RuleSpec spec', () => {
-    render(<SpecSection />)
-
-    const expandBtn = screen.getByRole('button', { name: /expand full spec/i })
-    fireEvent.click(expandBtn)
-
-    expect(screen.getByRole('button', { name: /collapse/i })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /collapse/i }))
-    expect(screen.getByRole('button', { name: /expand full spec/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /statute/i }))
   })
 })

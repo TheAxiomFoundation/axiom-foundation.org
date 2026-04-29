@@ -30,8 +30,9 @@ vi.mock("@/lib/axiom/resolver", () => ({
   getSiblings: mockGetSiblings,
 }));
 
-import { SiblingStrip } from "./sibling-strip";
 import type { Rule } from "@/lib/supabase";
+
+let SiblingStrip: (typeof import("./sibling-strip"))["SiblingStrip"];
 
 function r(citationPath: string, id = citationPath): Rule {
   return {
@@ -56,7 +57,9 @@ function r(citationPath: string, id = citationPath): Rule {
 }
 
 describe("SiblingStrip", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ SiblingStrip } = await import("./sibling-strip"));
     mockPush.mockReset();
     mockGetSiblings.mockReset();
   });

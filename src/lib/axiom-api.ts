@@ -12,6 +12,61 @@ export const AXIOM_API_MAX_CHILD_LIMIT = 1000;
 const PUBLIC_RULE_COLUMNS =
   "id,jurisdiction,doc_type,parent_id,level,ordinal,heading,effective_date,repeal_date,source_url,source_path,citation_path,rulespec_path,has_rulespec,created_at,updated_at";
 const PUBLIC_RULE_COLUMNS_WITH_BODY = `${PUBLIC_RULE_COLUMNS},body`;
+const US_STATUTE_ROOT_PATHS = [
+  "us/statute/1",
+  "us/statute/2",
+  "us/statute/3",
+  "us/statute/4",
+  "us/statute/5",
+  "us/statute/6",
+  "us/statute/7",
+  "us/statute/8",
+  "us/statute/9",
+  "us/statute/10",
+  "us/statute/11",
+  "us/statute/12",
+  "us/statute/13",
+  "us/statute/14",
+  "us/statute/15",
+  "us/statute/16",
+  "us/statute/17",
+  "us/statute/18",
+  "us/statute/19",
+  "us/statute/20",
+  "us/statute/21",
+  "us/statute/22",
+  "us/statute/23",
+  "us/statute/24",
+  "us/statute/25",
+  "us/statute/26",
+  "us/statute/27",
+  "us/statute/28",
+  "us/statute/29",
+  "us/statute/30",
+  "us/statute/31",
+  "us/statute/32",
+  "us/statute/33",
+  "us/statute/34",
+  "us/statute/35",
+  "us/statute/36",
+  "us/statute/37",
+  "us/statute/38",
+  "us/statute/39",
+  "us/statute/40",
+  "us/statute/41",
+  "us/statute/42",
+  "us/statute/43",
+  "us/statute/44",
+  "us/statute/45",
+  "us/statute/46",
+  "us/statute/47",
+  "us/statute/48",
+  "us/statute/49",
+  "us/statute/50",
+  "us/statute/51",
+  "us/statute/52",
+  "us/statute/54",
+];
 
 export const AXIOM_API_CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -388,6 +443,69 @@ export async function listAxiomDocuments(
   if (options.citationPath) {
     query = query.eq("citation_path", normalizeCitationPath(options.citationPath));
   }
+
+  if (
+    !parentId &&
+    options.root &&
+    options.jurisdiction === "us" &&
+    options.docType === "statute" &&
+    !options.id &&
+    !options.citationPath
+  ) {
+    const pagePaths = US_STATUTE_ROOT_PATHS.slice(
+      options.offset,
+      options.offset + options.limit
+    );
+
+    if (pagePaths.length === 0) {
+      return {
+        schema_version: AXIOM_API_SCHEMA_VERSION,
+        data: [],
+        pagination: {
+          limit: options.limit,
+          offset: options.offset,
+          total: null,
+          has_more: false,
+        },
+        filters: compactFilters({
+          jurisdiction: options.jurisdiction,
+          docType: options.docType,
+          root: true,
+          includeBody: options.includeBody || undefined,
+        }),
+      };
+    }
+
+    const { data, error } = await query
+      .in("citation_path", pagePaths)
+      .order("ordinal")
+      .range(0, pagePaths.length - 1);
+
+    if (error) {
+      throw new AxiomApiError(500, "Failed to fetch Axiom documents.", error);
+    }
+
+    const rows = sortRowsByOrdinalThenCitation((data || []) as unknown as Rule[]);
+    return {
+      schema_version: AXIOM_API_SCHEMA_VERSION,
+      data: rows.map((rule) =>
+        publicAxiomRuleFromRule(rule, { includeBody: options.includeBody })
+      ),
+      pagination: {
+        limit: options.limit,
+        offset: options.offset,
+        total: null,
+        has_more: options.offset + options.limit < US_STATUTE_ROOT_PATHS.length,
+      },
+      filters: compactFilters({
+        jurisdiction: options.jurisdiction,
+        docType: options.docType,
+        root: true,
+        includeBody: options.includeBody || undefined,
+      }),
+    };
+  }
+
   if (parentId) {
     query = query.eq("parent_id", parentId);
   } else if (options.root) {

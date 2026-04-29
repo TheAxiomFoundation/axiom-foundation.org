@@ -216,13 +216,14 @@ describe("axiom API helpers", () => {
       eq: vi.fn(() => chain),
       is: vi.fn(() => chain),
       not: vi.fn(() => chain),
+      in: vi.fn(() => chain),
       gte: vi.fn(() => chain),
       lt: vi.fn(() => chain),
       order: vi.fn(() => chain),
       range: vi.fn().mockResolvedValue({
         data: [
-          makeRule({ citation_path: "us/statute/10", ordinal: 10 }),
           makeRule({ citation_path: "us/statute/2", ordinal: 2 }),
+          makeRule({ citation_path: "us/statute/1", ordinal: 1 }),
         ],
         error: null,
       }),
@@ -234,18 +235,20 @@ describe("axiom API helpers", () => {
       docType: "statute",
       root: true,
       includeBody: false,
-      limit: 1,
+      limit: 2,
       offset: 0,
     });
 
-    expect(chain.is).toHaveBeenCalledWith("parent_id", null);
-    expect(chain.not).toHaveBeenCalledWith("citation_path", "is", null);
-    expect(chain.eq).toHaveBeenCalledWith("level", 0);
-    expect(chain.gte).toHaveBeenCalledWith("citation_path", "us/statute/");
-    expect(chain.lt).toHaveBeenCalledWith("citation_path", "us/statute~");
-    expect(chain.order).toHaveBeenCalledWith("citation_path");
-    expect(chain.range).toHaveBeenCalledWith(0, AXIOM_API_MAX_LIMIT);
-    expect(result.data.map((rule) => rule.citation_path)).toEqual(["us/statute/2"]);
+    expect(chain.in).toHaveBeenCalledWith("citation_path", [
+      "us/statute/1",
+      "us/statute/2",
+    ]);
+    expect(chain.order).toHaveBeenCalledWith("ordinal");
+    expect(chain.range).toHaveBeenCalledWith(0, 1);
+    expect(result.data.map((rule) => rule.citation_path)).toEqual([
+      "us/statute/1",
+      "us/statute/2",
+    ]);
     expect(result.pagination.has_more).toBe(true);
   });
 });

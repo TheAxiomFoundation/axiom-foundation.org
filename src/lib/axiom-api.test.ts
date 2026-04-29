@@ -18,6 +18,7 @@ import {
   AXIOM_API_MAX_LIMIT,
   AxiomApiError,
   axiomApiErrorPayload,
+  axiomApiErrorResponse,
   axiomApiJson,
   axiomApiOptions,
   encodeCitationPath,
@@ -199,6 +200,14 @@ describe("axiom API helpers", () => {
       status: 500,
       body: { error: "Axiom API request failed." },
     });
+  });
+
+  it("builds API error responses with no-store cache headers", async () => {
+    const response = axiomApiErrorResponse(new AxiomApiError(404, "Missing"));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ error: "Missing" });
   });
 
   it("filters root list responses to citation-path documents", async () => {

@@ -48,7 +48,7 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /two layers, both in the open/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /open archive of the law as written/i }),
+      screen.getByRole('heading', { name: /law, queryable down to the subsection/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /encoded so they can be computed/i }),

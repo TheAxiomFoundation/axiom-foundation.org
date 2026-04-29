@@ -5,10 +5,10 @@ import { axiomAppHref } from "@/lib/urls";
 const LAYERS = [
   {
     n: "01",
-    kicker: "Source documents",
-    title: "An open archive of the law as written",
+    kicker: "Open API",
+    title: "The law, queryable down to the subsection",
     body:
-      "Statutes, regulations, and IRS guidance — fetched from official sources, versioned, and made publicly available with provenance metadata. The reference layer everything else cites.",
+      "Federal statutes, federal regulations, IRS guidance, and state tax law — fetched from official sources, addressable by citation, served with provenance and point-in-time metadata. One consistent shape across jurisdictions.",
     bullets: [
       "United States Code (federal statutes)",
       "Code of Federal Regulations",

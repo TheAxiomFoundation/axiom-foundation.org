@@ -8,12 +8,6 @@ export function FoundationSection() {
       className="relative z-1 py-32 px-8 border-t border-[var(--color-rule-subtle)]"
     >
       <div className="max-w-[1280px] mx-auto">
-        <div className="flex justify-center mb-16" aria-hidden="true">
-          <span className="fleuron">
-            <span className="fleuron-mark">&forall;</span>
-          </span>
-        </div>
-
         <div className="text-center mb-14">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
@@ -100,8 +94,9 @@ export function FoundationSection() {
         <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap pt-8 border-t border-[var(--color-rule-subtle)]">
           {[
             {
-              href: "https://github.com/TheAxiomFoundation/rulespec",
-              label: "RuleSpec format",
+              href: "/format",
+              label: "Format comparison",
+              internal: true,
             },
             {
               href: "https://github.com/TheAxiomFoundation/axiom-encode",

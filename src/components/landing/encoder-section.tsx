@@ -138,7 +138,7 @@ const LINES: TerminalLine[] = [
           {" "}14 RuleSpec files written to{" "}
         </span>
         <span className="text-[var(--color-ink)] font-medium">
-          statute/26/32/
+          us/statute/26/32/*.yaml
         </span>
       </>
     ),
@@ -198,12 +198,6 @@ export function EncoderSection() {
   return (
     <section id="encoder" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="flex justify-center mb-24" aria-hidden="true">
-          <span className="fleuron">
-            <span className="fleuron-mark">&forall;</span>
-          </span>
-        </div>
-
         <div className="text-center mb-16">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>

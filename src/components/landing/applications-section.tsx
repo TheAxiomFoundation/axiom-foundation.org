@@ -33,12 +33,6 @@ export function ApplicationsSection() {
   return (
     <section id="applications" className="relative z-1 py-32 px-8">
       <div className="max-w-[1280px] mx-auto">
-        <div className="flex justify-center mb-24" aria-hidden="true">
-          <span className="fleuron">
-            <span className="fleuron-mark">&forall;</span>
-          </span>
-        </div>
-
         <div className="text-center mb-20">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>

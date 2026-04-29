@@ -18,7 +18,7 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     const logo = screen.getByAltText('Axiom Foundation')
-    expect(logo.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org')
+    expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
 
   it('renders navigation links', () => {
@@ -34,20 +34,20 @@ describe('Nav', () => {
     expect(screen.getByText('Docs')).toBeInTheDocument()
   })
 
-  it('renders anchor links on landing page (pathname /)', () => {
+  it('renders anchor links on landing page (pathname /) as bare hashes', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavWrapper />)
     const encodingLink = screen.getByText('Encoding')
-    expect(encodingLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoded')
+    expect(encodingLink.closest('a')).toHaveAttribute('href', '#encoded')
     const encoderLink = screen.getByText('Encoder')
-    expect(encoderLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoder')
+    expect(encoderLink.closest('a')).toHaveAttribute('href', '#encoder')
   })
 
-  it('renders anchor links as Link on non-landing pages', () => {
+  it('renders anchor links as relative paths on non-landing pages', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavWrapper />)
     const encodingLink = screen.getByText('Encoding')
-    expect(encodingLink.closest('a')).toHaveAttribute('href', 'https://axiom-foundation.org/#encoded')
+    expect(encodingLink.closest('a')).toHaveAttribute('href', '/#encoded')
   })
 
   it('highlights active link on /about', () => {

@@ -54,7 +54,7 @@ export default function RootLayout({
         <GradientSync />
         <NavWrapper />
         <main className="relative z-10">{children}</main>
-        <Footer baseUrl={SITE_URL} renderLink={Link} />
+        <Footer renderLink={Link} />
       </body>
     </html>
   );

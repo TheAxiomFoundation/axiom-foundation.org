@@ -151,13 +151,8 @@ export function Hero() {
         style={{ transitionTimingFunction: "var(--ease-out)" }}
       >
         <div className="text-center mb-14">
-          <span className="kicker mb-7 inline-flex">
-            <span className="kicker-mark">&forall;</span>
-            A 501(c)(3) for encoded law
-          </span>
-
-          <h1 className="heading-page mb-6 mt-1">
-            We publish the world&apos;s laws &mdash; as code
+          <h1 className="heading-page mb-6">
+            Computable law for all
           </h1>
 
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
@@ -166,7 +161,7 @@ export function Hero() {
             <span className="serif-italic text-[var(--color-ink)]">
               cited, time-aware, executable
             </span>{" "}
-            &mdash; so anyone can compute, audit, or reform them.
+            &mdash; so anyone can run, audit, or reform them.
           </p>
         </div>
 

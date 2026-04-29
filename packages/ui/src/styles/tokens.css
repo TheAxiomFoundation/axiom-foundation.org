@@ -350,35 +350,28 @@ pre {
 
 .card-edition:hover::before { opacity: 1; }
 
-/* Fleuron divider — ornamental break between sections. The ∀ glyph alone
-   on a faint hairline rule. Centered. */
-.fleuron {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  max-width: 280px;
-  margin: 0 auto;
-  padding: 0;
-  color: var(--color-ink-muted);
-}
+/* ──────────────────────────────────────────────────────────
+   The ∀ glyph (Axiom wordmark)
 
-.fleuron::before,
-.fleuron::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--color-rule);
-}
+   ∀ is part of our wordmark. Treat it like a logo, not a letter:
 
-.fleuron-mark {
-  font-family: var(--f-serif);
-  font-style: italic;
-  font-size: 1.15rem;
+     • Never set `font-style: italic` on it. Slanting the glyph
+       distorts the wordmark.
+     • Render in a geometric sans (display family), not the
+       serif body family.
+     • When it appears inline alongside text, use `.glyph-axiom`
+       to lock the family and weight.
+
+   Inline ∀ used in copy must use this class. Do not nest it inside
+   `.serif-italic`, `.kicker-mark`, or any other class that applies
+   `font-style: italic` or a serif family.
+   ────────────────────────────────────────────────────────── */
+.glyph-axiom {
+  font-family: var(--f-display);
+  font-style: normal;
+  font-weight: 300;
   letter-spacing: 0;
-  line-height: 1;
-  color: var(--color-accent);
-  opacity: 0.85;
+  display: inline-block;
 }
 
 /* ── Button utilities ── */
@@ -503,4 +496,9 @@ pre {
   background: rgba(250, 249, 246, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-rule);
+}
+
+.nav-bar a,
+.nav-bar a:hover {
+  text-decoration: none;
 }

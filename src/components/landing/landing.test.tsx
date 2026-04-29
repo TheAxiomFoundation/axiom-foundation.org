@@ -26,12 +26,11 @@ describe('Landing sections', () => {
     vi.useRealTimers()
   })
 
-  it('renders the hero with mission framing', () => {
+  it('renders the hero with the tagline', () => {
     render(<Hero />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /publish the world.*laws.*as code/i,
+      /computable law for all/i,
     )
-    expect(screen.getByText(/501\(c\)\(3\)/i)).toBeInTheDocument()
   })
 
   it('renders the gap section with problem framing', () => {
@@ -43,14 +42,17 @@ describe('Landing sections', () => {
     expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()
   })
 
-  it('renders the encoded-law section with the four principles', () => {
+  it('renders both layers and the worked example', () => {
     render(<EncodedLawSection />)
     expect(
-      screen.getByRole('heading', { name: /what it means to encode a law/i }),
+      screen.getByRole('heading', { name: /two layers, both in the open/i }),
     ).toBeInTheDocument()
-    for (const principle of ['Cited', 'Time-aware', 'Composable', 'Verified']) {
-      expect(screen.getByRole('heading', { name: principle })).toBeInTheDocument()
-    }
+    expect(
+      screen.getByRole('heading', { name: /law, queryable down to the subsection/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /encoded so they can be computed/i }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
     ).toBeInTheDocument()

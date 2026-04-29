@@ -6,16 +6,16 @@ const LAYERS = [
   {
     n: "01",
     kicker: "Open API",
-    title: "The law, queryable down to the subsection",
+    title: "Open infrastructure for U.S. law",
     body:
-      "Federal statutes, federal regulations, IRS guidance, and state tax law — fetched from official sources, addressable by citation, served with provenance and point-in-time metadata. One consistent shape across jurisdictions.",
+      "Federal statutes, federal regulations, IRS guidance, and state tax law — fetched from official sources, addressable by citation, served with provenance and point-in-time metadata. One consistent shape across jurisdictions, free to use, openly licensed.",
     bullets: [
       "United States Code (federal statutes)",
       "Code of Federal Regulations",
       "IRS revenue procedures, rulings, and notices",
       "State codes and tax law",
     ],
-    cta: { label: "Browse the archive", href: axiomAppHref(), external: true },
+    cta: { label: "Open Axiom", href: axiomAppHref(), external: true },
   },
   {
     n: "02",

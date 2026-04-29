@@ -16,7 +16,13 @@ export function languageFromPath(path: string): CodeLang {
   const lower = path.toLowerCase();
   if (lower.includes(".catala")) return "catala";
   if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".yaml") || lower.endsWith(".yml")) return "rulespec";
+  if (
+    lower.endsWith(".rulespec") ||
+    lower.endsWith(".yaml") ||
+    lower.endsWith(".yml")
+  ) {
+    return "rulespec";
+  }
   if (lower.endsWith(".xml")) return "xml";
   return "plain";
 }

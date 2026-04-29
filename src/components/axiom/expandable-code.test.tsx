@@ -11,7 +11,9 @@ function code(lines: number): string {
 
 describe("ExpandableCode inline", () => {
   it("renders the code inline with an Expand button that shows the line count", () => {
-    render(<ExpandableCode code={code(25)} language="rulespec" label="foo.yaml" />);
+    render(
+      <ExpandableCode code={code(25)} language="rulespec" label="foo.rulespec" />
+    );
     const btn = screen.getByRole("button", { name: /Expand · 25 lines/i });
     expect(btn).toBeInTheDocument();
     expect(btn).toHaveAttribute("aria-haspopup", "dialog");
@@ -26,12 +28,18 @@ describe("ExpandableCode inline", () => {
 
 describe("ExpandableCode overlay", () => {
   it("opens a dialog when the Expand button is clicked", () => {
-    render(<ExpandableCode code={code(50)} language="rulespec" label="statute/26/32.yaml" />);
+    render(
+      <ExpandableCode
+        code={code(50)}
+        language="rulespec"
+        label="us/statute/26/32.rulespec"
+      />
+    );
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     const dialog = screen.getByRole("dialog", { name: /expanded view/i });
     expect(dialog).toBeInTheDocument();
     // Header includes label + line count
-    expect(screen.getByText("statute/26/32.yaml")).toBeInTheDocument();
+    expect(screen.getByText("us/statute/26/32.rulespec")).toBeInTheDocument();
     expect(screen.getByText("50 lines")).toBeInTheDocument();
   });
 

@@ -167,7 +167,8 @@ describe('languageFromPath', () => {
   it('maps .catala → catala', () =>
     expect(languageFromPath('bar.catala')).toBe('catala'))
   it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
-  it('maps .yaml / .yml → rulespec', () => {
+  it('maps RuleSpec extensions to rulespec', () => {
+    expect(languageFromPath('x.rulespec')).toBe('rulespec')
     expect(languageFromPath('x.yaml')).toBe('rulespec')
     expect(languageFromPath('x.yml')).toBe('rulespec')
   })
@@ -175,7 +176,7 @@ describe('languageFromPath', () => {
   it('falls back to plain for unknown extensions', () =>
     expect(languageFromPath('x.txt')).toBe('plain'))
   it('is case-insensitive', () =>
-    expect(languageFromPath('X.YAML')).toBe('rulespec'))
+    expect(languageFromPath('X.RULESPEC')).toBe('rulespec'))
 })
 
 describe('EncodingTab', () => {
@@ -215,8 +216,8 @@ describe('EncodingTab', () => {
 
   it('shows GitHub link and hides scores for GitHub-sourced encoding', () => {
     render(<EncodingTab encoding={makeEncoding({
-      encoding_run_id: 'github:statute/26/32/b.yaml',
-      file_path: 'statute/26/32/b.yaml',
+      encoding_run_id: 'github:us/statute/26/32/b.rulespec',
+      file_path: 'us/statute/26/32/b.rulespec',
       final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
     })} loading={false} jurisdiction="us" />)
     expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
@@ -387,7 +388,7 @@ describe('AgentLogsTab', () => {
         id: 'e3',
         sequence: 3,
         event_type: 'provenance_artifact',
-        content: 'Artifact provenance for 26/24/a.yaml',
+        content: 'Artifact provenance for us/statute/26/24/a.rulespec',
         metadata: { phase: 'encoding' },
       }),
       makeEvent({
@@ -406,12 +407,12 @@ describe('AgentLogsTab', () => {
     expect(screen.getByText('artifact')).toBeInTheDocument()
     expect(screen.getByText('sidecar')).toBeInTheDocument()
     expect(screen.getByText('Need to reconcile subsection (a) with section 151 usage.')).toBeInTheDocument()
-    expect(screen.getByText('Artifact provenance for 26/24/a.yaml')).toBeInTheDocument()
+    expect(screen.getByText('Artifact provenance for us/statute/26/24/a.rulespec')).toBeInTheDocument()
     expect(screen.getByText('Provider sidecar trace for encoder')).toBeInTheDocument()
   })
 
   it('shows "No sessions" for GitHub-sourced encoding with no events', () => {
-    const encoding = makeEncoding({ encoding_run_id: 'github:statute/26/32/b.yaml' })
+    const encoding = makeEncoding({ encoding_run_id: 'github:us/statute/26/32/b.rulespec' })
     render(<AgentLogsTab sessionEvents={[]} encoding={encoding} loading={false} sessionId={null} />)
     expect(screen.getByText('No sessions')).toBeInTheDocument()
   })

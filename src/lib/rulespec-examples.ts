@@ -127,7 +127,7 @@ Parsed by a recursive descent parser into a typed AST.
 ## File Structure
 
 \`\`\`
-# path/to/section.yaml - Title
+# us/statute/26/32/b.rulespec - Title
 
 # Statute text in comments
 # (a) In general.— ...
@@ -241,7 +241,8 @@ amend gov/tax/personal_allowance:
 
 Filepath = legal citation:
 \`\`\`
-statute/7/2017/a.yaml      -> 7 USC 2017(a)
-statute/26/24/d/1/B.yaml   -> 26 USC 24(d)(1)(B)
-statute/26/32/b.yaml       -> 26 USC 32(b)
+us/statute/7/2017/a.rulespec       -> 7 USC 2017(a)
+us/statute/26/24/d/1/B.rulespec    -> 26 USC 24(d)(1)(B)
+us/statute/26/32/b.rulespec        -> 26 USC 32(b)
+us-ny/statute/tax/606/d.rulespec   -> NY Tax Law § 606(d)
 \`\`\``

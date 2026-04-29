@@ -42,6 +42,34 @@ describe('FormatPage', () => {
     expect(screen.getByText('niit.dmn')).toBeInTheDocument()
   })
 
+  it('uses citation-path RuleSpec filenames', () => {
+    render(<FormatPage />)
+    expect(screen.getByText('us/statute/26/1411/a.rulespec')).toBeInTheDocument()
+    expect(screen.getByText('us/statute/26/24/d/1/B.rulespec')).toBeInTheDocument()
+  })
+
+  it('switches examples and format tabs', () => {
+    render(<FormatPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
+    expect(screen.getByText('us/statute/26/63/c/2/A.rulespec')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenFisca/PE' }))
+    expect(
+      screen.getByText(
+        'variables/gov/irs/income/taxable_income/deductions/standard_deduction/basic_standard_deduction.py',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Python \+ YAML/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Catala' }))
+    expect(screen.getByText('standard_deduction.catala_en')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'RuleSpec' }))
+    expect(screen.getByText('us-ny/statute/tax/606/d.rulespec')).toBeInTheDocument()
+  })
+
   it('links back to home and out to spec', () => {
     render(<FormatPage />)
     expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/')

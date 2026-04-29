@@ -383,6 +383,12 @@ export async function listAxiomDocuments(
     query = query.eq("parent_id", parentId);
   } else if (options.root) {
     query = query.is("parent_id", null).not("citation_path", "is", null);
+    if (options.jurisdiction && options.docType) {
+      const rootPrefix = `${options.jurisdiction}/${options.docType}`;
+      query = query
+        .gte("citation_path", `${rootPrefix}/`)
+        .lt("citation_path", `${rootPrefix}~`);
+    }
   }
 
   if (parentId || options.root) {

@@ -207,6 +207,8 @@ describe("axiom API helpers", () => {
       eq: vi.fn(() => chain),
       is: vi.fn(() => chain),
       not: vi.fn(() => chain),
+      gte: vi.fn(() => chain),
+      lt: vi.fn(() => chain),
       order: vi.fn(() => chain),
       range: vi.fn().mockResolvedValue({ data: [], error: null }),
     };
@@ -223,6 +225,8 @@ describe("axiom API helpers", () => {
 
     expect(chain.is).toHaveBeenCalledWith("parent_id", null);
     expect(chain.not).toHaveBeenCalledWith("citation_path", "is", null);
+    expect(chain.gte).toHaveBeenCalledWith("citation_path", "us/statute/");
+    expect(chain.lt).toHaveBeenCalledWith("citation_path", "us/statute~");
     expect(chain.order).toHaveBeenCalledWith("ordinal");
   });
 });

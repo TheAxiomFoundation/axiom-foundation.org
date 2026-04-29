@@ -210,23 +210,33 @@ describe("axiom API helpers", () => {
       gte: vi.fn(() => chain),
       lt: vi.fn(() => chain),
       order: vi.fn(() => chain),
-      range: vi.fn().mockResolvedValue({ data: [], error: null }),
+      range: vi.fn().mockResolvedValue({
+        data: [
+          makeRule({ citation_path: "us/statute/10", ordinal: 10 }),
+          makeRule({ citation_path: "us/statute/2", ordinal: 2 }),
+        ],
+        error: null,
+      }),
     };
     mockFrom.mockReturnValue(chain);
 
-    await listAxiomDocuments({
+    const result = await listAxiomDocuments({
       jurisdiction: "us",
       docType: "statute",
       root: true,
       includeBody: false,
-      limit: 25,
+      limit: 1,
       offset: 0,
     });
 
     expect(chain.is).toHaveBeenCalledWith("parent_id", null);
     expect(chain.not).toHaveBeenCalledWith("citation_path", "is", null);
+    expect(chain.eq).toHaveBeenCalledWith("level", 0);
     expect(chain.gte).toHaveBeenCalledWith("citation_path", "us/statute/");
     expect(chain.lt).toHaveBeenCalledWith("citation_path", "us/statute~");
-    expect(chain.order).toHaveBeenCalledWith("ordinal");
+    expect(chain.order).toHaveBeenCalledWith("citation_path");
+    expect(chain.range).toHaveBeenCalledWith(0, AXIOM_API_MAX_LIMIT);
+    expect(result.data.map((rule) => rule.citation_path)).toEqual(["us/statute/2"]);
+    expect(result.pagination.has_more).toBe(true);
   });
 });

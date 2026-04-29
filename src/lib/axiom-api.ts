@@ -346,6 +346,15 @@ function selectColumns(includeBody: boolean): string {
   return includeBody ? PUBLIC_RULE_COLUMNS_WITH_BODY : PUBLIC_RULE_COLUMNS;
 }
 
+function sortRowsByOrdinalThenCitation(rows: Rule[]): Rule[] {
+  return [...rows].sort((a, b) => {
+    const aOrdinal = a.ordinal ?? Number.MAX_SAFE_INTEGER;
+    const bOrdinal = b.ordinal ?? Number.MAX_SAFE_INTEGER;
+    if (aOrdinal !== bOrdinal) return aOrdinal - bOrdinal;
+    return (a.citation_path ?? a.id).localeCompare(b.citation_path ?? b.id);
+  });
+}
+
 async function resolveParentId(parentCitationPath: string): Promise<string> {
   const normalized = normalizeCitationPath(parentCitationPath);
   const { data, error } = await supabaseCorpus
@@ -386,13 +395,51 @@ export async function listAxiomDocuments(
     if (options.jurisdiction && options.docType) {
       const rootPrefix = `${options.jurisdiction}/${options.docType}`;
       query = query
+        .eq("level", 0)
         .gte("citation_path", `${rootPrefix}/`)
         .lt("citation_path", `${rootPrefix}~`);
     }
   }
 
-  if (parentId || options.root) {
+  if (parentId) {
     query = query.order("ordinal");
+  }
+
+  if (!parentId && options.root && options.jurisdiction && options.docType) {
+    const { data, error } = await query
+      .order("citation_path")
+      .range(0, AXIOM_API_MAX_LIMIT);
+
+    if (error) {
+      throw new AxiomApiError(500, "Failed to fetch Axiom documents.", error);
+    }
+
+    const sortedRows = sortRowsByOrdinalThenCitation((data || []) as unknown as Rule[]);
+    const rows = sortedRows.slice(options.offset, options.offset + options.limit);
+    const hasMore = sortedRows.length > options.offset + options.limit;
+
+    return {
+      schema_version: AXIOM_API_SCHEMA_VERSION,
+      data: rows.map((rule) =>
+        publicAxiomRuleFromRule(rule, { includeBody: options.includeBody })
+      ),
+      pagination: {
+        limit: options.limit,
+        offset: options.offset,
+        total: null,
+        has_more: hasMore,
+      },
+      filters: compactFilters({
+        id: options.id,
+        jurisdiction: options.jurisdiction,
+        docType: options.docType,
+        parentId,
+        parentCitationPath: options.parentCitationPath,
+        citationPath: options.citationPath,
+        root: options.root || undefined,
+        includeBody: options.includeBody || undefined,
+      }),
+    };
   }
 
   const { data, error } = await query.range(

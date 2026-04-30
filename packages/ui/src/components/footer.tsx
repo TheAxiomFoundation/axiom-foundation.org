@@ -64,8 +64,8 @@ export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: Foo
               The world&apos;s rules, encoded.
             </p>
             <p className="text-[0.8rem] text-[var(--color-ink-muted)] mt-4 leading-relaxed max-w-[280px]">
-              An open, machine-readable archive of statutes, regulations, and
-              policy rules.
+              Open, machine-readable U.S. law &mdash; statutes, regulations,
+              and agency guidance, freely licensed.
             </p>
           </div>
 

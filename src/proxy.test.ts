@@ -17,29 +17,12 @@ describe("proxy", () => {
     );
   });
 
-  it("redirects legacy /axiom paths away from the app host", () => {
-    const response = proxy(
-      request(
-        "https://app.axiom-foundation.org/axiom/us/statute/7",
-        "app.axiom-foundation.org"
-      )
-    );
-
-    expect(response.status).toBe(308);
-    expect(response.headers.get("location")).toBe(
-      "https://app.axiom-foundation.org/us/statute/7"
-    );
-  });
-
-  it("redirects site /axiom paths to the app host", () => {
+  it("passes through site /axiom paths", () => {
     const response = proxy(
       request("https://axiom-foundation.org/axiom/us/statute/7", "axiom-foundation.org")
     );
 
-    expect(response.status).toBe(308);
-    expect(response.headers.get("location")).toBe(
-      "https://app.axiom-foundation.org/us/statute/7"
-    );
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("bypasses framework and API paths on the app host", () => {

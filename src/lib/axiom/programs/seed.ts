@@ -346,7 +346,7 @@ export const PROGRAM_SEED: Program[] = [
     jurisdiction: "uk",
     governingBody: "Department for Work and Pensions",
     summary:
-      "Means-tested benefit combining six legacy working-age benefits into a single payment.",
+      "Means-tested benefit combining six prior working-age benefits into a single payment.",
     anchors: [
       {
         role: "authorizing_statute",

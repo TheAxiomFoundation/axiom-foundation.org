@@ -79,7 +79,7 @@ export default function AboutPage() {
             {[
               {
                 title: "Axiom",
-                desc: "Open platform for exploring encoded law. The Archive holds 53 USC titles, 570+ IRS guidance documents, and 48 states. Axiom brings together source documents, RuleSpec encodings, and validation results.",
+                desc: "Open platform for exploring encoded law. The corpus covers statutes, regulations, guidance, and policy documents, with source documents, RuleSpec encodings, and validation results linked in one app.",
               },
               {
                 title: "RuleSpec",

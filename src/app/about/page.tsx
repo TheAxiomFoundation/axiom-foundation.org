@@ -11,7 +11,7 @@ export default function AboutPage() {
           </h1>
           <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
             The world&apos;s rules, encoded. Axiom Foundation is the nonprofit
-            home of The Axiom Project, with Axiom Labs prototyping the applied
+            home of The Axiom Project, with Axiom Labs building the applied
             layer on top of the canonical rules core.
           </p>
         </header>
@@ -24,7 +24,7 @@ export default function AboutPage() {
             Our mission is to make legal rules machine-readable, verifiable,
             and accessible to everyone. The Axiom Project focuses on the bounded
             public-good core: source documents, encoded rules, provenance, and
-            validation. Axiom Labs prototypes intake, packaging, and other applied
+            validation. Axiom Labs builds intake, packaging, and other applied
             tooling on top. We&apos;re a fiscally sponsored project of the{" "}
             <a
               href="https://psl-foundation.org"

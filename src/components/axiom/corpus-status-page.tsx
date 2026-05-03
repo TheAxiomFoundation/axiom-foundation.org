@@ -19,7 +19,7 @@ interface SummaryMetric {
   label: string;
   value: string;
   detail: string;
-  state?: "good" | "warn" | "bad" | "neutral";
+  state?: "good" | "warn" | "neutral";
 }
 
 interface DocumentClassSummary {
@@ -846,7 +846,6 @@ function dataSourceLabel(value: string | null): string {
 function statusDotClass(state: SummaryMetric["state"]): string {
   if (state === "good") return "bg-[var(--color-success)]";
   if (state === "warn") return "bg-[var(--color-warning)]";
-  if (state === "bad") return "bg-[var(--color-error)]";
   return "bg-[var(--color-ink-muted)]";
 }
 

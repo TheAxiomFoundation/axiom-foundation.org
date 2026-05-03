@@ -33,6 +33,16 @@ describe("proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("rewrites the ops dashboard into the Axiom app route", () => {
+    const response = proxy(
+      request("https://app.axiom-foundation.org/ops", "app.axiom-foundation.org")
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "https://app.axiom-foundation.org/axiom/ops"
+    );
+  });
+
   it("passes through regular site pages", () => {
     const response = proxy(request("https://axiom-foundation.org/about", "axiom-foundation.org"));
 

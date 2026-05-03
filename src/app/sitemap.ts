@@ -55,6 +55,11 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     priority: 0.6,
     changeFrequency: "weekly",
   },
+  {
+    url: `${SITE_URL}/ops`,
+    priority: 0.4,
+    changeFrequency: "daily",
+  },
 ];
 
 export default async function sitemap({

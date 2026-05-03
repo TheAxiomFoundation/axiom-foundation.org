@@ -28,7 +28,7 @@ vi.mock('@/lib/axiom/resolver', () => ({
 }))
 
 import { SourceTab } from './source-tab'
-import { EncodingTab, languageFromPath } from './encoding-tab'
+import { RuleSpecTab } from './rulespec-tab'
 import { AgentLogsTab } from './agent-logs-tab'
 import { RuleDetailPanel } from './rule-detail-panel'
 import type { ViewerDocument } from '@/lib/axiom-utils'
@@ -161,83 +161,121 @@ describe('SourceTab', () => {
   })
 })
 
-describe('languageFromPath', () => {
-  it('maps .catala_en → catala', () =>
-    expect(languageFromPath('foo.catala_en')).toBe('catala'))
-  it('maps .catala → catala', () =>
-    expect(languageFromPath('bar.catala')).toBe('catala'))
-  it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
-  it('maps RuleSpec YAML extensions to rulespec', () => {
-    expect(languageFromPath('x.yaml')).toBe('rulespec')
-    expect(languageFromPath('x.yml')).toBe('rulespec')
-  })
-  it('maps .xml → xml', () => expect(languageFromPath('x.xml')).toBe('xml'))
-  it('falls back to plain for unknown extensions', () =>
-    expect(languageFromPath('x.txt')).toBe('plain'))
-  it('is case-insensitive', () =>
-    expect(languageFromPath('X.YAML')).toBe('rulespec'))
-})
-
-describe('EncodingTab', () => {
+describe('RuleSpecTab', () => {
   it('shows loading state', () => {
-    render(<EncodingTab encoding={null} loading={true} jurisdiction="us" />)
+    render(<RuleSpecTab encoding={null} loading={true} jurisdiction="us" />)
     expect(screen.getByText('Loading encoding data...')).toBeInTheDocument()
   })
 
   it('shows empty state when no encoding', () => {
-    render(<EncodingTab encoding={null} loading={false} jurisdiction="us" />)
+    render(<RuleSpecTab encoding={null} loading={false} jurisdiction="us" />)
     expect(screen.getByText('Not yet encoded')).toBeInTheDocument()
     expect(screen.getByText('This rule has not been encoded into RuleSpec format yet.')).toBeInTheDocument()
   })
 
-  it('renders encoding with scores and RuleSpec content', () => {
-    render(<EncodingTab encoding={makeEncoding()} loading={false} jurisdiction="us" />)
-    expect(screen.getByText('90')).toBeInTheDocument()
-    expect(screen.getByText('85')).toBeInTheDocument()
-    expect(screen.getByText('80')).toBeInTheDocument()
-    expect(screen.getByText('75')).toBeInTheDocument()
-    expect(screen.getByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).toBeInTheDocument()
-    expect(screen.getByText('Shown source')).toBeInTheDocument()
-    expect(screen.getByText(/latest stored encoding run/i)).toBeInTheDocument()
-    expect(screen.getByText('View canonical repo file')).toBeInTheDocument()
-  })
-
-  it('renders encoding without scores', () => {
-    render(<EncodingTab encoding={makeEncoding({ final_scores: null })} loading={false} jurisdiction="us" />)
+  it('falls back to raw YAML when content does not parse as RuleSpec', () => {
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding()}
+        loading={false}
+        jurisdiction="us"
+      />
+    )
+    // The fixture's rulespec_content is not valid RuleSpec, so the raw
+    // block renders instead of structured cards.
     expect(screen.getByText('RuleSpec encoding')).toBeInTheDocument()
-    expect(screen.queryByText('90')).not.toBeInTheDocument()
+    expect(screen.getByText('Shown source')).toBeInTheDocument()
   })
 
-  it('renders encoding without RuleSpec content', () => {
-    render(<EncodingTab encoding={makeEncoding({ rulespec_content: null })} loading={false} jurisdiction="us" />)
-    expect(screen.queryByText((_content, el) => el?.tagName === 'CODE' && el.textContent === 'rule tax_imposed { ... }')).not.toBeInTheDocument()
+  it('renders module summary, rule cards, and clickable identifiers', () => {
+    const content = `format: rulespec/v1
+module:
+  summary: |-
+    Internal Revenue Code §3101(a) imposes a payroll tax.
+rules:
+  - name: oasdi_wage_tax_rate
+    kind: parameter
+    dtype: Rate
+    versions:
+      - effective_from: '1990-01-01'
+        formula: '0.062'
+  - name: oasdi_wage_tax
+    kind: derived
+    entity: TaxUnit
+    dtype: Money
+    period: Year
+    unit: USD
+    source: 26 USC 3101(a)
+    source_url: https://www.law.cornell.edu/uscode/text/26/3101
+    versions:
+      - effective_from: '1990-01-01'
+        formula: wages * oasdi_wage_tax_rate
+`
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: content, final_scores: null })}
+        loading={false}
+        jurisdiction="us"
+      />
+    )
+    expect(
+      screen.getByText(/imposes a payroll tax/i)
+    ).toBeInTheDocument()
+    // Both rule names are present as headings.
+    expect(screen.getByRole('heading', { name: 'oasdi_wage_tax_rate' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'oasdi_wage_tax' })).toBeInTheDocument()
+    // Cross-rule identifier in oasdi_wage_tax's formula becomes an anchor.
+    const link = screen.getByText('oasdi_wage_tax_rate', { selector: 'a' })
+    expect(link).toHaveAttribute('href', '#rule-oasdi_wage_tax_rate')
+    // Source citation renders as a link when source_url is present.
+    expect(screen.getByText('26 USC 3101(a)').closest('a')).toHaveAttribute(
+      'href',
+      'https://www.law.cornell.edu/uscode/text/26/3101'
+    )
   })
 
   it('shows GitHub link and hides scores for GitHub-sourced encoding', () => {
-    render(<EncodingTab encoding={makeEncoding({
-      encoding_run_id: 'github:us/statute/26/32/b.yaml',
-      file_path: 'us/statute/26/32/b.yaml',
-      final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
-    })} loading={false} jurisdiction="us" />)
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({
+          encoding_run_id: 'github:us/statute/26/32/b.yaml',
+          file_path: 'statutes/26/32/b.yaml',
+          final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
+        })}
+        loading={false}
+        jurisdiction="us"
+      />
+    )
     expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
     expect(screen.getByText('View on GitHub')).toBeInTheDocument()
-    // Scores should be hidden for GitHub sources
     expect(screen.queryByText('90')).not.toBeInTheDocument()
   })
 
   it('shows scores for non-GitHub encoding', () => {
-    render(<EncodingTab encoding={makeEncoding({
-      encoding_run_id: 'enc-1',
-      final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
-    })} loading={false} jurisdiction="us" />)
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({
+          encoding_run_id: 'enc-1',
+          final_scores: { rulespec: 90, formula: 85, parameter: 80, integration: 75 },
+        })}
+        loading={false}
+        jurisdiction="us"
+      />
+    )
     expect(screen.queryByText('View on GitHub')).not.toBeInTheDocument()
     expect(screen.getByText('90')).toBeInTheDocument()
   })
 
   it('renders the canonical repo link for UK encodings', () => {
-    render(<EncodingTab encoding={makeEncoding({
-      file_path: 'legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml',
-    })} loading={false} jurisdiction="uk" />)
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({
+          file_path: 'legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml',
+        })}
+        loading={false}
+        jurisdiction="uk"
+      />
+    )
     const link = screen.getByText('View canonical repo file').closest('a')
     expect(link).toHaveAttribute(
       'href',

@@ -314,30 +314,52 @@ function duplicateTerminalSectionPath(basePath: string): string | null {
   return `${basePath}/${section}.yaml`
 }
 
-// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
-/* v8 ignore start -- network fetch to GitHub, tested via integration */
-function candidatePaths(
+// citation_path uses singular doc-type buckets ("statute", "regulation",
+// "policy"); the rules-* repos store files under plural buckets
+// ("statutes/", "regulations/", "policies/"). Translate at the repo
+// boundary so the rest of the path machinery can keep speaking the
+// citation_path dialect.
+export const REPO_BUCKET_RENAMES: Readonly<Record<string, string>> =
+  Object.freeze({
+    statute: 'statutes',
+    regulation: 'regulations',
+    policy: 'policies',
+  })
+
+export function toRepoBucketPath(path: string): string {
+  const slash = path.indexOf('/')
+  if (slash === -1) return path
+  const head = path.slice(0, slash)
+  const renamed = REPO_BUCKET_RENAMES[head]
+  return renamed ? renamed + path.slice(slash) : path
+}
+
+export function candidatePaths(
   basePath: string | null,
   rulespecPath: string | null,
 ): string[] {
+  const seen = new Set<string>()
   const candidates: string[] = []
+  const push = (raw: string) => {
+    const repoPath = toRepoBucketPath(raw)
+    if (!seen.has(repoPath)) {
+      seen.add(repoPath)
+      candidates.push(repoPath)
+    }
+  }
   if (rulespecPath) {
-    candidates.push(
-      rulespecPath.endsWith('.yaml') ? rulespecPath : `${rulespecPath}.yaml`,
-    )
+    push(rulespecPath.endsWith('.yaml') ? rulespecPath : `${rulespecPath}.yaml`)
   }
   if (basePath) {
     const duplicateSectionPath = duplicateTerminalSectionPath(basePath)
-    if (duplicateSectionPath && !candidates.includes(duplicateSectionPath)) {
-      candidates.push(duplicateSectionPath)
-    }
-    for (const path of parentPaths(basePath)) {
-      if (!candidates.includes(path)) candidates.push(path)
-    }
+    if (duplicateSectionPath) push(duplicateSectionPath)
+    for (const path of parentPaths(basePath)) push(path)
   }
   return candidates
 }
 
+// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
+/* v8 ignore start -- network fetch to GitHub, tested via integration */
 async function fetchRuleSpecFromGitHub(
   candidates: string[],
   jurisdiction: string

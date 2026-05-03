@@ -493,11 +493,14 @@ describe('supabase lib', () => {
             }),
           }
         }
-        // Return both a parent and child match — should pick child (more specific)
+        // Return both a parent and child match — should pick child (more specific).
+        // Paths are stored under the plural ``statutes/`` bucket because that
+        // is the canonical layout in the rules-* repos; candidatePaths
+        // translates the citation_path doc-type segment to match.
         return mockEncodingRunsChain({
           data: [
-            { id: 'enc-parent', citation: '26 USC 32/b', session_id: null, file_path: 'statute/26/32/b.yaml', rulespec_content: 'parent', final_scores: null },
-            { id: 'enc-child', citation: '26 USC 32/b/1', session_id: null, file_path: 'statute/26/32/b/1.yaml', rulespec_content: 'child', final_scores: null },
+            { id: 'enc-parent', citation: '26 USC 32/b', session_id: null, file_path: 'statutes/26/32/b.yaml', rulespec_content: 'parent', final_scores: null },
+            { id: 'enc-child', citation: '26 USC 32/b/1', session_id: null, file_path: 'statutes/26/32/b/1.yaml', rulespec_content: 'child', final_scores: null },
           ],
           error: null,
         })
@@ -505,7 +508,7 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-1')
       expect(result?.encoding_run_id).toBe('enc-child')
-      expect(result?.file_path).toBe('statute/26/32/b/1.yaml')
+      expect(result?.file_path).toBe('statutes/26/32/b/1.yaml')
     })
 
     it('checks duplicated terminal section file paths for US section roots', async () => {
@@ -723,9 +726,9 @@ describe('supabase lib', () => {
       })
 
       const result = await getRuleEncoding('rule-us-co')
-      expect(result?.encoding_run_id).toBe('github:statute/crs/26-2-703/2.5.yaml')
+      expect(result?.encoding_run_id).toBe('github:statutes/crs/26-2-703/2.5.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us-co/main/statute/crs/26-2-703/2.5.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us-co/main/statutes/crs/26-2-703/2.5.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()

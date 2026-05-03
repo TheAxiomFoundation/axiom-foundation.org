@@ -9,8 +9,10 @@ export const STATE_STATUTE_COMPLETION_KEY =
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
 const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
+const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
+const ENCODING_LOOKBACK_DAYS = 7;
 
-export type CorpusArtifactSource = "status-url" | "r2" | "local";
+export type CorpusArtifactSource = "status-url" | "r2" | "local" | "supabase";
 
 export interface StateStatuteCompletionRow {
   jurisdiction: string;
@@ -107,6 +109,43 @@ export interface ProvisionCountsSnapshot {
   rows: ProvisionCountRow[];
 }
 
+export interface EncodingStatusRun {
+  id: string;
+  timestamp: string;
+  citation: string | null;
+  total_duration_ms: number | null;
+  agent_type: string | null;
+  agent_model: string | null;
+  data_source: string | null;
+  has_issues: boolean | null;
+  session_id: string | null;
+  encoder_version: string | null;
+}
+
+export interface EncodingStatusSession {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  model: string | null;
+  event_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_usd: number;
+  encoder_version: string | null;
+}
+
+export interface EncodingOpsStatus {
+  refreshed_at: string;
+  lookback_days: number;
+  run_count: number | null;
+  recent_run_count: number | null;
+  issue_run_count: number | null;
+  active_session_count: number | null;
+  latest_runs: EncodingStatusRun[];
+  latest_sessions: EncodingStatusSession[];
+  latest_source_counts: Record<string, number>;
+}
+
 export interface CorpusStatusArtifact<T> {
   key: string;
   source: CorpusArtifactSource | null;
@@ -119,6 +158,7 @@ export interface CorpusStatusData {
   artifactReport: CorpusStatusArtifact<ArtifactReport>;
   validationReport: CorpusStatusArtifact<ValidationReport>;
   provisionCounts: CorpusStatusArtifact<ProvisionCountsSnapshot>;
+  encodingStatus: CorpusStatusArtifact<EncodingOpsStatus>;
 }
 
 export interface R2Config {
@@ -126,6 +166,11 @@ export interface R2Config {
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+}
+
+export interface SupabaseRestConfig {
+  url: string;
+  anonKey: string;
 }
 
 interface ReadAttempt<T> {
@@ -145,14 +190,17 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     provisionCountsKeyFromStateReport(stateStatutes.value) ??
     DEFAULT_PROVISION_COUNTS_KEY;
 
-  const provisionCounts =
-    await readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey);
+  const [provisionCounts, encodingStatus] = await Promise.all([
+    readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey),
+    readEncodingStatus(),
+  ]);
 
   return {
     stateStatutes,
     artifactReport,
     validationReport,
     provisionCounts,
+    encodingStatus,
   };
 }
 
@@ -220,6 +268,157 @@ async function readCorpusJson<T>(key: string): Promise<CorpusStatusArtifact<T>> 
   };
 }
 
+async function readEncodingStatus(): Promise<CorpusStatusArtifact<EncodingOpsStatus>> {
+  try {
+    return {
+      key: ENCODING_STATUS_KEY,
+      source: "supabase",
+      value: await readEncodingStatusFromSupabase(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      key: ENCODING_STATUS_KEY,
+      source: null,
+      value: null,
+      error: errorMessage(error),
+    };
+  }
+}
+
+async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
+  const config = getSupabaseRestConfig();
+  if (!config) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured");
+  }
+
+  const since = new Date(
+    Date.now() - ENCODING_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const [
+    runCount,
+    recentRunCount,
+    issueRunCount,
+    activeSessionCount,
+    latestRuns,
+    latestSessions,
+  ] = await Promise.all([
+    readSupabaseCount(config, "encodings", "encoding_runs"),
+    readSupabaseCount(config, "encodings", "encoding_runs", {
+      timestamp: `gte.${since}`,
+    }),
+    readSupabaseCount(config, "encodings", "encoding_runs", {
+      has_issues: "eq.true",
+    }),
+    readSupabaseCount(config, "telemetry", "sdk_sessions", {
+      ended_at: "is.null",
+    }),
+    readSupabaseRows<EncodingStatusRun>(config, "encodings", "encoding_runs", {
+      select:
+        "id,timestamp,citation,total_duration_ms,agent_type,agent_model,data_source,has_issues,session_id,encoder_version",
+      order: "timestamp.desc",
+      limit: "12",
+    }),
+    readSupabaseRows<EncodingStatusSession>(config, "telemetry", "sdk_sessions", {
+      select:
+        "id,started_at,ended_at,model,event_count,input_tokens,output_tokens,estimated_cost_usd,encoder_version",
+      order: "started_at.desc",
+      limit: "8",
+    }),
+  ]);
+
+  return {
+    refreshed_at: new Date().toISOString(),
+    lookback_days: ENCODING_LOOKBACK_DAYS,
+    run_count: runCount,
+    recent_run_count: recentRunCount,
+    issue_run_count: issueRunCount,
+    active_session_count: activeSessionCount,
+    latest_runs: latestRuns,
+    latest_sessions: latestSessions,
+    latest_source_counts: summarizeLatestSources(latestRuns),
+  };
+}
+
+async function readSupabaseRows<T>(
+  config: SupabaseRestConfig,
+  schema: string,
+  table: string,
+  query: Record<string, string>
+): Promise<T[]> {
+  const response = await fetch(supabaseRestUrl(config, table, query), {
+    headers: supabaseRestHeaders(config, schema),
+    next: { revalidate: STATUS_REVALIDATE_SECONDS },
+  } as RequestInit);
+
+  if (!response.ok) {
+    throw new Error(`Supabase returned ${response.status} for ${schema}.${table}`);
+  }
+
+  const value = await response.json();
+  if (!Array.isArray(value)) {
+    throw new Error(`Supabase returned a non-array payload for ${schema}.${table}`);
+  }
+  return value as T[];
+}
+
+async function readSupabaseCount(
+  config: SupabaseRestConfig,
+  schema: string,
+  table: string,
+  filters: Record<string, string> = {}
+): Promise<number | null> {
+  const response = await fetch(
+    supabaseRestUrl(config, table, {
+      select: "id",
+      limit: "1",
+      ...filters,
+    }),
+    {
+      headers: {
+        ...supabaseRestHeaders(config, schema),
+        Prefer: "count=exact",
+      },
+      next: { revalidate: STATUS_REVALIDATE_SECONDS },
+    } as RequestInit
+  );
+
+  if (!response.ok) {
+    throw new Error(`Supabase returned ${response.status} for ${schema}.${table}`);
+  }
+
+  return countFromContentRange(response.headers.get("content-range"));
+}
+
+export function countFromContentRange(value: string | null): number | null {
+  const match = value?.match(/\/(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+export function supabaseRestUrl(
+  config: SupabaseRestConfig,
+  table: string,
+  query: Record<string, string>
+): string {
+  const url = new URL(`/rest/v1/${table}`, ensureTrailingSlash(config.url));
+  for (const [key, value] of Object.entries(query)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
+function supabaseRestHeaders(
+  config: SupabaseRestConfig,
+  schema: string
+): Record<string, string> {
+  return {
+    apikey: config.anonKey,
+    Authorization: `Bearer ${config.anonKey}`,
+    "Accept-Profile": schema,
+  };
+}
+
 async function readFromStatusUrl<T>(
   baseUrl: string,
   key: string
@@ -275,6 +474,27 @@ function getR2Config(): R2Config | null {
   }
 
   return { endpoint, bucket, accessKeyId, secretAccessKey };
+}
+
+function getSupabaseRestConfig(): SupabaseRestConfig | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return null;
+  }
+
+  return { url, anonKey };
+}
+
+function summarizeLatestSources(
+  runs: EncodingStatusRun[]
+): Record<string, number> {
+  return runs.reduce<Record<string, number>>((counts, run) => {
+    const key = run.data_source ?? "unknown";
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 export function buildR2GetRequest(

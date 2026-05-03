@@ -148,6 +148,50 @@ const status: CorpusStatusData = {
       ],
     },
   },
+  encodingStatus: {
+    key: "supabase://encodings.encoding_runs",
+    source: "supabase",
+    error: null,
+    value: {
+      refreshed_at: "2026-05-03T03:12:00.000Z",
+      lookback_days: 7,
+      run_count: 42,
+      recent_run_count: 5,
+      issue_run_count: 1,
+      active_session_count: 1,
+      latest_source_counts: {
+        reviewer_agent: 2,
+        ci_only: 1,
+      },
+      latest_runs: [
+        {
+          id: "enc-1",
+          timestamp: "2026-05-03T03:10:00.000Z",
+          citation: "C.R.S. 26-2-703",
+          total_duration_ms: 125000,
+          agent_type: "encoder",
+          agent_model: "gpt-5.4",
+          data_source: "reviewer_agent",
+          has_issues: false,
+          session_id: "sdk-1",
+          encoder_version: "0.4.2",
+        },
+      ],
+      latest_sessions: [
+        {
+          id: "sdk-1",
+          started_at: "2026-05-03T03:00:00.000Z",
+          ended_at: null,
+          model: "gpt-5.4",
+          event_count: 18,
+          input_tokens: 1200,
+          output_tokens: 800,
+          estimated_cost_usd: 0.314,
+          encoder_version: "0.4.2",
+        },
+      ],
+    },
+  },
 };
 
 describe("CorpusStatusPage", () => {
@@ -168,6 +212,12 @@ describe("CorpusStatusPage", () => {
     expect(
       screen.getByRole("heading", { name: /state statute productionization/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /encoding run health/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
+    expect(screen.getAllByText("reviewer agent").length).toBeGreaterThan(0);
+    expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
     expect(screen.getByText("Alabama")).toBeInTheDocument();
     expect(screen.getByText(/empty_provision_text/i)).toBeInTheDocument();

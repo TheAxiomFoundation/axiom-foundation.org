@@ -2,6 +2,9 @@ import Link from "next/link";
 import type {
   ArtifactScopeRow,
   CorpusStatusData,
+  EncodingOpsStatus,
+  EncodingStatusRun,
+  EncodingStatusSession,
   ProvisionCountRow,
   StateStatuteCompletionRow,
   ValidationIssue,
@@ -36,6 +39,7 @@ export function CorpusStatusPage({
   const artifactReport = status.artifactReport.value;
   const validationReport = status.validationReport.value;
   const provisionCounts = status.provisionCounts.value;
+  const encodingStatus = status.encodingStatus.value;
   const source = firstSource(status);
   const stateRows = stateReport?.rows ?? [];
   const productionized = stateReport?.productionized_and_validated_count ?? 0;
@@ -45,14 +49,18 @@ export function CorpusStatusPage({
   const releaseRows = artifactReport?.rows ?? [];
   const totalProvisions = sumBy(provisionCounts?.rows ?? [], "provision_count");
   const totalRulespec = sumBy(provisionCounts?.rows ?? [], "rulespec_count");
+  const latestEncodingRun = encodingStatus?.latest_runs[0] ?? null;
+  const activeSessions = encodingStatus?.active_session_count ?? 0;
   const generatedAt = provisionCounts?.refreshed_at ??
     provisionCounts?.rows[0]?.refreshed_at ??
+    encodingStatus?.refreshed_at ??
     null;
   const errors = [
     status.stateStatutes,
     status.artifactReport,
     status.validationReport,
     status.provisionCounts,
+    status.encodingStatus,
   ].filter((artifact) => artifact.error);
 
   const metrics: SummaryMetric[] = [
@@ -82,6 +90,18 @@ export function CorpusStatusPage({
       state: "neutral",
     },
     {
+      label: "Encoder runs",
+      value: formatNullableNumber(encodingStatus?.run_count ?? null),
+      detail: encodingStatus
+        ? `${formatNullableNumber(encodingStatus.recent_run_count)} in ${encodingStatus.lookback_days}d, latest ${formatRelativeDate(latestEncodingRun?.timestamp ?? null)}`
+        : "Encoding status not loaded",
+      state: status.encodingStatus.error
+        ? "warn"
+        : activeSessions > 0
+          ? "neutral"
+          : "good",
+    },
+    {
       label: "State statutes",
       value:
         expectedStates > 0
@@ -109,7 +129,7 @@ export function CorpusStatusPage({
               </h1>
               <p className="mt-3 text-sm md:text-base text-[var(--color-ink-secondary)]">
                 Current corpus coverage, release health, R2 artifact sync, and
-                Supabase index status.
+                Supabase indexing and encoding status.
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:text-right">
@@ -149,10 +169,21 @@ export function CorpusStatusPage({
           </section>
         )}
 
-        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {metrics.map((metric) => (
             <MetricTile key={metric.label} metric={metric} />
           ))}
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Encoding"
+            title="Encoding Run Health"
+            detail={encodingStatus
+              ? `${formatNullableNumber(encodingStatus.run_count)} stored runs`
+              : "Supabase status unavailable"}
+          />
+          <EncodingHealthPanel status={encodingStatus} />
         </section>
 
         <section className="mt-10">
@@ -301,6 +332,7 @@ export function CorpusStatusPage({
               <InputRow label="Artifact report" artifact={status.artifactReport} />
               <InputRow label="Validation" artifact={status.validationReport} />
               <InputRow label="Provision counts" artifact={status.provisionCounts} />
+              <InputRow label="Encoding status" artifact={status.encodingStatus} />
             </dl>
             <Link
               href={corpusHref}
@@ -355,6 +387,202 @@ function SectionHeader({
       <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
         {detail}
       </p>
+    </div>
+  );
+}
+
+function EncodingHealthPanel({
+  status,
+}: {
+  status: EncodingOpsStatus | null;
+}) {
+  if (!status) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        Encoding run status is unavailable from Supabase.
+      </div>
+    );
+  }
+
+  const latestRuns = status.latest_runs;
+  const latestSessions = status.latest_sessions;
+  const sourceRows = Object.entries(status.latest_source_counts).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+        <table className="w-full min-w-[960px] text-sm">
+          <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+            <tr className="font-mono text-[10px] uppercase tracking-wider">
+              <th className="text-left font-medium px-4 py-3">Citation</th>
+              <th className="text-left font-medium px-4 py-3">Source</th>
+              <th className="text-left font-medium px-4 py-3">Model</th>
+              <th className="text-right font-medium px-4 py-3">Duration</th>
+              <th className="text-left font-medium px-4 py-3">Issues</th>
+              <th className="text-left font-medium px-4 py-3">Run</th>
+            </tr>
+          </thead>
+          <tbody>
+            {latestRuns.length > 0 ? (
+              latestRuns.map((run) => (
+                <EncodingRunTableRow key={run.id} run={run} />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-4 py-6 text-center text-[var(--color-ink-secondary)]"
+                >
+                  No encoding runs returned.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <aside className="space-y-5">
+        <div className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)]">
+            SDK Sessions
+          </h3>
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Active
+              </dt>
+              <dd className="mt-1 text-xl font-semibold tnum text-[var(--color-ink)]">
+                {formatNullableNumber(status.active_session_count)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Issue runs
+              </dt>
+              <dd className="mt-1 text-xl font-semibold tnum text-[var(--color-ink)]">
+                {formatNullableNumber(status.issue_run_count)}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 divide-y divide-[var(--color-rule)]">
+            {latestSessions.length > 0 ? (
+              latestSessions.slice(0, 5).map((session) => (
+                <EncodingSessionRow key={session.id} session={session} />
+              ))
+            ) : (
+              <p className="text-sm text-[var(--color-ink-secondary)]">
+                No SDK sessions returned.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)]">
+            Latest Sources
+          </h3>
+          <dl className="mt-4 space-y-2 text-sm">
+            {sourceRows.length > 0 ? (
+              sourceRows.map(([source, count]) => (
+                <div
+                  key={source}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <dt className="text-[var(--color-ink-secondary)]">
+                    {dataSourceLabel(source)}
+                  </dt>
+                  <dd className="font-mono text-xs tnum text-[var(--color-ink)]">
+                    {formatNumber(count)}
+                  </dd>
+                </div>
+              ))
+            ) : (
+              <div className="text-[var(--color-ink-secondary)]">
+                No source mix returned.
+              </div>
+            )}
+          </dl>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function EncodingRunTableRow({ run }: { run: EncodingStatusRun }) {
+  return (
+    <tr className="border-t border-[var(--color-rule)]">
+      <td className="px-4 py-3">
+        <div className="max-w-[360px] truncate font-medium text-[var(--color-ink)]">
+          {run.citation ?? run.id}
+        </div>
+        {run.encoder_version && (
+          <div className="mt-1 font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+            encoder {run.encoder_version}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill label={dataSourceLabel(run.data_source)} tone="neutral" />
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {run.agent_model ?? run.agent_type ?? "-"}
+      </td>
+      <td className="px-4 py-3 text-right font-mono text-xs tnum">
+        {formatDuration(run.total_duration_ms)}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={run.has_issues ? "Check" : "Clear"}
+          tone={run.has_issues ? "warn" : "good"}
+        />
+      </td>
+      <td className="px-4 py-3 font-mono text-xs text-[var(--color-ink-muted)]">
+        {formatShortDate(run.timestamp)}
+      </td>
+    </tr>
+  );
+}
+
+function EncodingSessionRow({ session }: { session: EncodingStatusSession }) {
+  const running = session.ended_at == null;
+  return (
+    <div className="py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-mono text-xs text-[var(--color-ink)]">
+            {session.id}
+          </div>
+          <div className="mt-1 text-xs text-[var(--color-ink-secondary)]">
+            {session.model ?? "Unknown model"} / {formatShortDate(session.started_at)}
+          </div>
+        </div>
+        <StatusPill
+          label={running ? "Running" : "Finished"}
+          tone={running ? "warn" : "good"}
+        />
+      </div>
+      <dl className="mt-2 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        <div>
+          <dt>Events</dt>
+          <dd className="mt-1 tnum text-[var(--color-ink)]">
+            {formatNumber(session.event_count)}
+          </dd>
+        </div>
+        <div>
+          <dt>Tokens</dt>
+          <dd className="mt-1 tnum text-[var(--color-ink)]">
+            {formatNumber(session.input_tokens + session.output_tokens)}
+          </dd>
+        </div>
+        <div>
+          <dt>Cost</dt>
+          <dd className="mt-1 tnum text-[var(--color-ink)]">
+            {formatCost(session.estimated_cost_usd)}
+          </dd>
+        </div>
+      </dl>
     </div>
   );
 }
@@ -543,6 +771,51 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
+function formatShortDate(value: string | null): string {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatRelativeDate(value: string | null): string {
+  if (!value) return "unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  const diffMs = Date.now() - date.getTime();
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+  if (diffMs < hourMs) return `${Math.max(1, Math.round(diffMs / minuteMs))}m ago`;
+  if (diffMs < dayMs) return `${Math.round(diffMs / hourMs)}h ago`;
+  return `${Math.round(diffMs / dayMs)}d ago`;
+}
+
+function formatDuration(value: number | null): string {
+  if (value == null) return "-";
+  if (value < 1000) return `${Math.round(value)}ms`;
+  const seconds = value / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+function formatCost(value: number | null): string {
+  if (value == null) return "-";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: value < 1 ? 3 : 2,
+    maximumFractionDigits: value < 1 ? 3 : 2,
+  }).format(value);
+}
+
 function stateStatusLabel(value: string): string {
   return value.replaceAll("_", " ");
 }
@@ -552,7 +825,8 @@ function firstSource(status: CorpusStatusData): string | null {
     status.stateStatutes.source ??
     status.artifactReport.source ??
     status.validationReport.source ??
-    status.provisionCounts.source
+    status.provisionCounts.source ??
+    status.encodingStatus.source
   );
 }
 
@@ -560,7 +834,13 @@ function sourceLabel(source: string | null): string {
   if (source === "status-url") return "Status URL";
   if (source === "r2") return "R2";
   if (source === "local") return "Local artifacts";
+  if (source === "supabase") return "Supabase";
   return "Unavailable";
+}
+
+function dataSourceLabel(value: string | null): string {
+  if (!value) return "Unknown";
+  return value.replaceAll("_", " ");
 }
 
 function statusDotClass(state: SummaryMetric["state"]): string {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildR2GetRequest,
+  countFromContentRange,
   corpusKeyFromPath,
   provisionCountsKeyFromStateReport,
+  supabaseRestUrl,
   type R2Config,
+  type SupabaseRestConfig,
 } from "./corpus-status";
 
 describe("corpus status helpers", () => {
@@ -60,5 +63,28 @@ describe("corpus status helpers", () => {
       "Credential=access-key/20260503/auto/s3/aws4_request"
     );
     expect(request.headers.Authorization).toContain("Signature=");
+  });
+
+  it("builds schema REST URLs for Supabase status reads", () => {
+    const config: SupabaseRestConfig = {
+      url: "https://example.supabase.co",
+      anonKey: "anon-key",
+    };
+
+    expect(
+      supabaseRestUrl(config, "encoding_runs", {
+        select: "id,timestamp",
+        order: "timestamp.desc",
+        limit: "12",
+      })
+    ).toBe(
+      "https://example.supabase.co/rest/v1/encoding_runs?select=id%2Ctimestamp&order=timestamp.desc&limit=12"
+    );
+  });
+
+  it("parses exact Supabase counts from content-range", () => {
+    expect(countFromContentRange("0-0/42")).toBe(42);
+    expect(countFromContentRange("*/0")).toBe(0);
+    expect(countFromContentRange(null)).toBeNull();
   });
 });

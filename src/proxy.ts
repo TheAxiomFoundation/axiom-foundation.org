@@ -7,11 +7,6 @@ function cleanHost(request: NextRequest): string {
   return (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
 }
 
-function stripAxiomPrefix(pathname: string): string {
-  if (pathname === "/axiom") return "/";
-  return pathname.startsWith("/axiom/") ? pathname.slice("/axiom".length) : pathname;
-}
-
 function isBypassPath(pathname: string): boolean {
   return (
     pathname.startsWith("/api/") ||
@@ -29,12 +24,6 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (host === APP_HOST) {
-    if (pathname === "/axiom" || pathname.startsWith("/axiom/")) {
-      const target = request.nextUrl.clone();
-      target.pathname = stripAxiomPrefix(pathname);
-      return NextResponse.redirect(target, 308);
-    }
-
     if (isBypassPath(pathname)) {
       return NextResponse.next();
     }
@@ -42,13 +31,6 @@ export function proxy(request: NextRequest) {
     const target = request.nextUrl.clone();
     target.pathname = pathname === "/" ? "/axiom" : `/axiom${pathname}`;
     return NextResponse.rewrite(target);
-  }
-
-  if (host === SITE_HOST && (pathname === "/axiom" || pathname.startsWith("/axiom/"))) {
-    const target = new URL(request.url);
-    target.hostname = APP_HOST;
-    target.pathname = stripAxiomPrefix(pathname);
-    return NextResponse.redirect(target, 308);
   }
 
   return NextResponse.next();

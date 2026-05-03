@@ -106,6 +106,10 @@ describe("AxiomBrowser", () => {
         screen.getByRole("heading", { name: "Axiom" })
       ).toBeInTheDocument();
       expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /ops dashboard/i })).toHaveAttribute(
+        "href",
+        "/ops"
+      );
     });
 
     it("renders the primary jurisdiction navigation", async () => {

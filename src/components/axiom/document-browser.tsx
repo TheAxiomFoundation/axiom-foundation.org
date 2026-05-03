@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
 import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
@@ -303,6 +304,14 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
             Explore encoded law. Source documents, RuleSpec encodings, and
             validation results across jurisdictions.
           </p>
+          <div className="mt-5">
+            <Link
+              href="/ops"
+              className="inline-flex rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm no-underline text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            >
+              Ops dashboard
+            </Link>
+          </div>
         </div>
 
         {/* Primary entry — unified search opens the command palette */}

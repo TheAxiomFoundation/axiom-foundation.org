@@ -27,6 +27,8 @@ export default defineConfig({
         'src/app/layout.tsx',
         'src/app/axiom/\\[\\[...segments\\]\\]/page.tsx', // thin use(params) wrapper
         'src/app/axiom/\\[\\[...segments\\]\\]/axiom-client.tsx', // thin client boundary wrapper
+        'src/app/axiom/ops/page.tsx', // thin route alias
+        'src/app/ops/page.tsx', // thin server route wrapper
         'src/app/robots.ts', // Next metadata route, no branching logic
         'src/app/sitemap.ts', // Next metadata route driven by Supabase pagination
         'src/_old_pages/**',

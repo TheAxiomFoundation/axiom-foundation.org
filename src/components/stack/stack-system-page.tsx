@@ -1080,6 +1080,9 @@ export function StackSystemPage() {
                   <Link href="/encoder" className="btn-outline">
                     Encoder system map
                   </Link>
+                  <Link href="/docs" className="btn-outline">
+                    Documentation index
+                  </Link>
                   <a href={axiomAppHref()} className="btn-outline">
                     Axiom encoding views
                   </a>

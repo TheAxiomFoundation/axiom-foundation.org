@@ -29,6 +29,10 @@ describe("StackPage", () => {
       "href",
       "/encoder"
     );
+    expect(screen.getByRole("link", { name: /documentation index/i })).toHaveAttribute(
+      "href",
+      "/docs"
+    );
   });
 
   it("switches layer detail panels", () => {

@@ -118,6 +118,29 @@ describe("corpus status helpers", () => {
     expect(request.headers.Authorization).toContain("Signature=");
   });
 
+  it("trims R2 credentials before building signed headers", () => {
+    const config: R2Config = {
+      endpoint: "https://example.r2.cloudflarestorage.com/",
+      bucket: "axiom-corpus\n",
+      accessKeyId: "access-key\n",
+      secretAccessKey: "secret-key\n",
+    };
+
+    const request = buildR2GetRequest(
+      config,
+      "analytics/state-statute-completion-current.json",
+      new Date("2026-05-03T12:34:56.000Z")
+    );
+
+    expect(request.url).toBe(
+      "https://example.r2.cloudflarestorage.com/axiom-corpus/analytics/state-statute-completion-current.json"
+    );
+    expect(request.headers.Authorization).not.toContain("\n");
+    expect(request.headers.Authorization).toContain(
+      "Credential=access-key/20260503/auto/s3/aws4_request"
+    );
+  });
+
   it("builds schema REST URLs for Supabase status reads", () => {
     const config: SupabaseRestConfig = {
       url: "https://example.supabase.co",
@@ -138,6 +161,7 @@ describe("corpus status helpers", () => {
   it("parses exact Supabase counts from content-range", () => {
     expect(countFromContentRange("0-0/42")).toBe(42);
     expect(countFromContentRange("*/0")).toBe(0);
+    expect(countFromContentRange("malformed")).toBeNull();
     expect(countFromContentRange(null)).toBeNull();
   });
 
@@ -158,6 +182,7 @@ describe("corpus status helpers", () => {
     expect(status.encodingStatus.value?.active_session_count).toBe(1);
     expect(status.encodingStatus.value?.latest_source_counts).toEqual({
       reviewer_agent: 1,
+      unknown: 1,
     });
   });
 
@@ -267,6 +292,35 @@ describe("corpus status helpers", () => {
     expect(status.encodingStatus.error).toMatch(/Supabase returned 500/);
   });
 
+  it("redacts signed R2 request details from status errors", async () => {
+    vi.stubEnv("AXIOM_CORPUS_STATUS_BASE_URL", "");
+    vi.stubEnv("AXIOM_CORPUS_R2_ENDPOINT", "https://r2.example.com");
+    vi.stubEnv("AXIOM_CORPUS_R2_BUCKET", "axiom-corpus");
+    vi.stubEnv("AXIOM_CORPUS_R2_ACCESS_KEY_ID", "access-key");
+    vi.stubEnv("AXIOM_CORPUS_R2_SECRET_ACCESS_KEY", "secret-key");
+    vi.stubEnv("AXIOM_CORPUS_LOCAL_ROOT", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.reject(
+          new Error(
+            'Headers.append: "AWS4-HMAC-SHA256 Credential=access-key/20260504/auto/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=abc123" is an invalid header value.'
+          )
+        )
+      )
+    );
+
+    const status = await getCorpusStatus();
+
+    expect(status.stateStatutes.error).toContain(
+      "AWS4-HMAC-SHA256 Credential=[redacted]"
+    );
+    expect(status.stateStatutes.error).not.toContain("access-key");
+    expect(status.stateStatutes.error).not.toContain("abc123");
+  });
+
   it("captures malformed Supabase row payloads", async () => {
     vi.stubEnv("AXIOM_CORPUS_STATUS_BASE_URL", "https://status.example/");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
@@ -321,6 +375,18 @@ function mockStatusFetch(input: RequestInfo | URL) {
             data_source: "reviewer_agent",
             has_issues: false,
             session_id: "sdk-1",
+            encoder_version: "0.4.2",
+          },
+          {
+            id: "enc-2",
+            timestamp: "2026-05-03T11:00:00.000Z",
+            citation: "C.R.S. 26-2-704",
+            total_duration_ms: 85000,
+            agent_type: "encoder",
+            agent_model: "gpt-5.4",
+            data_source: null,
+            has_issues: false,
+            session_id: null,
             encoder_version: "0.4.2",
           },
         ])

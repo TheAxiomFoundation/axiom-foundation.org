@@ -459,15 +459,19 @@ async function readFromLocal<T>(key: string): Promise<ReadAttempt<T>> {
 }
 
 function getR2Config(): R2Config | null {
-  const endpoint =
-    process.env.AXIOM_CORPUS_R2_ENDPOINT ?? process.env.R2_ENDPOINT;
-  const bucket =
-    process.env.AXIOM_CORPUS_R2_BUCKET ?? process.env.R2_BUCKET;
-  const accessKeyId =
-    process.env.AXIOM_CORPUS_R2_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey =
+  const endpoint = cleanEnvValue(
+    process.env.AXIOM_CORPUS_R2_ENDPOINT ?? process.env.R2_ENDPOINT
+  );
+  const bucket = cleanEnvValue(
+    process.env.AXIOM_CORPUS_R2_BUCKET ?? process.env.R2_BUCKET
+  );
+  const accessKeyId = cleanEnvValue(
+    process.env.AXIOM_CORPUS_R2_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID
+  );
+  const secretAccessKey = cleanEnvValue(
     process.env.AXIOM_CORPUS_R2_SECRET_ACCESS_KEY ??
-    process.env.R2_SECRET_ACCESS_KEY;
+      process.env.R2_SECRET_ACCESS_KEY
+  );
 
   if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
     return null;
@@ -477,8 +481,8 @@ function getR2Config(): R2Config | null {
 }
 
 function getSupabaseRestConfig(): SupabaseRestConfig | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const anonKey = cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!url || !anonKey) {
     return null;
@@ -502,9 +506,12 @@ export function buildR2GetRequest(
   key: string,
   now = new Date()
 ): { url: string; headers: Record<string, string> } {
-  const endpoint = config.endpoint.replace(/\/+$/, "");
+  const endpoint = config.endpoint.trim().replace(/\/+$/, "");
   const endpointUrl = new URL(endpoint);
-  const canonicalUri = `/${encodeS3Path(config.bucket)}/${encodeS3Path(key)}`;
+  const bucket = config.bucket.trim();
+  const accessKeyId = config.accessKeyId.trim();
+  const secretAccessKey = config.secretAccessKey.trim();
+  const canonicalUri = `/${encodeS3Path(bucket)}/${encodeS3Path(key)}`;
   const url = `${endpoint}${canonicalUri}`;
   const amzDate = toAmzDate(now);
   const dateStamp = amzDate.slice(0, 8);
@@ -529,7 +536,7 @@ export function buildR2GetRequest(
     credentialScope,
     sha256Hex(canonicalRequest),
   ].join("\n");
-  const signingKey = getSigningKey(config.secretAccessKey, dateStamp);
+  const signingKey = getSigningKey(secretAccessKey, dateStamp);
   const signature = createHmac("sha256", signingKey)
     .update(stringToSign, "utf8")
     .digest("hex");
@@ -538,7 +545,7 @@ export function buildR2GetRequest(
     url,
     headers: {
       Authorization:
-        `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, ` +
+        `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, ` +
         `SignedHeaders=${signedHeaders}, Signature=${signature}`,
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
@@ -574,5 +581,20 @@ function ensureTrailingSlash(value: string): string {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return redactSensitiveError(error instanceof Error ? error.message : String(error));
+}
+
+function cleanEnvValue(value: string | undefined): string | undefined {
+  const cleaned = value?.trim();
+  return cleaned || undefined;
+}
+
+function redactSensitiveError(message: string): string {
+  return message
+    .replace(
+      /AWS4-HMAC-SHA256 Credential=[^"]+/g,
+      "AWS4-HMAC-SHA256 Credential=[redacted]"
+    )
+    .replace(/Signature=[0-9a-f]+/gi, "Signature=[redacted]")
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [redacted]");
 }

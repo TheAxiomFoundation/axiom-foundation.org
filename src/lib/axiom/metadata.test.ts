@@ -69,6 +69,49 @@ describe("getAxiomRuleMetadata", () => {
     expect(meta.description).toContain("not yet ingested");
   });
 
+  it("resolves chapter-prefixed state statute aliases to canonical metadata", async () => {
+    let lookupPaths: string[] = [];
+    mockIn.mockImplementation((_column: string, paths: string[]) => {
+      lookupPaths = paths;
+      return Promise.resolve({
+        data: [
+          {
+            id: "ky-12-215",
+            citation_path: "us-ky/statute/3/12.215",
+            heading: "Expenses incurred by Attorney General",
+            body: "The expenses incurred by the Attorney General...",
+            jurisdiction: "us-ky",
+            doc_type: "statute",
+            updated_at: "2026-01-01",
+          },
+        ],
+        error: null,
+      });
+    });
+
+    const meta = await getAxiomRuleMetadata([
+      "us-ky",
+      "statute",
+      "3",
+      "chapter-12",
+      "12.215",
+    ]);
+
+    expect(lookupPaths).toEqual([
+      "us-ky/statute/3/chapter-12/12.215",
+      "us-ky/statute/3/12.215",
+      "us-ky/statute/3/chapter-12",
+      "us-ky/statute/3",
+      "us-ky/statute",
+      "us-ky",
+    ]);
+    expect(meta.rule?.id).toBe("ky-12-215");
+    expect(meta.canonicalUrl).toBe(
+      `${AXIOM_APP_URL}/us-ky/statute/3/12.215`
+    );
+    expect(meta.title).toContain("us-ky/statute/3/12.215");
+  });
+
   it("uses heading in description when body is absent", async () => {
     mockIn.mockResolvedValue({
       data: [

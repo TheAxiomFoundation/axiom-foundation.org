@@ -353,6 +353,107 @@ describe("getDocTypeNodes", () => {
   });
 });
 
+describe("getTitleNodes — root fallback", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("orders root rows with null citation paths last before deriving titles", async () => {
+    const orderSpy = vi.fn();
+    const rangeSpy = vi.fn();
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const rootScan = {
+      select: () => rootScan,
+      eq: () => rootScan,
+      is: () => rootScan,
+      order: (...args: unknown[]) => {
+        orderSpy(...args);
+        return rootScan;
+      },
+      range: (...args: unknown[]) => {
+        rangeSpy(...args);
+        return Promise.resolve({
+          data: [
+            { citation_path: "us-co/regulation/10-CCR-2506-1" },
+            { citation_path: "us-co/statute/crs" },
+            { citation_path: null },
+          ],
+          error: null,
+        });
+      },
+    } as never;
+    const countQuery = {
+      select: () => countQuery,
+      gte: () => countQuery,
+      lt: () => countQuery,
+      is: () => Promise.resolve({ count: 12, data: null, error: null }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(rootScan)
+      .mockReturnValueOnce(countQuery);
+
+    const nodes = await getTitleNodes("us-co", "regulation");
+
+    expect(orderSpy).toHaveBeenCalledWith("citation_path", {
+      ascending: true,
+      nullsFirst: false,
+    });
+    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(nodes.map((n) => n.segment)).toEqual(["10-CCR-2506-1"]);
+    expect(nodes[0].childCount).toBe(12);
+  });
+
+  it("continues scanning when an early root page has only null citation paths", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const firstScanPage = {
+      select: () => firstScanPage,
+      eq: () => firstScanPage,
+      is: () => firstScanPage,
+      order: () => firstScanPage,
+      range: () =>
+        Promise.resolve({
+          data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
+          error: null,
+        }),
+    } as never;
+    const secondScanPage = {
+      select: () => secondScanPage,
+      eq: () => secondScanPage,
+      is: () => secondScanPage,
+      order: () => secondScanPage,
+      range: () =>
+        Promise.resolve({
+          data: [{ citation_path: "us-ky/statute/3" }],
+          error: null,
+        }),
+    } as never;
+    const countQuery = {
+      select: () => countQuery,
+      gte: () => countQuery,
+      lt: () => countQuery,
+      is: () => Promise.resolve({ count: 1, data: null, error: null }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(firstScanPage)
+      .mockReturnValueOnce(secondScanPage)
+      .mockReturnValueOnce(countQuery);
+
+    const nodes = await getTitleNodes("us-ky", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["3"]);
+  });
+});
+
 describe("isUUID", () => {
   it("detects valid UUIDs", () => {
     expect(isUUID("550e8400-e29b-41d4-a716-446655440000")).toBe(true);

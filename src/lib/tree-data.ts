@@ -5,6 +5,7 @@ import {
   synthesiseJurisdiction,
 } from "@/lib/axiom/jurisdictions-seed";
 import { splitBodyIntoSubsections } from "@/lib/axiom/body-subsections";
+import { chapterlessSectionAlias } from "@/lib/axiom/citation-path-aliases";
 
 export type NodeType =
   | "jurisdiction"
@@ -374,23 +375,31 @@ export async function getTitleNodes(
     if (encoded.size === 0) return [];
     titles = Array.from(encoded).sort(naturalCompare);
   } else {
-    const { data } = await supabaseCorpus
-      .from("provisions")
-      .select("citation_path")
-      .eq("jurisdiction", jurisdiction)
-      .is("parent_id", null)
-      .limit(1000);
-
-    if (!data || data.length === 0) return [];
-
     const titleSet = new Set<string>();
-    for (const row of data) {
-      if (!row.citation_path) continue;
-      const parts = row.citation_path.split("/");
-      if (parts.length >= 3 && parts[1] === _docType) {
-        titleSet.add(parts[2]);
+
+    for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("citation_path")
+        .eq("jurisdiction", jurisdiction)
+        .is("parent_id", null)
+        .order("citation_path", { ascending: true, nullsFirst: false })
+        .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        if (!row.citation_path) continue;
+        const parts = row.citation_path.split("/");
+        if (parts.length >= 3 && parts[1] === _docType) {
+          titleSet.add(parts[2]);
+        }
       }
+
+      if (data.length < ROOT_SCAN_PAGE_SIZE) break;
     }
+
+    if (titleSet.size === 0) return [];
     titles = Array.from(titleSet).sort(naturalCompare);
   }
 
@@ -474,18 +483,6 @@ async function resolveBodySubsectionRule(
     has_rulespec: false,
     rulespec_path: null,
   };
-}
-
-function chapterlessSectionAlias(pathPrefix: string): string | null {
-  const parts = pathPrefix.split("/");
-  if (parts.length < 5) return null;
-  const terminalIndex = parts.length - 1;
-  const chapterIndex = terminalIndex - 1;
-  if (!/^chapter-[^/]+$/i.test(parts[chapterIndex])) return null;
-  return [
-    ...parts.slice(0, chapterIndex),
-    parts[terminalIndex],
-  ].join("/");
 }
 
 async function resolveCitationPathAlias(

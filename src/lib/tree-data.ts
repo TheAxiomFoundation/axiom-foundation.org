@@ -150,6 +150,7 @@ const PREFIX_SCAN_MAX_ROWS = 10000;
 const ROOT_SCAN_PAGE_SIZE = 1000;
 const ROOT_SCAN_MAX_ROWS = 10000;
 const KNOWN_DOC_TYPES = ["statute", "regulation", "policy", "legislation"];
+const TITLE_SEGMENT_BUCKETS = [..."0123456789abcdefghijklmnopqrstuvwxyz"];
 
 // ---- Query functions ----
 
@@ -194,37 +195,58 @@ async function fetchDirectRootChildrenByCitationPrefix(
   pathPrefix: string
 ): Promise<{ rows: Rule[]; truncated: boolean }> {
   const expectedDepth = citationDepth(pathPrefix) + 1;
+  const childPrefix = `${pathPrefix}/`;
+  const upperBound = citationPrefixUpperBound(pathPrefix);
   const rows: Rule[] = [];
-  let offset = 0;
+  let cursor = pathPrefix;
 
-  while (offset < PREFIX_SCAN_MAX_ROWS) {
+  while (rows.length < PREFIX_SCAN_MAX_ROWS) {
     const { data, error } = await supabaseCorpus
       .from("provisions")
       .select("*")
-      .gte("citation_path", citationPrefixLowerBound(pathPrefix))
-      .lt("citation_path", citationPrefixUpperBound(pathPrefix))
-      .is("parent_id", null)
+      .gte("citation_path", cursor)
+      .lt("citation_path", upperBound)
       .order("citation_path")
-      .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1);
+      .limit(PREFIX_SCAN_PAGE_SIZE);
 
     if (error || !data || data.length === 0) {
       return { rows, truncated: false };
     }
 
+    let nextChild: Rule | null = null;
     for (const row of data as Rule[]) {
       if (
         row.citation_path &&
+        row.citation_path.startsWith(childPrefix) &&
         citationDepth(row.citation_path) === expectedDepth
       ) {
-        rows.push(row);
+        nextChild = row;
+        break;
       }
     }
 
-    if (data.length < PREFIX_SCAN_PAGE_SIZE) {
-      return { rows, truncated: false };
+    if (!nextChild?.citation_path) {
+      if (data.length < PREFIX_SCAN_PAGE_SIZE) {
+        return { rows, truncated: false };
+      }
+      const lastPath = (data[data.length - 1] as Rule).citation_path;
+      if (!lastPath || lastPath <= cursor) {
+        return { rows, truncated: true };
+      }
+      cursor = `${lastPath}~`;
+      continue;
     }
 
-    offset += PREFIX_SCAN_PAGE_SIZE;
+    rows.push(nextChild);
+
+    // Jump past this child's entire subtree. ``<child>~`` sorts after
+    // the child subtree while still allowing numeric siblings like 10
+    // and 11 to follow a title bucket like 1.
+    cursor = `${nextChild.citation_path}~`;
+
+    if (cursor >= upperBound) {
+      return { rows, truncated: false };
+    }
   }
 
   return { rows, truncated: true };
@@ -343,6 +365,108 @@ async function scanTitleSegmentsFromRootRows(
   return Array.from(titleSet).sort(naturalCompare);
 }
 
+async function fetchTitleEntriesByCitationPrefix(
+  jurisdiction: string,
+  docType: string
+): Promise<Array<{ segment: string; rule?: Rule }>> {
+  const pathPrefix = `${jurisdiction}/${docType}`;
+  const childPrefix = `${pathPrefix}/`;
+  const expectedDepth = citationDepth(pathPrefix) + 1;
+  const upperBound = citationPrefixUpperBound(pathPrefix);
+
+  const walkBucket = async (
+    lower: string,
+    bucketUpper: string
+  ): Promise<Array<{ segment: string; rule?: Rule }>> => {
+    const entries: Array<{ segment: string; rule?: Rule }> = [];
+    const seen = new Set<string>();
+    let cursor = lower;
+
+    while (entries.length < PREFIX_SCAN_MAX_ROWS) {
+      const { data, error } = await supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .gte("citation_path", cursor)
+        .lt("citation_path", bucketUpper)
+        .order("citation_path")
+        .limit(PREFIX_SCAN_PAGE_SIZE);
+
+      if (error || !data || data.length === 0) {
+        return entries;
+      }
+
+      let nextSegment: string | null = null;
+      let nextRule: Rule | undefined;
+      for (const row of data as Rule[]) {
+        if (!row.citation_path?.startsWith(childPrefix)) continue;
+        const parts = row.citation_path.split("/");
+        const segment = parts[expectedDepth - 1];
+        if (!segment || seen.has(segment)) continue;
+        nextSegment = segment;
+        if (citationDepth(row.citation_path) === expectedDepth) {
+          nextRule = row;
+        }
+        break;
+      }
+
+      if (!nextSegment) {
+        if (data.length < PREFIX_SCAN_PAGE_SIZE) {
+          return entries;
+        }
+        const lastPath = (data[data.length - 1] as Rule).citation_path;
+        if (!lastPath || lastPath <= cursor) {
+          return entries;
+        }
+        cursor = `${lastPath}~`;
+        continue;
+      }
+
+      seen.add(nextSegment);
+      entries.push(
+        nextRule?.jurisdiction === jurisdiction
+          ? { segment: nextSegment, rule: nextRule }
+          : { segment: nextSegment }
+      );
+      cursor = `${pathPrefix}/${nextSegment}~`;
+
+      if (cursor >= bucketUpper) {
+        return entries;
+      }
+    }
+
+    return entries;
+  };
+
+  const bucketEntries = await Promise.all(
+    TITLE_SEGMENT_BUCKETS.map((bucket, index) => {
+      const nextBucket = TITLE_SEGMENT_BUCKETS[index + 1];
+      const lower = `${pathPrefix}/${bucket}`;
+      const bucketUpper = nextBucket
+        ? `${pathPrefix}/${nextBucket}`
+        : upperBound;
+      return walkBucket(lower, bucketUpper);
+    })
+  );
+  const bySegment = new Map<string, { segment: string; rule?: Rule }>();
+  for (const entry of bucketEntries.flat()) {
+    if (!bySegment.has(entry.segment) || entry.rule) {
+      bySegment.set(entry.segment, entry);
+    }
+  }
+  return Array.from(bySegment.values()).sort((a, b) =>
+    naturalCompare(a.segment, b.segment)
+  );
+}
+
+function titleEntryToNode(
+  entry: { segment: string; rule?: Rule },
+  encodedPaths?: Set<string>
+): TreeNode {
+  return entry.rule
+    ? ruleToSectionNode(entry.rule, encodedPaths)
+    : titleNode(entry.segment);
+}
+
 function docTypeNode(segment: string): TreeNode {
   return {
     segment,
@@ -412,6 +536,16 @@ export async function getTitleNodes(
       return rules.map((r) => ruleToSectionNode(r, encodedPaths));
     }
 
+    const prefixEntries = await fetchTitleEntriesByCitationPrefix(
+      jurisdiction,
+      _docType
+    );
+    if (prefixEntries.length > 0) {
+      return prefixEntries.map((entry) =>
+        titleEntryToNode(entry, encodedPaths)
+      );
+    }
+
     const fallbackTitles = await scanTitleSegmentsFromRootRows(
       jurisdiction,
       _docType
@@ -443,7 +577,18 @@ export async function getTitleNodes(
     titles = Array.from(encoded).sort(naturalCompare);
   } else {
     titles = await scanTitleSegmentsFromRootRows(jurisdiction, _docType);
-    if (titles.length === 0) return [];
+    if (titles.length === 0) {
+      const prefixEntries = await fetchTitleEntriesByCitationPrefix(
+        jurisdiction,
+        _docType
+      );
+      if (prefixEntries.length > 0) {
+        return prefixEntries.map((entry) =>
+          titleEntryToNode(entry, encodedPaths)
+        );
+      }
+      return [];
+    }
     includeTitleCounts = false;
   }
 

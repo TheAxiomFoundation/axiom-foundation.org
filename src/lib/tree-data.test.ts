@@ -459,24 +459,151 @@ describe("getTitleNodes — root fallback", () => {
       eq: () => emptyChildren,
       order: () => Promise.resolve({ data: [], error: null }),
     } as never;
-    const rootScan = {
-      select: () => rootScan,
-      eq: () => rootScan,
-      is: () => rootScan,
-      range: () =>
+    const prefixPages = [
+      [
+        {
+          id: "crs",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs",
+          heading: "Colorado Revised Statutes",
+        },
+      ],
+      [],
+    ];
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: () =>
         Promise.resolve({
-          data: [{ citation_path: "us-co/statute/crs/26-2-703" }],
+          data: prefixPages.shift(),
           error: null,
         }),
     } as never;
     vi.mocked(supabaseCorpus.from)
       .mockReturnValueOnce(parentLookup)
       .mockReturnValueOnce(emptyChildren)
-      .mockReturnValueOnce(rootScan);
+      .mockReturnValue(prefixWalk);
 
     const nodes = await getTitleNodes("us-co", "statute");
 
     expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
+  });
+
+  it("walks citation-path title buckets without scanning parent_id roots", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const pages = [
+      [
+        {
+          id: "bpc",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/bpc",
+          heading: "Business and Professions Code - BPC",
+        },
+        {
+          id: "bpc-1",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/bpc/1",
+          heading: "1.",
+        },
+      ],
+      [
+        {
+          id: "ccp",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/ccp",
+          heading: "Code of Civil Procedure - CCP",
+        },
+      ],
+      [],
+    ];
+    const limitSpy = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: pages.shift(), error: null })
+      );
+    const emptyRootScan = {
+      select: () => emptyRootScan,
+      eq: () => emptyRootScan,
+      is: () => emptyRootScan,
+      range: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: limitSpy,
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyRootScan)
+      .mockReturnValue(prefixWalk);
+
+    const nodes = await getTitleNodes("us-ca", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["bpc", "ccp"]);
+    expect(limitSpy).toHaveBeenCalled();
+  });
+
+  it("derives title buckets from deeper rows when no title root row exists", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const pages = [
+      [
+        {
+          id: "title-1-part",
+          jurisdiction: "us",
+          doc_type: "regulation",
+          citation_path: "us/regulation/1/1",
+          heading: "Part 1",
+        },
+      ],
+      [
+        {
+          id: "title-10-part",
+          jurisdiction: "us",
+          doc_type: "regulation",
+          citation_path: "us/regulation/10/1",
+          heading: "Part 1",
+        },
+      ],
+      [],
+    ];
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: () => Promise.resolve({ data: pages.shift(), error: null }),
+    } as never;
+    const emptyRootScan = {
+      select: () => emptyRootScan,
+      eq: () => emptyRootScan,
+      is: () => emptyRootScan,
+      range: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyRootScan)
+      .mockReturnValue(prefixWalk);
+
+    const nodes = await getTitleNodes("us", "regulation");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["1", "10"]);
+    expect(nodes.map((n) => n.rule)).toEqual([undefined, undefined]);
   });
 });
 

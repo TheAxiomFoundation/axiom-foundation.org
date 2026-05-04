@@ -279,6 +279,48 @@ describe("AxiomBrowser", () => {
       expect(mockPush).toHaveBeenCalledWith("/us/statute/26");
     });
 
+    it("navigates rule nodes by their canonical citation_path", () => {
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "12.215",
+            label: "§ 12.215 — Expenses incurred by Attorney General",
+            hasChildren: true,
+            nodeType: "section",
+            rule: {
+              id: "ky-12-215",
+              jurisdiction: "us-ky",
+              doc_type: "statute",
+              parent_id: "chapter-12",
+              level: 2,
+              ordinal: 12215,
+              heading: "Expenses incurred by Attorney General",
+              body: "Body",
+              effective_date: null,
+              repeal_date: null,
+              source_url: null,
+              source_path: null,
+              citation_path: "us-ky/statute/3/12.215",
+              rulespec_path: null,
+              has_rulespec: false,
+              created_at: "",
+              updated_at: "",
+            },
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule: null,
+      });
+
+      render(<AxiomBrowser segments={["us-ky", "statute", "3", "chapter-12"]} />);
+      fireEvent.click(screen.getByText(/Expenses incurred/));
+      expect(mockPush).toHaveBeenCalledWith("/us-ky/statute/3/12.215");
+    });
+
     it("renders breadcrumbs", () => {
       render(<AxiomBrowser segments={["us", "statute"]} />);
       expect(

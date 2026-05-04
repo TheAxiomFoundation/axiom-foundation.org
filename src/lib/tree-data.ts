@@ -476,6 +476,31 @@ async function resolveBodySubsectionRule(
   };
 }
 
+function chapterlessSectionAlias(pathPrefix: string): string | null {
+  const parts = pathPrefix.split("/");
+  if (parts.length < 5) return null;
+  const terminalIndex = parts.length - 1;
+  const chapterIndex = terminalIndex - 1;
+  if (!/^chapter-[^/]+$/i.test(parts[chapterIndex])) return null;
+  return [
+    ...parts.slice(0, chapterIndex),
+    parts[terminalIndex],
+  ].join("/");
+}
+
+async function resolveCitationPathAlias(
+  pathPrefix: string
+): Promise<Rule | null> {
+  const alias = chapterlessSectionAlias(pathPrefix);
+  if (!alias || alias === pathPrefix) return null;
+  const { data } = await supabaseCorpus
+    .from("provisions")
+    .select("*")
+    .eq("citation_path", alias)
+    .maybeSingle();
+  return (data as Rule | null) ?? null;
+}
+
 export async function getSectionNodes(
   pathPrefix: string,
   page: number = 0,
@@ -578,6 +603,16 @@ export async function getSectionNodes(
       hasMore: hasNextPage(page, total),
       total: encodedOnly ? nodes.length : total,
       currentRule: parentRule as Rule,
+    };
+  }
+
+  const aliasRule = await resolveCitationPathAlias(pathPrefix);
+  if (aliasRule) {
+    return {
+      nodes: [],
+      hasMore: false,
+      total: 0,
+      leafRule: aliasRule,
     };
   }
 

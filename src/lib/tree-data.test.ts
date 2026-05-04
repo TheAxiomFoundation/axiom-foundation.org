@@ -761,3 +761,63 @@ describe("getSectionNodes — body-derived subsection leaves", () => {
     expect(result.leafRule?.body).toContain("When a household moves");
   });
 });
+
+describe("getSectionNodes — citation path aliases", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("resolves chapter-prefixed state statute URLs to canonical section rows", async () => {
+    const canonical = {
+      id: "ky-12-215",
+      jurisdiction: "us-ky",
+      doc_type: "statute",
+      parent_id: "chapter-12",
+      level: 2,
+      ordinal: 12215,
+      heading: "Expenses incurred by Attorney General",
+      body: "The expenses incurred by the Attorney General...",
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: null,
+      citation_path: "us-ky/statute/3/12.215",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "",
+      updated_at: "",
+    };
+
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let citationPath = "";
+      const builder = {
+        select: () => builder,
+        eq: (_column: string, value: string) => {
+          citationPath = value;
+          return builder;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data:
+              citationPath === "us-ky/statute/3/12.215" ? canonical : null,
+            error: null,
+          }),
+        gte: () => builder,
+        lt: () => builder,
+        is: () => builder,
+        order: () => builder,
+        range: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us-ky/statute/3/chapter-12/12.215"
+    );
+
+    expect(result.leafRule?.citation_path).toBe("us-ky/statute/3/12.215");
+    expect(result.leafRule?.heading).toBe(
+      "Expenses incurred by Attorney General"
+    );
+  });
+});

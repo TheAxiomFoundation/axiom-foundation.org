@@ -200,12 +200,16 @@ function RuleTreeView({
         )
       : null;
 
-  const handleNavigate = (node: { segment: string }) => {
+  const handleNavigate = (node: { segment: string; rule?: { citation_path: string | null } }) => {
     trackAxiomEvent("axiom_tree_navigated", {
       depth: segments.length + 1,
       segment: node.segment,
     });
-    router.push(`/${[...segments, node.segment].join("/")}`);
+    router.push(
+      node.rule?.citation_path
+        ? `/${node.rule.citation_path}`
+        : `/${[...segments, node.segment].join("/")}`
+    );
   };
 
   const showFilterToggle = !currentRule || currentRuleIsNavigationContainer;

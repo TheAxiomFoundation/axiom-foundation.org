@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getJurisdictionLabel, isGitHubEncoding, isEncodingRun, type ViewerDocument } from "@/lib/axiom-utils";
+import {
+  getJurisdictionLabel,
+  isGitHubEncoding,
+  isEncodingRun,
+  type ViewerDocument,
+} from "@/lib/axiom-utils";
 import type { Rule } from "@/lib/supabase";
 import { useEncoding } from "@/hooks/use-encoding";
 import { useRuleReferences } from "@/hooks/use-rule-references";
@@ -51,6 +56,14 @@ export function RuleDetailPanel({
     document.jurisdiction === "us" || document.jurisdiction.startsWith("us-")
       ? "Code"
       : "Statute";
+  const subsectionStatus =
+    document.isRepealed
+      ? "Repealed provision"
+      : document.subsections.length > 0
+        ? `${document.subsections.length} subsection${
+            document.subsections.length === 1 ? "" : "s"
+          }`
+        : "Source text";
 
   return (
     <div className="flex flex-col h-full">
@@ -93,6 +106,14 @@ export function RuleDetailPanel({
                   <span>Encoded</span>
                 </>
               )}
+              {document.isRepealed && (
+                <>
+                  <span aria-hidden="true" className="text-[var(--color-ink-muted)]">
+                    ·
+                  </span>
+                  <span>Repealed</span>
+                </>
+              )}
             </div>
             <h1 className="heading-section text-[var(--color-ink)] m-0 break-words">
               {document.citation}
@@ -119,7 +140,6 @@ export function RuleDetailPanel({
               <SourceTab
                 document={document}
                 outgoingRefs={outgoing}
-                citationPath={rule.citation_path}
               />
             )}
           </article>
@@ -136,6 +156,7 @@ export function RuleDetailPanel({
                 loading={loading}
                 jurisdiction={document.jurisdiction}
                 citationPath={rule.citation_path}
+                isRepealed={document.isRepealed}
               />
             </section>
             {(outgoing.length > 0 || incoming.length > 0) && (
@@ -191,8 +212,7 @@ export function RuleDetailPanel({
           <span>Connected to Axiom</span>
         </div>
         <span className="text-xs text-[var(--color-ink-muted)]">
-          {document.subsections.length} subsection
-          {document.subsections.length === 1 ? "" : "s"}
+          {subsectionStatus}
           {encoding && " | RuleSpec available"}
         </span>
       </footer>

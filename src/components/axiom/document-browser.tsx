@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTreeNodes } from "@/hooks/use-tree-nodes";
+import type { InitialTreeNodesState } from "@/lib/axiom/tree-cache";
 import { usePersistentToggle } from "@/hooks/use-persistent-toggle";
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 import { TreeNodeList } from "./tree-node-list";
@@ -52,7 +52,7 @@ function EncodedOnlyToggle({
         });
         setEncodedOnly(next);
       }}
-      className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+      className={`flex h-8 items-center gap-2 whitespace-nowrap px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
         encodedOnly
           ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
           : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
@@ -60,6 +60,7 @@ function EncodedOnlyToggle({
     >
       <span
         aria-hidden="true"
+        suppressHydrationWarning
         className={`inline-block w-2 h-2 rounded-full transition-colors ${
           encodedOnly
             ? "bg-[var(--color-accent)]"
@@ -71,26 +72,63 @@ function EncodedOnlyToggle({
   );
 }
 
+function BrowserToolbarActions({
+  showEncodedFilter,
+  encodedOnly,
+  setEncodedOnly,
+}: {
+  showEncodedFilter: boolean;
+  encodedOnly: boolean;
+  setEncodedOnly: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <div className="flex h-8 w-[132px] shrink-0 justify-end">
+        {showEncodedFilter ? (
+          <EncodedOnlyToggle
+            encodedOnly={encodedOnly}
+            setEncodedOnly={setEncodedOnly}
+          />
+        ) : null}
+      </div>
+      <PaletteTrigger />
+    </div>
+  );
+}
+
 function RuleTreeView({
   segments,
   dbJurisdictionId,
   ruleSegments,
   hasCitationPaths,
+  onNavigateHref,
+  initialTreeState,
 }: {
   segments: string[];
   dbJurisdictionId: string;
   ruleSegments: string[];
   hasCitationPaths: boolean;
+  onNavigateHref: (href: string) => void;
+  initialTreeState?: InitialTreeNodesState | null;
 }) {
-  const router = useRouter();
   const [encodedOnly, setEncodedOnly] = usePersistentToggle(
     "axiom:encoded-only"
   );
-  const { nodes, loading, error, hasMore, loadMore, leafRule, currentRule } = useTreeNodes(
+  const {
+    nodes,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    leafRule,
+    currentRule,
+    stale: treeStateStale = false,
+  } = useTreeNodes(
     dbJurisdictionId,
     ruleSegments,
     hasCitationPaths,
-    encodedOnly
+    encodedOnly,
+    initialTreeState
   );
   const breadcrumbs = buildBreadcrumbs(segments);
   const {
@@ -136,7 +174,19 @@ function RuleTreeView({
     if (!displayCtx) {
       return (
         <div className="max-w-[1280px] mx-auto px-8">
-          <TreeBreadcrumbs items={breadcrumbs} />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <TreeBreadcrumbs
+                items={breadcrumbs}
+                onNavigate={onNavigateHref}
+              />
+            </div>
+            <BrowserToolbarActions
+              showEncodedFilter={false}
+              encodedOnly={encodedOnly}
+              setEncodedOnly={setEncodedOnly}
+            />
+          </div>
           <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
             Loading...
           </div>
@@ -159,19 +209,21 @@ function RuleTreeView({
       <div className="max-w-[1280px] mx-auto px-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <TreeBreadcrumbs items={breadcrumbs} />
+            <TreeBreadcrumbs items={breadcrumbs} onNavigate={onNavigateHref} />
           </div>
-          <PaletteTrigger />
+          <BrowserToolbarActions
+            showEncodedFilter={false}
+            encodedOnly={encodedOnly}
+            setEncodedOnly={setEncodedOnly}
+          />
         </div>
-        <SiblingStrip rule={leafRule} />
+        <SiblingStrip rule={leafRule} onNavigate={onNavigateHref} />
         <div className="min-h-[calc(100vh-200px)] mt-4 border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
           <RuleDetailPanel
             document={doc}
             rule={leafRule}
             onBack={() =>
-              router.push(
-                breadcrumbs[breadcrumbs.length - 2]?.href ?? "/"
-              )
+              onNavigateHref(breadcrumbs[breadcrumbs.length - 2]?.href ?? "/")
             }
           />
         </div>
@@ -205,35 +257,44 @@ function RuleTreeView({
       depth: segments.length + 1,
       segment: node.segment,
     });
-    router.push(
+    onNavigateHref(
       node.rule?.citation_path
         ? `/${node.rule.citation_path}`
         : `/${[...segments, node.segment].join("/")}`
     );
   };
 
-  const showFilterToggle = !currentRule || currentRuleIsNavigationContainer;
+  // The encoded filter is a tree-browser control, not a rule-reader control.
+  // Keep it available on known browse levels even while their data is loading,
+  // but don't let stale browse state leak into a newly selected deep rule.
+  const routeIsKnownBrowseLevel = hasCitationPaths
+    ? ruleSegments.length <= 2
+    : ruleSegments.length === 0;
+  const showBrowseContent = !currentRule || currentRuleIsNavigationContainer;
+  const waitingForPossibleRule =
+    (treeStateStale || loading) &&
+    nodes.length === 0 &&
+    !currentRule &&
+    !leafRule &&
+    !routeIsKnownBrowseLevel;
+  const showFilterToggle = showBrowseContent && !waitingForPossibleRule;
 
   return (
     <div className="max-w-[1280px] mx-auto px-8">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <TreeBreadcrumbs items={breadcrumbs} />
+          <TreeBreadcrumbs items={breadcrumbs} onNavigate={onNavigateHref} />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {showFilterToggle && (
-            <EncodedOnlyToggle
-              encodedOnly={encodedOnly}
-              setEncodedOnly={setEncodedOnly}
-            />
-          )}
-          <PaletteTrigger />
-        </div>
+        <BrowserToolbarActions
+          showEncodedFilter={showFilterToggle}
+          encodedOnly={encodedOnly}
+          setEncodedOnly={setEncodedOnly}
+        />
       </div>
 
       {currentRule && currentRuleDetail && (
         <div className="mt-4">
-          <SiblingStrip rule={currentRuleDetail} />
+          <SiblingStrip rule={currentRuleDetail} onNavigate={onNavigateHref} />
         </div>
       )}
 
@@ -281,7 +342,7 @@ function RuleTreeView({
           subsection breakdown above is the primary affordance, so
           showing the same children again in a list below would be
           redundant. */}
-      {showFilterToggle ? (
+      {showBrowseContent ? (
         <>
           {/* Tree node list */}
           <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
@@ -309,11 +370,45 @@ function RuleTreeView({
   );
 }
 
-export function AxiomBrowser({ segments }: { segments: string[] }) {
-  const router = useRouter();
+export function AxiomBrowser({
+  segments,
+  initialTreeState,
+}: {
+  segments: string[];
+  initialTreeState?: InitialTreeNodesState | null;
+}) {
+  const normalisedSegments = useMemo(() => decodeSegments(segments), [segments]);
+  const [activeSegments, setActiveSegments] = useState(normalisedSegments);
 
-  const resolved = resolveAxiomPath(segments);
-  const breadcrumbs = buildBreadcrumbs(segments);
+  useEffect(() => {
+    setActiveSegments(normalisedSegments);
+  }, [normalisedSegments]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveSegments(segmentsFromPathname(window.location.pathname));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const navigateHref = useCallback((href: string) => {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      window.location.href = href;
+      return;
+    }
+    const nextSegments = segmentsFromPathname(url.pathname);
+    window.history.pushState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`
+    );
+    setActiveSegments(nextSegments);
+  }, []);
+
+  const resolved = resolveAxiomPath(activeSegments);
+  const breadcrumbs = buildBreadcrumbs(activeSegments);
 
   if (resolved.phase === "jurisdiction-picker") {
     return (
@@ -327,14 +422,6 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
             Explore encoded law. Source documents, RuleSpec encodings, and
             validation results across jurisdictions.
           </p>
-          <div className="mt-5">
-            <Link
-              href="/ops"
-              className="inline-flex rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm no-underline text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-            >
-              Ops dashboard
-            </Link>
-          </div>
         </div>
 
         {/* Primary entry — unified search opens the command palette */}
@@ -343,6 +430,15 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
         </div>
 
         <AxiomStats />
+
+        <div className="mt-12 flex justify-center">
+          <Link
+            href="/ops"
+            className="inline-flex rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm no-underline text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            Ops dashboard
+          </Link>
+        </div>
       </div>
     );
   }
@@ -352,10 +448,12 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
   if (resolved.jurisdiction) {
     return (
       <RuleTreeView
-        segments={segments}
+        segments={activeSegments}
         dbJurisdictionId={resolved.jurisdiction.slug}
         ruleSegments={resolved.ruleSegments}
         hasCitationPaths={resolved.jurisdiction.hasCitationPaths}
+        onNavigateHref={navigateHref}
+        initialTreeState={initialTreeState}
       />
     );
   }
@@ -366,7 +464,7 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
         Invalid path.{" "}
         <button
           className="ml-2 text-[var(--color-accent)] hover:underline"
-          onClick={() => router.push("/")}
+          onClick={() => navigateHref("/")}
         >
           Return to Axiom
         </button>
@@ -375,3 +473,18 @@ export function AxiomBrowser({ segments }: { segments: string[] }) {
   );
 }
 /* v8 ignore stop */
+
+function segmentsFromPathname(pathname: string): string[] {
+  const parts = decodeSegments(pathname.split("/").filter(Boolean));
+  return parts[0] === "axiom" ? parts.slice(1) : parts;
+}
+
+function decodeSegments(segments: string[]): string[] {
+  return segments.map((segment) => {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  });
+}

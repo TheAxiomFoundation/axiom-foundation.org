@@ -75,7 +75,7 @@ function groupJurisdictions(
 
   for (const j of jurisdictions) {
     const config = getJurisdictionBySlug(j.jurisdiction);
-    const label = config?.label ?? j.jurisdiction.toUpperCase();
+    const label = config?.label ?? humanizeIdentifier(j.jurisdiction);
     const item: Item = { slug: j.jurisdiction, label, count: j.count };
     if (
       j.jurisdiction === "us" ||
@@ -155,7 +155,7 @@ function JurisdictionPill({
     <Link
       href={`/${slug}`}
       title={`${label} — ${count.toLocaleString()} rules`}
-      className="group inline-flex items-baseline gap-2 px-4 py-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-sm text-[var(--color-ink-secondary)] no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+      className="group inline-flex items-baseline gap-2 px-4 py-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-sm text-[var(--color-ink-secondary)] !no-underline hover:!no-underline focus-visible:!no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
     >
       <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
         {label}
@@ -186,7 +186,24 @@ export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction.startsWith("us-")) {
     return jurisdiction.slice(3).toUpperCase();
   }
-  return jurisdiction.toUpperCase();
+  return humanizeIdentifier(jurisdiction);
+}
+
+export function humanizeIdentifier(value: string): string {
+  const acronyms = new Set(["us", "uk", "eu", "un", "dc"]);
+
+  return value
+    .trim()
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => {
+      if (acronyms.has(part.toLowerCase())) return part.toUpperCase();
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 function Stat({ value, label }: { value: number; label: string }) {

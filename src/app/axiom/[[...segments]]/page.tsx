@@ -3,6 +3,16 @@ import {
   buildLegislationJsonLd,
   getAxiomRuleMetadata,
 } from "@/lib/axiom/metadata";
+import {
+  getActNodes,
+  getDocTypeNodes,
+  getTitleNodes,
+  resolveAxiomPath,
+} from "@/lib/tree-data";
+import {
+  treeNodesCacheKey,
+  type InitialTreeNodesState,
+} from "@/lib/axiom/tree-cache";
 import { AxiomClient } from "./axiom-client";
 
 interface PageProps {
@@ -39,7 +49,10 @@ export async function generateMetadata({
 
 export default async function AxiomPage({ params }: PageProps) {
   const { segments } = await params;
-  const meta = await getAxiomRuleMetadata(segments);
+  const [meta, initialTreeState] = await Promise.all([
+    getAxiomRuleMetadata(segments),
+    getInitialTreeState(segments ?? []),
+  ]);
   const jsonLd = buildLegislationJsonLd(meta);
 
   return (
@@ -50,7 +63,69 @@ export default async function AxiomPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <AxiomClient segments={segments ?? []} />
+      <AxiomClient
+        segments={segments ?? []}
+        initialTreeState={initialTreeState}
+      />
     </>
   );
+}
+
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+async function getInitialTreeState(
+  segments: string[]
+): Promise<InitialTreeNodesState | null> {
+  const decodedSegments = segments.map(decodeSegment);
+  const resolved = resolveAxiomPath(decodedSegments);
+  if (resolved.phase !== "rule" || !resolved.jurisdiction) {
+    return null;
+  }
+
+  const {
+    jurisdiction: { slug, hasCitationPaths },
+    ruleSegments,
+  } = resolved;
+  const cacheKey = treeNodesCacheKey(slug, ruleSegments, false);
+
+  if (ruleSegments.length === 0) {
+    if (hasCitationPaths) {
+      const nodes = await getDocTypeNodes(slug);
+      return {
+        cacheKey,
+        nodes,
+        hasMore: false,
+        currentRule: null,
+        leafRule: null,
+      };
+    }
+
+    const result = await getActNodes(slug, 0);
+    return {
+      cacheKey,
+      nodes: result.nodes,
+      hasMore: result.hasMore,
+      currentRule: null,
+      leafRule: null,
+    };
+  }
+
+  if (hasCitationPaths && ruleSegments.length === 1) {
+    const nodes = await getTitleNodes(slug, ruleSegments[0], undefined, false);
+    return {
+      cacheKey,
+      nodes,
+      hasMore: false,
+      currentRule: null,
+      leafRule: null,
+    };
+  }
+
+  return null;
 }

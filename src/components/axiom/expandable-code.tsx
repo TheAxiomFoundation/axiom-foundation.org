@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CodeBlock from "@/components/code-block";
-
-type CodeLang =
-  | "catala"
-  | "python"
-  | "yaml"
-  | "xml"
-  | "plain";
+import CodeBlock, { type CodeLanguage } from "@/components/code-block";
 
 interface ExpandableCodeProps {
   code: string;
-  language: CodeLang;
+  language: CodeLanguage;
   /**
    * Filename or short label shown in the overlay header so the reader
    * knows what they're looking at. When omitted, the overlay falls
@@ -99,7 +92,7 @@ function CodeOverlay({
   onClose,
 }: {
   code: string;
-  language: CodeLang;
+  language: CodeLanguage;
   label?: string;
   lineCount: number;
   onClose: () => void;

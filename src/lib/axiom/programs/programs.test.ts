@@ -41,6 +41,14 @@ describe("findPrograms", () => {
     expect(findPrograms("obamacare")[0]?.slug).toBe("aca-ptc");
   });
 
+  it("finds Colorado SNAP from a multi-token state program query", () => {
+    const hits = findPrograms("Colorado SNAP");
+    expect(hits[0]?.slug).toBe("colorado-snap");
+    expect(hits[0]?.anchors[0]?.citationPath).toBe(
+      "us-co/policy/co-cdhs-snap-page"
+    );
+  });
+
   it("matches by display name prefix", () => {
     const hits = findPrograms("universal");
     expect(hits[0]?.slug).toBe("universal-credit");

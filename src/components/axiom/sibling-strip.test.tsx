@@ -90,6 +90,20 @@ describe("SiblingStrip", () => {
     expect(screen.getByText(/3 of 4/)).toBeInTheDocument();
   });
 
+  it("renders non-statute sibling labels without a section prefix", async () => {
+    const siblings = [
+      r("us/regulation/7/273/3"),
+      r("us/regulation/7/273/4"),
+    ];
+    mockGetSiblings.mockResolvedValue(siblings);
+    render(<SiblingStrip rule={r("us/regulation/7/273/3")} />);
+    await waitFor(() =>
+      expect(screen.getByRole("navigation")).toBeInTheDocument()
+    );
+
+    expect(screen.getAllByText("4").length).toBeGreaterThan(0);
+  });
+
   it("navigates to the next sibling on ArrowRight", async () => {
     const siblings = [r("us/statute/26/32"), r("us/statute/26/33")];
     mockGetSiblings.mockResolvedValue(siblings);
@@ -114,6 +128,36 @@ describe("SiblingStrip", () => {
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32")
     );
+  });
+
+  it("uses the provided navigation handler for clicks and arrow keys", async () => {
+    const onNavigate = vi.fn();
+    const siblings = [
+      r("us/statute/26/31"),
+      r("us/statute/26/32"),
+      r("us/statute/26/33"),
+    ];
+    mockGetSiblings.mockResolvedValue(siblings);
+    render(<SiblingStrip rule={r("us/statute/26/32")} onNavigate={onNavigate} />);
+    await waitFor(() =>
+      expect(screen.getByRole("navigation")).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByLabelText("Previous sibling"));
+    expect(onNavigate).toHaveBeenCalledWith("/us/statute/26/31");
+    expect(mockPush).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("§ 31"));
+    expect(onNavigate).toHaveBeenCalledWith("/us/statute/26/31");
+    expect(mockPush).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Next sibling"));
+    expect(onNavigate).toHaveBeenCalledWith("/us/statute/26/33");
+    expect(mockPush).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(onNavigate).toHaveBeenCalledWith("/us/statute/26/33");
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("ignores arrow keys when an input is focused", async () => {

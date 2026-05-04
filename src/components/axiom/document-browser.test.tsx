@@ -82,6 +82,7 @@ import { AxiomBrowser } from "./document-browser";
 describe("AxiomBrowser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.pushState(null, "", "/");
     vi.mocked(useTreeNodes).mockReturnValue({
       nodes: [],
       loading: false,
@@ -138,6 +139,28 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us"]} />);
       expect(screen.getByText("Loading...")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /encoded only/i })
+      ).toBeInTheDocument();
+    });
+
+    it("does not flash the encoded filter while a deep route is still classifying as browse or rule detail", () => {
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [],
+        loading: true,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule: null,
+        stale: true,
+      });
+
+      render(<AxiomBrowser segments={["us", "statute", "26", "2014"]} />);
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /encoded only/i })
+      ).not.toBeInTheDocument();
     });
 
     it("shows error state", () => {
@@ -233,7 +256,7 @@ describe("AxiomBrowser", () => {
       ).toBeInTheDocument();
     });
 
-    it("navigates on node click", () => {
+    it("navigates on node click", async () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [
           {
@@ -253,10 +276,20 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us"]} />);
       fireEvent.click(screen.getByText("Statutes"));
-      expect(mockPush).toHaveBeenCalledWith("/us/statute");
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe("/us/statute");
+      await waitFor(() =>
+        expect(vi.mocked(useTreeNodes)).toHaveBeenLastCalledWith(
+          "us",
+          ["statute"],
+          true,
+          false,
+          undefined
+        )
+      );
     });
 
-    it("navigates with nested segments", () => {
+    it("navigates with nested segments", async () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [
           {
@@ -276,7 +309,50 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us", "statute"]} />);
       fireEvent.click(screen.getByText("Title 26"));
-      expect(mockPush).toHaveBeenCalledWith("/us/statute/26");
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe("/us/statute/26");
+      await waitFor(() =>
+        expect(vi.mocked(useTreeNodes)).toHaveBeenLastCalledWith(
+          "us",
+          ["statute", "26"],
+          true,
+          false,
+          undefined
+        )
+      );
+    });
+
+    it("syncs active segments when browser history changes", async () => {
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "statute",
+            label: "Statutes",
+            hasChildren: true,
+            nodeType: "doc_type",
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule: null,
+      });
+
+      render(<AxiomBrowser segments={["us"]} />);
+      window.history.pushState(null, "", "/us/statute");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+
+      await waitFor(() =>
+        expect(vi.mocked(useTreeNodes)).toHaveBeenLastCalledWith(
+          "us",
+          ["statute"],
+          true,
+          false,
+          undefined
+        )
+      );
     });
 
     it("navigates rule nodes by their canonical citation_path", () => {
@@ -318,7 +394,62 @@ describe("AxiomBrowser", () => {
 
       render(<AxiomBrowser segments={["us-ky", "statute", "3", "chapter-12"]} />);
       fireEvent.click(screen.getByText(/Expenses incurred/));
-      expect(mockPush).toHaveBeenCalledWith("/us-ky/statute/3/12.215");
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(window.location.pathname).toBe("/us-ky/statute/3/12.215");
+    });
+
+    it("decodes percent-encoded path segments before resolving the next tree query", async () => {
+      vi.mocked(useTreeNodes).mockReturnValue({
+        nodes: [
+          {
+            segment: "1400L...1400U–3",
+            label: "§ 1400L...1400U–3 — Repealed",
+            hasChildren: false,
+            nodeType: "section",
+            rule: {
+              id: "range-section",
+              jurisdiction: "us",
+              doc_type: "statute",
+              parent_id: "title-26",
+              level: 1,
+              ordinal: 14001,
+              heading: "Repealed",
+              body: "",
+              effective_date: null,
+              repeal_date: null,
+              source_url: null,
+              source_path: null,
+              citation_path: "us/statute/26/1400L...1400U–3",
+              rulespec_path: null,
+              has_rulespec: false,
+              created_at: "",
+              updated_at: "",
+            },
+          },
+        ],
+        loading: false,
+        error: null,
+        hasMore: false,
+        loadMore: mockLoadMore,
+        leafRule: null,
+        currentRule: null,
+      });
+
+      render(<AxiomBrowser segments={["us", "statute", "26"]} />);
+      fireEvent.click(screen.getByText(/1400L/));
+
+      expect(window.location.pathname).toBe(
+        "/us/statute/26/1400L...1400U%E2%80%933"
+      );
+      await waitFor(() =>
+        expect(vi.mocked(useTreeNodes)).toHaveBeenLastCalledWith(
+          "us",
+          ["statute", "26", "1400L...1400U–3"],
+          true,
+          false,
+          undefined
+        )
+      );
     });
 
     it("renders breadcrumbs", () => {
@@ -364,7 +495,8 @@ describe("AxiomBrowser", () => {
         "uk",
         ["550e8400-e29b-41d4-a716-446655440000"],
         true,
-        false
+        false,
+        undefined
       );
     });
   });
@@ -665,6 +797,9 @@ describe("AxiomBrowser", () => {
       ).toBeInTheDocument();
       // Child section is surfaced in the tree list below, not dumped inline
       expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /encoded only/i })
+      ).toBeInTheDocument();
       // Inline body of the child should NOT be rendered at the container level
       expect(
         screen.queryByText(/Income eligibility standards/)
@@ -715,6 +850,9 @@ describe("AxiomBrowser", () => {
 
       // "Loading..." appears in the detail panel area
       expect(screen.getAllByText("Loading...").length).toBeGreaterThan(0);
+      expect(
+        screen.queryByRole("button", { name: /encoded only/i })
+      ).not.toBeInTheDocument();
     });
 
     it("treats a whitespace-only body on a rule with children as a navigation container", async () => {

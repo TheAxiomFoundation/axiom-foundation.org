@@ -16,10 +16,17 @@ vi.mock("@/lib/supabase", () => ({
 import { CommandPalette } from "./command-palette";
 
 describe("CommandPalette", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     mockPush.mockReset();
     mockSearchRules.mockReset();
     mockSearchRules.mockResolvedValue([]);
+    mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input).replace("/api/axiom/resolve", "");
+      return new Response(JSON.stringify({ href: path }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", mockFetch);
     // jsdom doesn't implement scrollIntoView; stub it so the
     // cursor-follows-selection effect doesn't blow up.
     (Element.prototype as unknown as {
@@ -66,19 +73,53 @@ describe("CommandPalette", () => {
       screen.getAllByText("Supplemental Nutrition Assistance Program")
         .length
     ).toBeGreaterThan(0);
-    // At least one anchor label appears — "Standard deduction" per seed
-    expect(screen.getByText("Standard deduction")).toBeInTheDocument();
+    expect(
+      screen.getByText("Income eligibility and deductions")
+    ).toBeInTheDocument();
   });
 
-  it("routes to citation_path when Enter is pressed on a parsed citation", () => {
+  it("shows Colorado SNAP anchors for the suggested query", () => {
+    render(<CommandPalette open={true} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Search");
+    fireEvent.change(input, { target: { value: "Colorado SNAP" } });
+
+    expect(screen.getByText("Programs")).toBeInTheDocument();
+    expect(screen.getAllByText("Colorado SNAP").length).toBeGreaterThan(0);
+    expect(screen.getByText("SNAP program page")).toBeInTheDocument();
+    expect(screen.getByText("Colorado CDHS SNAP")).toBeInTheDocument();
+  });
+
+  it("routes to citation_path when Enter is pressed on a parsed citation", async () => {
     const onClose = vi.fn();
     render(<CommandPalette open={true} onClose={onClose} />);
     const input = screen.getByLabelText("Search");
     fireEvent.change(input, { target: { value: "26 USC 32" } });
     const dialog = screen.getByRole("dialog");
     fireEvent.keyDown(dialog, { key: "Enter" });
-    expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32");
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32")
+    );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("routes parsed subsection citations to the deepest indexed ancestor", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ href: "/us/statute/26/32" }), {
+        status: 200,
+      })
+    );
+    render(<CommandPalette open={true} onClose={vi.fn()} />);
+    const input = screen.getByLabelText("Search");
+    fireEvent.change(input, { target: { value: "26 USC 32(a)" } });
+    const dialog = screen.getByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32")
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/axiom/resolve/us/statute/26/32/a"
+    );
   });
 
   it("closes on Escape", () => {

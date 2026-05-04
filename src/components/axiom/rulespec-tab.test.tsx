@@ -133,6 +133,8 @@ describe("RuleSpecTab — rendering edge cases", () => {
     expect(container.textContent).toContain("2024-12-31");
     // The derived rule's formula round-trips through dump.
     expect(container.textContent).toContain("rate * wages");
+    expect(container.querySelector("code.language-yaml")).not.toBeNull();
+    expect(container.textContent).not.toContain("Formulas");
   });
 
   it("expands the per-rule tests block on click and shows input/output rows", async () => {
@@ -224,7 +226,7 @@ rules:
     expect(screen.getByText(/missing `name`/i)).toBeInTheDocument();
   });
 
-  it("renders an encoded-subsections list when the rule has no YAML but its descendants do", async () => {
+  it("renders related RuleSpec files when the exact source provision has no YAML", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -248,30 +250,38 @@ rules:
       />
     );
     await waitFor(() =>
-      expect(screen.getByText(/Encoded in subsections/i)).toBeInTheDocument()
+      expect(screen.getByText(/Available RuleSpec encodings/i)).toBeInTheDocument()
     );
     expect(
-      screen.getByText(/3 subsections have a RuleSpec encoding/i)
+      screen.getByText(
+        /This source provision is partially encoded.*3 related RuleSpec files are available/i
+      )
     ).toBeInTheDocument();
-    // Each descendant becomes a link to its rule page, labelled
-    // relative to the parent so it reads as "(a)" / "(b)/(1)".
-    expect(screen.getByText("(a)").closest("a")).toHaveAttribute(
+    expect(
+      screen.queryByText(/subsections have a RuleSpec encoding/i)
+    ).not.toBeInTheDocument();
+    // Each related encoding links to the canonical rule page but is
+    // labelled as an encoding path, not as a source-tree subsection.
+    expect(screen.getByText("us/statute/26/3101/a").closest("a")).toHaveAttribute(
       "href",
       "/axiom/us/statute/26/3101/a"
     );
-    expect(screen.getByText("(b)/(1)").closest("a")).toHaveAttribute(
+    expect(screen.getByText("statutes/26/3101/a.yaml")).toBeInTheDocument();
+    expect(screen.getByText("us/statute/26/3101/b/1").closest("a")).toHaveAttribute(
       "href",
       "/axiom/us/statute/26/3101/b/1"
     );
+    expect(screen.queryByText("(a)")).not.toBeInTheDocument();
   });
 
   it("falls back to the bare 'Not yet encoded' state when no descendants are encoded either", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tree: [] }),
+    });
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ tree: [] }),
-      })
+      fetchMock
     );
     render(
       <RuleSpecTab
@@ -283,8 +293,35 @@ rules:
     );
     expect(screen.getByText(/Not yet encoded/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/Encoded in subsections/i)
+      screen.queryByText(/Available RuleSpec encodings/i)
     ).toBeNull();
+  });
+
+  it("shows a repealed-specific empty state when no encoding or descendants exist", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tree: [] }),
+    });
+    vi.stubGlobal(
+      "fetch",
+      fetchMock
+    );
+    render(
+      <RuleSpecTab
+        encoding={null}
+        loading={false}
+        jurisdiction="us"
+        citationPath="us/statute/26/1400L...1400U–3"
+        isRepealed
+      />
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(screen.getByText("Repealed provision")).toBeInTheDocument();
+    expect(
+      screen.getByText(/No active RuleSpec encoding is shown/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Not yet encoded/i)).toBeNull();
   });
 
   it("anchors each rule by name so cross-rule links scroll into view", () => {

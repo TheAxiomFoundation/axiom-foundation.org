@@ -17,6 +17,7 @@ export interface ViewerDocument {
   hasRuleSpec: boolean;
   jurisdiction: string;
   sourcePath: string | null;
+  isRepealed?: boolean;
   contextText?: string;
   highlightedSubsection?: string;
   /**
@@ -128,19 +129,19 @@ function getRuleCitation(rule: Rule): string {
   return sourcePath || rule.citation_path || rule.id;
 }
 
+export function isRuleRepealed(rule: Rule): boolean {
+  if (rule.repeal_date) return true;
+  return /^\s*\[?\s*repealed\b/i.test(rule.heading ?? "");
+}
+
 export function transformRuleToViewerDoc(
   rule: Rule,
   children: Rule[],
   options?: { contextText?: string; highlightId?: string }
 ): ViewerDocument {
   const subsections = children.map((child, i) => {
-    let id: string;
-    if (options?.highlightId && child.citation_path) {
-      const segments = child.citation_path.split("/");
-      id = segments[segments.length - 1];
-    } else {
-      id = String.fromCharCode(97 + i);
-    }
+    const segments = child.citation_path?.split("/").filter(Boolean);
+    const id = segments?.at(-1) || String.fromCharCode(97 + i);
     return {
       id,
       text: child.body || child.heading || "",
@@ -148,26 +149,9 @@ export function transformRuleToViewerDoc(
   });
 
   // Leaf rules (no children, has body): expose the raw body verbatim so
-  // SourceTab can render citation refs inline at their true offsets. For
-  // viewers/tests that ignore the body field we also emit a paragraph-
-  // split subsection fallback with synthetic (a)(b)(c) labels.
+  // SourceTab can render citation refs inline at their true offsets.
+  // ``subsections`` is reserved for materialized child rule rows only.
   const isLeafWithBody = subsections.length === 0 && !!rule.body;
-  if (isLeafWithBody) {
-    const paragraphs = rule.body!.split(/\n\n+/).filter(Boolean);
-    paragraphs.forEach((para, i) => {
-      subsections.push({
-        id: String.fromCharCode(97 + i),
-        text: para.trim(),
-      });
-    });
-  }
-
-  if (subsections.length === 0) {
-    subsections.push({
-      id: "a",
-      text: rule.heading || "No content available.",
-    });
-  }
 
   return {
     citation: getRuleCitation(rule),
@@ -176,6 +160,7 @@ export function transformRuleToViewerDoc(
     hasRuleSpec: rule.has_rulespec,
     jurisdiction: rule.jurisdiction,
     sourcePath: rule.source_path,
+    ...(isRuleRepealed(rule) && { isRepealed: true }),
     ...(options?.contextText && { contextText: options.contextText }),
     ...(options?.highlightId && { highlightedSubsection: options.highlightId }),
     ...(isLeafWithBody && { body: rule.body! }),

@@ -181,7 +181,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [rows.length, cursor]);
 
   const commit = useCallback(
-    (row: Row) => {
+    async (row: Row) => {
       if (row.kind === "citation") {
         trackAxiomEvent("axiom_palette_commit", {
           kind: "citation",
@@ -201,7 +201,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         });
       }
       onClose();
-      router.push(row.href);
+      const href =
+        row.kind === "search" ? row.href : await resolveNavigableHref(row.href);
+      router.push(href);
     },
     [router, onClose]
   );
@@ -369,6 +371,23 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       </div>
     </div>
   );
+}
+
+async function resolveNavigableHref(href: string): Promise<string> {
+  const path = href.replace(/^\/+/, "");
+  if (!path) return href;
+
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  try {
+    const response = await fetch(`/api/axiom/resolve/${encodedPath}`);
+    if (!response.ok) return href;
+    const payload = (await response.json()) as { href?: unknown };
+    return typeof payload.href === "string" && payload.href
+      ? payload.href
+      : href;
+  } catch {
+    return href;
+  }
 }
 
 function Row({

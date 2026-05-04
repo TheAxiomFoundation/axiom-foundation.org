@@ -36,7 +36,7 @@ function makeRule(overrides: Partial<Rule> = {}): Rule {
 }
 
 describe("RuleInlineSummary", () => {
-  it("breaks no-child eCFR body labels into subsection anchors", () => {
+  it("keeps body-labelled subsections together when they are not child rules", () => {
     render(
       <RuleInlineSummary
         rule={makeRule({
@@ -48,17 +48,19 @@ describe("RuleInlineSummary", () => {
       />
     );
 
-    expect(screen.getByText("In this section")).toBeInTheDocument();
-    expect(screen.getByText("2 subsections")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "(a)" })).toHaveAttribute(
-      "href",
-      "/us/regulation/7/273/3/a"
+    expect(screen.queryByText("In this section")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "(a)" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("rule-body-inline")
+    ).toHaveTextContent(
+      "(a) A household shall live in the State in which it files an application."
     );
-    expect(screen.getByRole("link", { name: "(b)" })).toHaveAttribute(
-      "href",
-      "/us/regulation/7/273/3/b"
+    expect(
+      screen.getByTestId("rule-body-inline")
+    ).toHaveTextContent(
+      "(b) When a household moves within the State, the State agency may require reapplication."
     );
-    expect(screen.getByText(/A household shall live/)).toBeInTheDocument();
-    expect(screen.getByText(/When a household moves/)).toBeInTheDocument();
   });
 });

@@ -182,4 +182,34 @@ describe("SourceTab context rendering", () => {
     const subsectionA = screen.getByText("first subsection text").closest("[data-subsection-id]");
     expect(subsectionA).toHaveClass("border-l-2");
   });
+
+  it("renders a repealed empty-body state instead of generic missing source text", () => {
+    const doc: ViewerDocument = {
+      ...baseDoc,
+      body: undefined,
+      isRepealed: true,
+      subsections: [],
+    };
+
+    render(<SourceTab document={doc} />);
+
+    expect(screen.getByText("Repealed provision")).toBeInTheDocument();
+    expect(screen.getByText(/No current source text/i)).toBeInTheDocument();
+    expect(screen.queryByText("No source text available.")).toBeNull();
+  });
+
+  it("marks repealed provisions while preserving available body text", () => {
+    const doc: ViewerDocument = {
+      ...baseDoc,
+      body: "Repealed body text.",
+      isRepealed: true,
+      subsections: [],
+    };
+
+    render(<SourceTab document={doc} />);
+
+    expect(screen.getByText("Repealed provision")).toBeInTheDocument();
+    expect(screen.getByText(/has been repealed/i)).toBeInTheDocument();
+    expect(screen.getByText("Repealed body text.")).toBeInTheDocument();
+  });
 });

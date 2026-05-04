@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  isRuleRepealed,
   transformRuleToViewerDoc,
   type ViewerDocument,
 } from "./axiom-utils";
@@ -33,15 +34,23 @@ const mockRule = (overrides: Partial<Rule> = {}): Rule => ({
 
 describe("transformRuleToViewerDoc", () => {
   describe("existing behavior preserved", () => {
-    it("maps children to subsections with letter IDs", () => {
+    it("maps materialized child rules to subsections using citation path segments", () => {
       const rule = mockRule({
         heading: "Section 1",
         source_path: "26/1",
         citation_path: "us/statute/26/1",
       });
       const children = [
-        mockRule({ id: "c1", body: "Child A body" }),
-        mockRule({ id: "c2", body: "Child B body" }),
+        mockRule({
+          id: "c1",
+          body: "Child A body",
+          citation_path: "us/statute/26/1/a",
+        }),
+        mockRule({
+          id: "c2",
+          body: "Child B body",
+          citation_path: "us/statute/26/1/b",
+        }),
       ];
 
       const doc = transformRuleToViewerDoc(rule, children);
@@ -54,35 +63,29 @@ describe("transformRuleToViewerDoc", () => {
       ]);
     });
 
-    it("splits body into paragraphs when no children", () => {
+    it("does not synthesize subsections from leaf body paragraphs", () => {
       const rule = mockRule({ body: "Paragraph one.\n\nParagraph two." });
 
       const doc = transformRuleToViewerDoc(rule, []);
 
-      expect(doc.subsections).toEqual([
-        { id: "a", text: "Paragraph one." },
-        { id: "b", text: "Paragraph two." },
-      ]);
+      expect(doc.subsections).toEqual([]);
+      expect(doc.body).toBe("Paragraph one.\n\nParagraph two.");
     });
 
-    it("falls back to heading when no body and no children", () => {
+    it("does not synthesize a heading-only subsection when no children exist", () => {
       const rule = mockRule({ heading: "Fallback heading" });
 
       const doc = transformRuleToViewerDoc(rule, []);
 
-      expect(doc.subsections).toEqual([
-        { id: "a", text: "Fallback heading" },
-      ]);
+      expect(doc.subsections).toEqual([]);
     });
 
-    it("falls back to default text when no heading, body, or children", () => {
+    it("does not synthesize a default subsection when no source content exists", () => {
       const rule = mockRule({});
 
       const doc = transformRuleToViewerDoc(rule, []);
 
-      expect(doc.subsections).toEqual([
-        { id: "a", text: "No content available." },
-      ]);
+      expect(doc.subsections).toEqual([]);
     });
 
     it("uses formatted citation_path when source_path is null", () => {
@@ -209,6 +212,29 @@ describe("transformRuleToViewerDoc", () => {
       expect(doc.subsections[0].id).toBe("A");
       expect(doc.subsections[1].id).toBe("B");
       expect(doc.highlightedSubsection).toBe("A");
+    });
+  });
+
+  describe("repealed provisions", () => {
+    it("marks rules with a repeal date as repealed", () => {
+      const rule = mockRule({ repeal_date: "2010-01-01" });
+
+      expect(isRuleRepealed(rule)).toBe(true);
+      expect(transformRuleToViewerDoc(rule, []).isRepealed).toBe(true);
+    });
+
+    it("marks repealed headings as repealed", () => {
+      const rule = mockRule({ heading: "[Repealed]" });
+
+      expect(isRuleRepealed(rule)).toBe(true);
+      expect(transformRuleToViewerDoc(rule, []).isRepealed).toBe(true);
+    });
+
+    it("does not mark active rules as repealed", () => {
+      const rule = mockRule({ heading: "Tax imposed" });
+
+      expect(isRuleRepealed(rule)).toBe(false);
+      expect(transformRuleToViewerDoc(rule, []).isRepealed).toBeUndefined();
     });
   });
 });

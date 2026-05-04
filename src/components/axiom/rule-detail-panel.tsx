@@ -131,6 +131,7 @@ export function RuleDetailPanel({
                 encoding={encoding}
                 loading={loading}
                 jurisdiction={document.jurisdiction}
+                citationPath={rule.citation_path}
               />
             </section>
             {(outgoing.length > 0 || incoming.length > 0) && (

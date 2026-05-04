@@ -5,14 +5,18 @@ import { isGitHubEncoding } from "@/lib/axiom-utils";
 import type { EncodingRunScores, RuleEncodingData } from "@/lib/supabase";
 import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
 import {
+  dumpRuleYaml,
   parseRuleSpec,
   parseRuleSpecTests,
-  tokenizeFormula,
   type RuleSpecDoc,
   type RuleSpecRule,
   type RuleSpecTestCase,
-  type RuleSpecVersion,
 } from "@/lib/axiom/rulespec/doc";
+import { cachedRawFetch } from "@/lib/axiom/rulespec/raw-cache";
+import {
+  findEncodedDescendants,
+  type EncodedFile,
+} from "@/lib/axiom/rulespec/repo-listing";
 import { ExpandableCode } from "./expandable-code";
 
 /**
@@ -31,12 +35,21 @@ export function RuleSpecTab({
   encoding,
   loading,
   jurisdiction,
+  citationPath,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
   jurisdiction: string;
+  /** Citation path for the rule being viewed. When ``encoding`` is
+   *  null, used to look up encoded descendants so a container page
+   *  (e.g. ``us/statute/26/3101``) can point readers down to the
+   *  subsections that actually have YAMLs (``…/a``, ``…/b/1``). */
+  citationPath?: string | null;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
+  const descendants = useEncodedDescendants(
+    encoding ? null : citationPath ?? null
+  );
   const doc = useMemo(
     () => (encoding?.rulespec_content ? parseRuleSpec(encoding.rulespec_content) : null),
     [encoding?.rulespec_content]
@@ -57,11 +70,19 @@ export function RuleSpecTab({
           className="text-base text-[var(--color-ink-secondary)] mb-2"
           style={{ fontFamily: "var(--f-serif)" }}
         >
-          Not yet encoded
+          {descendants.length > 0 ? "Encoded in subsections" : "Not yet encoded"}
         </div>
         <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
-          This rule has not been encoded into RuleSpec format yet.
+          {descendants.length > 0
+            ? `${descendants.length} ${descendants.length === 1 ? "subsection has" : "subsections have"} a RuleSpec encoding.`
+            : "This rule has not been encoded into RuleSpec format yet."}
         </p>
+        {descendants.length > 0 && (
+          <DescendantList
+            descendants={descendants}
+            parentCitation={citationPath ?? ""}
+          />
+        )}
       </div>
     );
   }
@@ -78,7 +99,6 @@ export function RuleSpecTab({
 
   const localNames = new Set(doc?.rules.map((r) => r.name) ?? []);
   const testsByRule = groupTestsByRule(tests, localNames);
-  const orphanTests = tests.filter((t) => !ownerRuleFor(t, localNames));
 
   const docHasContent =
     !!doc && (doc.rules.length > 0 || !!doc.module.summary);
@@ -106,14 +126,10 @@ export function RuleSpecTab({
                 <RuleCard
                   key={rule.name}
                   rule={rule}
-                  localNames={localNames}
                   tests={testsByRule.get(rule.name) ?? []}
                 />
               ))}
             </div>
-          )}
-          {orphanTests.length > 0 && (
-            <OrphanTestsBlock tests={orphanTests} />
           )}
           {doc!.parseErrors.length > 0 && (
             <ParseErrorsBlock errors={doc!.parseErrors} />
@@ -228,20 +244,19 @@ function Summary({ text }: { text: string }) {
 
 function RuleCard({
   rule,
-  localNames,
   tests,
 }: {
   rule: RuleSpecRule;
-  localNames: Set<string>;
   tests: RuleSpecTestCase[];
 }) {
   const anchor = `rule-${rule.name}`;
+  const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
   return (
     <article
       id={anchor}
       className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-4 scroll-mt-8"
     >
-      <header className="flex items-baseline justify-between gap-3 flex-wrap">
+      <header className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
         <h3 className="m-0 font-mono text-sm font-semibold text-[var(--color-ink)] break-all">
           {rule.name}
         </h3>
@@ -262,115 +277,13 @@ function RuleCard({
           </span>
         )}
       </header>
-      <BadgeRow rule={rule} />
-      {rule.versions.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {rule.versions.map((v, i) => (
-            <VersionBlock
-              key={`${v.effective_from ?? "no-date"}-${i}`}
-              version={v}
-              localNames={localNames}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 text-xs text-[var(--color-ink-muted)] italic">
-          No versions declared.
-        </p>
-      )}
+      <ExpandableCode
+        code={yamlBlock}
+        language="rulespec"
+        label={rule.name}
+      />
       {tests.length > 0 && <TestsBlock tests={tests} />}
     </article>
-  );
-}
-
-function BadgeRow({ rule }: { rule: RuleSpecRule }) {
-  const fields: Array<[string, string | null]> = [
-    ["kind", rule.kind],
-    ["entity", rule.entity],
-    ["dtype", rule.dtype],
-    ["period", rule.period],
-    ["unit", rule.unit],
-  ];
-  const present = fields.filter(([, v]) => !!v) as [string, string][];
-  if (present.length === 0) return null;
-  return (
-    <div className="mt-3 flex flex-wrap gap-1.5">
-      {present.map(([k, v]) => (
-        <span
-          key={k}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--color-rule)] bg-[var(--color-paper)] font-mono text-[10px]"
-        >
-          <span className="uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {k}
-          </span>
-          <span className="text-[var(--color-ink)]">{v}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function VersionBlock({
-  version,
-  localNames,
-}: {
-  version: RuleSpecVersion;
-  localNames: Set<string>;
-}) {
-  return (
-    <div className="border-l-2 border-[var(--color-rule)] pl-3">
-      <div className="mb-1.5 flex items-center gap-2 text-[11px] text-[var(--color-ink-muted)]">
-        <span className="font-mono uppercase tracking-wider">effective</span>
-        <span className="font-mono tabular-nums text-[var(--color-ink)]">
-          {version.effective_from ?? "—"}
-        </span>
-        {version.effective_to && (
-          <>
-            <span aria-hidden="true">→</span>
-            <span className="font-mono tabular-nums text-[var(--color-ink)]">
-              {version.effective_to}
-            </span>
-          </>
-        )}
-      </div>
-      {version.formula ? (
-        <pre className="m-0 p-3 bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded text-xs font-mono whitespace-pre-wrap break-words text-[var(--color-code-text)]">
-          <FormulaRenderer formula={version.formula} localNames={localNames} />
-        </pre>
-      ) : (
-        <p className="text-xs text-[var(--color-ink-muted)] italic">
-          No formula.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function FormulaRenderer({
-  formula,
-  localNames,
-}: {
-  formula: string;
-  localNames: Set<string>;
-}) {
-  const segments = useMemo(() => tokenizeFormula(formula), [formula]);
-  return (
-    <>
-      {segments.map((seg, i) => {
-        if (seg.isIdentifier && localNames.has(seg.text)) {
-          return (
-            <a
-              key={i}
-              href={`#rule-${seg.text}`}
-              className="text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
-            >
-              {seg.text}
-            </a>
-          );
-        }
-        return <span key={i}>{seg.text}</span>;
-      })}
-    </>
   );
 }
 
@@ -445,21 +358,6 @@ function KeyValueTable({
         ))}
       </dl>
     </div>
-  );
-}
-
-function OrphanTestsBlock({ tests }: { tests: RuleSpecTestCase[] }) {
-  return (
-    <section>
-      <div className="eyebrow mb-3">
-        Tests not bound to a rule ({tests.length})
-      </div>
-      <ul className="space-y-3">
-        {tests.map((t) => (
-          <TestCase key={t.name} test={t} />
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -555,8 +453,8 @@ function useRuleSpecTests(
     const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${testPath}`;
     let cancelled = false;
     /* v8 ignore start -- network fetch */
-    fetch(url)
-      .then((res) => (res.ok ? res.text() : null))
+    cachedRawFetch(url)
+      .then((res) => (res.ok ? res.body : null))
       .then((body) => {
         if (cancelled || !body) return;
         setTests(parseRuleSpecTests(body));
@@ -569,4 +467,69 @@ function useRuleSpecTests(
   }, [encoding, jurisdiction]);
 
   return tests;
+}
+
+/**
+ * Look up encoded descendants of ``citationPath`` in the rules-* repo.
+ * Skipped when the rule itself has an encoding — we only want this
+ * surface on container pages whose YAML lives a level (or more) down.
+ */
+function useEncodedDescendants(citationPath: string | null): EncodedFile[] {
+  const [descendants, setDescendants] = useState<EncodedFile[]>([]);
+  useEffect(() => {
+    setDescendants([]);
+    if (!citationPath) return;
+    let cancelled = false;
+    /* v8 ignore start -- network fetch */
+    findEncodedDescendants(citationPath)
+      .then((found) => {
+        if (cancelled) return;
+        setDescendants(found);
+      })
+      .catch(() => {});
+    /* v8 ignore stop */
+    return () => {
+      cancelled = true;
+    };
+  }, [citationPath]);
+  return descendants;
+}
+
+function DescendantList({
+  descendants,
+  parentCitation,
+}: {
+  descendants: EncodedFile[];
+  parentCitation: string;
+}) {
+  return (
+    <ul className="mt-5 m-0 p-0 list-none text-left max-w-[320px] mx-auto space-y-1">
+      {descendants.map((d) => (
+        <li key={d.citationPath}>
+          <a
+            href={`/axiom/${d.citationPath}`}
+            className="block px-3 py-2 rounded font-mono text-xs text-[var(--color-accent)] no-underline hover:bg-[var(--color-paper-elevated)] hover:underline focus-visible:underline"
+          >
+            {relativeCitation(parentCitation, d.citationPath)}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Render a descendant's path relative to its parent so the link reads
+ * as ``(a)``, ``(b)/(1)`` instead of repeating the full citation.
+ * Falls back to the absolute citation when the parent prefix doesn't
+ * match (defensive — shouldn't happen given the caller filter).
+ */
+function relativeCitation(parent: string, child: string): string {
+  const prefix = parent.endsWith("/") ? parent : `${parent}/`;
+  if (!child.startsWith(prefix)) return child;
+  const tail = child.slice(prefix.length);
+  return tail
+    .split("/")
+    .map((s) => `(${s})`)
+    .join("/");
 }

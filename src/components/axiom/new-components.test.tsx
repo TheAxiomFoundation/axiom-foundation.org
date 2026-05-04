@@ -187,7 +187,7 @@ describe('RuleSpecTab', () => {
     expect(screen.getByText('Shown source')).toBeInTheDocument()
   })
 
-  it('renders module summary, rule cards, and clickable identifiers', () => {
+  it('renders module summary plus one card per rule with the YAML and source link', () => {
     const content = `format: rulespec/v1
 module:
   summary: |-
@@ -211,7 +211,7 @@ rules:
       - effective_from: '1990-01-01'
         formula: wages * oasdi_wage_tax_rate
 `
-    render(
+    const { container } = render(
       <RuleSpecTab
         encoding={makeEncoding({ rulespec_content: content, final_scores: null })}
         loading={false}
@@ -224,9 +224,9 @@ rules:
     // Both rule names are present as headings.
     expect(screen.getByRole('heading', { name: 'oasdi_wage_tax_rate' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'oasdi_wage_tax' })).toBeInTheDocument()
-    // Cross-rule identifier in oasdi_wage_tax's formula becomes an anchor.
-    const link = screen.getByText('oasdi_wage_tax_rate', { selector: 'a' })
-    expect(link).toHaveAttribute('href', '#rule-oasdi_wage_tax_rate')
+    // The full YAML round-trips through dump and lands in the rendered code.
+    expect(container.textContent).toContain('wages * oasdi_wage_tax_rate')
+    expect(container.textContent).toContain("formula: '0.062'")
     // Source citation renders as a link when source_url is present.
     expect(screen.getByText('26 USC 3101(a)').closest('a')).toHaveAttribute(
       'href',

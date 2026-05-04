@@ -9,6 +9,7 @@ import {
 } from "./rulespec-tab";
 import type { RuleEncodingData } from "@/lib/supabase";
 import type { RuleSpecTestCase } from "@/lib/axiom/rulespec/doc";
+import { _resetRawFetchCache } from "@/lib/axiom/rulespec/raw-cache";
 
 function makeEncoding(
   overrides: Partial<RuleEncodingData> = {}
@@ -111,22 +112,27 @@ describe("groupTestsByRule", () => {
 
 describe("RuleSpecTab — rendering edge cases", () => {
   beforeEach(() => {
+    _resetRawFetchCache();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
   });
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("renders an effective-from → effective-to arrow when a sunset is declared", () => {
-    render(
+  it("emits each rule's YAML inside a code block", () => {
+    const { container } = render(
       <RuleSpecTab
         encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
         loading={false}
         jurisdiction="us"
       />
     );
-    expect(screen.getAllByText("2020-01-01").length).toBeGreaterThan(0);
-    expect(screen.getByText("2024-12-31")).toBeInTheDocument();
+    // Both effective dates show up in the dumped YAML — Prism
+    // splits text into spans so we look at concatenated text.
+    expect(container.textContent).toContain("2020-01-01");
+    expect(container.textContent).toContain("2024-12-31");
+    // The derived rule's formula round-trips through dump.
+    expect(container.textContent).toContain("rate * wages");
   });
 
   it("expands the per-rule tests block on click and shows input/output rows", async () => {
@@ -171,7 +177,7 @@ describe("RuleSpecTab — rendering edge cases", () => {
     void tests; // silence unused warning if shape evolves
   });
 
-  it("renders an orphan-tests block when output keys do not match any local rule", async () => {
+  it("does not render tests whose output keys do not match any local rule", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -191,12 +197,14 @@ describe("RuleSpecTab — rendering edge cases", () => {
         jurisdiction="us"
       />
     );
-    await waitFor(() =>
-      expect(
-        screen.getByText(/Tests not bound to a rule \(1\)/i)
-      ).toBeInTheDocument()
-    );
-    expect(screen.getByText("stranded")).toBeInTheDocument();
+    // Give the fetch a tick to settle, then assert that the test
+    // case never rendered: orphan tests are dropped silently rather
+    // than surfaced in their own section.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText("stranded")).toBeNull();
+    expect(
+      screen.queryByText(/Tests not bound to a rule/i)
+    ).toBeNull();
   });
 
   it("surfaces parse warnings when the doc has soft errors", () => {
@@ -216,25 +224,81 @@ rules:
     expect(screen.getByText(/missing `name`/i)).toBeInTheDocument();
   });
 
-  it("does not link a formula identifier that is not a local rule name", () => {
-    const onlyOne = `format: rulespec/v1
-rules:
-  - name: tax
-    versions:
-      - effective_from: '2020-01-01'
-        formula: rate * wages
-`;
+  it("renders an encoded-subsections list when the rule has no YAML but its descendants do", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          tree: [
+            { path: "statutes/26/3101/a.yaml", type: "blob" },
+            { path: "statutes/26/3101/b/1.yaml", type: "blob" },
+            { path: "statutes/26/3101/b/2.yaml", type: "blob" },
+            { path: "statutes/26/63/c/5.yaml", type: "blob" },
+          ],
+        }),
+      })
+    );
     render(
       <RuleSpecTab
-        encoding={makeEncoding({ rulespec_content: onlyOne })}
+        encoding={null}
+        loading={false}
+        jurisdiction="us"
+        citationPath="us/statute/26/3101"
+      />
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Encoded in subsections/i)).toBeInTheDocument()
+    );
+    expect(
+      screen.getByText(/3 subsections have a RuleSpec encoding/i)
+    ).toBeInTheDocument();
+    // Each descendant becomes a link to its rule page, labelled
+    // relative to the parent so it reads as "(a)" / "(b)/(1)".
+    expect(screen.getByText("(a)").closest("a")).toHaveAttribute(
+      "href",
+      "/axiom/us/statute/26/3101/a"
+    );
+    expect(screen.getByText("(b)/(1)").closest("a")).toHaveAttribute(
+      "href",
+      "/axiom/us/statute/26/3101/b/1"
+    );
+  });
+
+  it("falls back to the bare 'Not yet encoded' state when no descendants are encoded either", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ tree: [] }),
+      })
+    );
+    render(
+      <RuleSpecTab
+        encoding={null}
+        loading={false}
+        jurisdiction="us"
+        citationPath="us/statute/26/9999"
+      />
+    );
+    expect(screen.getByText(/Not yet encoded/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Encoded in subsections/i)
+    ).toBeNull();
+  });
+
+  it("anchors each rule by name so cross-rule links scroll into view", () => {
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
         loading={false}
         jurisdiction="us"
       />
     );
-    // ``rate`` and ``wages`` are not declared in this doc, so no
-    // anchor element should be emitted for them.
-    expect(screen.queryByText("rate", { selector: "a" })).toBeNull();
-    expect(screen.queryByText("wages", { selector: "a" })).toBeNull();
+    // Each rule renders as an article anchored at #rule-<name> so the
+    // jurisdiction-level URL hash drops the reader into the right card.
+    expect(document.getElementById("rule-rate")).not.toBeNull();
+    expect(document.getElementById("rule-tax")).not.toBeNull();
   });
 
   it("handles an empty input/output table without crashing", async () => {

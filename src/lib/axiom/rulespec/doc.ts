@@ -31,6 +31,10 @@ export interface RuleSpecRule {
   source: string | null;
   source_url: string | null;
   versions: RuleSpecVersion[];
+  /** The original rule mapping as parsed from YAML, kept so the
+   *  renderer can dump it back as a single code block without
+   *  losing fields the typed view doesn't model. */
+  raw: Record<string, unknown>;
 }
 
 export interface RuleSpecModule {
@@ -112,7 +116,22 @@ function parseRule(v: unknown, errors: string[]): RuleSpecRule | null {
     source: asString(rec.source),
     source_url: asString(rec.source_url),
     versions: versionsRaw.map((v) => parseVersion(v, errors)),
+    raw: rec,
   };
+}
+
+/**
+ * Serialise a rule entry back to YAML for display in a code block.
+ * Uses block style and conservative line widths so formulas stay
+ * intact rather than collapsing to inline scalars.
+ */
+export function dumpRuleYaml(rule: RuleSpecRule): string {
+  return yaml.dump([rule.raw], {
+    indent: 2,
+    lineWidth: 100,
+    noRefs: true,
+    sortKeys: false,
+  });
 }
 
 /**

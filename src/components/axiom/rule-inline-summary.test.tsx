@@ -52,11 +52,11 @@ describe("RuleInlineSummary", () => {
     expect(screen.getByText("2 subsections")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "(a)" })).toHaveAttribute(
       "href",
-      "#sub-a"
+      "/us/regulation/7/273/3/a"
     );
     expect(screen.getByRole("link", { name: "(b)" })).toHaveAttribute(
       "href",
-      "#sub-b"
+      "/us/regulation/7/273/3/b"
     );
     expect(screen.getByText(/A household shall live/)).toBeInTheDocument();
     expect(screen.getByText(/When a household moves/)).toBeInTheDocument();

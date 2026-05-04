@@ -631,3 +631,63 @@ describe("getSectionNodes — encoded-only short-circuit", () => {
     expect(result.currentRule?.citation_path).toBe("us/regulation/7/273");
   });
 });
+
+describe("getSectionNodes — body-derived subsection leaves", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("synthesizes a leaf for labelled body subsections that have no corpus row", async () => {
+    const parentRow = {
+      id: "section-273-3",
+      jurisdiction: "us",
+      doc_type: "regulation",
+      parent_id: "part-273",
+      level: 3,
+      ordinal: 3,
+      heading: "Residency",
+      body:
+        "(a) A household shall live in the State in which it files an application.\n\n" +
+        "(b) When a household moves within the State, the State agency may require reapplication.",
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: "sources/us/regulation/2026-05-01/ecfr/title-7.xml",
+      citation_path: "us/regulation/7/273/3",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "2026-05-01",
+      updated_at: "2026-05-01",
+    };
+
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let citationPath = "";
+      const builder = {
+        select: () => builder,
+        eq: (_column: string, value: string) => {
+          citationPath = value;
+          return builder;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data:
+              citationPath === "us/regulation/7/273/3" ? parentRow : null,
+            error: null,
+          }),
+        gte: () => builder,
+        lt: () => builder,
+        is: () => builder,
+        order: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes("us/regulation/7/273/3/b");
+
+    expect(result.leafRule?.id).toBe("section-273-3:body-subsection:b");
+    expect(result.leafRule?.parent_id).toBe("section-273-3");
+    expect(result.leafRule?.citation_path).toBe("us/regulation/7/273/3/b");
+    expect(result.leafRule?.heading).toBe("(b) Residency");
+    expect(result.leafRule?.body).toContain("When a household moves");
+  });
+});

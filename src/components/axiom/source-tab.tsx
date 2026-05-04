@@ -122,9 +122,11 @@ function RichText({ text }: { text: string }) {
  * subsection so citation splicing keeps working block-by-block.
  */
 function BodySubsectionView({
+  parentCitationPath,
   subsections,
   refs,
 }: {
+  parentCitationPath?: string | null;
   subsections: BodySubsection[];
   refs: RuleReference[];
 }) {
@@ -146,7 +148,11 @@ function BodySubsectionView({
             {labelled.map((s) => (
               <li key={s.label!}>
                 <a
-                  href={`#sub-${s.label}`}
+                  href={
+                    parentCitationPath
+                      ? `/${parentCitationPath}/${s.label}`
+                      : `#sub-${s.label}`
+                  }
                   className="font-mono text-xs text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
                 >
                   ({s.label})
@@ -174,9 +180,11 @@ function BodySubsectionView({
 export function SourceTab({
   document,
   outgoingRefs,
+  citationPath,
 }: {
   document: ViewerDocument;
   outgoingRefs?: RuleReference[];
+  citationPath?: string | null;
 }) {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -221,6 +229,7 @@ export function SourceTab({
 
       {renderInline && bodySubsections ? (
         <BodySubsectionView
+          parentCitationPath={citationPath}
           subsections={bodySubsections}
           refs={outgoingRefs ?? []}
         />

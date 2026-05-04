@@ -89,9 +89,11 @@ function RuleOutline({ childRules }: { childRules: Rule[] }) {
 }
 
 function BodySubsectionOutline({
+  parentCitationPath,
   subsections,
   refs,
 }: {
+  parentCitationPath: string | null;
   subsections: BodySubsection[];
   refs: RuleReference[];
 }) {
@@ -112,12 +114,16 @@ function BodySubsectionOutline({
           <ol className="flex flex-wrap gap-x-3 gap-y-2 m-0 p-0 list-none">
             {labelled.map((s) => (
               <li key={s.label!}>
-                <a
-                  href={`#sub-${s.label}`}
+                <Link
+                  href={
+                    parentCitationPath
+                      ? `/${parentCitationPath}/${s.label}`
+                      : `#sub-${s.label}`
+                  }
                   className="font-mono text-xs text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
                 >
                   ({s.label})
-                </a>
+                </Link>
               </li>
             ))}
           </ol>
@@ -258,6 +264,7 @@ export function RuleInlineSummary({
     if (bodySubsections) {
       return (
         <BodySubsectionOutline
+          parentCitationPath={rule.citation_path}
           subsections={bodySubsections}
           refs={outgoingRefs ?? []}
         />

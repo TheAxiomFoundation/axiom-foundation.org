@@ -116,7 +116,11 @@ export function RuleDetailPanel({
             {heroSlot ? (
               heroSlot({ outgoingRefs: outgoing })
             ) : (
-              <SourceTab document={document} outgoingRefs={outgoing} />
+              <SourceTab
+                document={document}
+                outgoingRefs={outgoing}
+                citationPath={rule.citation_path}
+              />
             )}
           </article>
 

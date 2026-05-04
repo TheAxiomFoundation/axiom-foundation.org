@@ -11,6 +11,11 @@ import {
   stripBodyLabel,
   type RuleTreeNode,
 } from "@/lib/axiom/rule-tree";
+import {
+  refsForSubsection,
+  splitBodyIntoSubsections,
+  type BodySubsection,
+} from "@/lib/axiom/body-subsections";
 
 interface RuleInlineSummaryProps {
   rule: Rule;
@@ -80,6 +85,56 @@ function RuleOutline({ childRules }: { childRules: Rule[] }) {
         ))}
       </ol>
     </nav>
+  );
+}
+
+function BodySubsectionOutline({
+  subsections,
+  refs,
+}: {
+  subsections: BodySubsection[];
+  refs: RuleReference[];
+}) {
+  const labelled = subsections.filter((s) => s.label !== null);
+  return (
+    <div data-testid="rule-inline-summary" className="max-w-[720px]">
+      {labelled.length > 1 && (
+        <nav
+          aria-label="Subsections"
+          className="mb-8 px-5 py-4 bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md"
+        >
+          <div className="flex items-baseline justify-between mb-3 gap-4">
+            <span className="eyebrow">In this section</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              {labelled.length} subsection{labelled.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <ol className="flex flex-wrap gap-x-3 gap-y-2 m-0 p-0 list-none">
+            {labelled.map((s) => (
+              <li key={s.label!}>
+                <a
+                  href={`#sub-${s.label}`}
+                  className="font-mono text-xs text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
+                >
+                  ({s.label})
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      <div className="space-y-7">
+        {subsections.map((s, i) => (
+          <section
+            key={s.label ?? `lead-${i}`}
+            id={s.label ? `sub-${s.label}` : undefined}
+            className="scroll-mt-8"
+          >
+            <RuleBody body={s.text} refs={refsForSubsection(s, refs)} />
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -199,6 +254,15 @@ export function RuleInlineSummary({
   // No children → plain body (rare for a container page, but safe).
   if (children.length === 0) {
     if (!ruleHasBody || !rule.body) return null;
+    const bodySubsections = splitBodyIntoSubsections(rule.body);
+    if (bodySubsections) {
+      return (
+        <BodySubsectionOutline
+          subsections={bodySubsections}
+          refs={outgoingRefs ?? []}
+        />
+      );
+    }
     return (
       <div data-testid="rule-inline-summary" className="max-w-[720px]">
         <RuleBody body={rule.body} refs={outgoingRefs ?? []} />

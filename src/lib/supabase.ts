@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
+import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 
 // Supabase configuration
 /* v8 ignore start -- env-dependent module initialization */
@@ -314,30 +315,52 @@ function duplicateTerminalSectionPath(basePath: string): string | null {
   return `${basePath}/${section}.yaml`
 }
 
-// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
-/* v8 ignore start -- network fetch to GitHub, tested via integration */
-function candidatePaths(
+// citation_path uses singular doc-type buckets ("statute", "regulation",
+// "policy"); the rules-* repos store files under plural buckets
+// ("statutes/", "regulations/", "policies/"). Translate at the repo
+// boundary so the rest of the path machinery can keep speaking the
+// citation_path dialect.
+export const REPO_BUCKET_RENAMES: Readonly<Record<string, string>> =
+  Object.freeze({
+    statute: 'statutes',
+    regulation: 'regulations',
+    policy: 'policies',
+  })
+
+export function toRepoBucketPath(path: string): string {
+  const slash = path.indexOf('/')
+  if (slash === -1) return path
+  const head = path.slice(0, slash)
+  const renamed = REPO_BUCKET_RENAMES[head]
+  return renamed ? renamed + path.slice(slash) : path
+}
+
+export function candidatePaths(
   basePath: string | null,
   rulespecPath: string | null,
 ): string[] {
+  const seen = new Set<string>()
   const candidates: string[] = []
+  const push = (raw: string) => {
+    const repoPath = toRepoBucketPath(raw)
+    if (!seen.has(repoPath)) {
+      seen.add(repoPath)
+      candidates.push(repoPath)
+    }
+  }
   if (rulespecPath) {
-    candidates.push(
-      rulespecPath.endsWith('.yaml') ? rulespecPath : `${rulespecPath}.yaml`,
-    )
+    push(rulespecPath.endsWith('.yaml') ? rulespecPath : `${rulespecPath}.yaml`)
   }
   if (basePath) {
     const duplicateSectionPath = duplicateTerminalSectionPath(basePath)
-    if (duplicateSectionPath && !candidates.includes(duplicateSectionPath)) {
-      candidates.push(duplicateSectionPath)
-    }
-    for (const path of parentPaths(basePath)) {
-      if (!candidates.includes(path)) candidates.push(path)
-    }
+    if (duplicateSectionPath) push(duplicateSectionPath)
+    for (const path of parentPaths(basePath)) push(path)
   }
   return candidates
 }
 
+// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
+/* v8 ignore start -- network fetch to GitHub, tested via integration */
 async function fetchRuleSpecFromGitHub(
   candidates: string[],
   jurisdiction: string
@@ -347,29 +370,24 @@ async function fetchRuleSpecFromGitHub(
 
   for (const filePath of candidates) {
     const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${filePath}`
-    try {
-      const res = await fetch(url, { next: { revalidate: 3600 } } as RequestInit)
-      if (!res.ok) continue
-      const rulespec_content = await res.text()
-      return {
-        encoding_run_id: `github:${filePath}`,
-        citation: filePath.replace('.yaml', ''),
-        session_id: null,
-        file_path: filePath,
-        rulespec_content,
-        final_scores: null,
-        iterations: null,
-        total_duration_ms: null,
-        agent_type: null,
-        agent_model: null,
-        data_source: null,
-        has_issues: null,
-        note: null,
-        timestamp: null,
-        encoder_version: null,
-      }
-    } catch {
-      continue
+    const res = await cachedRawFetch(url, { next: { revalidate: 3600 } } as RequestInit)
+    if (!res.ok) continue
+    return {
+      encoding_run_id: `github:${filePath}`,
+      citation: filePath.replace('.yaml', ''),
+      session_id: null,
+      file_path: filePath,
+      rulespec_content: res.body,
+      final_scores: null,
+      iterations: null,
+      total_duration_ms: null,
+      agent_type: null,
+      agent_model: null,
+      data_source: null,
+      has_issues: null,
+      note: null,
+      timestamp: null,
+      encoder_version: null,
     }
   }
   return null
@@ -378,20 +396,56 @@ async function fetchRuleSpecFromGitHub(
 
 // Fetch encoding data for a source provision by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
-  // First get the provision's citation_path/rulespec_path and jurisdiction
-  const { data: rule, error: ruleError } = await supabaseCorpus
-    .from('provisions')
-    .select('citation_path, jurisdiction, rulespec_path, has_rulespec')
-    .eq('id', ruleId)
-    .single()
+  // Synthesised IDs ("github:<citation_path>") are minted client-side
+  // for citation paths that have a YAML in the rules-* repo but no
+  // corpus row backing them. Skip the corpus lookup and resolve the
+  // path directly so the standard rule-detail rail can render the
+  // encoding without waiting on the DB backfill.
+  let rule: {
+    citation_path: string | null
+    jurisdiction: string
+    rulespec_path: string | null
+    has_rulespec: boolean
+  } | null = null
 
-  if (ruleError || !rule) return null
+  if (ruleId.startsWith('github:')) {
+    const citationPath = ruleId.slice('github:'.length)
+    const jurisdiction = citationPath.split('/')[0] ?? ''
+    if (!jurisdiction) return null
+    rule = {
+      citation_path: citationPath,
+      jurisdiction,
+      rulespec_path: null,
+      has_rulespec: true,
+    }
+  } else {
+    const { data, error } = await supabaseCorpus
+      .from('provisions')
+      .select('citation_path, jurisdiction, rulespec_path, has_rulespec')
+      .eq('id', ruleId)
+      .single()
+    if (error || !data) return null
+    rule = data
+  }
 
   // Match citation_path to encoding_runs.file_path
   // citation_path: "us/statute/26/1/j/2" → file_path: "statute/26/1/j/2.yaml"
-  const basePath = rule.citation_path
+  let basePath = rule.citation_path
     ? rule.citation_path.replace(rule.jurisdiction + '/', '')
     : null
+  // The rules-us repo prefixes federal-regulation titles with "-cfr"
+  // (``regulations/7-cfr/...``) while corpus drops it. Add the suffix
+  // back when assembling repo candidates so the GitHub fetch hits the
+  // right file.
+  /* v8 ignore start -- US-CFR title normalisation is exercised through getRuleEncoding integration paths */
+  if (basePath && rule.jurisdiction === 'us' && basePath.startsWith('regulation/')) {
+    const segs = basePath.split('/')
+    if (segs[1] && !segs[1].endsWith('-cfr')) {
+      segs[1] = `${segs[1]}-cfr`
+      basePath = segs.join('/')
+    }
+  }
+  /* v8 ignore stop */
   const candidates = candidatePaths(basePath, rule.rulespec_path)
 
   if (candidates.length === 0) return null
@@ -429,11 +483,14 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   }
 
-  // Fallback: fetch from GitHub rules-* repo only when the corpus says an
-  // encoding exists or gives us an explicit file path. Otherwise unencoded
-  // provisions would generate noisy 404 probes for every ancestor path.
-  if (!rule.has_rulespec && !rule.rulespec_path) return null
-
+  // Fallback: fetch from the jurisdiction's rules-* repo. We used to
+  // gate this on ``has_rulespec`` or an explicit ``rulespec_path``,
+  // but the corpus flag is far behind the actual repo state during
+  // the rolling migration — most YAMLs that exist on GitHub don't
+  // have ``has_rulespec=true`` set yet. The ``cachedRawFetch`` layer
+  // dedupes 404 probes per URL inside the TTL window, so the
+  // "noisy ancestor probes" worry from the original guard is
+  // already mitigated.
   return fetchRuleSpecFromGitHub(candidates, rule.jurisdiction)
 }
 
@@ -452,7 +509,7 @@ export interface SearchHit {
 
 export interface SearchOptions {
   jurisdiction?: string
-  docType?: 'statute' | 'regulation'
+  docType?: string
   limit?: number
 }
 
@@ -475,19 +532,93 @@ export async function searchRules(
   const q = query.trim()
   if (!q) return []
 
+  const limit = Math.max(1, Math.min(options.limit ?? 30, 100))
   const { data, error } = await supabaseCorpus.rpc('search_provisions', {
     q,
     jurisdiction_in: options.jurisdiction ?? null,
     doc_type_in: options.docType ?? null,
-    limit_in: Math.max(1, Math.min(options.limit ?? 30, 100)),
+    limit_in: limit,
   })
 
-  if (error) {
-    console.error('search_provisions RPC failed:', error)
-    return []
+  if (!error) {
+    return (data || []) as SearchHit[]
   }
 
-  return (data || []) as SearchHit[]
+  // The new corpus schema doesn't expose ``search_provisions`` yet
+  // — fall back to a direct ILIKE on the heading column so the
+  // search box still finds something obvious (program names,
+  // section headings) instead of always returning empty. We don't
+  // try to mimic ts_rank scoring here; results are ranked by
+  // citation_path alphabetical for predictability.
+  console.warn('search_provisions RPC unavailable; falling back to heading ILIKE')
+  return await searchRulesFallback(q, options, limit)
+}
+
+async function searchRulesFallback(
+  q: string,
+  options: SearchOptions,
+  limit: number
+): Promise<SearchHit[]> {
+  // Split on whitespace and AND the terms — PostgREST supports
+  // multiple ``heading=ilike.*…*`` clauses on the same query string
+  // by repeating the parameter, but the supabase-js builder collapses
+  // duplicates, so stack them via ``.ilike()`` calls instead.
+  const terms = q.split(/\s+/).filter(Boolean)
+  /* v8 ignore next 1 -- caller already trims; defensive only */
+  if (terms.length === 0) return []
+
+  let builder = supabaseCorpus
+    .from('provisions')
+    .select(
+      'id, jurisdiction, doc_type, citation_path, heading, body, has_rulespec'
+    )
+  if (options.jurisdiction) builder = builder.eq('jurisdiction', options.jurisdiction)
+  if (options.docType) builder = builder.eq('doc_type', options.docType)
+  for (const t of terms) {
+    builder = builder.ilike('heading', `%${t}%`)
+  }
+  builder = builder.not('heading', 'is', null).order('citation_path').limit(limit)
+
+  const { data, error } = await builder
+  /* v8 ignore next 1 -- defensive: ilike+order+limit shouldn't error in practice */
+  if (error || !data) return []
+
+  return (data as Array<{
+    id: string
+    jurisdiction: string
+    doc_type: string
+    citation_path: string
+    heading: string | null
+    body: string | null
+    has_rulespec: boolean
+  }>).map((row) => ({
+    id: row.id,
+    jurisdiction: row.jurisdiction,
+    doc_type: row.doc_type,
+    citation_path: row.citation_path,
+    heading: row.heading,
+    /* v8 ignore next 1 -- the .not('heading', 'is', null) clause filters nulls server-side */
+    snippet: highlightTerms((row.heading ?? '').slice(0, 200), terms),
+    has_rulespec: row.has_rulespec,
+    rank: 0,
+  }))
+}
+
+function highlightTerms(text: string, terms: string[]): string {
+  // Escape any HTML in the heading first so the renderer (which
+  // treats snippet as innerHTML) doesn't reflect raw input.
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  let out = escaped
+  for (const term of terms) {
+    /* v8 ignore next 1 -- caller filters empties; defensive only */
+    if (!term) continue
+    const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    out = out.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>')
+  }
+  return out
 }
 
 // ---- Axiom cross-references (get_provision_references RPC) ----

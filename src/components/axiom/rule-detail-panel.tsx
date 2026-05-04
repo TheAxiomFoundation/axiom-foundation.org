@@ -7,7 +7,7 @@ import { useEncoding } from "@/hooks/use-encoding";
 import { useRuleReferences } from "@/hooks/use-rule-references";
 import { trackAxiomEvent } from "@/lib/analytics";
 import { SourceTab } from "./source-tab";
-import { EncodingTab } from "./encoding-tab";
+import { RuleSpecTab } from "./rulespec-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
 import { ReferencesPanel } from "./references-panel";
 import type { RuleReference } from "@/lib/supabase";
@@ -116,7 +116,11 @@ export function RuleDetailPanel({
             {heroSlot ? (
               heroSlot({ outgoingRefs: outgoing })
             ) : (
-              <SourceTab document={document} outgoingRefs={outgoing} />
+              <SourceTab
+                document={document}
+                outgoingRefs={outgoing}
+                citationPath={rule.citation_path}
+              />
             )}
           </article>
 
@@ -127,10 +131,11 @@ export function RuleDetailPanel({
           <aside className="border-t xl:border-t-0 xl:border-l border-[var(--color-rule)] bg-[var(--color-paper)] xl:sticky xl:top-0 xl:self-start xl:max-h-screen xl:overflow-y-auto">
             <section className="px-6 py-8">
               <div className="eyebrow mb-6">Encoding</div>
-              <EncodingTab
+              <RuleSpecTab
                 encoding={encoding}
                 loading={loading}
                 jurisdiction={document.jurisdiction}
+                citationPath={rule.citation_path}
               />
             </section>
             {(outgoing.length > 0 || incoming.length > 0) && (

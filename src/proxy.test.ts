@@ -25,6 +25,14 @@ describe("proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("passes through explicit app host /axiom paths without double-prefixing", () => {
+    const response = proxy(
+      request("https://app.axiom-foundation.org/axiom/us/statute/7", "app.axiom-foundation.org")
+    );
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("bypasses framework and API paths on the app host", () => {
     const response = proxy(
       request("https://app.axiom-foundation.org/api/axiom", "app.axiom-foundation.org")

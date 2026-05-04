@@ -4,6 +4,8 @@ import {
   JURISDICTIONS_SEED,
   synthesiseJurisdiction,
 } from "@/lib/axiom/jurisdictions-seed";
+import { splitBodyIntoSubsections } from "@/lib/axiom/body-subsections";
+import { chapterlessSectionAlias } from "@/lib/axiom/citation-path-aliases";
 
 export type NodeType =
   | "jurisdiction"
@@ -145,6 +147,10 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
 const PAGE_SIZE = 100;
 const PREFIX_SCAN_PAGE_SIZE = 1000;
 const PREFIX_SCAN_MAX_ROWS = 10000;
+const ROOT_SCAN_PAGE_SIZE = 1000;
+const ROOT_SCAN_MAX_ROWS = 10000;
+const KNOWN_DOC_TYPES = ["statute", "regulation", "policy", "legislation"];
+const TITLE_SEGMENT_BUCKETS = [..."0123456789abcdefghijklmnopqrstuvwxyz"];
 
 // ---- Query functions ----
 
@@ -189,37 +195,58 @@ async function fetchDirectRootChildrenByCitationPrefix(
   pathPrefix: string
 ): Promise<{ rows: Rule[]; truncated: boolean }> {
   const expectedDepth = citationDepth(pathPrefix) + 1;
+  const childPrefix = `${pathPrefix}/`;
+  const upperBound = citationPrefixUpperBound(pathPrefix);
   const rows: Rule[] = [];
-  let offset = 0;
+  let cursor = pathPrefix;
 
-  while (offset < PREFIX_SCAN_MAX_ROWS) {
+  while (rows.length < PREFIX_SCAN_MAX_ROWS) {
     const { data, error } = await supabaseCorpus
       .from("provisions")
       .select("*")
-      .gte("citation_path", citationPrefixLowerBound(pathPrefix))
-      .lt("citation_path", citationPrefixUpperBound(pathPrefix))
-      .is("parent_id", null)
+      .gte("citation_path", cursor)
+      .lt("citation_path", upperBound)
       .order("citation_path")
-      .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1);
+      .limit(PREFIX_SCAN_PAGE_SIZE);
 
     if (error || !data || data.length === 0) {
       return { rows, truncated: false };
     }
 
+    let nextChild: Rule | null = null;
     for (const row of data as Rule[]) {
       if (
         row.citation_path &&
+        row.citation_path.startsWith(childPrefix) &&
         citationDepth(row.citation_path) === expectedDepth
       ) {
-        rows.push(row);
+        nextChild = row;
+        break;
       }
     }
 
-    if (data.length < PREFIX_SCAN_PAGE_SIZE) {
-      return { rows, truncated: false };
+    if (!nextChild?.citation_path) {
+      if (data.length < PREFIX_SCAN_PAGE_SIZE) {
+        return { rows, truncated: false };
+      }
+      const lastPath = (data[data.length - 1] as Rule).citation_path;
+      if (!lastPath || lastPath <= cursor) {
+        return { rows, truncated: true };
+      }
+      cursor = `${lastPath}~`;
+      continue;
     }
 
-    offset += PREFIX_SCAN_PAGE_SIZE;
+    rows.push(nextChild);
+
+    // Jump past this child's entire subtree. ``<child>~`` sorts after
+    // the child subtree while still allowing numeric siblings like 10
+    // and 11 to follow a title bucket like 1.
+    cursor = `${nextChild.citation_path}~`;
+
+    if (cursor >= upperBound) {
+      return { rows, truncated: false };
+    }
   }
 
   return { rows, truncated: true };
@@ -248,36 +275,210 @@ export async function getJurisdictionCounts(
 export async function getDocTypeNodes(
   jurisdiction: string
 ): Promise<TreeNode[]> {
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("citation_path")
-    .eq("jurisdiction", jurisdiction)
-    .not("citation_path", "is", null)
-    .is("parent_id", null)
-    .limit(1000);
+  // Do not discover root document types by sorting citation_path.
+  // Large state corpora such as Illinois can statement-timeout on
+  // ``order(citation_path)`` even though a simple existence check by
+  // doc_type is fast. Query the known doc-type buckets directly, then
+  // fall back to a bounded unsorted scan only for unexpected buckets.
+  const discovered = await Promise.all(
+    KNOWN_DOC_TYPES.map(async (segment) => {
+      const rootPath = `${jurisdiction}/${segment}`;
+      const { data: rootData } = await supabaseCorpus
+        .from("provisions")
+        .select("id")
+        .eq("citation_path", rootPath)
+        .limit(1);
+      if (rootData && rootData.length > 0) return segment;
 
-  const docTypes = new Set<string>();
-  for (const row of data || []) {
-    if (!row.citation_path) continue;
-    const parts = row.citation_path.split("/");
-    if (parts.length >= 2) {
-      docTypes.add(parts[1]);
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("citation_path")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", segment)
+        .is("parent_id", null)
+        .limit(1);
+      const citationPath = data?.[0]?.citation_path;
+      const citationSegment = citationPath?.split("/")[1];
+      return data &&
+        data.length > 0 &&
+        (!citationSegment || citationSegment === segment)
+        ? segment
+        : null;
+    })
+  );
+  const docTypes = new Set(
+    discovered.filter((segment): segment is string => segment !== null)
+  );
+
+  if (docTypes.size === 0) {
+    for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("doc_type")
+        .eq("jurisdiction", jurisdiction)
+        .is("parent_id", null)
+        .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        if (row.doc_type) docTypes.add(row.doc_type);
+      }
+
+      if (data.length < ROOT_SCAN_PAGE_SIZE) break;
     }
   }
 
   return Array.from(docTypes)
     .sort(naturalCompare)
-    .map((segment) => ({
-      segment,
-      label:
-        segment === "statute"
-          ? "Statutes"
-          : segment === "regulation"
-            ? "Regulations"
-            : formatGenericSegmentLabel(segment),
-      hasChildren: true,
-      nodeType: "doc_type" as const,
-    }));
+    .map((segment) => docTypeNode(segment));
+}
+
+async function scanTitleSegmentsFromRootRows(
+  jurisdiction: string,
+  docType: string
+): Promise<string[]> {
+  const titleSet = new Set<string>();
+
+  for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
+    const { data } = await supabaseCorpus
+      .from("provisions")
+      .select("citation_path")
+      .eq("jurisdiction", jurisdiction)
+      .eq("doc_type", docType)
+      .is("parent_id", null)
+      .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      if (!row.citation_path) continue;
+      const parts = row.citation_path.split("/");
+      if (parts.length >= 3 && parts[1] === docType) {
+        titleSet.add(parts[2]);
+      }
+    }
+
+    if (data.length < ROOT_SCAN_PAGE_SIZE) break;
+  }
+
+  return Array.from(titleSet).sort(naturalCompare);
+}
+
+async function fetchTitleEntriesByCitationPrefix(
+  jurisdiction: string,
+  docType: string
+): Promise<Array<{ segment: string; rule?: Rule }>> {
+  const pathPrefix = `${jurisdiction}/${docType}`;
+  const childPrefix = `${pathPrefix}/`;
+  const expectedDepth = citationDepth(pathPrefix) + 1;
+  const upperBound = citationPrefixUpperBound(pathPrefix);
+
+  const walkBucket = async (
+    lower: string,
+    bucketUpper: string
+  ): Promise<Array<{ segment: string; rule?: Rule }>> => {
+    const entries: Array<{ segment: string; rule?: Rule }> = [];
+    const seen = new Set<string>();
+    let cursor = lower;
+
+    while (entries.length < PREFIX_SCAN_MAX_ROWS) {
+      const { data, error } = await supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .gte("citation_path", cursor)
+        .lt("citation_path", bucketUpper)
+        .order("citation_path")
+        .limit(PREFIX_SCAN_PAGE_SIZE);
+
+      if (error || !data || data.length === 0) {
+        return entries;
+      }
+
+      let nextSegment: string | null = null;
+      let nextRule: Rule | undefined;
+      for (const row of data as Rule[]) {
+        if (!row.citation_path?.startsWith(childPrefix)) continue;
+        const parts = row.citation_path.split("/");
+        const segment = parts[expectedDepth - 1];
+        if (!segment || seen.has(segment)) continue;
+        nextSegment = segment;
+        if (citationDepth(row.citation_path) === expectedDepth) {
+          nextRule = row;
+        }
+        break;
+      }
+
+      if (!nextSegment) {
+        if (data.length < PREFIX_SCAN_PAGE_SIZE) {
+          return entries;
+        }
+        const lastPath = (data[data.length - 1] as Rule).citation_path;
+        if (!lastPath || lastPath <= cursor) {
+          return entries;
+        }
+        cursor = `${lastPath}~`;
+        continue;
+      }
+
+      seen.add(nextSegment);
+      entries.push(
+        nextRule?.jurisdiction === jurisdiction
+          ? { segment: nextSegment, rule: nextRule }
+          : { segment: nextSegment }
+      );
+      cursor = `${pathPrefix}/${nextSegment}~`;
+
+      if (cursor >= bucketUpper) {
+        return entries;
+      }
+    }
+
+    return entries;
+  };
+
+  const bucketEntries = await Promise.all(
+    TITLE_SEGMENT_BUCKETS.map((bucket, index) => {
+      const nextBucket = TITLE_SEGMENT_BUCKETS[index + 1];
+      const lower = `${pathPrefix}/${bucket}`;
+      const bucketUpper = nextBucket
+        ? `${pathPrefix}/${nextBucket}`
+        : upperBound;
+      return walkBucket(lower, bucketUpper);
+    })
+  );
+  const bySegment = new Map<string, { segment: string; rule?: Rule }>();
+  for (const entry of bucketEntries.flat()) {
+    if (!bySegment.has(entry.segment) || entry.rule) {
+      bySegment.set(entry.segment, entry);
+    }
+  }
+  return Array.from(bySegment.values()).sort((a, b) =>
+    naturalCompare(a.segment, b.segment)
+  );
+}
+
+function titleEntryToNode(
+  entry: { segment: string; rule?: Rule },
+  encodedPaths?: Set<string>
+): TreeNode {
+  return entry.rule
+    ? ruleToSectionNode(entry.rule, encodedPaths)
+    : titleNode(entry.segment);
+}
+
+function docTypeNode(segment: string): TreeNode {
+  return {
+    segment,
+    label:
+      segment === "statute"
+        ? "Statutes"
+        : segment === "regulation"
+          ? "Regulations"
+          : formatGenericSegmentLabel(segment),
+    hasChildren: true,
+    nodeType: "doc_type" as const,
+  };
 }
 
 export async function getTitleNodes(
@@ -294,80 +495,204 @@ export async function getTitleNodes(
     .maybeSingle();
 
   if (parentRule) {
+    // When the encoded-only filter is on, narrow the query to the
+    // exact set of children whose citation paths are encoded
+    // ancestors. Otherwise a parent like "Code of Colorado
+    // Regulations" (~1k children) can push the encoded entry past
+    // the default 1000-row limit and the filter ends up matching
+    // nothing.
+    if (encodedOnly && encodedPaths) {
+      const wantedTitles = new Set<string>();
+      const docTypePrefix = `${_docType}/`;
+      for (const p of encodedPaths) {
+        if (!p.startsWith(docTypePrefix)) continue;
+        const tail = p.slice(docTypePrefix.length);
+        const firstSeg = tail.split("/")[0];
+        if (firstSeg) wantedTitles.add(firstSeg);
+      }
+      if (wantedTitles.size === 0) return [];
+      const wantedPaths = Array.from(wantedTitles).map(
+        (t) => `${jurisdiction}/${_docType}/${t}`
+      );
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .eq("parent_id", parentRule.id)
+        .in("citation_path", wantedPaths)
+        .order("ordinal");
+      return ((data || []) as Rule[]).map((r) =>
+        ruleToSectionNode(r, encodedPaths)
+      );
+    }
+
     const { data } = await supabaseCorpus
       .from("provisions")
       .select("*")
       .eq("parent_id", parentRule.id)
       .order("ordinal");
 
-    let nodes = ((data || []) as Rule[]).map((r) =>
-      ruleToSectionNode(r, encodedPaths)
+    const rules = (data || []) as Rule[];
+    if (rules.length > 0) {
+      return rules.map((r) => ruleToSectionNode(r, encodedPaths));
+    }
+
+    const prefixEntries = await fetchTitleEntriesByCitationPrefix(
+      jurisdiction,
+      _docType
     );
-
-    if (encodedOnly && encodedPaths) {
-      nodes = nodes.filter((n) => {
-        if (n.hasRuleSpec) return true;
-        if (n.rule?.citation_path) {
-          const parts = n.rule.citation_path.split("/");
-          const withoutJurisdiction = parts.slice(1).join("/");
-          return hasEncodedDescendant(encodedPaths, withoutJurisdiction);
-        }
-        return false;
-      });
+    if (prefixEntries.length > 0) {
+      return prefixEntries.map((entry) =>
+        titleEntryToNode(entry, encodedPaths)
+      );
     }
 
-    return nodes;
+    const fallbackTitles = await scanTitleSegmentsFromRootRows(
+      jurisdiction,
+      _docType
+    );
+    return fallbackTitles.map((title) => titleNode(title));
   }
 
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("citation_path")
-    .eq("jurisdiction", jurisdiction)
-    .not("citation_path", "is", null)
-    .is("parent_id", null)
-    .limit(1000);
-
-  if (!data || data.length === 0) return [];
-
-  const titleSet = new Set<string>();
-  for (const row of data) {
-    if (!row.citation_path) continue;
-    const parts = row.citation_path.split("/");
-    if (parts.length >= 3 && parts[1] === _docType) {
-      titleSet.add(parts[2]);
-    }
-  }
-
-  let titles = Array.from(titleSet).sort(naturalCompare);
-
-  // Filter to titles that have at least one encoded descendant
+  // ``citation_path is not null`` server-side intermittently triggers
+  // statement timeout for large jurisdictions; fetch the parent_id=null
+  // roots unfiltered and skip nulls in JS.
+  // When the encoded-only filter is on, derive the title list
+  // directly from the encoded-paths set rather than scanning corpus.
+  // Some jurisdictions have so many parent_id=null rows that the
+  // first 1000-row page misses encoded titles entirely (e.g. CFR
+  // title 7 sits after the 33–41 wall in ``us``). The encoded set
+  // is small and authoritative.
+  let titles: string[];
+  let includeTitleCounts = true;
   if (encodedOnly && encodedPaths) {
-    titles = titles.filter((title) =>
-      hasEncodedDescendant(encodedPaths, `statute/${title}`)
-    );
+    const encoded = new Set<string>();
+    const docTypePrefix = `${_docType}/`;
+    for (const p of encodedPaths) {
+      if (!p.startsWith(docTypePrefix)) continue;
+      const tail = p.slice(docTypePrefix.length);
+      const firstSeg = tail.split("/")[0];
+      if (firstSeg) encoded.add(firstSeg);
+    }
+    if (encoded.size === 0) return [];
+    titles = Array.from(encoded).sort(naturalCompare);
+  } else {
+    titles = await scanTitleSegmentsFromRootRows(jurisdiction, _docType);
+    if (titles.length === 0) {
+      const prefixEntries = await fetchTitleEntriesByCitationPrefix(
+        jurisdiction,
+        _docType
+      );
+      if (prefixEntries.length > 0) {
+        return prefixEntries.map((entry) =>
+          titleEntryToNode(entry, encodedPaths)
+        );
+      }
+      return [];
+    }
+    includeTitleCounts = false;
   }
 
   const nodes = await Promise.all(
     titles.map(async (title) => {
-      const prefix = `${jurisdiction}/${_docType}/${title}`;
-      const { count } = await supabaseCorpus
-        .from("provisions")
-        .select("*", { count: "exact", head: true })
-        .gte("citation_path", citationPrefixLowerBound(prefix))
-        .lt("citation_path", citationPrefixUpperBound(prefix))
-        .is("parent_id", null);
+      let childCount: number | undefined;
+      if (includeTitleCounts) {
+        const prefix = `${jurisdiction}/${_docType}/${title}`;
+        const { count } = await supabaseCorpus
+          .from("provisions")
+          .select("*", { count: "exact", head: true })
+          .gte("citation_path", citationPrefixLowerBound(prefix))
+          .lt("citation_path", citationPrefixUpperBound(prefix))
+          .is("parent_id", null);
+        childCount = count || 0;
+      }
 
-      return {
-        segment: title,
-        label: `Title ${title}`,
-        hasChildren: true,
-        childCount: count || 0,
-        nodeType: "title" as const,
-      };
+      return titleNode(title, childCount);
     })
   );
 
   return nodes;
+}
+
+function titleNode(title: string, childCount?: number): TreeNode {
+  return {
+    segment: title,
+    label: `Title ${title}`,
+    hasChildren: true,
+    ...(childCount !== undefined ? { childCount } : {}),
+    nodeType: "title" as const,
+  };
+}
+
+/**
+ * Look up rules whose citation_path is ``<rule>.<...>`` — i.e. dotted
+ * subsections that share a parent with ``rule`` in the corpus but
+ * read as a subsection in the law's own numbering. Used to surface
+ * CCR-style subsections (``4.401.1``, ``4.401.2``) under their
+ * parent's page even though the corpus tree doesn't re-parent them.
+ */
+async function fetchDottedSubsectionSiblings(rule: Rule): Promise<Rule[]> {
+  if (!rule.citation_path) return [];
+  const lower = `${rule.citation_path}.`;
+  const upper =
+    lower.slice(0, -1) + String.fromCharCode(lower.charCodeAt(lower.length - 1) + 1);
+  const { data } = await supabaseCorpus
+    .from("provisions")
+    .select("*")
+    .gte("citation_path", lower)
+    .lt("citation_path", upper)
+    .order("citation_path");
+  return (data ?? []) as Rule[];
+}
+
+async function resolveBodySubsectionRule(
+  pathPrefix: string
+): Promise<Rule | null> {
+  const parts = pathPrefix.split("/");
+  if (parts.length < 5) return null;
+  const label = parts.at(-1);
+  const parentCitationPath = parts.slice(0, -1).join("/");
+  if (!label || !parentCitationPath) return null;
+
+  const { data: parentRule } = await supabaseCorpus
+    .from("provisions")
+    .select("*")
+    .eq("citation_path", parentCitationPath)
+    .maybeSingle();
+
+  const parent = parentRule as Rule | null;
+  if (!parent?.body) return null;
+
+  const subsections = splitBodyIntoSubsections(parent.body);
+  if (!subsections) return null;
+  const index = subsections.findIndex((s) => s.label === label);
+  if (index < 0) return null;
+
+  const subsection = subsections[index];
+  return {
+    ...parent,
+    id: `${parent.id}:body-subsection:${label}`,
+    parent_id: parent.id,
+    level: parent.level + 1,
+    ordinal: index,
+    heading: parent.heading ? `(${label}) ${parent.heading}` : `(${label})`,
+    body: subsection.text,
+    citation_path: pathPrefix,
+    has_rulespec: false,
+    rulespec_path: null,
+  };
+}
+
+async function resolveCitationPathAlias(
+  pathPrefix: string
+): Promise<Rule | null> {
+  const alias = chapterlessSectionAlias(pathPrefix);
+  if (!alias || alias === pathPrefix) return null;
+  const { data } = await supabaseCorpus
+    .from("provisions")
+    .select("*")
+    .eq("citation_path", alias)
+    .maybeSingle();
+  return (data as Rule | null) ?? null;
 }
 
 export async function getSectionNodes(
@@ -383,6 +708,49 @@ export async function getSectionNodes(
     .maybeSingle();
 
   if (parentRule) {
+    // Encoded-only short-circuit: pull the encoded descendants
+    // directly by their citation_path instead of walking the
+    // corpus's parent_id tree. The corpus parents 7 CFR 273.3 under
+    // ``subpart-B`` and the rules-us repo files it as bare
+    // ``273/3.yaml``, so a path-prefix descendant check on the
+    // subpart node never matches. Picking up the encoded paths
+    // straight from the set produces the right list regardless.
+    if (encodedOnly && encodedPaths) {
+      const pathTail = pathPrefix.split("/").slice(1).join("/");
+      const jurisdiction = pathPrefix.split("/")[0];
+      const wantedTails = new Set<string>();
+      for (const p of encodedPaths) {
+        if (!p.startsWith(`${pathTail}/`)) continue;
+        const remainder = p.slice(pathTail.length + 1);
+        const firstSeg = remainder.split("/")[0];
+        if (firstSeg) wantedTails.add(firstSeg);
+      }
+      if (wantedTails.size === 0) {
+        return {
+          nodes: [],
+          hasMore: false,
+          total: 0,
+          currentRule: parentRule as Rule,
+        };
+      }
+      const wantedPaths = Array.from(wantedTails).map(
+        (t) => `${pathPrefix}/${t}`
+      );
+      const { data: encodedRows } = await supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .in("citation_path", wantedPaths)
+        .order("citation_path");
+      const rules = (encodedRows ?? []) as Rule[];
+      void jurisdiction;
+      return {
+        nodes: rules.map((r) => ruleToSectionNode(r, encodedPaths)),
+        hasMore: false,
+        total: rules.length,
+        currentRule: parentRule as Rule,
+      };
+    }
+
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
     const { data, count } = await supabaseCorpus
@@ -395,8 +763,25 @@ export async function getSectionNodes(
     const rules = (data || []) as Rule[];
     const total = count || 0;
 
-    // Leaf node: parentRule exists but has no children
+    // Leaf node: parentRule exists but has no parent_id-anchored
+    // children. Before declaring it a leaf, look for citation-path
+    // siblings that read like dotted subsections — the CCR encoder
+    // stores ``4.401.1``, ``4.401.2`` as siblings of ``4.401`` under
+    // the same regulation parent, even though the dotted form reads
+    // as a subsection. Promote those to virtual children so the
+    // reader gets a navigable subsection list.
     if (total === 0) {
+      const dotted = await fetchDottedSubsectionSiblings(
+        parentRule as Rule
+      );
+      if (dotted.length > 0) {
+        return {
+          nodes: dotted.map((r) => ruleToSectionNode(r, encodedPaths)),
+          hasMore: false,
+          total: dotted.length,
+          currentRule: parentRule as Rule,
+        };
+      }
       return {
         nodes: [],
         hasMore: false,
@@ -405,26 +790,33 @@ export async function getSectionNodes(
       };
     }
 
-    let nodes = rules.map((r) => ruleToSectionNode(r, encodedPaths));
-
-    // Filter to nodes that are encoded or have encoded descendants
-    if (encodedOnly && encodedPaths) {
-      nodes = nodes.filter((n) => {
-        if (n.hasRuleSpec) return true;
-        if (n.rule?.citation_path) {
-          const parts = n.rule.citation_path.split("/");
-          const withoutJurisdiction = parts.slice(1).join("/");
-          return hasEncodedDescendant(encodedPaths, withoutJurisdiction);
-        }
-        return false;
-      });
-    }
+    const nodes = rules.map((r) => ruleToSectionNode(r, encodedPaths));
 
     return {
       nodes,
       hasMore: hasNextPage(page, total),
       total: encodedOnly ? nodes.length : total,
       currentRule: parentRule as Rule,
+    };
+  }
+
+  const aliasRule = await resolveCitationPathAlias(pathPrefix);
+  if (aliasRule) {
+    return {
+      nodes: [],
+      hasMore: false,
+      total: 0,
+      leafRule: aliasRule,
+    };
+  }
+
+  const bodySubsectionRule = await resolveBodySubsectionRule(pathPrefix);
+  if (bodySubsectionRule) {
+    return {
+      nodes: [],
+      hasMore: false,
+      total: 0,
+      leafRule: bodySubsectionRule,
     };
   }
 
@@ -457,20 +849,49 @@ export async function getSectionNodes(
 }
 
 /**
- * Fetch citation paths of all rules with has_rulespec=true from corpus.provisions.
- * Returns paths without jurisdiction prefix, e.g. "statute/26/1/j/2".
+ * Fetch the citation paths of every encoded rule for a jurisdiction,
+ * returned without the leading jurisdiction segment (so e.g.
+ * ``us/statute/26/1`` becomes ``statute/26/1``). The "Encoded only"
+ * filter narrows the tree to branches whose paths show up in this
+ * set.
+ *
+ * The canonical source is the jurisdiction's ``rules-*`` GitHub repo
+ * — that's the file-system of truth about what's been checked in,
+ * regardless of whether ``has_rulespec`` has been backfilled in the
+ * corpus DB. We layer in any corpus rows that already carry the flag
+ * too, so an in-flight encoder run that sets ``has_rulespec=true``
+ * before pushing the YAML still shows up.
  */
-export async function getEncodedPaths(): Promise<Set<string>> {
+export async function getEncodedPaths(
+  jurisdiction: string
+): Promise<Set<string>> {
+  const paths = new Set<string>();
+
+  // Source 1: rules-* GitHub tree
+  try {
+    const { listEncodedFiles } = await import(
+      "@/lib/axiom/rulespec/repo-listing"
+    );
+    const files = await listEncodedFiles(jurisdiction);
+    for (const f of files) {
+      const parts = f.citationPath.split("/");
+      paths.add(parts.slice(1).join("/"));
+    }
+  } catch {
+    // Repo lookup failures fall through silently — corpus may still
+    // surface some encoded paths via has_rulespec=true.
+  }
+
+  // Source 2: corpus.has_rulespec
   const { data } = await supabaseCorpus
     .from("provisions")
     .select("citation_path")
+    .eq("jurisdiction", jurisdiction)
     .eq("has_rulespec", true);
 
-  const paths = new Set<string>();
   if (data) {
     for (const row of data) {
       if (row.citation_path) {
-        // Strip jurisdiction prefix (e.g. "us/statute/26/1" → "statute/26/1")
         const parts = row.citation_path.split("/");
         paths.add(parts.slice(1).join("/"));
       }

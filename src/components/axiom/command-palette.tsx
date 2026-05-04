@@ -496,33 +496,31 @@ function Kbd({ children }: { children: React.ReactNode }) {
 function EmptyState() {
   return (
     <div className="px-5 py-8 text-sm text-[var(--color-ink-muted)] leading-relaxed">
-      <p className="mb-3">
-        Type a citation to jump directly:
-      </p>
+      <p className="mb-3">Type a citation to jump directly:</p>
       <ul className="space-y-1 font-mono text-xs text-[var(--color-ink-secondary)]">
         <li>
-          <span className="text-[var(--color-accent)]">26 USC § 32(b)(1)</span>{" "}
-          — US Code with subsections
+          <span className="text-[var(--color-accent)]">26 USC § 3101(a)</span>{" "}
+          — OASDI wage tax rate
         </li>
         <li>
-          <span className="text-[var(--color-accent)]">7 CFR 273.9(c)(1)</span>{" "}
-          — Code of Federal Regulations
+          <span className="text-[var(--color-accent)]">26 USC § 63(c)</span>{" "}
+          — Standard deduction
         </li>
         <li>
-          <span className="text-[var(--color-accent)]">UKSI 2013/376 reg 22</span>{" "}
-          — UK Statutory Instrument
+          <span className="text-[var(--color-accent)]">7 CFR 273.3</span>{" "}
+          — SNAP residency rule
         </li>
         <li>
-          <span className="text-[var(--color-accent)]">C.R.S. § 26-2-703</span>{" "}
-          — Colorado Revised Statutes
+          <span className="text-[var(--color-accent)]">10 CCR 2506-1 § 4.401</span>{" "}
+          — Colorado SNAP income eligibility
         </li>
       </ul>
       <p className="mt-4 mb-1">Or a program name:</p>
       <p className="font-mono text-xs text-[var(--color-ink-secondary)]">
         <span className="text-[var(--color-accent)]">SNAP</span>,{" "}
-        <span className="text-[var(--color-accent)]">EITC</span>,{" "}
-        <span className="text-[var(--color-accent)]">Universal Credit</span>,{" "}
-        <span className="text-[var(--color-accent)]">Medicaid</span>…
+        <span className="text-[var(--color-accent)]">OASDI</span>,{" "}
+        <span className="text-[var(--color-accent)]">SECA</span>,{" "}
+        <span className="text-[var(--color-accent)]">Standard deduction</span>…
       </p>
     </div>
   );

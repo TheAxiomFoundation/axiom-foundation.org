@@ -22,6 +22,55 @@ import type { DisplayContext } from "@/lib/tree-data";
 import { useRule } from "@/hooks/use-rules";
 import { trackAxiomEvent } from "@/lib/analytics";
 
+/**
+ * Compact "Encoded only" toggle, sized to sit beside ``PaletteTrigger``
+ * in the page's top-right command bar. Behaviour mirrors the previous
+ * standalone filter row — only the layout has shifted to live next to
+ * search rather than above the tree list.
+ */
+function EncodedOnlyToggle({
+  encodedOnly,
+  setEncodedOnly,
+}: {
+  encodedOnly: boolean;
+  setEncodedOnly: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={encodedOnly}
+      // Persisted value is read synchronously on the client, so the
+      // server-rendered "off" state can briefly disagree with the
+      // hydrated "on" state. Suppress the warning on the dynamic
+      // attrs; the visual state settles within the first commit.
+      suppressHydrationWarning
+      onClick={() => {
+        const next = !encodedOnly;
+        trackAxiomEvent("axiom_filter_toggled", {
+          filter: "encoded_only",
+          enabled: next,
+        });
+        setEncodedOnly(next);
+      }}
+      className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+        encodedOnly
+          ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+          : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-block w-2 h-2 rounded-full transition-colors ${
+          encodedOnly
+            ? "bg-[var(--color-accent)]"
+            : "bg-[var(--color-ink-muted)]"
+        }`}
+      />
+      Encoded only
+    </button>
+  );
+}
+
 function RuleTreeView({
   segments,
   dbJurisdictionId,
@@ -151,13 +200,19 @@ function RuleTreeView({
         )
       : null;
 
-  const handleNavigate = (node: { segment: string }) => {
+  const handleNavigate = (node: { segment: string; rule?: { citation_path: string | null } }) => {
     trackAxiomEvent("axiom_tree_navigated", {
       depth: segments.length + 1,
       segment: node.segment,
     });
-    router.push(`/${[...segments, node.segment].join("/")}`);
+    router.push(
+      node.rule?.citation_path
+        ? `/${node.rule.citation_path}`
+        : `/${[...segments, node.segment].join("/")}`
+    );
   };
+
+  const showFilterToggle = !currentRule || currentRuleIsNavigationContainer;
 
   return (
     <div className="max-w-[1280px] mx-auto px-8">
@@ -165,7 +220,15 @@ function RuleTreeView({
         <div className="flex-1 min-w-0">
           <TreeBreadcrumbs items={breadcrumbs} />
         </div>
-        <PaletteTrigger />
+        <div className="flex items-center gap-2 shrink-0">
+          {showFilterToggle && (
+            <EncodedOnlyToggle
+              encodedOnly={encodedOnly}
+              setEncodedOnly={setEncodedOnly}
+            />
+          )}
+          <PaletteTrigger />
+        </div>
       </div>
 
       {currentRule && currentRuleDetail && (
@@ -218,48 +281,8 @@ function RuleTreeView({
           subsection breakdown above is the primary affordance, so
           showing the same children again in a list below would be
           redundant. */}
-      {!currentRule || currentRuleIsNavigationContainer ? (
+      {showFilterToggle ? (
         <>
-          {/* v8 ignore start -- filter toggle UI */}
-          {/* Filter bar */}
-          <div className="flex items-center justify-end mb-3">
-            <button
-              type="button"
-              aria-pressed={encodedOnly}
-              // The stored value is read synchronously on the client,
-              // so the server-rendered "off" state can briefly
-              // disagree with the hydrated "on" state when the user
-              // has the filter enabled. Suppress the warning on the
-              // dynamic attrs; the actual UI settles correctly within
-              // the first commit.
-              suppressHydrationWarning
-              onClick={() => {
-                const next = !encodedOnly;
-                trackAxiomEvent("axiom_filter_toggled", {
-                  filter: "encoded_only",
-                  enabled: next,
-                });
-                setEncodedOnly(next);
-              }}
-              className={`flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
-                encodedOnly
-                  ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-                  : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-block w-2 h-2 rounded-full transition-colors ${
-                  encodedOnly
-                    ? "bg-[var(--color-accent)]"
-                    : "bg-[var(--color-ink-muted)]"
-                }`}
-              />
-              Encoded only
-            </button>
-          </div>
-          {/* v8 ignore stop */}
-
           {/* Tree node list */}
           <div className="bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden min-h-[400px]">
             <TreeNodeList

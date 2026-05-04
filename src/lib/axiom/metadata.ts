@@ -1,5 +1,6 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
+import { citationPathLookupCandidates } from "./citation-path-aliases";
 import { citationPathPrefixes } from "./resolver";
 
 /**
@@ -60,7 +61,11 @@ export async function getAxiomRuleMetadata(
     };
   }
 
-  const prefixes = citationPathPrefixes(citationPath);
+  const lookupCandidates = citationPathLookupCandidates(citationPath);
+  const prefixes = uniqueCitationPaths([
+    ...lookupCandidates,
+    ...citationPathPrefixes(citationPath),
+  ]);
   const { data } = await supabaseCorpus
     .from("provisions")
     .select("*")
@@ -95,6 +100,13 @@ export async function getAxiomRuleMetadata(
   const heading = rule.heading?.trim();
   const body = rule.body?.trim();
   const citationLabel = rule.citation_path ?? citationPath;
+  const isAliasHit =
+    !!rule.citation_path &&
+    rule.citation_path !== citationPath &&
+    lookupCandidates.includes(rule.citation_path);
+  const resolvedCanonicalUrl = isAliasHit
+    ? `${AXIOM_APP_URL}/${rule.citation_path}`
+    : canonicalUrl;
   const title = heading
     ? `${citationLabel} — ${heading} · Axiom`
     : `${citationLabel} · Axiom`;
@@ -108,11 +120,15 @@ export async function getAxiomRuleMetadata(
     rule,
     title,
     description,
-    canonicalUrl,
+    canonicalUrl: resolvedCanonicalUrl,
     citationPath,
     jurisdiction: rule.jurisdiction,
     docType: rule.doc_type,
   };
+}
+
+function uniqueCitationPaths(paths: string[]): string[] {
+  return Array.from(new Set(paths));
 }
 
 /**

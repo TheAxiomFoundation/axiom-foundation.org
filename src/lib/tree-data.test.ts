@@ -7,6 +7,9 @@ import {
   resolveAxiomPath,
   hasEncodedDescendant,
   resolveDisplayContext,
+  getDocTypeNodes,
+  getTitleNodes,
+  getSectionNodes,
   JURISDICTIONS,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
@@ -281,6 +284,329 @@ describe("hasEncodedDescendant", () => {
   });
 });
 
+describe("getDocTypeNodes", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("uses cheap doc-type existence checks instead of citation-path sorting", async () => {
+    const orderSpy = vi.fn();
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let docType = "";
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: string) => {
+          if (column === "doc_type") docType = value;
+          return builder;
+        },
+        is: () => builder,
+        order: orderSpy,
+        limit: () =>
+          Promise.resolve({
+            data: ["statute", "regulation"].includes(docType)
+              ? [{ id: `${docType}-root` }]
+              : [],
+            error: null,
+          }),
+      } as never;
+      return builder;
+    });
+
+    const nodes = await getDocTypeNodes("us-co");
+
+    expect(orderSpy).not.toHaveBeenCalled();
+    expect(nodes.map((n) => n.segment)).toEqual(["regulation", "statute"]);
+  });
+
+  it("falls back to an unsorted scan for unexpected doc-type buckets", async () => {
+    const rangeSpy = vi.fn();
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        is: () => builder,
+        limit: () => Promise.resolve({ data: [], error: null }),
+        range: (...args: unknown[]) => {
+          rangeSpy(...args);
+          return Promise.resolve({
+            data: [{ doc_type: "manual" }],
+            error: null,
+          });
+        },
+      } as never;
+      return builder;
+    });
+
+    const nodes = await getDocTypeNodes("us-co");
+
+    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(nodes.map((n) => n.segment)).toEqual(["manual"]);
+  });
+
+  it("does not expose doc_type values whose citation path uses a different root segment", async () => {
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let docType = "";
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: string) => {
+          if (column === "doc_type") docType = value;
+          return builder;
+        },
+        is: () => builder,
+        limit: () =>
+          Promise.resolve({
+            data:
+              docType === "regulation"
+                ? [{ citation_path: "uk/legislation/uksi/2013/376" }]
+                : [],
+            error: null,
+          }),
+        range: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const nodes = await getDocTypeNodes("uk");
+
+    expect(nodes.map((n) => n.segment)).toEqual([]);
+  });
+});
+
+describe("getTitleNodes — root fallback", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("derives titles from doc-type-filtered root rows without citation-path sorting", async () => {
+    const rangeSpy = vi.fn();
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const rootScan = {
+      select: () => rootScan,
+      eq: () => rootScan,
+      is: () => rootScan,
+      range: (...args: unknown[]) => {
+        rangeSpy(...args);
+        return Promise.resolve({
+          data: [
+            { citation_path: "us-co/regulation/10-CCR-2506-1" },
+            { citation_path: "us-co/statute/crs" },
+            { citation_path: null },
+          ],
+          error: null,
+        });
+      },
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(rootScan);
+
+    const nodes = await getTitleNodes("us-co", "regulation");
+
+    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(nodes.map((n) => n.segment)).toEqual(["10-CCR-2506-1"]);
+    expect(nodes[0].childCount).toBeUndefined();
+  });
+
+  it("continues scanning when an early root page has only null citation paths", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const firstScanPage = {
+      select: () => firstScanPage,
+      eq: () => firstScanPage,
+      is: () => firstScanPage,
+      range: () =>
+        Promise.resolve({
+          data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
+          error: null,
+        }),
+    } as never;
+    const secondScanPage = {
+      select: () => secondScanPage,
+      eq: () => secondScanPage,
+      is: () => secondScanPage,
+      range: () =>
+        Promise.resolve({
+          data: [{ citation_path: "us-ky/statute/3" }],
+          error: null,
+        }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(firstScanPage)
+      .mockReturnValueOnce(secondScanPage);
+
+    const nodes = await getTitleNodes("us-ky", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["3"]);
+  });
+
+  it("falls back to root-row titles when a doc-type root has no parent_id children", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () =>
+        Promise.resolve({ data: { id: "statute-root" }, error: null }),
+    } as never;
+    const emptyChildren = {
+      select: () => emptyChildren,
+      eq: () => emptyChildren,
+      order: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    const prefixPages = [
+      [
+        {
+          id: "crs",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs",
+          heading: "Colorado Revised Statutes",
+        },
+      ],
+      [],
+    ];
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: () =>
+        Promise.resolve({
+          data: prefixPages.shift(),
+          error: null,
+        }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyChildren)
+      .mockReturnValue(prefixWalk);
+
+    const nodes = await getTitleNodes("us-co", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
+  });
+
+  it("walks citation-path title buckets without scanning parent_id roots", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const pages = [
+      [
+        {
+          id: "bpc",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/bpc",
+          heading: "Business and Professions Code - BPC",
+        },
+        {
+          id: "bpc-1",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/bpc/1",
+          heading: "1.",
+        },
+      ],
+      [
+        {
+          id: "ccp",
+          jurisdiction: "us-ca",
+          doc_type: "statute",
+          citation_path: "us-ca/statute/ccp",
+          heading: "Code of Civil Procedure - CCP",
+        },
+      ],
+      [],
+    ];
+    const limitSpy = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: pages.shift(), error: null })
+      );
+    const emptyRootScan = {
+      select: () => emptyRootScan,
+      eq: () => emptyRootScan,
+      is: () => emptyRootScan,
+      range: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: limitSpy,
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyRootScan)
+      .mockReturnValue(prefixWalk);
+
+    const nodes = await getTitleNodes("us-ca", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["bpc", "ccp"]);
+    expect(limitSpy).toHaveBeenCalled();
+  });
+
+  it("derives title buckets from deeper rows when no title root row exists", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const pages = [
+      [
+        {
+          id: "title-1-part",
+          jurisdiction: "us",
+          doc_type: "regulation",
+          citation_path: "us/regulation/1/1",
+          heading: "Part 1",
+        },
+      ],
+      [
+        {
+          id: "title-10-part",
+          jurisdiction: "us",
+          doc_type: "regulation",
+          citation_path: "us/regulation/10/1",
+          heading: "Part 1",
+        },
+      ],
+      [],
+    ];
+    const prefixWalk = {
+      select: () => prefixWalk,
+      gte: () => prefixWalk,
+      lt: () => prefixWalk,
+      order: () => prefixWalk,
+      limit: () => Promise.resolve({ data: pages.shift(), error: null }),
+    } as never;
+    const emptyRootScan = {
+      select: () => emptyRootScan,
+      eq: () => emptyRootScan,
+      is: () => emptyRootScan,
+      range: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyRootScan)
+      .mockReturnValue(prefixWalk);
+
+    const nodes = await getTitleNodes("us", "regulation");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["1", "10"]);
+    expect(nodes.map((n) => n.rule)).toEqual([undefined, undefined]);
+  });
+});
+
 describe("isUUID", () => {
   it("detects valid UUIDs", () => {
     expect(isUUID("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
@@ -456,5 +782,296 @@ describe("resolveDisplayContext", () => {
 
     expect(result.targetIndex).toBe(0);
     expect(result.siblings).toEqual([otherChild]);
+  });
+});
+
+describe("getTitleNodes — encoded-only at /us/regulation", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("returns exactly the three CFR Title 7 sections we have encoded today", async () => {
+    // Corpus has no row for ``us/regulation`` itself — the parent
+    // lookup falls through to the encoded-only branch.
+    // The function fans out into two different query shapes:
+    //   • parent lookup:    .select().eq().maybeSingle() → null
+    //   • per-title count:  .select().gte().lt().is()    → count: 1
+    const countResult = Promise.resolve({ count: 1, data: null, error: null });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      gte: () => builder,
+      lt: () => builder,
+      is: () => builder,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: countResult.then.bind(countResult),
+    } as unknown as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    // After ``parseTreeEntries`` strips the ``-cfr`` suffix on US
+    // regulation titles, the three encoded ``rules-us`` files surface
+    // in the encoded-paths set as ``regulation/7/273/{3,4,5}``.
+    const encodedPaths = new Set<string>([
+      "regulation/7/273/3",
+      "regulation/7/273/4",
+      "regulation/7/273/5",
+      "statute/26/3101/a",
+      "policy/usda/snap/fy-2026-cola/deductions",
+    ]);
+
+    const nodes = await getTitleNodes("us", "regulation", encodedPaths, true);
+
+    // The three encoded sections all live under CFR Title 7, so the
+    // title-level list collapses to a single entry.
+    expect(nodes.map((n) => n.segment)).toEqual(["7"]);
+    expect(nodes[0]).toMatchObject({
+      segment: "7",
+      label: "Title 7",
+      hasChildren: true,
+      nodeType: "title",
+    });
+  });
+
+  it("returns an empty list when no encoded path lives under the requested doc-type", async () => {
+    // The function fans out into two different query shapes:
+    //   • parent lookup:    .select().eq().maybeSingle() → null
+    //   • per-title count:  .select().gte().lt().is()    → count: 1
+    const countResult = Promise.resolve({ count: 1, data: null, error: null });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      gte: () => builder,
+      lt: () => builder,
+      is: () => builder,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: countResult.then.bind(countResult),
+    } as unknown as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    const encodedPaths = new Set<string>([
+      "statute/26/3101/a",
+      "policy/usda/snap/fy-2026-cola/deductions",
+    ]);
+
+    const nodes = await getTitleNodes(
+      "us",
+      "regulation",
+      encodedPaths,
+      true
+    );
+    expect(nodes).toEqual([]);
+  });
+});
+
+describe("getSectionNodes — encoded-only short-circuit", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("pulls encoded sections directly when the parent_id tree puts them under intermediate subparts", async () => {
+    // Corpus parents 7 CFR 273.3 under ``subpart-B`` while the
+    // rules-us repo files it as bare ``273/3.yaml``. The encoded-only
+    // branch should resolve that mismatch by querying the encoded
+    // citation paths directly.
+    const partRow = {
+      id: "part-273",
+      citation_path: "us/regulation/7/273",
+      heading: "CERTIFICATION OF ELIGIBLE HOUSEHOLDS",
+    };
+    const encodedRow = {
+      id: "section-273-3",
+      citation_path: "us/regulation/7/273/3",
+      heading: "Residency",
+      jurisdiction: "us",
+      doc_type: "regulation",
+      parent_id: "subpart-B",
+      has_rulespec: false,
+    };
+    const inSpy = vi.fn();
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        in: (...args: unknown[]) => {
+          inSpy(...args);
+          return builder;
+        },
+        order: () =>
+          Promise.resolve({ data: [encodedRow], error: null }),
+        maybeSingle: () => Promise.resolve({ data: partRow, error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us/regulation/7/273",
+      0,
+      new Set([
+        "regulation/7/273/3",
+        "regulation/7/273/4",
+        "regulation/7/273/5",
+        "statute/26/3101/a",
+      ]),
+      true
+    );
+
+    expect(result.nodes.map((n) => n.rule?.citation_path)).toEqual([
+      "us/regulation/7/273/3",
+    ]);
+    expect(inSpy).toHaveBeenCalledWith(
+      "citation_path",
+      expect.arrayContaining([
+        "us/regulation/7/273/3",
+        "us/regulation/7/273/4",
+        "us/regulation/7/273/5",
+      ])
+    );
+  });
+
+  it("returns an empty list (with currentRule) when no encoded path lives under the requested prefix", async () => {
+    const partRow = {
+      id: "part-273",
+      citation_path: "us/regulation/7/273",
+      heading: "CERTIFICATION OF ELIGIBLE HOUSEHOLDS",
+    };
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        in: () => builder,
+        order: () => Promise.resolve({ data: [], error: null }),
+        maybeSingle: () => Promise.resolve({ data: partRow, error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us/regulation/7/273",
+      0,
+      new Set(["statute/26/3101/a"]),
+      true
+    );
+    expect(result.nodes).toEqual([]);
+    expect(result.currentRule?.citation_path).toBe("us/regulation/7/273");
+  });
+});
+
+describe("getSectionNodes — body-derived subsection leaves", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("synthesizes a leaf for labelled body subsections that have no corpus row", async () => {
+    const parentRow = {
+      id: "section-273-3",
+      jurisdiction: "us",
+      doc_type: "regulation",
+      parent_id: "part-273",
+      level: 3,
+      ordinal: 3,
+      heading: "Residency",
+      body:
+        "(a) A household shall live in the State in which it files an application.\n\n" +
+        "(b) When a household moves within the State, the State agency may require reapplication.",
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: "sources/us/regulation/2026-05-01/ecfr/title-7.xml",
+      citation_path: "us/regulation/7/273/3",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "2026-05-01",
+      updated_at: "2026-05-01",
+    };
+
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let citationPath = "";
+      const builder = {
+        select: () => builder,
+        eq: (_column: string, value: string) => {
+          citationPath = value;
+          return builder;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data:
+              citationPath === "us/regulation/7/273/3" ? parentRow : null,
+            error: null,
+          }),
+        gte: () => builder,
+        lt: () => builder,
+        is: () => builder,
+        order: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes("us/regulation/7/273/3/b");
+
+    expect(result.leafRule?.id).toBe("section-273-3:body-subsection:b");
+    expect(result.leafRule?.parent_id).toBe("section-273-3");
+    expect(result.leafRule?.citation_path).toBe("us/regulation/7/273/3/b");
+    expect(result.leafRule?.heading).toBe("(b) Residency");
+    expect(result.leafRule?.body).toContain("When a household moves");
+  });
+});
+
+describe("getSectionNodes — citation path aliases", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("resolves chapter-prefixed state statute URLs to canonical section rows", async () => {
+    const canonical = {
+      id: "ky-12-215",
+      jurisdiction: "us-ky",
+      doc_type: "statute",
+      parent_id: "chapter-12",
+      level: 2,
+      ordinal: 12215,
+      heading: "Expenses incurred by Attorney General",
+      body: "The expenses incurred by the Attorney General...",
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: null,
+      citation_path: "us-ky/statute/3/12.215",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "",
+      updated_at: "",
+    };
+
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let citationPath = "";
+      const builder = {
+        select: () => builder,
+        eq: (_column: string, value: string) => {
+          citationPath = value;
+          return builder;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data:
+              citationPath === "us-ky/statute/3/12.215" ? canonical : null,
+            error: null,
+          }),
+        gte: () => builder,
+        lt: () => builder,
+        is: () => builder,
+        order: () => builder,
+        range: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us-ky/statute/3/chapter-12/12.215"
+    );
+
+    expect(result.leafRule?.citation_path).toBe("us-ky/statute/3/12.215");
+    expect(result.leafRule?.heading).toBe(
+      "Expenses incurred by Attorney General"
+    );
   });
 });

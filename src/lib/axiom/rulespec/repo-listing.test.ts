@@ -5,7 +5,9 @@ import {
   citationPathToFilePath,
   listEncodedFiles,
   fetchEncodedFile,
+  findEncodedDescendants,
 } from "./repo-listing";
+import { _resetRawFetchCache } from "./raw-cache";
 
 describe("parseTreeEntries", () => {
   const TREE = {
@@ -102,6 +104,7 @@ describe("citationPathToFilePath", () => {
 describe("listEncodedFiles", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
+    _resetRawFetchCache();
   });
 
   it("returns an empty list for a jurisdiction without a published repo", async () => {
@@ -147,6 +150,7 @@ describe("listEncodedFiles", () => {
 describe("fetchEncodedFile", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
+    _resetRawFetchCache();
   });
 
   it("returns null when the jurisdiction has no published repo", async () => {
@@ -183,5 +187,60 @@ describe("fetchEncodedFile", () => {
       vi.fn().mockRejectedValue(new Error("dns"))
     );
     expect(await fetchEncodedFile("us/statute/26/3101/a")).toBeNull();
+  });
+});
+
+describe("findEncodedDescendants", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    _resetRawFetchCache();
+  });
+
+  it("filters to YAMLs strictly under the requested citation prefix", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          tree: [
+            { path: "statutes/26/3101/a.yaml", type: "blob" },
+            { path: "statutes/26/3101/b/1.yaml", type: "blob" },
+            { path: "statutes/26/3101/b/2.yaml", type: "blob" },
+            { path: "statutes/26/63/c/5.yaml", type: "blob" },
+          ],
+        }),
+      })
+    );
+    const out = await findEncodedDescendants("us/statute/26/3101");
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "us/statute/26/3101/a",
+      "us/statute/26/3101/b/1",
+      "us/statute/26/3101/b/2",
+    ]);
+  });
+
+  it("excludes a YAML at the exact citation path (only strict descendants)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          tree: [
+            { path: "statutes/26/3101.yaml", type: "blob" },
+            { path: "statutes/26/3101/a.yaml", type: "blob" },
+          ],
+        }),
+      })
+    );
+    const out = await findEncodedDescendants("us/statute/26/3101");
+    expect(out.map((f) => f.citationPath)).toEqual(["us/statute/26/3101/a"]);
+  });
+
+  it("returns an empty list for a citation_path with no jurisdiction segment", async () => {
+    expect(await findEncodedDescendants("")).toEqual([]);
+  });
+
+  it("returns an empty list for a jurisdiction without a published repo", async () => {
+    expect(await findEncodedDescendants("us-ny/statute/foo")).toEqual([]);
   });
 });

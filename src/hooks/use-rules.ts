@@ -2,6 +2,20 @@ import { useState, useEffect, useCallback } from "react";
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { JURISDICTIONS } from "@/lib/tree-data";
 
+/**
+ * Return ``s`` with its last character bumped one codepoint up — used
+ * to build a half-open range bound for citation-path-prefix scans.
+ * E.g. ``bumpLastChar("us-co/regulation/10-ccr-2506-1/4.401.")`` →
+ * ``"us-co/regulation/10-ccr-2506-1/4.401/"``, which lex-orders just
+ * past every ``"4.401."`` descendant. Returns ``null`` for empty
+ * input so callers can skip the range query.
+ */
+function bumpLastChar(s: string): string | null {
+  if (!s) return null;
+  const last = s.charCodeAt(s.length - 1);
+  return s.slice(0, -1) + String.fromCharCode(last + 1);
+}
+
 const PAGE_SIZE = 50;
 
 export interface RuleStats {
@@ -147,8 +161,32 @@ export function useRule(id: string | null) {
           .order("ordinal");
 
         if (childrenError) throw childrenError;
+        let collected: Rule[] = childrenData || [];
+
+        // Fall back to citation-path-prefix siblings when the rule
+        // has no parent_id-anchored children. The CCR encoder treats
+        // ``4.401`` and ``4.401.1`` / ``4.401.2`` as siblings under
+        // the same ``10-ccr-2506-1`` parent, even though the dotted
+        // form reads like a subsection. Surface those here so the
+        // reader gets a "subsections" affordance instead of a
+        // dead-end leaf.
+        if (collected.length === 0 && ruleData?.citation_path) {
+          const lower = `${ruleData.citation_path}.`;
+          const upper = bumpLastChar(lower);
+          if (upper) {
+            const { data: siblingsData } = await supabaseCorpus
+              .from("provisions")
+              .select("*")
+              .gte("citation_path", lower)
+              .lt("citation_path", upper)
+              .order("citation_path");
+            if (siblingsData && siblingsData.length > 0) {
+              collected = siblingsData as Rule[];
+            }
+          }
+        }
         /* v8 ignore next -- defensive null coalescing */
-        setChildren(childrenData || []);
+        setChildren(collected);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to fetch rule";

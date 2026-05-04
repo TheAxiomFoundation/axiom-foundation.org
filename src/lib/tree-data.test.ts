@@ -7,6 +7,8 @@ import {
   resolveAxiomPath,
   hasEncodedDescendant,
   resolveDisplayContext,
+  getTitleNodes,
+  getSectionNodes,
   JURISDICTIONS,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
@@ -456,5 +458,176 @@ describe("resolveDisplayContext", () => {
 
     expect(result.targetIndex).toBe(0);
     expect(result.siblings).toEqual([otherChild]);
+  });
+});
+
+describe("getTitleNodes — encoded-only at /us/regulation", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("returns exactly the three CFR Title 7 sections we have encoded today", async () => {
+    // Corpus has no row for ``us/regulation`` itself — the parent
+    // lookup falls through to the encoded-only branch.
+    // The function fans out into two different query shapes:
+    //   • parent lookup:    .select().eq().maybeSingle() → null
+    //   • per-title count:  .select().gte().lt().is()    → count: 1
+    const countResult = Promise.resolve({ count: 1, data: null, error: null });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      gte: () => builder,
+      lt: () => builder,
+      is: () => builder,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: countResult.then.bind(countResult),
+    } as unknown as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    // After ``parseTreeEntries`` strips the ``-cfr`` suffix on US
+    // regulation titles, the three encoded ``rules-us`` files surface
+    // in the encoded-paths set as ``regulation/7/273/{3,4,5}``.
+    const encodedPaths = new Set<string>([
+      "regulation/7/273/3",
+      "regulation/7/273/4",
+      "regulation/7/273/5",
+      "statute/26/3101/a",
+      "policy/usda/snap/fy-2026-cola/deductions",
+    ]);
+
+    const nodes = await getTitleNodes("us", "regulation", encodedPaths, true);
+
+    // The three encoded sections all live under CFR Title 7, so the
+    // title-level list collapses to a single entry.
+    expect(nodes.map((n) => n.segment)).toEqual(["7"]);
+    expect(nodes[0]).toMatchObject({
+      segment: "7",
+      label: "Title 7",
+      hasChildren: true,
+      nodeType: "title",
+    });
+  });
+
+  it("returns an empty list when no encoded path lives under the requested doc-type", async () => {
+    // The function fans out into two different query shapes:
+    //   • parent lookup:    .select().eq().maybeSingle() → null
+    //   • per-title count:  .select().gte().lt().is()    → count: 1
+    const countResult = Promise.resolve({ count: 1, data: null, error: null });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      gte: () => builder,
+      lt: () => builder,
+      is: () => builder,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: countResult.then.bind(countResult),
+    } as unknown as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    const encodedPaths = new Set<string>([
+      "statute/26/3101/a",
+      "policy/usda/snap/fy-2026-cola/deductions",
+    ]);
+
+    const nodes = await getTitleNodes(
+      "us",
+      "regulation",
+      encodedPaths,
+      true
+    );
+    expect(nodes).toEqual([]);
+  });
+});
+
+describe("getSectionNodes — encoded-only short-circuit", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("pulls encoded sections directly when the parent_id tree puts them under intermediate subparts", async () => {
+    // Corpus parents 7 CFR 273.3 under ``subpart-B`` while the
+    // rules-us repo files it as bare ``273/3.yaml``. The encoded-only
+    // branch should resolve that mismatch by querying the encoded
+    // citation paths directly.
+    const partRow = {
+      id: "part-273",
+      citation_path: "us/regulation/7/273",
+      heading: "CERTIFICATION OF ELIGIBLE HOUSEHOLDS",
+    };
+    const encodedRow = {
+      id: "section-273-3",
+      citation_path: "us/regulation/7/273/3",
+      heading: "Residency",
+      jurisdiction: "us",
+      doc_type: "regulation",
+      parent_id: "subpart-B",
+      has_rulespec: false,
+    };
+    const inSpy = vi.fn();
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        in: (...args: unknown[]) => {
+          inSpy(...args);
+          return builder;
+        },
+        order: () =>
+          Promise.resolve({ data: [encodedRow], error: null }),
+        maybeSingle: () => Promise.resolve({ data: partRow, error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us/regulation/7/273",
+      0,
+      new Set([
+        "regulation/7/273/3",
+        "regulation/7/273/4",
+        "regulation/7/273/5",
+        "statute/26/3101/a",
+      ]),
+      true
+    );
+
+    expect(result.nodes.map((n) => n.rule?.citation_path)).toEqual([
+      "us/regulation/7/273/3",
+    ]);
+    expect(inSpy).toHaveBeenCalledWith(
+      "citation_path",
+      expect.arrayContaining([
+        "us/regulation/7/273/3",
+        "us/regulation/7/273/4",
+        "us/regulation/7/273/5",
+      ])
+    );
+  });
+
+  it("returns an empty list (with currentRule) when no encoded path lives under the requested prefix", async () => {
+    const partRow = {
+      id: "part-273",
+      citation_path: "us/regulation/7/273",
+      heading: "CERTIFICATION OF ELIGIBLE HOUSEHOLDS",
+    };
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        in: () => builder,
+        order: () => Promise.resolve({ data: [], error: null }),
+        maybeSingle: () => Promise.resolve({ data: partRow, error: null }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes(
+      "us/regulation/7/273",
+      0,
+      new Set(["statute/26/3101/a"]),
+      true
+    );
+    expect(result.nodes).toEqual([]);
+    expect(result.currentRule?.citation_path).toBe("us/regulation/7/273");
   });
 });

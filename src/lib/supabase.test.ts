@@ -28,11 +28,13 @@ import {
   getRuleReferences,
   getAxiomStats,
 } from './supabase'
+import { _resetRawFetchCache } from '@/lib/axiom/rulespec/raw-cache'
 
 describe('supabase lib', () => {
   beforeEach(() => {
     mockFrom.mockClear()
     mockRpc.mockClear()
+    _resetRawFetchCache()
   })
 
   describe('schema clients', () => {
@@ -655,8 +657,8 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('returns null when no encoding run matches', async () => {
-      const fetchMock = vi.fn()
+    it('returns null when neither encoding_runs nor the rules-* repo has the path', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => '' })
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
@@ -677,7 +679,9 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-no-encoding')
       expect(result).toBeNull()
-      expect(fetchMock).not.toHaveBeenCalled()
+      // Falls through to the rules-* fallback regardless of has_rulespec —
+      // the corpus flag is unreliable during the rolling migration.
+      expect(fetchMock).toHaveBeenCalled()
       vi.unstubAllGlobals()
     })
 
@@ -733,6 +737,36 @@ describe('supabase lib', () => {
       )
       vi.unstubAllGlobals()
     })
+
+    it('skips the corpus lookup for a synthesised github: id and fetches from rules-* directly', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'format: rulespec/v1\n',
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      // The corpus shouldn't be queried at all for synth ids — fail
+      // hard if it is so the regression is loud.
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'provisions') {
+          throw new Error('synthesised id should not query corpus')
+        }
+        return mockEncodingRunsChain({ data: [], error: null })
+      })
+
+      const result = await getRuleEncoding('github:us/statute/26/3101/a')
+      expect(result?.file_path).toBe('statutes/26/3101/a.yaml')
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us/main/statutes/26/3101/a.yaml',
+        expect.any(Object)
+      )
+      vi.unstubAllGlobals()
+    })
+
+    it('returns null for a synth id without a jurisdiction segment', async () => {
+      const result = await getRuleEncoding('github:')
+      expect(result).toBeNull()
+    })
   })
 
   describe('searchRules', () => {
@@ -787,19 +821,117 @@ describe('supabase lib', () => {
       )
     })
 
-    it('returns an empty array when the RPC errors', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('falls back to a direct heading ILIKE when the RPC errors', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       mockRpc.mockResolvedValue({ data: null, error: new Error('boom') })
-      const result = await searchRules('anything')
-      expect(result).toEqual([])
-      expect(errorSpy).toHaveBeenCalled()
-      errorSpy.mockRestore()
+
+      // Wire up a chainable ``provisions`` builder that the fallback
+      // walks through (ilike → not → order → limit) and returns one
+      // synthetic hit so we can assert it was actually used.
+      const fallbackRow = {
+        id: 'r1',
+        jurisdiction: 'us-co',
+        doc_type: 'policy',
+        citation_path: 'us-co/policy/co-cdhs-snap-page',
+        heading: 'Supplemental Nutrition Assistance Program (SNAP)',
+        body: null,
+        has_rulespec: false,
+      }
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        ilike: () => builder,
+        not: () => builder,
+        order: () => builder,
+        limit: () =>
+          Promise.resolve({ data: [fallbackRow], error: null }),
+      } as never
+      mockFrom.mockReturnValue(builder)
+
+      const result = await searchRules('snap')
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({
+        id: 'r1',
+        citation_path: 'us-co/policy/co-cdhs-snap-page',
+      })
+      expect(warnSpy).toHaveBeenCalled()
+      warnSpy.mockRestore()
     })
 
     it('handles a null data response as an empty array', async () => {
       mockRpc.mockResolvedValue({ data: null, error: null })
       const result = await searchRules('anything')
       expect(result).toEqual([])
+    })
+
+    it('returns an empty list when the fallback finds nothing either', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('rpc down') })
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        ilike: () => builder,
+        not: () => builder,
+        order: () => builder,
+        limit: () => Promise.resolve({ data: [], error: null }),
+      } as never
+      mockFrom.mockReturnValue(builder)
+      const result = await searchRules('xyzzy')
+      expect(result).toEqual([])
+    })
+
+    it('forwards jurisdiction and doc_type filters into the fallback query', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('rpc down') })
+      const eqSpy = vi.fn()
+      const builder = {
+        select: () => builder,
+        eq: (...args: unknown[]) => {
+          eqSpy(...args)
+          return builder
+        },
+        ilike: () => builder,
+        not: () => builder,
+        order: () => builder,
+        limit: () => Promise.resolve({ data: [], error: null }),
+      } as never
+      mockFrom.mockReturnValue(builder)
+      await searchRules('snap', { jurisdiction: 'us-co', docType: 'policy' })
+      expect(eqSpy).toHaveBeenCalledWith('jurisdiction', 'us-co')
+      expect(eqSpy).toHaveBeenCalledWith('doc_type', 'policy')
+    })
+
+    it('escapes HTML and wraps each query term in <mark> in the fallback snippet', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      mockRpc.mockResolvedValue({ data: null, error: new Error('rpc down') })
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        ilike: () => builder,
+        not: () => builder,
+        order: () => builder,
+        limit: () =>
+          Promise.resolve({
+            data: [
+              {
+                id: 'r1',
+                jurisdiction: 'us-co',
+                doc_type: 'policy',
+                citation_path: 'us-co/policy/x',
+                heading: '<b>SNAP</b> & residency',
+                body: null,
+                has_rulespec: false,
+              },
+            ],
+            error: null,
+          }),
+      } as never
+      mockFrom.mockReturnValue(builder)
+      const [hit] = await searchRules('snap residency')
+      // ``<b>`` is escaped, the two terms are wrapped in <mark>.
+      expect(hit.snippet).toContain('&lt;b&gt;')
+      expect(hit.snippet).toMatch(/<mark>SNAP<\/mark>/)
+      expect(hit.snippet).toMatch(/<mark>residency<\/mark>/)
     })
   })
 

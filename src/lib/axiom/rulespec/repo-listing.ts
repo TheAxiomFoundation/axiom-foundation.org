@@ -1,4 +1,5 @@
 import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
+import { cachedRawFetch } from "./raw-cache";
 
 /**
  * Fetch the list of RuleSpec encoding files in a jurisdiction's
@@ -83,7 +84,11 @@ export function parseTreeEntries(
     const segs = stripped.split("/");
     const repoBucket = segs[0];
     const citationBucket = REPO_TO_CITATION_BUCKET[repoBucket] ?? repoBucket;
-    const tail = segs.slice(1).join("/");
+    const tail = normaliseTitleSegment(
+      segs.slice(1),
+      jurisdiction,
+      repoBucket
+    );
     out.push({
       filePath: entry.path,
       citationPath: tail
@@ -96,11 +101,51 @@ export function parseTreeEntries(
   return out;
 }
 
+/**
+ * Some rules-* repos include a publication-system suffix on the
+ * regulation title that the corpus citation_path drops. ``rules-us``
+ * stores federal regulations under ``regulations/7-cfr/…``, but the
+ * corpus carries the bare ``us/regulation/7/…``. Normalise here so
+ * the citation paths line up across the two stores.
+ */
+function normaliseTitleSegment(
+  tailSegs: string[],
+  jurisdiction: string,
+  repoBucket: string
+): string {
+  if (
+    jurisdiction === "us" &&
+    repoBucket === "regulations" &&
+    tailSegs.length > 0
+  ) {
+    tailSegs = [...tailSegs];
+    tailSegs[0] = tailSegs[0].replace(/-cfr$/, "");
+  }
+  return tailSegs.join("/");
+}
+
 function isEncodingFile(path: string): boolean {
   if (!path.endsWith(".yaml")) return false;
   if (path.endsWith(".test.yaml")) return false;
   if (path.endsWith(".meta.yaml")) return false;
   return true;
+}
+
+/**
+ * Find every encoded descendant of ``citationPath`` — i.e. YAML files
+ * whose citation_path lives strictly under it. Used by the rule-detail
+ * rail to point readers from a container page (e.g. ``us/statute/26/3101``)
+ * down to the subsections that actually have encodings (``…/a``,
+ * ``…/b/1``, ``…/b/2``).
+ */
+export async function findEncodedDescendants(
+  citationPath: string
+): Promise<EncodedFile[]> {
+  const jurisdiction = citationPath.split("/")[0];
+  if (!jurisdiction) return [];
+  const all = await listEncodedFiles(jurisdiction);
+  const prefix = `${citationPath}/`;
+  return all.filter((f) => f.citationPath.startsWith(prefix));
 }
 
 /**
@@ -111,8 +156,19 @@ function isEncodingFile(path: string): boolean {
 export function citationPathToFilePath(citationPath: string): string | null {
   const parts = citationPath.split("/");
   if (parts.length < 2) return null;
-  const [, citationBucket, ...rest] = parts;
+  const [jurisdiction, citationBucket, ...rest] = parts;
   const repoBucket = citationBucketToRepoBucket(citationBucket);
+  // Inverse of the title-segment normalisation in parseTreeEntries —
+  // the corpus drops the ``-cfr`` suffix that the rules-us repo
+  // carries on federal-regulation titles.
+  if (
+    jurisdiction === "us" &&
+    citationBucket === "regulation" &&
+    rest.length > 0 &&
+    !rest[0].endsWith("-cfr")
+  ) {
+    rest[0] = `${rest[0]}-cfr`;
+  }
   return `${repoBucket}/${rest.join("/")}.yaml`;
 }
 
@@ -137,14 +193,9 @@ export async function fetchEncodedFile(
   const filePath = citationPathToFilePath(citationPath);
   if (!filePath) return null;
   const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${filePath}`;
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: REVALIDATE_SECONDS },
-    } as RequestInit);
-    if (!res.ok) return null;
-    const content = await res.text();
-    return { filePath, content };
-  } catch {
-    return null;
-  }
+  const res = await cachedRawFetch(url, {
+    next: { revalidate: REVALIDATE_SECONDS },
+  } as RequestInit);
+  if (!res.ok) return null;
+  return { filePath, content: res.body };
 }

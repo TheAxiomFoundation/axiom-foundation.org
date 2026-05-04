@@ -289,67 +289,86 @@ describe("getDocTypeNodes", () => {
     vi.mocked(supabaseCorpus.from).mockReset();
   });
 
-  it("orders root rows with null citation paths last before deriving doc types", async () => {
+  it("uses cheap doc-type existence checks instead of citation-path sorting", async () => {
     const orderSpy = vi.fn();
-    const rangeSpy = vi.fn();
-    const builder = {
-      select: () => builder,
-      eq: () => builder,
-      is: () => builder,
-      order: (...args: unknown[]) => {
-        orderSpy(...args);
-        return builder;
-      },
-      range: (...args: unknown[]) => {
-        rangeSpy(...args);
-        return Promise.resolve({
-          data: [
-            { citation_path: "us-co/regulation/10-CCR-2506-1" },
-            { citation_path: "us-co/statute/crs" },
-            { citation_path: null },
-          ],
-          error: null,
-        });
-      },
-    } as never;
-    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let docType = "";
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: string) => {
+          if (column === "doc_type") docType = value;
+          return builder;
+        },
+        is: () => builder,
+        order: orderSpy,
+        limit: () =>
+          Promise.resolve({
+            data: ["statute", "regulation"].includes(docType)
+              ? [{ id: `${docType}-root` }]
+              : [],
+            error: null,
+          }),
+      } as never;
+      return builder;
+    });
 
     const nodes = await getDocTypeNodes("us-co");
 
-    expect(orderSpy).toHaveBeenCalledWith("citation_path", {
-      ascending: true,
-      nullsFirst: false,
-    });
-    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(orderSpy).not.toHaveBeenCalled();
     expect(nodes.map((n) => n.segment)).toEqual(["regulation", "statute"]);
   });
 
-  it("continues scanning when an early page has only null citation paths", async () => {
-    let page = 0;
-    const builder = {
-      select: () => builder,
-      eq: () => builder,
-      is: () => builder,
-      order: () => builder,
-      range: () => {
-        page += 1;
-        if (page === 1) {
+  it("falls back to an unsorted scan for unexpected doc-type buckets", async () => {
+    const rangeSpy = vi.fn();
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        is: () => builder,
+        limit: () => Promise.resolve({ data: [], error: null }),
+        range: (...args: unknown[]) => {
+          rangeSpy(...args);
           return Promise.resolve({
-            data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
+            data: [{ doc_type: "manual" }],
             error: null,
           });
-        }
-        return Promise.resolve({
-          data: [{ citation_path: "us-co/regulation/10-CCR-2506-1" }],
-          error: null,
-        });
-      },
-    } as never;
-    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+        },
+      } as never;
+      return builder;
+    });
 
     const nodes = await getDocTypeNodes("us-co");
 
-    expect(nodes.map((n) => n.segment)).toEqual(["regulation"]);
+    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(nodes.map((n) => n.segment)).toEqual(["manual"]);
+  });
+
+  it("does not expose doc_type values whose citation path uses a different root segment", async () => {
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let docType = "";
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: string) => {
+          if (column === "doc_type") docType = value;
+          return builder;
+        },
+        is: () => builder,
+        limit: () =>
+          Promise.resolve({
+            data:
+              docType === "regulation"
+                ? [{ citation_path: "uk/legislation/uksi/2013/376" }]
+                : [],
+            error: null,
+          }),
+        range: () => Promise.resolve({ data: [], error: null }),
+      } as never;
+      return builder;
+    });
+
+    const nodes = await getDocTypeNodes("uk");
+
+    expect(nodes.map((n) => n.segment)).toEqual([]);
   });
 });
 
@@ -358,8 +377,7 @@ describe("getTitleNodes — root fallback", () => {
     vi.mocked(supabaseCorpus.from).mockReset();
   });
 
-  it("orders root rows with null citation paths last before deriving titles", async () => {
-    const orderSpy = vi.fn();
+  it("derives titles from doc-type-filtered root rows without citation-path sorting", async () => {
     const rangeSpy = vi.fn();
     const parentLookup = {
       select: () => parentLookup,
@@ -370,10 +388,6 @@ describe("getTitleNodes — root fallback", () => {
       select: () => rootScan,
       eq: () => rootScan,
       is: () => rootScan,
-      order: (...args: unknown[]) => {
-        orderSpy(...args);
-        return rootScan;
-      },
       range: (...args: unknown[]) => {
         rangeSpy(...args);
         return Promise.resolve({
@@ -386,26 +400,15 @@ describe("getTitleNodes — root fallback", () => {
         });
       },
     } as never;
-    const countQuery = {
-      select: () => countQuery,
-      gte: () => countQuery,
-      lt: () => countQuery,
-      is: () => Promise.resolve({ count: 12, data: null, error: null }),
-    } as never;
     vi.mocked(supabaseCorpus.from)
       .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(rootScan)
-      .mockReturnValueOnce(countQuery);
+      .mockReturnValueOnce(rootScan);
 
     const nodes = await getTitleNodes("us-co", "regulation");
 
-    expect(orderSpy).toHaveBeenCalledWith("citation_path", {
-      ascending: true,
-      nullsFirst: false,
-    });
     expect(rangeSpy).toHaveBeenCalledWith(0, 999);
     expect(nodes.map((n) => n.segment)).toEqual(["10-CCR-2506-1"]);
-    expect(nodes[0].childCount).toBe(12);
+    expect(nodes[0].childCount).toBeUndefined();
   });
 
   it("continues scanning when an early root page has only null citation paths", async () => {
@@ -418,7 +421,6 @@ describe("getTitleNodes — root fallback", () => {
       select: () => firstScanPage,
       eq: () => firstScanPage,
       is: () => firstScanPage,
-      order: () => firstScanPage,
       range: () =>
         Promise.resolve({
           data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
@@ -429,28 +431,52 @@ describe("getTitleNodes — root fallback", () => {
       select: () => secondScanPage,
       eq: () => secondScanPage,
       is: () => secondScanPage,
-      order: () => secondScanPage,
       range: () =>
         Promise.resolve({
           data: [{ citation_path: "us-ky/statute/3" }],
           error: null,
         }),
     } as never;
-    const countQuery = {
-      select: () => countQuery,
-      gte: () => countQuery,
-      lt: () => countQuery,
-      is: () => Promise.resolve({ count: 1, data: null, error: null }),
-    } as never;
     vi.mocked(supabaseCorpus.from)
       .mockReturnValueOnce(parentLookup)
       .mockReturnValueOnce(firstScanPage)
-      .mockReturnValueOnce(secondScanPage)
-      .mockReturnValueOnce(countQuery);
+      .mockReturnValueOnce(secondScanPage);
 
     const nodes = await getTitleNodes("us-ky", "statute");
 
     expect(nodes.map((n) => n.segment)).toEqual(["3"]);
+  });
+
+  it("falls back to root-row titles when a doc-type root has no parent_id children", async () => {
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () =>
+        Promise.resolve({ data: { id: "statute-root" }, error: null }),
+    } as never;
+    const emptyChildren = {
+      select: () => emptyChildren,
+      eq: () => emptyChildren,
+      order: () => Promise.resolve({ data: [], error: null }),
+    } as never;
+    const rootScan = {
+      select: () => rootScan,
+      eq: () => rootScan,
+      is: () => rootScan,
+      range: () =>
+        Promise.resolve({
+          data: [{ citation_path: "us-co/statute/crs/26-2-703" }],
+          error: null,
+        }),
+    } as never;
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(emptyChildren)
+      .mockReturnValueOnce(rootScan);
+
+    const nodes = await getTitleNodes("us-co", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
   });
 });
 

@@ -149,6 +149,7 @@ const PREFIX_SCAN_PAGE_SIZE = 1000;
 const PREFIX_SCAN_MAX_ROWS = 10000;
 const ROOT_SCAN_PAGE_SIZE = 1000;
 const ROOT_SCAN_MAX_ROWS = 10000;
+const KNOWN_DOC_TYPES = ["statute", "regulation", "policy", "legislation"];
 
 // ---- Query functions ----
 
@@ -252,22 +253,78 @@ export async function getJurisdictionCounts(
 export async function getDocTypeNodes(
   jurisdiction: string
 ): Promise<TreeNode[]> {
-  // Filtering ``citation_path is not null`` server-side adds a check
-  // that intermittently triggers Postgres' statement timeout for
-  // jurisdictions with many provisions (us-co, us-tx, …). When that
-  // happens the call resolves with ``data: null`` and the picker
-  // collapses to "No items found". Pull the parent_id=null roots
-  // unfiltered — the index on ``(jurisdiction, parent_id)`` returns
-  // them in ~tens of ms — and skip null citation_paths in JS.
-  const docTypes = new Set<string>();
+  // Do not discover root document types by sorting citation_path.
+  // Large state corpora such as Illinois can statement-timeout on
+  // ``order(citation_path)`` even though a simple existence check by
+  // doc_type is fast. Query the known doc-type buckets directly, then
+  // fall back to a bounded unsorted scan only for unexpected buckets.
+  const discovered = await Promise.all(
+    KNOWN_DOC_TYPES.map(async (segment) => {
+      const rootPath = `${jurisdiction}/${segment}`;
+      const { data: rootData } = await supabaseCorpus
+        .from("provisions")
+        .select("id")
+        .eq("citation_path", rootPath)
+        .limit(1);
+      if (rootData && rootData.length > 0) return segment;
+
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("citation_path")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", segment)
+        .is("parent_id", null)
+        .limit(1);
+      const citationPath = data?.[0]?.citation_path;
+      const citationSegment = citationPath?.split("/")[1];
+      return data &&
+        data.length > 0 &&
+        (!citationSegment || citationSegment === segment)
+        ? segment
+        : null;
+    })
+  );
+  const docTypes = new Set(
+    discovered.filter((segment): segment is string => segment !== null)
+  );
+
+  if (docTypes.size === 0) {
+    for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
+      const { data } = await supabaseCorpus
+        .from("provisions")
+        .select("doc_type")
+        .eq("jurisdiction", jurisdiction)
+        .is("parent_id", null)
+        .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        if (row.doc_type) docTypes.add(row.doc_type);
+      }
+
+      if (data.length < ROOT_SCAN_PAGE_SIZE) break;
+    }
+  }
+
+  return Array.from(docTypes)
+    .sort(naturalCompare)
+    .map((segment) => docTypeNode(segment));
+}
+
+async function scanTitleSegmentsFromRootRows(
+  jurisdiction: string,
+  docType: string
+): Promise<string[]> {
+  const titleSet = new Set<string>();
 
   for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
     const { data } = await supabaseCorpus
       .from("provisions")
       .select("citation_path")
       .eq("jurisdiction", jurisdiction)
+      .eq("doc_type", docType)
       .is("parent_id", null)
-      .order("citation_path", { ascending: true, nullsFirst: false })
       .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
 
     if (!data || data.length === 0) break;
@@ -275,27 +332,29 @@ export async function getDocTypeNodes(
     for (const row of data) {
       if (!row.citation_path) continue;
       const parts = row.citation_path.split("/");
-      if (parts.length >= 2) {
-        docTypes.add(parts[1]);
+      if (parts.length >= 3 && parts[1] === docType) {
+        titleSet.add(parts[2]);
       }
     }
 
-    if (docTypes.size >= 3 || data.length < ROOT_SCAN_PAGE_SIZE) break;
+    if (data.length < ROOT_SCAN_PAGE_SIZE) break;
   }
 
-  return Array.from(docTypes)
-    .sort(naturalCompare)
-    .map((segment) => ({
-      segment,
-      label:
-        segment === "statute"
-          ? "Statutes"
-          : segment === "regulation"
-            ? "Regulations"
-            : formatGenericSegmentLabel(segment),
-      hasChildren: true,
-      nodeType: "doc_type" as const,
-    }));
+  return Array.from(titleSet).sort(naturalCompare);
+}
+
+function docTypeNode(segment: string): TreeNode {
+  return {
+    segment,
+    label:
+      segment === "statute"
+        ? "Statutes"
+        : segment === "regulation"
+          ? "Regulations"
+          : formatGenericSegmentLabel(segment),
+    hasChildren: true,
+    nodeType: "doc_type" as const,
+  };
 }
 
 export async function getTitleNodes(
@@ -348,9 +407,16 @@ export async function getTitleNodes(
       .eq("parent_id", parentRule.id)
       .order("ordinal");
 
-    return ((data || []) as Rule[]).map((r) =>
-      ruleToSectionNode(r, encodedPaths)
+    const rules = (data || []) as Rule[];
+    if (rules.length > 0) {
+      return rules.map((r) => ruleToSectionNode(r, encodedPaths));
+    }
+
+    const fallbackTitles = await scanTitleSegmentsFromRootRows(
+      jurisdiction,
+      _docType
     );
+    return fallbackTitles.map((title) => titleNode(title));
   }
 
   // ``citation_path is not null`` server-side intermittently triggers
@@ -363,6 +429,7 @@ export async function getTitleNodes(
   // title 7 sits after the 33–41 wall in ``us``). The encoded set
   // is small and authoritative.
   let titles: string[];
+  let includeTitleCounts = true;
   if (encodedOnly && encodedPaths) {
     const encoded = new Set<string>();
     const docTypePrefix = `${_docType}/`;
@@ -375,55 +442,40 @@ export async function getTitleNodes(
     if (encoded.size === 0) return [];
     titles = Array.from(encoded).sort(naturalCompare);
   } else {
-    const titleSet = new Set<string>();
-
-    for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
-      const { data } = await supabaseCorpus
-        .from("provisions")
-        .select("citation_path")
-        .eq("jurisdiction", jurisdiction)
-        .is("parent_id", null)
-        .order("citation_path", { ascending: true, nullsFirst: false })
-        .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
-
-      if (!data || data.length === 0) break;
-
-      for (const row of data) {
-        if (!row.citation_path) continue;
-        const parts = row.citation_path.split("/");
-        if (parts.length >= 3 && parts[1] === _docType) {
-          titleSet.add(parts[2]);
-        }
-      }
-
-      if (data.length < ROOT_SCAN_PAGE_SIZE) break;
-    }
-
-    if (titleSet.size === 0) return [];
-    titles = Array.from(titleSet).sort(naturalCompare);
+    titles = await scanTitleSegmentsFromRootRows(jurisdiction, _docType);
+    if (titles.length === 0) return [];
+    includeTitleCounts = false;
   }
 
   const nodes = await Promise.all(
     titles.map(async (title) => {
-      const prefix = `${jurisdiction}/${_docType}/${title}`;
-      const { count } = await supabaseCorpus
-        .from("provisions")
-        .select("*", { count: "exact", head: true })
-        .gte("citation_path", citationPrefixLowerBound(prefix))
-        .lt("citation_path", citationPrefixUpperBound(prefix))
-        .is("parent_id", null);
+      let childCount: number | undefined;
+      if (includeTitleCounts) {
+        const prefix = `${jurisdiction}/${_docType}/${title}`;
+        const { count } = await supabaseCorpus
+          .from("provisions")
+          .select("*", { count: "exact", head: true })
+          .gte("citation_path", citationPrefixLowerBound(prefix))
+          .lt("citation_path", citationPrefixUpperBound(prefix))
+          .is("parent_id", null);
+        childCount = count || 0;
+      }
 
-      return {
-        segment: title,
-        label: `Title ${title}`,
-        hasChildren: true,
-        childCount: count || 0,
-        nodeType: "title" as const,
-      };
+      return titleNode(title, childCount);
     })
   );
 
   return nodes;
+}
+
+function titleNode(title: string, childCount?: number): TreeNode {
+  return {
+    segment: title,
+    label: `Title ${title}`,
+    hasChildren: true,
+    ...(childCount !== undefined ? { childCount } : {}),
+    nodeType: "title" as const,
+  };
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { isGitHubEncoding } from "@/lib/axiom-utils";
-import type { RuleEncodingData } from "@/lib/supabase";
+import type { EncodingRunScores, RuleEncodingData } from "@/lib/supabase";
 import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
 import {
   parseRuleSpec,
@@ -179,11 +179,7 @@ function SourceHeader({
   );
 }
 
-function ScoresBlock({
-  scores,
-}: {
-  scores: Record<string, number>;
-}) {
+function ScoresBlock({ scores }: { scores: EncodingRunScores }) {
   return (
     <div>
       <div className="eyebrow mb-3">Scores</div>

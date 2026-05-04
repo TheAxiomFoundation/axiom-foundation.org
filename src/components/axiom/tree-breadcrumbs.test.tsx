@@ -36,7 +36,10 @@ describe("TreeBreadcrumbs", () => {
     );
     const axiomLink = screen.getByText("Axiom").closest("a");
     expect(axiomLink).not.toBeNull();
-    expect(axiomLink?.getAttribute("href")).toBe("/");
+    // jsdom's default hostname is "localhost", which triggers the
+    // breadcrumb's app-aware rewrite from "/" → "/axiom" so clicks
+    // land on the app overview rather than the marketing site.
+    expect(axiomLink?.getAttribute("href")).toBe("/axiom");
 
     // Last item is not a link
     expect(screen.getByText("United States").closest("a")).toBeNull();

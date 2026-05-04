@@ -227,6 +227,86 @@ describe("RuleBody", () => {
     expect(pane.className).toMatch(/whitespace-pre-wrap/);
   });
 
+  it("renders markdown table blocks as accessible tables", () => {
+    const body = [
+      "(1) Percentages",
+      "| In the case of an eligible individual with: | The credit percentage is: |",
+      "| ------------------------------------------- | ------------------------- |",
+      "| 1 qualifying child | 34 |",
+      "| 2 qualifying children | 40 |",
+      "After table.",
+    ].join("\n");
+
+    render(<RuleBody body={body} refs={[]} />);
+
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", {
+        name: "In the case of an eligible individual with:",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "1 qualifying child" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "34" })).toBeInTheDocument();
+    expect(screen.getByText("(1) Percentages")).toBeInTheDocument();
+    expect(screen.getByText("After table.")).toBeInTheDocument();
+  });
+
+  it("renders inline markdown table runs from corpus text", () => {
+    const body =
+      "(1) Percentages The credit percentage shall be determined as follows: " +
+      "| In the case of an eligible individual with: | The credit percentage is: | " +
+      "| ------------------------------------------- | ------------------------- | " +
+      "| 1 qualifying child | 34 | " +
+      "| 2 qualifying children | 40 | " +
+      "(2) Amounts shall be determined as follows: " +
+      "| Children | Amount | " +
+      "| -------- | ------ | " +
+      "| No qualifying children | $4,220 |";
+
+    render(<RuleBody body={body} refs={[]} />);
+
+    const tables = screen.getAllByRole("table");
+    expect(tables).toHaveLength(2);
+    expect(screen.getByRole("cell", { name: "2 qualifying children" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "$4,220" })).toBeInTheDocument();
+    expect(screen.getByText(/Percentages/)).toBeInTheDocument();
+    expect(screen.getByText(/Amounts/)).toBeInTheDocument();
+  });
+
+  it("does not treat ordinary pipe text as a table", () => {
+    const body = "A | B is legal text, not a markdown table.";
+    render(<RuleBody body={body} refs={[]} />);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByText(body)).toBeInTheDocument();
+  });
+
+  it("preserves citation links inside table cells", () => {
+    const body = [
+      "| Source | Amount |",
+      "| ------ | ------ |",
+      "| See 26 USC 32 | $1 |",
+    ].join("\n");
+    const start = body.indexOf("26 USC 32");
+
+    render(
+      <RuleBody
+        body={body}
+        refs={[
+          ref({
+            start_offset: start,
+            end_offset: start + "26 USC 32".length,
+            other_citation_path: "us/statute/26/32",
+          }),
+        ]}
+      />
+    );
+
+    const link = screen.getByRole("link", { name: "26 USC 32" });
+    expect(link).toHaveAttribute("href", "/us/statute/26/32");
+    expect(link.closest("td")).toHaveTextContent("See 26 USC 32");
+  });
+
   it("sorts unsorted but disjoint refs into offset order", () => {
     // Caller hands us refs in reverse order; splice() must sort them
     // so both are emitted in the right position rather than silently

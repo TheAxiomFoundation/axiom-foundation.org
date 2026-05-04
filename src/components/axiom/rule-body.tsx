@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { RuleReference } from "@/lib/supabase";
@@ -42,6 +43,16 @@ interface Segment {
   kind: "plain" | "ref";
   ref?: RuleReference;
 }
+
+interface TableCell {
+  text: string;
+  start: number;
+  end: number;
+}
+
+type BodyBlock =
+  | { type: "text"; text: string; start: number; end: number }
+  | { type: "table"; headers: TableCell[]; rows: TableCell[][] };
 
 function spliceRefs(body: string, refs: RuleReference[]): Segment[] {
   const out: Segment[] = [];
@@ -131,6 +142,173 @@ function parseMark(raw: string | null): Range | null {
   return { start, end };
 }
 
+function parseTableLine(line: string, lineOffset: number): TableCell[] {
+  const pipeIndexes: number[] = [];
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === "|") pipeIndexes.push(i);
+  }
+  if (pipeIndexes.length < 2) return [];
+
+  const cells: TableCell[] = [];
+  for (let i = 0; i < pipeIndexes.length - 1; i++) {
+    const rawStart = pipeIndexes[i] + 1;
+    const rawEnd = pipeIndexes[i + 1];
+    const raw = line.slice(rawStart, rawEnd);
+    const leftTrim = raw.match(/^\s*/)?.[0].length ?? 0;
+    const rightTrim = raw.match(/\s*$/)?.[0].length ?? 0;
+    const start = rawStart + leftTrim;
+    const end = Math.max(start, rawEnd - rightTrim);
+    cells.push({
+      text: line.slice(start, end),
+      start: lineOffset + start,
+      end: lineOffset + end,
+    });
+  }
+  return cells;
+}
+
+function isSeparatorRow(cells: TableCell[]): boolean {
+  return (
+    cells.length > 0 &&
+    cells.every((cell) => /^:?-{3,}:?$/.test(cell.text.replace(/\s+/g, "")))
+  );
+}
+
+function normaliseRow(row: TableCell[], width: number): TableCell[] {
+  if (row.length >= width) return row.slice(0, width);
+  return [
+    ...row,
+    ...Array.from({ length: width - row.length }, () => ({
+      text: "",
+      start: 0,
+      end: 0,
+    })),
+  ];
+}
+
+function rowFromPipeIndexes(
+  body: string,
+  pipes: number[],
+  startIndex: number,
+  endIndex: number
+): { start: number; end: number; cells: TableCell[] } {
+  const start = pipes[startIndex];
+  const end = pipes[endIndex] + 1;
+  return {
+    start,
+    end,
+    cells: parseTableLine(body.slice(start, end), start),
+  };
+}
+
+function hasOnlyWhitespaceBetween(body: string, leftEnd: number, rightStart: number): boolean {
+  return body.slice(leftEnd, rightStart).trim() === "";
+}
+
+function findNextTableBlock(
+  body: string,
+  pipes: number[],
+  pipeStartIndex: number
+): { block: BodyBlock; start: number; end: number; nextPipeIndex: number } | null {
+  for (let sepStartIndex = pipeStartIndex + 1; sepStartIndex < pipes.length; sepStartIndex++) {
+    const maxEndIndex = Math.min(sepStartIndex + 10, pipes.length - 1);
+    for (let sepEndIndex = sepStartIndex + 2; sepEndIndex <= maxEndIndex; sepEndIndex++) {
+      const separator = rowFromPipeIndexes(
+        body,
+        pipes,
+        sepStartIndex,
+        sepEndIndex
+      );
+      if (!isSeparatorRow(separator.cells)) continue;
+
+      const width = separator.cells.length;
+      const headerEndIndex = sepStartIndex - 1;
+      const headerStartIndex = headerEndIndex - width;
+      if (headerStartIndex < pipeStartIndex) continue;
+
+      const header = rowFromPipeIndexes(
+        body,
+        pipes,
+        headerStartIndex,
+        headerEndIndex
+      );
+      if (header.cells.length !== width) continue;
+      if (
+        !hasOnlyWhitespaceBetween(
+          body,
+          header.end,
+          separator.start
+        )
+      ) {
+        continue;
+      }
+
+      const rows: TableCell[][] = [];
+      let previousEndIndex = sepEndIndex;
+      let rowStartIndex = sepEndIndex + 1;
+      while (rowStartIndex + width < pipes.length) {
+        if (
+          !hasOnlyWhitespaceBetween(
+            body,
+            pipes[previousEndIndex] + 1,
+            pipes[rowStartIndex]
+          )
+        ) {
+          break;
+        }
+        const rowEndIndex = rowStartIndex + width;
+        const row = rowFromPipeIndexes(body, pipes, rowStartIndex, rowEndIndex);
+        if (row.cells.length !== width) break;
+        rows.push(normaliseRow(row.cells, width));
+        previousEndIndex = rowEndIndex;
+        rowStartIndex = rowEndIndex + 1;
+      }
+      if (rows.length === 0) continue;
+
+      return {
+        block: { type: "table", headers: header.cells, rows },
+        start: header.start,
+        end: pipes[previousEndIndex] + 1,
+        nextPipeIndex: rowStartIndex,
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseBodyBlocks(body: string): BodyBlock[] {
+  const pipes: number[] = [];
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "|") pipes.push(i);
+  }
+  const blocks: BodyBlock[] = [];
+  let textStart = 0;
+  let pipeStartIndex = 0;
+
+  const pushText = (end: number) => {
+    if (end <= textStart) return;
+    blocks.push({
+      type: "text",
+      text: body.slice(textStart, end),
+      start: textStart,
+      end,
+    });
+  };
+
+  while (pipeStartIndex < pipes.length) {
+    const table = findNextTableBlock(body, pipes, pipeStartIndex);
+    if (!table) break;
+    pushText(table.start);
+    blocks.push(table.block);
+    textStart = table.end;
+    pipeStartIndex = table.nextPipeIndex;
+  }
+
+  pushText(body.length);
+  return blocks;
+}
+
 function Citation({ ref, text }: { ref: RuleReference; text: string }) {
   // Incoming refs carry offsets into the citing (target) body; pass them
   // through as a ``mark`` query so the target page lands on the exact
@@ -151,6 +329,54 @@ function Citation({ ref, text }: { ref: RuleReference; text: string }) {
       {text}
     </Link>
   );
+}
+
+function renderInlineSegments({
+  segments,
+  start,
+  end,
+  firstMarkOffset,
+  firstMarkRef,
+}: {
+  segments: Array<Segment & { marked: boolean }>;
+  start: number;
+  end: number;
+  firstMarkOffset: number | null;
+  firstMarkRef: MutableRefObject<HTMLElement | null>;
+}): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  for (const seg of segments) {
+    const segEnd = seg.offset + seg.text.length;
+    if (segEnd <= start || seg.offset >= end) continue;
+    const sliceStart = Math.max(start, seg.offset);
+    const sliceEnd = Math.min(end, segEnd);
+    const localStart = sliceStart - seg.offset;
+    const localEnd = sliceEnd - seg.offset;
+    const text = seg.text.slice(localStart, localEnd);
+    const inner =
+      seg.kind === "ref" && seg.ref ? (
+        <Citation ref={seg.ref} text={text} />
+      ) : (
+        text
+      );
+    const key = `${sliceStart}-${sliceEnd}`;
+    if (!seg.marked) {
+      nodes.push(<span key={key}>{inner}</span>);
+      continue;
+    }
+    nodes.push(
+      <mark
+        key={key}
+        ref={(el) => {
+          if (sliceStart === firstMarkOffset) firstMarkRef.current = el;
+        }}
+        className="axiom-mark bg-[rgba(146,64,14,0.18)] text-[var(--color-ink)] px-1 -mx-0.5 rounded-sm shadow-[0_0_0_1px_rgba(146,64,14,0.35)] decoration-[var(--color-accent)]"
+      >
+        {inner}
+      </mark>
+    );
+  }
+  return nodes;
 }
 
 export function RuleBody({ body, refs }: RuleBodyProps) {
@@ -193,6 +419,9 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
   // callback doesn't rely on a mutated closure variable during map
   // — cleaner under React 19's concurrent rendering.
   const firstMarkIndex = segments.findIndex((s) => s.marked);
+  const firstMarkOffset =
+    firstMarkIndex >= 0 ? segments[firstMarkIndex].offset : null;
+  const blocks = parseBodyBlocks(body);
 
   return (
     <div
@@ -200,27 +429,66 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
       className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-[1.8] whitespace-pre-wrap"
       style={{ fontFamily: "var(--f-serif)" }}
     >
-      {segments.map((seg, i) => {
-        const inner =
-          seg.kind === "ref" && seg.ref ? (
-            <Citation ref={seg.ref} text={seg.text} />
-          ) : (
-            seg.text
+      {blocks.map((block, blockIndex) => {
+        if (block.type === "text") {
+          return (
+            <span key={`text-${block.start}`}>
+              {renderInlineSegments({
+                segments,
+                start: block.start,
+                end: block.end,
+                firstMarkOffset,
+                firstMarkRef,
+              })}
+            </span>
           );
-        if (!seg.marked) {
-          return <span key={`${i}-${seg.offset}`}>{inner}</span>;
         }
-        const isFirst = i === firstMarkIndex;
         return (
-          <mark
-            key={`${i}-${seg.offset}`}
-            ref={(el) => {
-              if (isFirst) firstMarkRef.current = el;
-            }}
-            className="axiom-mark bg-[rgba(146,64,14,0.18)] text-[var(--color-ink)] px-1 -mx-0.5 rounded-sm shadow-[0_0_0_1px_rgba(146,64,14,0.35)] decoration-[var(--color-accent)]"
+          <div
+            key={`table-${blockIndex}`}
+            className="my-5 overflow-x-auto whitespace-normal"
           >
-            {inner}
-          </mark>
+            <table className="w-full min-w-[520px] border-collapse text-sm leading-normal font-sans">
+              <thead>
+                <tr className="border-b border-[var(--color-rule)]">
+                  {block.headers.map((header, index) => (
+                    <th
+                      key={index}
+                      scope="col"
+                      className="px-3 py-2 text-left align-bottom font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] font-normal"
+                    >
+                      {header.text}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className="border-b border-[var(--color-rule-subtle)] last:border-0"
+                  >
+                    {row.map((cell, cellIndex) => (
+                      <td
+                        key={cellIndex}
+                        className="px-3 py-2 align-top text-[var(--color-ink-secondary)]"
+                      >
+                        {cell.start === cell.end
+                          ? cell.text
+                          : renderInlineSegments({
+                              segments,
+                              start: cell.start,
+                              end: cell.end,
+                              firstMarkOffset,
+                              firstMarkRef,
+                            })}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         );
       })}
     </div>

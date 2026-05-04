@@ -12,6 +12,7 @@ import {
   getEncodedPaths,
   isUUID,
 } from "@/lib/tree-data";
+import { synthesiseRuleFromCitationPath } from "@/lib/axiom/rulespec/synth-rule";
 import type { Rule } from "@/lib/supabase";
 
 interface CacheEntry {
@@ -41,7 +42,12 @@ export function useTreeNodes(
 
   const pageRef = useRef(0);
   const cache = useRef<Map<string, CacheEntry>>(new Map());
-  const encodedPathsRef = useRef<Set<string> | null>(null);
+  // Encoded-paths set is jurisdiction-scoped — keyed so a navigation
+  // from /us to /us-co doesn't keep filtering against US paths.
+  const encodedPathsRef = useRef<{
+    jurisdiction: string;
+    paths: Set<string>;
+  } | null>(null);
   // Incrementing token so a stale fetch (e.g. one issued before the
   // encoded-only filter flipped) cannot overwrite newer state. Any
   // fetch whose token no longer matches ``inflight.current`` is
@@ -105,30 +111,35 @@ export function useTreeNodes(
           result = { nodes: r.nodes, hasMore: r.hasMore };
         }
       } else if (hasCitationPaths) {
+        // Lazy-load (or refresh) the encoded-paths index for this
+        // jurisdiction. The ref is keyed on ``dbJurisdictionId`` so a
+        // navigation across jurisdictions doesn't leak the previous
+        // jurisdiction's encoded set into the current filter.
+        if (
+          !encodedPathsRef.current ||
+          encodedPathsRef.current.jurisdiction !== dbJurisdictionId
+        ) {
+          const paths = await getEncodedPaths(dbJurisdictionId);
+          encodedPathsRef.current = { jurisdiction: dbJurisdictionId, paths };
+        }
+        const encodedPaths = encodedPathsRef.current.paths;
+
         if (segs.length === 1) {
-          // Doc type selected, show titles
-          // Lazy-load encoded paths for filtering
-          if (!encodedPathsRef.current) {
-            encodedPathsRef.current = await getEncodedPaths();
-          }
+          // Doc type selected, show titles.
           const fetched = await getTitleNodes(
             dbJurisdictionId,
             segs[0],
-            encodedPathsRef.current,
+            encodedPaths,
             encodedOnly
           );
           result = { nodes: fetched, hasMore: false };
         } else {
-          // Deep navigation via citation path
+          // Deep navigation via citation path.
           const pathPrefix = `${dbJurisdictionId}/${segs.join("/")}`;
-          // Lazy-load encoded paths once for RuleSpec badge indicators
-          if (!encodedPathsRef.current) {
-            encodedPathsRef.current = await getEncodedPaths();
-          }
           const r: TreeResult = await getSectionNodes(
             pathPrefix,
             pageNum,
-            encodedPathsRef.current,
+            encodedPaths,
             encodedOnly
           );
           if (r.leafRule) {
@@ -137,6 +148,29 @@ export function useTreeNodes(
               hasMore: false,
               leafRule: r.leafRule,
             };
+          } else if (
+            r.nodes.length === 0 &&
+            !r.currentRule &&
+            segs.length >= 2
+          ) {
+            // No corpus row at this depth. The corpus is still being
+            // backfilled with deeper US citations, but the rules-*
+            // repos already carry the encodings — synth a leaf so
+            // the standard rule-detail layout can render them under
+            // the canonical /axiom/<citation> URL.
+            const synth = await synthesiseRuleFromCitationPath(
+              dbJurisdictionId,
+              pathPrefix
+            );
+            if (synth) {
+              result = { nodes: [], hasMore: false, leafRule: synth };
+            } else {
+              result = {
+                nodes: r.nodes,
+                hasMore: r.hasMore,
+                currentRule: r.currentRule ?? null,
+              };
+            }
           } else {
             result = {
               nodes: r.nodes,

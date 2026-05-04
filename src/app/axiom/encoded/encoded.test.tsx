@@ -16,17 +16,19 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const { mockListEncodedFiles, mockFetchEncodedFile } = vi.hoisted(() => ({
+const { mockListEncodedFiles, mockRedirect } = vi.hoisted(() => ({
   mockListEncodedFiles: vi.fn(),
-  mockFetchEncodedFile: vi.fn(),
+  mockRedirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT:${path}`);
+  }),
 }));
 
 vi.mock("@/lib/axiom/rulespec/repo-listing", () => ({
   listEncodedFiles: mockListEncodedFiles,
-  fetchEncodedFile: mockFetchEncodedFile,
 }));
 
 vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
@@ -92,57 +94,14 @@ describe("EncodedRulesIndexPage", () => {
 });
 
 describe("EncodedRuleViewerPage", () => {
-  it("renders the YAML through RuleSpecTab when the file is found", async () => {
-    mockFetchEncodedFile.mockResolvedValue({
-      filePath: "statutes/26/3101/a.yaml",
-      content: `format: rulespec/v1
-module:
-  summary: Imposes the OASDI tax.
-rules:
-  - name: oasdi_wage_tax_rate
-    kind: parameter
-    versions:
-      - effective_from: '1990-01-01'
-        formula: '0.062'
-`,
-    });
-    const ui = await EncodedRuleViewerPage({
-      params: Promise.resolve({
-        path: ["us", "statute", "26", "3101", "a"],
-      }),
-    });
-    render(ui);
-    expect(
-      screen.getByRole("heading", { level: 1, name: "us/statute/26/3101/a" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 3, name: "oasdi_wage_tax_rate" })
-    ).toBeInTheDocument();
-    // Back link to the index.
-    expect(
-      screen.getByText("← Encoded rules").closest("a")
-    ).toHaveAttribute("href", "/axiom/encoded");
-  });
-
-  it("calls notFound when the citation has no file in the rules-* repo", async () => {
-    mockFetchEncodedFile.mockResolvedValue(null);
+  it("redirects to the canonical /axiom/<citation> URL", async () => {
     await expect(
       EncodedRuleViewerPage({
-        params: Promise.resolve({ path: ["us", "statute", "0", "0"] }),
+        params: Promise.resolve({
+          path: ["us", "statute", "26", "3101", "a"],
+        }),
       })
-    ).rejects.toThrow("NEXT_NOT_FOUND");
-  });
-
-  it("calls notFound when the jurisdiction has no published repo", async () => {
-    mockFetchEncodedFile.mockResolvedValue({
-      filePath: "anything",
-      content: "",
-    });
-    // us-ny is in the seed but has no rules-* repo.
-    await expect(
-      EncodedRuleViewerPage({
-        params: Promise.resolve({ path: ["us-ny", "statute", "1"] }),
-      })
-    ).rejects.toThrow("NEXT_NOT_FOUND");
+    ).rejects.toThrow("NEXT_REDIRECT:/axiom/us/statute/26/3101/a");
+    expect(mockRedirect).toHaveBeenCalledWith("/axiom/us/statute/26/3101/a");
   });
 });

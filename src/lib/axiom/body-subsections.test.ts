@@ -37,6 +37,22 @@ describe("splitBodyIntoSubsections", () => {
     expect(out[1].text).toContain("Some additional language for (b).");
   });
 
+  it("recognizes labels separated by single newlines from normalized eCFR text", () => {
+    const body =
+      "(a) A household shall live in the State in which it files an application.\n" +
+      "(b) When a household moves within the State, the State agency may require reapplication.";
+    const out = splitBodyIntoSubsections(body)!;
+    expect(out.map((s) => s.label)).toEqual(["a", "b"]);
+    expect(out[0].text).toContain("A household shall live");
+    expect(out[1].text).toContain("When a household moves");
+  });
+
+  it("recognizes labels after CRLF line breaks", () => {
+    const body = "(a) First subsection.\r\n(b) Second subsection.";
+    const out = splitBodyIntoSubsections(body)!;
+    expect(out.map((s) => s.label)).toEqual(["a", "b"]);
+  });
+
   it("preserves byte offsets so callers can rebase ref ranges", () => {
     const out = splitBodyIntoSubsections(TWO_SUBSECTIONS)!;
     expect(out[0].offset).toBe(0);

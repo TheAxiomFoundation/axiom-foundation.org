@@ -22,7 +22,7 @@ export interface BodySubsection {
   offset: number;
 }
 
-const LABEL_RE = /(^|\n\n)\(([a-z0-9]{1,3})\)\s/gi;
+const LABEL_RE = /(^|(?:\r?\n)+)\(([a-z0-9]{1,3})\)\s/gi;
 
 /**
  * Split a body into top-level CFR-labelled subsections. Returns

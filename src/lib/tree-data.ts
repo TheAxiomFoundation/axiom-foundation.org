@@ -682,17 +682,95 @@ async function resolveBodySubsectionRule(
   };
 }
 
-async function resolveCitationPathAlias(
-  pathPrefix: string
-): Promise<Rule | null> {
-  const alias = chapterlessSectionAlias(pathPrefix);
-  if (!alias || alias === pathPrefix) return null;
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("citation_path", alias)
-    .maybeSingle();
-  return (data as Rule | null) ?? null;
+function coloradoPolicyCanonicalAlias(pathPrefix: string): string | null {
+  const parts = pathPrefix.split("/");
+  if (parts[0] !== "us-co" || parts[1] !== "policy" || parts.length < 4) {
+    return null;
+  }
+  const agency = parts[2];
+  const page = parts[3];
+  if (!agency || !page) return null;
+  return ["us-co", "policy", `co-${agency}-${page}`, ...parts.slice(4)].join(
+    "/"
+  );
+}
+
+function canonicalCitationPathAlias(pathPrefix: string): string | null {
+  return (
+    chapterlessSectionAlias(pathPrefix) ??
+    coloradoPolicyCanonicalAlias(pathPrefix)
+  );
+}
+
+async function fetchColoradoPolicyAgencyNodes(
+  pathPrefix: string,
+  encodedPaths?: Set<string>,
+  encodedOnly?: boolean
+): Promise<TreeResult | null> {
+  const parts = pathPrefix.split("/");
+  if (parts[0] !== "us-co" || parts[1] !== "policy" || parts.length !== 3) {
+    return null;
+  }
+
+  const agency = parts[2];
+  const canonicalPrefix = `us-co/policy/co-${agency}-`;
+  const canonicalUpperBound = `us-co/policy/co-${agency}~`;
+  const rows: Rule[] = [];
+  const seen = new Set<string>();
+
+  for (let offset = 0; offset < PREFIX_SCAN_MAX_ROWS; offset += PREFIX_SCAN_PAGE_SIZE) {
+    const { data } = await supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .gte("citation_path", canonicalPrefix)
+      .lt("citation_path", canonicalUpperBound)
+      .order("citation_path")
+      .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1);
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data as Rule[]) {
+      if (
+        row.citation_path &&
+        row.parent_id === null &&
+        citationDepth(row.citation_path) === 3 &&
+        !seen.has(row.citation_path)
+      ) {
+        seen.add(row.citation_path);
+        rows.push(row);
+      }
+    }
+
+    if (data.length < PREFIX_SCAN_PAGE_SIZE) break;
+  }
+
+  if (rows.length === 0) return null;
+
+  let nodes = sortRulesByOrdinalThenCitation(rows).map((rule) => {
+    const node = ruleToSectionNode(rule, encodedPaths);
+    const canonicalSegment =
+      rule.citation_path?.split("/").pop() ?? node.segment;
+    const virtualSegment = canonicalSegment.startsWith(`co-${agency}-`)
+      ? canonicalSegment.slice(`co-${agency}-`.length)
+      : canonicalSegment;
+    return { ...node, segment: virtualSegment };
+  });
+
+  if (encodedOnly && encodedPaths) {
+    nodes = nodes.filter((n) => {
+      if (!n.rule?.citation_path) return false;
+      return hasEncodedDescendant(
+        encodedPaths,
+        n.rule.citation_path.split("/").slice(1).join("/")
+      );
+    });
+  }
+
+  return {
+    nodes,
+    hasMore: false,
+    total: nodes.length,
+  };
 }
 
 export async function getSectionNodes(
@@ -800,14 +878,9 @@ export async function getSectionNodes(
     };
   }
 
-  const aliasRule = await resolveCitationPathAlias(pathPrefix);
-  if (aliasRule) {
-    return {
-      nodes: [],
-      hasMore: false,
-      total: 0,
-      leafRule: aliasRule,
-    };
+  const aliasPath = canonicalCitationPathAlias(pathPrefix);
+  if (aliasPath && aliasPath !== pathPrefix) {
+    return getSectionNodes(aliasPath, page, encodedPaths, encodedOnly);
   }
 
   const bodySubsectionRule = await resolveBodySubsectionRule(pathPrefix);
@@ -818,6 +891,15 @@ export async function getSectionNodes(
       total: 0,
       leafRule: bodySubsectionRule,
     };
+  }
+
+  const coloradoPolicyAgency = await fetchColoradoPolicyAgencyNodes(
+    pathPrefix,
+    encodedPaths,
+    encodedOnly
+  );
+  if (coloradoPolicyAgency) {
+    return coloradoPolicyAgency;
   }
 
   const { rows, truncated } =

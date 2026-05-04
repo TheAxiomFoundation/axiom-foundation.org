@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ViewerDocument } from "@/lib/axiom-utils";
 import type { RuleReference } from "@/lib/supabase";
 import { RuleBody } from "./rule-body";
+import {
+  refsForSubsection,
+  splitBodyIntoSubsections,
+  type BodySubsection,
+} from "@/lib/axiom/body-subsections";
 
 /* v8 ignore start -- markdown table parsing, tested via integration */
 function parseMarkdownTable(tableLines: string[]): {
@@ -110,6 +115,62 @@ function RichText({ text }: { text: string }) {
 }
 /* v8 ignore stop */
 
+/**
+ * Render a body-derived subsection list with a TOC at the top. Each
+ * labelled subsection becomes its own anchored block so the TOC
+ * links can scroll-jump within the page. Refs are re-offset per
+ * subsection so citation splicing keeps working block-by-block.
+ */
+function BodySubsectionView({
+  subsections,
+  refs,
+}: {
+  subsections: BodySubsection[];
+  refs: RuleReference[];
+}) {
+  const labelled = subsections.filter((s) => s.label !== null);
+  return (
+    <div>
+      {labelled.length > 1 && (
+        <nav
+          aria-label="Subsections in this section"
+          className="mb-8 px-5 py-4 bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md"
+        >
+          <div className="flex items-baseline justify-between mb-3 gap-4">
+            <span className="eyebrow">In this section</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              {labelled.length} subsection{labelled.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <ul className="flex flex-wrap gap-x-3 gap-y-2 m-0 p-0 list-none">
+            {labelled.map((s) => (
+              <li key={s.label!}>
+                <a
+                  href={`#sub-${s.label}`}
+                  className="font-mono text-xs text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
+                >
+                  ({s.label})
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+      <div className="space-y-7">
+        {subsections.map((s, i) => (
+          <section
+            key={s.label ?? `lead-${i}`}
+            id={s.label ? `sub-${s.label}` : undefined}
+            className="scroll-mt-8"
+          >
+            <RuleBody body={s.text} refs={refsForSubsection(s, refs)} />
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SourceTab({
   document,
   outgoingRefs,
@@ -125,6 +186,16 @@ export function SourceTab({
   // The existing subsection list is a fallback for rules whose content
   // lives in children.
   const renderInline = !!document.body;
+
+  // Body-derived subsections: regulations whose corpus rows have no
+  // children but whose body text carries CFR-style ``(a)``/``(b)``/...
+  // labels. Pulling that structure out of the body itself gives the
+  // reader a navigable subsection TOC even when corpus ingestion
+  // didn't materialise the subsections as separate rows.
+  const bodySubsections = useMemo(
+    () => (document.body ? splitBodyIntoSubsections(document.body) : null),
+    [document.body]
+  );
 
   useEffect(() => {
     const target = document.highlightedSubsection;
@@ -148,7 +219,12 @@ export function SourceTab({
         </aside>
       )}
 
-      {renderInline ? (
+      {renderInline && bodySubsections ? (
+        <BodySubsectionView
+          subsections={bodySubsections}
+          refs={outgoingRefs ?? []}
+        />
+      ) : renderInline ? (
         <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
       ) : (
         <div className="space-y-7">

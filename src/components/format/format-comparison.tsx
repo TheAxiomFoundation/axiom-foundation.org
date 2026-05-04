@@ -336,10 +336,10 @@ scope NYEITC:
 
 function getCodeLanguage(
   format: FormatTab
-): "rulespec" | "xml" | "python" | "catala" {
+): "yaml" | "xml" | "python" | "catala" {
   switch (format) {
     case "rulespec":
-      return "rulespec";
+      return "yaml";
     case "dmn":
       return "xml";
     case "openfisca":

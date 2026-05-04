@@ -17,7 +17,7 @@ import {
   VersionIcon,
 } from "@/components/icons";
 
-type SnippetLanguage = "rulespec" | "xml" | "python" | "yaml" | "catala" | "plain";
+type SnippetLanguage = "xml" | "python" | "yaml" | "catala" | "plain";
 
 type StackLayer = {
   id: string;
@@ -167,7 +167,7 @@ context_files:
     repos: ["rulespec", "rules-uk", "rules-us", "rules-us-co"],
     outputs: ["compileable rules", "tests", "provenance manifests"],
     snippetLabel: "RuleSpec leaf",
-    snippetLanguage: "rulespec",
+    snippetLanguage: "yaml",
     snippet: `claimant_or_partner_had_award_of_state_pension_credit:
   entity: Family
   period: Day

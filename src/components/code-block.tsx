@@ -4,13 +4,11 @@ import Prism from "prismjs";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-markup";
 import "prismjs/components/prism-yaml";
-import "@/lib/prism-rulespec";
 import "@/lib/prism-catala";
 
-type Language = "rulespec" | "xml" | "python" | "yaml" | "catala" | "plain";
+type Language = "xml" | "python" | "yaml" | "catala" | "plain";
 
 const prismLang: Record<Language, string> = {
-  rulespec: "rulespec",
   xml: "markup",
   python: "python",
   yaml: "yaml",

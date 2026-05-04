@@ -21,7 +21,7 @@ import {
   XIcon,
 } from "@/components/icons";
 
-type SnippetLanguage = "rulespec" | "xml" | "python" | "yaml" | "catala" | "plain";
+type SnippetLanguage = "xml" | "python" | "yaml" | "catala" | "plain";
 
 type PipelineStage = {
   id: string;
@@ -137,7 +137,7 @@ gates:
     ],
     outputs: [".yaml", ".yaml.test", "trace json", "token usage"],
     snippetLabel: "generated leaf shape",
-    snippetLanguage: "rulespec",
+    snippetLanguage: "yaml",
     snippet: `variation_determination_period_months:
   from 2025-03-31: 12
   entity: Person

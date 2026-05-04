@@ -8,11 +8,10 @@ describe('CodeBlock', () => {
     expect(screen.getByText('hello world')).toBeInTheDocument()
   })
 
-  it('renders rulespec code with Prism highlighting', () => {
+  it('renders RuleSpec YAML with Prism YAML highlighting', () => {
     const { container } = render(
-      <CodeBlock code="niit_rate:\n  from 2013-01-01: 0.038" language="rulespec" />,
+      <CodeBlock code="format: rulespec/v1\nrules: []" language="yaml" />,
     )
-    // Prism should inject HTML via dangerouslySetInnerHTML
     const codeEl = container.querySelector('code')
     expect(codeEl).toBeInTheDocument()
     expect(codeEl?.innerHTML).toContain('span')

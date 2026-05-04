@@ -167,15 +167,15 @@ describe('languageFromPath', () => {
   it('maps .catala → catala', () =>
     expect(languageFromPath('bar.catala')).toBe('catala'))
   it('maps .py → python', () => expect(languageFromPath('x.py')).toBe('python'))
-  it('maps RuleSpec YAML extensions to rulespec', () => {
-    expect(languageFromPath('x.yaml')).toBe('rulespec')
-    expect(languageFromPath('x.yml')).toBe('rulespec')
+  it('maps RuleSpec YAML extensions to yaml', () => {
+    expect(languageFromPath('x.yaml')).toBe('yaml')
+    expect(languageFromPath('x.yml')).toBe('yaml')
   })
   it('maps .xml → xml', () => expect(languageFromPath('x.xml')).toBe('xml'))
   it('falls back to plain for unknown extensions', () =>
     expect(languageFromPath('x.txt')).toBe('plain'))
   it('is case-insensitive', () =>
-    expect(languageFromPath('X.YAML')).toBe('rulespec'))
+    expect(languageFromPath('X.YAML')).toBe('yaml'))
 })
 
 describe('EncodingTab', () => {

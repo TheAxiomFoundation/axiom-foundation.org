@@ -5,19 +5,18 @@ import type { RuleEncodingData } from "@/lib/supabase";
 import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
 import { ExpandableCode } from "./expandable-code";
 
-type CodeLang = "rulespec" | "catala" | "python" | "yaml" | "xml" | "plain";
+type CodeLang = "catala" | "python" | "yaml" | "xml" | "plain";
 
 /**
- * Pick the right Prism grammar from a file path. The axiom ships two
- * encoding languages today (RuleSpec and Catala); everything else falls back
- * to plain text so we don't mis-highlight.
+ * Pick the right Prism grammar from a file path. RuleSpec is YAML, so .yaml
+ * files use Prism's YAML grammar rather than a custom language.
  */
 export function languageFromPath(path: string): CodeLang {
   const lower = path.toLowerCase();
   if (lower.includes(".catala")) return "catala";
   if (lower.endsWith(".py")) return "python";
   if (lower.endsWith(".yaml") || lower.endsWith(".yml")) {
-    return "rulespec";
+    return "yaml";
   }
   if (lower.endsWith(".xml")) return "xml";
   return "plain";

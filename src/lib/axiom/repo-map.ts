@@ -1,9 +1,9 @@
 /**
  * Single source of truth for "which GitHub repo holds the encodings
  * for a given jurisdiction?". Consumed by both the server-side
- * fallback fetcher (``lib/supabase.ts::fetchRuleSpecFromGitHub``) and the
- * client-side "View on GitHub" link (``encoding-tab.tsx``). Keeping
- * the map here prevents the pair from drifting.
+ * fallback fetcher (``lib/supabase.ts::fetchRuleSpecFromGitHub``), the
+ * encoded index, and the client-side "View on GitHub" link. Keeping
+ * the map here prevents those surfaces from drifting.
  *
  * Keys are the axiom's canonical jurisdiction slugs as they land in
  * ``corpus.provisions.jurisdiction`` — so ``canada`` (not ``ca``) for Canada.

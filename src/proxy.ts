@@ -49,6 +49,10 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
+    if (pathname === "/axiom" || pathname.startsWith("/axiom/")) {
+      return NextResponse.next();
+    }
+
     const target = request.nextUrl.clone();
     target.pathname = pathname === "/" ? "/axiom" : `/axiom${pathname}`;
     return NextResponse.rewrite(target);

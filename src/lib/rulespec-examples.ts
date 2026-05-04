@@ -7,242 +7,254 @@
 
 // -- Hero animation snippet ---------------------------------------------------
 
-export const heroRuleSpecCode = `ctc_amount_per_child:
-  from 2018-01-01: 2000
-
-child_tax_credit:
-  imports:
-    - 26/24/c#qualifying_children
-  entity: TaxUnit
-  from 1998-01-01:
-    ctc_amount_per_child * qualifying_children`
+export const heroRuleSpecCode = `format: rulespec/v1
+imports:
+  - us:statutes/26/24/c
+rules:
+  - name: child_tax_credit
+    kind: derived
+    entity: TaxUnit
+    dtype: Money
+    period: Year
+    versions:
+      - effective_from: '1998-01-01'
+        formula: ctc_amount_per_child * qualifying_children`
 
 // -- Code comparison examples -------------------------------------------------
 
 export type ExampleType = 'niit' | 'aca-ptc' | 'std-ded' | 'ny-eitc'
 
 export const rulespecExamples: Record<ExampleType, string> = {
-  'niit': `# 26 USC 1411(a) - Net Investment Income Tax
-
-# (a) In general.— There is hereby imposed a tax equal
-# to 3.8 percent of the lesser of— (1) net investment
-# income, or (2) modified AGI in excess of the
-# threshold amount.
-
-# "3.8 percent"
-niit_rate:
-    from 2013-01-01: 0.038
-
-# Lesser of NII or excess MAGI over threshold
-excess_magi:
-    imports:
-        - 26/62#modified_agi
-        - 26/1411/b#threshold_amount
+  'niit': `format: rulespec/v1
+module:
+  summary: IRC section 1411(a) imposes the net investment income tax.
+imports:
+  - us:statutes/26/1411/b
+  - us:statutes/26/1411/c
+rules:
+  - name: niit_rate
+    kind: parameter
+    dtype: Rate
+    source: 26 USC 1411(a)
+    versions:
+      - effective_from: '2013-01-01'
+        formula: '0.038'
+  - name: net_investment_income_tax
+    kind: derived
     entity: TaxUnit
-    from 2013-01-01: max(0, modified_agi - threshold_amount)
+    dtype: Money
+    period: Year
+    unit: USD
+    source: 26 USC 1411(a)
+    versions:
+      - effective_from: '2013-01-01'
+        formula: |-
+          niit_rate * min(
+              net_investment_income,
+              max(0, modified_agi - threshold_amount)
+          )`,
 
-net_investment_income_tax:
-    imports:
-        - 26/1411/c#net_investment_income
+  'aca-ptc': `format: rulespec/v1
+module:
+  summary: IRC section 36B(b)(3)(A) defines applicable percentage.
+imports:
+  - us:statutes/26/36B/b/3
+rules:
+  - name: applicable_percentage
+    kind: derived
     entity: TaxUnit
-    from 2013-01-01: niit_rate * min(net_investment_income, excess_magi)`,
+    dtype: Rate
+    period: Year
+    source: 26 USC 36B(b)(3)(A)
+    versions:
+      - effective_from: '2014-01-01'
+        formula: applicable_percentage_base`,
 
-  'aca-ptc': `# 26 USC 36B(b)(3) - Applicable percentage
+  'std-ded': `format: rulespec/v1
+module:
+  summary: IRC section 63(c)(5) defines the dependent standard deduction.
+imports:
+  - us:policies/irs/rev-proc-2025-32/standard-deduction
+rules:
+  - name: dependent_standard_deduction
+    kind: derived
+    entity: Person
+    dtype: Money
+    period: Year
+    unit: USD
+    source: IRC section 63(c)(5)
+    versions:
+      - effective_from: '2026-01-01'
+        formula: |-
+          min(
+              single_basic_standard_deduction,
+              max(
+                  dependent_minimum,
+                  earned_income + dependent_earned_income_addition
+              )
+          )`,
 
-# (iii) Temporary percentages for 2021 through 2025
-# Up to 150%:     Initial: 0.0   Final: 0.0
-# 150% to 200%:   Initial: 0.0   Final: 2.0
-# 200% to 250%:   Initial: 2.0   Final: 4.0
-# 250% to 300%:   Initial: 4.0   Final: 6.0
-# 300% to 400%:   Initial: 6.0   Final: 8.5
-
-# IRA temporary table tier thresholds
-ira_tier_1_threshold:
-    from 2021-01-01: 0
-
-ira_tier_2_threshold:
-    from 2021-01-01: 1.50
-
-ira_tier_3_threshold:
-    from 2021-01-01: 2.00
-
-# Initial premium percentages
-ira_initial_1:
-    from 2021-01-01: 0.0
-
-ira_initial_2:
-    from 2021-01-01: 0.0
-
-ira_initial_3:
-    from 2021-01-01: 0.02
-
-# Computed: applicable percentage
-applicable_percentage:
-    imports:
-        - 26/36B/b/3#applicable_percentage_base
+  'ny-eitc': `format: rulespec/v1
+module:
+  summary: New York Tax Law section 606(d) defines the state earned income credit.
+imports:
+  - us:statutes/26/32
+rules:
+  - name: ny_eitc_rate
+    kind: parameter
+    dtype: Rate
+    source: NY Tax Law section 606(d)
+    versions:
+      - effective_from: '2003-01-01'
+        formula: '0.30'
+  - name: ny_eitc
+    kind: derived
     entity: TaxUnit
-    from 2014-01-01: applicable_percentage_base`,
-
-  'std-ded': `# 26 USC 63(c)(2)(A) - Standard deduction (joint)
-
-# (A) 200 percent of the dollar amount in effect under
-# subparagraph (C) for the taxable year in the case of—
-# (i) a joint return, or (ii) a surviving spouse
-
-# "200 percent"
-joint_multiplier:
-    from 1988-01-01: 2
-
-basic_std_ded_joint:
-    imports:
-        - 26/63/c/2/C#basic_std_ded_other
-    entity: TaxUnit
-    from 1988-01-01: basic_std_ded_other * joint_multiplier`,
-
-  'ny-eitc': `# NY Tax Law 606(d) - NY Earned Income Credit
-
-# 606(d) For taxable years beginning after 2002, a
-# resident individual who is allowed the earned income
-# credit under section 32 of the IRC shall be allowed
-# a credit equal to thirty percent of such federal credit.
-
-# "thirty percent"
-ny_eitc_rate:
-    from 2003-01-01: 0.30
-
-ny_eitc:
-    imports:
-        - 26/32#federal_eitc
-    entity: TaxUnit
-    from 2003-01-01: federal_eitc * ny_eitc_rate`,
+    dtype: Money
+    period: Year
+    unit: USD
+    source: NY Tax Law section 606(d)
+    versions:
+      - effective_from: '2003-01-01'
+        formula: federal_eitc * ny_eitc_rate`,
 }
 
 // -- Spec section content -----------------------------------------------------
 
 export const specContent = `# RuleSpec file specification
 
-Self-contained statute encoding format for tax and benefit rules.
-Parsed by a recursive descent parser into a typed AST.
+RuleSpec is the executable legal computation layer for Axiom. It is YAML with
+structured provenance, durable legal IDs, typed rules, effective dates, and
+formula strings that compile into the Axiom Rules runtime.
 
 ## File Structure
 
-\`\`\`
-# us/statute/26/32/b.yaml - Title
-
-# Statute text in comments
-# (a) In general.— ...
-
-param_name:
-    from 2024-01-01: 100
-    from 2023-01-01: 95
-
-var_name:
+\`\`\`yaml
+format: rulespec/v1
+module:
+  summary: IRC section 3101(a) imposes OASDI tax on wages.
+  source_verification:
+    corpus_citation_path: us/statute/26/3101
+rules:
+  - name: oasdi_wage_tax_rate
+    kind: parameter
+    dtype: Rate
+    source: 26 USC 3101(a)
+    versions:
+      - effective_from: '1990-01-01'
+        formula: '0.062'
+  - name: oasdi_wage_tax
+    kind: derived
     entity: TaxUnit
-    from 2024-01-01: param_name * input_value
+    dtype: Money
+    period: Year
+    unit: USD
+    source: 26 USC 3101(a)
+    versions:
+      - effective_from: '1990-01-01'
+        formula: wages * oasdi_wage_tax_rate
 \`\`\`
 
-## Top-level declarations
+Every file starts with \`format: rulespec/v1\`. Jurisdiction repositories use the
+file path as the durable legal module ID.
 
-| Declaration | Syntax | Purpose |
-|-------------|--------|---------|
-| Comment | \`# ...\` | Statute text, section headers |
-| Definition | \`name:\` | Parameter or computed value (inferred from fields) |
-| \`entity\` | \`entity name:\` | Entity type with fields |
-| \`amend\` | \`amend path:\` | Override for reform modeling |
+## Top-level keys
 
-## Entity declarations
+| Key | Purpose |
+|-----|---------|
+| \`format\` | Schema discriminator. |
+| \`module\` | Summary and source verification metadata. |
+| \`imports\` | Other RuleSpec modules by canonical path. |
+| \`relations\` | Declared entity relations. |
+| \`rules\` | Parameters, derived outputs, relations, and reiterations. |
 
-Define entity types with typed fields and relationships:
+## Imports and IDs
 
-\`\`\`
-entity Person:
-    age: int
-    income: float
-    tax_unit: -> TaxUnit
-
-entity TaxUnit:
-    members: [Person]
+\`\`\`yaml
+imports:
+  - us:policies/usda/snap/fy-2026-cola/maximum-allotments
+  - us-co:regulations/10-ccr-2506-1/4.207.3
 \`\`\`
 
-## Definitions (parameters and computed values)
+The canonical form is \`<jurisdiction>:<relative path without extension>\`.
+Executable outputs append \`#<rule_name>\`:
 
-No keyword prefix needed — the parser infers type from fields.
-Definitions without \`entity:\` are parameters (pure scalar values).
-Definitions with \`entity:\` are computed per-entity.
-
-Optional metadata fields: \`source\`, \`label\`, \`description\`, \`unit\`.
-
+\`\`\`text
+us:statutes/7/2017/a#snap_regular_month_allotment
+us-co:regulations/10-ccr-2506-1/4.403.2#snap_countable_earned_income
 \`\`\`
-# Parameter: "30 per centum of household income"
-income_contribution_rate:
-    from 1977-10-01: 0.30
 
-# Computed value
-snap_allotment:
+Formula strings may use local symbols after imports resolve. API calls, tests,
+notebooks, traces, and machine-readable outputs use durable legal IDs.
+
+## Rule kinds
+
+\`\`\`yaml
+rules:
+  - name: snap_maximum_allotment_table
+    kind: parameter
+    dtype: Money
+    unit: USD
+    indexed_by: household_size
+    versions:
+      - effective_from: '2025-10-01'
+        values:
+          1: 298
+          2: 546
+  - name: snap_maximum_allotment
+    kind: derived
     entity: Household
-    from 1977-10-01:
-        max(0, thrifty_food_plan_cost -
-            snap_net_income * income_contribution_rate)
+    dtype: Money
+    period: Month
+    unit: USD
+    versions:
+      - effective_from: '2025-10-01'
+        formula: snap_maximum_allotment_table[household_size]
 \`\`\`
 
-Definitions earlier in a file are in scope for later ones.
+Use table parameters for source-stated tables so reforms can target specific
+cells. Use derived rules for computations. Use \`reiteration\` for provisions
+that restate an upstream rule without changing computation.
 
-## Temporal values
+## Tests and execution
 
-Use \`from YYYY-MM-DD:\` for effective dates.
-Use \`from DATE to DATE:\` for sunset provisions:
-
-\`\`\`
-ctc_base_amount:
-    from 1998-01-01: 400
-    from 1999-01-01: 500
-    from 2001-01-01: 600
-    from 2003-01-01: 1000
-    from 2018-01-01: 2000  # TCJA
-    from 2025-01-01: 2200  # P.L. 119-21
-
-# Sunset clause
-arpa_bonus:
-    from 2021-01-01 to 2025-12-31: 1600
+\`\`\`yaml
+- name: regular_allotment_subtracts_contribution
+  period: 2026-01
+  input:
+    us:statutes/7/2017/a#input.household_size: 1
+    us:policies/usda/snap/fy-2026-cola/maximum-allotments#snap_maximum_allotment: 298
+    us:statutes/7/2014/e/6/A#snap_net_income: 100
+    us:statutes/7/2017/a#input.snap_eligible: true
+  output:
+    us:statutes/7/2017/a#snap_regular_month_allotment: 268
 \`\`\`
 
-## Expression syntax
+Bare friendly keys are invalid at public boundaries. Input slots use
+\`#input.<local symbol>\`, relation facts use \`#relation.<relation name>\`, and
+imported values use the upstream rule ID.
 
-Python-like with restrictions:
+## Formula syntax
+
+Formula strings are Python-like expressions parsed by the Axiom Rules runtime:
+
 - Conditionals: \`if cond: expr else: expr\`
 - Pattern matching: \`match expr: pattern => result\`
 - Logic: \`and\`, \`or\`, \`not\`
-- Built-ins: \`max\`, \`min\`, \`abs\`, \`round\`, \`sum\`, \`len\`, \`clip\`
-- Field access: \`person.income\`
-- **No magic numbers** — only -1, 0, 1, 2, 3 in formulas
+- Built-ins: \`max\`, \`min\`, \`abs\`, \`round\`, \`sum\`, \`len\`
+- Table lookup: \`table_name[index_expr]\`
 
-\`\`\`
-applicable_percentage:
-    entity: TaxUnit
-    from 2026-01-01:
-        if is_joint_return: joint_rate else: single_rate
-
-threshold:
-    entity: TaxUnit
-    from 2026-01-01:
-        match filing_status:
-            "SINGLE" => single_threshold
-            "JOINT" => joint_threshold
-\`\`\`
-
-## Amendments (Reform Modeling)
-
-\`\`\`
-amend gov/tax/personal_allowance:
-    from 2025-04-06: 15000
-\`\`\`
+Formula literals must be grounded in the source provision. Inflation-adjusted
+values, agency tables, and downstream options belong in the authority that
+actually states them.
 
 ## File Naming
 
-Filepath = legal citation:
-\`\`\`
-us/statute/7/2017/a.yaml       -> 7 USC 2017(a)
-us/statute/26/24/d/1/B.yaml    -> 26 USC 24(d)(1)(B)
-us/statute/26/32/b.yaml        -> 26 USC 32(b)
-us-ny/statute/tax/606/d.yaml   -> NY Tax Law § 606(d)
+Filepath = legal or policy authority:
+
+\`\`\`text
+rules-us/statutes/7/2017/a.yaml
+rules-us/statutes/26/63/c/5.yaml
+rules-us/policies/usda/snap/fy-2026-cola/maximum-allotments.yaml
+rules-us-co/regulations/10-ccr-2506-1/4.403.2.yaml
 \`\`\``

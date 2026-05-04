@@ -12,7 +12,7 @@ function code(lines: number): string {
 describe("ExpandableCode inline", () => {
   it("renders the code inline with an Expand button that shows the line count", () => {
     render(
-      <ExpandableCode code={code(25)} language="rulespec" label="foo.yaml" />
+      <ExpandableCode code={code(25)} language="yaml" label="foo.yaml" />
     );
     const btn = screen.getByRole("button", { name: /Expand · 25 lines/i });
     expect(btn).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe("ExpandableCode inline", () => {
   });
 
   it("renders the code (as before) even for very short snippets", () => {
-    render(<ExpandableCode code="short" language="rulespec" />);
+    render(<ExpandableCode code="short" language="yaml" />);
     expect(screen.getByText("short")).toBeInTheDocument();
   });
 });
@@ -31,7 +31,7 @@ describe("ExpandableCode overlay", () => {
     render(
       <ExpandableCode
         code={code(50)}
-        language="rulespec"
+        language="yaml"
         label="us/statute/26/32.yaml"
       />
     );
@@ -44,7 +44,7 @@ describe("ExpandableCode overlay", () => {
   });
 
   it("closes when the Escape key is pressed", () => {
-    render(<ExpandableCode code={code(50)} language="rulespec" />);
+    render(<ExpandableCode code={code(50)} language="yaml" />);
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
@@ -53,7 +53,7 @@ describe("ExpandableCode overlay", () => {
 
   it("closes when the backdrop is clicked", () => {
     const { container } = render(
-      <ExpandableCode code={code(50)} language="rulespec" />
+      <ExpandableCode code={code(50)} language="yaml" />
     );
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe("ExpandableCode overlay", () => {
   });
 
   it("closes on the explicit Close button", () => {
-    render(<ExpandableCode code={code(50)} language="rulespec" />);
+    render(<ExpandableCode code={code(50)} language="yaml" />);
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     fireEvent.click(
       screen.getByRole("button", { name: /close expanded view/i })
@@ -77,7 +77,7 @@ describe("ExpandableCode overlay", () => {
   });
 
   it("scroll-locks the body while open and restores on close", () => {
-    render(<ExpandableCode code={code(50)} language="rulespec" />);
+    render(<ExpandableCode code={code(50)} language="yaml" />);
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     expect(document.body.style.overflow).toBe("hidden");
     fireEvent.keyDown(window, { key: "Escape" });
@@ -85,7 +85,7 @@ describe("ExpandableCode overlay", () => {
   });
 
   it("uses a default label when none is provided", () => {
-    render(<ExpandableCode code={code(30)} language="rulespec" />);
+    render(<ExpandableCode code={code(30)} language="yaml" />);
     fireEvent.click(screen.getByRole("button", { name: /Expand/i }));
     // eyebrow still renders
     expect(screen.getByText(/RuleSpec encoding/i)).toBeInTheDocument();

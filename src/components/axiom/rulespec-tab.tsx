@@ -143,7 +143,7 @@ export function RuleSpecTab({
             <div className="eyebrow mb-3">RuleSpec encoding</div>
             <ExpandableCode
               code={encoding.rulespec_content}
-              language="rulespec"
+              language="yaml"
               label={encoding.file_path}
             />
             {doc?.parseErrors.length ? (
@@ -279,7 +279,7 @@ function RuleCard({
       </header>
       <ExpandableCode
         code={yamlBlock}
-        language="rulespec"
+        language="yaml"
         label={rule.name}
       />
       {tests.length > 0 && <TestsBlock tests={tests} />}

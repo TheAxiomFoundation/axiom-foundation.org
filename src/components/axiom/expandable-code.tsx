@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import CodeBlock from "@/components/code-block";
 
 type CodeLang =
-  | "rulespec"
   | "catala"
   | "python"
   | "yaml"

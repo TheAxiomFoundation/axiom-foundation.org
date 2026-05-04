@@ -44,15 +44,15 @@ describe('FormatPage', () => {
 
   it('uses citation-path RuleSpec filenames', () => {
     render(<FormatPage />)
-    expect(screen.getByText('us/statute/26/1411/a.yaml')).toBeInTheDocument()
-    expect(screen.getByText('us/statute/26/24/d/1/B.yaml')).toBeInTheDocument()
+    expect(screen.getByText('rules-us/statutes/26/1411/a.yaml')).toBeInTheDocument()
+    expect(screen.getByText('rules-us/statutes/26/24/d/1/B.yaml')).toBeInTheDocument()
   })
 
   it('switches examples and format tabs', () => {
     render(<FormatPage />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Standard Deduction' }))
-    expect(screen.getByText('us/statute/26/63/c/2/A.yaml')).toBeInTheDocument()
+    expect(screen.getByText('rules-us/statutes/26/63/c/5.yaml')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenFisca/PE' }))
     expect(
@@ -67,7 +67,7 @@ describe('FormatPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'NY EITC' }))
     fireEvent.click(screen.getByRole('button', { name: 'RuleSpec' }))
-    expect(screen.getByText('us-ny/statute/tax/606/d.yaml')).toBeInTheDocument()
+    expect(screen.getByText('rules-us-ny/statutes/tax/606/d.yaml')).toBeInTheDocument()
   })
 
   it('links back to home and out to spec', () => {

@@ -509,7 +509,7 @@ export interface SearchHit {
 
 export interface SearchOptions {
   jurisdiction?: string
-  docType?: 'statute' | 'regulation'
+  docType?: string
   limit?: number
 }
 

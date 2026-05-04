@@ -7,6 +7,7 @@ import {
   resolveAxiomPath,
   hasEncodedDescendant,
   resolveDisplayContext,
+  getDocTypeNodes,
   getTitleNodes,
   getSectionNodes,
   JURISDICTIONS,
@@ -280,6 +281,75 @@ describe("hasEncodedDescendant", () => {
     // "statute/26" should not match "statute/260/..."
     const testPaths = new Set(["statute/260/1"]);
     expect(hasEncodedDescendant(testPaths, "statute/26")).toBe(false);
+  });
+});
+
+describe("getDocTypeNodes", () => {
+  beforeEach(() => {
+    vi.mocked(supabaseCorpus.from).mockReset();
+  });
+
+  it("orders root rows with null citation paths last before deriving doc types", async () => {
+    const orderSpy = vi.fn();
+    const rangeSpy = vi.fn();
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      is: () => builder,
+      order: (...args: unknown[]) => {
+        orderSpy(...args);
+        return builder;
+      },
+      range: (...args: unknown[]) => {
+        rangeSpy(...args);
+        return Promise.resolve({
+          data: [
+            { citation_path: "us-co/regulation/10-CCR-2506-1" },
+            { citation_path: "us-co/statute/crs" },
+            { citation_path: null },
+          ],
+          error: null,
+        });
+      },
+    } as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    const nodes = await getDocTypeNodes("us-co");
+
+    expect(orderSpy).toHaveBeenCalledWith("citation_path", {
+      ascending: true,
+      nullsFirst: false,
+    });
+    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
+    expect(nodes.map((n) => n.segment)).toEqual(["regulation", "statute"]);
+  });
+
+  it("continues scanning when an early page has only null citation paths", async () => {
+    let page = 0;
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      is: () => builder,
+      order: () => builder,
+      range: () => {
+        page += 1;
+        if (page === 1) {
+          return Promise.resolve({
+            data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
+            error: null,
+          });
+        }
+        return Promise.resolve({
+          data: [{ citation_path: "us-co/regulation/10-CCR-2506-1" }],
+          error: null,
+        });
+      },
+    } as never;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
+
+    const nodes = await getDocTypeNodes("us-co");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["regulation"]);
   });
 });
 

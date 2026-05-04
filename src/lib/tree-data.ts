@@ -146,6 +146,8 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
 const PAGE_SIZE = 100;
 const PREFIX_SCAN_PAGE_SIZE = 1000;
 const PREFIX_SCAN_MAX_ROWS = 10000;
+const ROOT_SCAN_PAGE_SIZE = 1000;
+const ROOT_SCAN_MAX_ROWS = 10000;
 
 // ---- Query functions ----
 
@@ -256,20 +258,28 @@ export async function getDocTypeNodes(
   // collapses to "No items found". Pull the parent_id=null roots
   // unfiltered — the index on ``(jurisdiction, parent_id)`` returns
   // them in ~tens of ms — and skip null citation_paths in JS.
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("citation_path")
-    .eq("jurisdiction", jurisdiction)
-    .is("parent_id", null)
-    .limit(1000);
-
   const docTypes = new Set<string>();
-  for (const row of data || []) {
-    if (!row.citation_path) continue;
-    const parts = row.citation_path.split("/");
-    if (parts.length >= 2) {
-      docTypes.add(parts[1]);
+
+  for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
+    const { data } = await supabaseCorpus
+      .from("provisions")
+      .select("citation_path")
+      .eq("jurisdiction", jurisdiction)
+      .is("parent_id", null)
+      .order("citation_path", { ascending: true, nullsFirst: false })
+      .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      if (!row.citation_path) continue;
+      const parts = row.citation_path.split("/");
+      if (parts.length >= 2) {
+        docTypes.add(parts[1]);
+      }
     }
+
+    if (docTypes.size >= 3 || data.length < ROOT_SCAN_PAGE_SIZE) break;
   }
 
   return Array.from(docTypes)

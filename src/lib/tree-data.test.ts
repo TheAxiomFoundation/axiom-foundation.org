@@ -1074,4 +1074,128 @@ describe("getSectionNodes — citation path aliases", () => {
       "Expenses incurred by Attorney General"
     );
   });
+
+  it("lists Colorado policy agency folders from canonical page rows", async () => {
+    const snapPage = {
+      id: "snap-page",
+      jurisdiction: "us-co",
+      doc_type: "policy",
+      parent_id: null,
+      level: 1,
+      ordinal: 2,
+      heading: "Supplemental Nutrition Assistance Program (SNAP)",
+      body: null,
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: null,
+      citation_path: "us-co/policy/co-cdhs-snap-page",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "",
+      updated_at: "",
+    };
+    const abawdPage = {
+      ...snapPage,
+      id: "abawd-page",
+      ordinal: 1,
+      heading: "Able-Bodied Adults Without Dependents",
+      citation_path: "us-co/policy/co-cdhs-abawd-page",
+    };
+
+    const parentLookup = {
+      select: () => parentLookup,
+      eq: () => parentLookup,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    } as never;
+    const agencyLookup = {
+      select: () => agencyLookup,
+      gte: () => agencyLookup,
+      lt: () => agencyLookup,
+      order: () => agencyLookup,
+      range: () =>
+        Promise.resolve({ data: [snapPage, abawdPage], error: null }),
+    } as never;
+
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(parentLookup)
+      .mockReturnValueOnce(agencyLookup);
+
+    const result = await getSectionNodes("us-co/policy/cdhs");
+
+    expect(result.nodes.map((node) => node.segment)).toEqual([
+      "abawd-page",
+      "snap-page",
+    ]);
+    expect(result.nodes.map((node) => node.rule?.citation_path)).toEqual([
+      "us-co/policy/co-cdhs-abawd-page",
+      "us-co/policy/co-cdhs-snap-page",
+    ]);
+  });
+
+  it("resolves Colorado policy agency URLs to canonical page rows", async () => {
+    const parent = {
+      id: "snap-page",
+      jurisdiction: "us-co",
+      doc_type: "policy",
+      parent_id: null,
+      level: 1,
+      ordinal: 1,
+      heading: "Supplemental Nutrition Assistance Program (SNAP)",
+      body: null,
+      effective_date: null,
+      repeal_date: null,
+      source_url: null,
+      source_path: null,
+      citation_path: "us-co/policy/co-cdhs-snap-page",
+      rulespec_path: null,
+      has_rulespec: false,
+      created_at: "",
+      updated_at: "",
+    };
+    const child = {
+      ...parent,
+      id: "block-1",
+      parent_id: "snap-page",
+      level: 2,
+      heading: "How it works",
+      citation_path: "us-co/policy/co-cdhs-snap-page/block-1",
+    };
+
+    vi.mocked(supabaseCorpus.from).mockImplementation(() => {
+      let citationPath = "";
+      let parentId = "";
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: string) => {
+          if (column === "citation_path") citationPath = value;
+          if (column === "parent_id") parentId = value;
+          return builder;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data:
+              citationPath === "us-co/policy/co-cdhs-snap-page"
+                ? parent
+                : null,
+            error: null,
+          }),
+        order: () => builder,
+        range: () =>
+          Promise.resolve({
+            data: parentId === "snap-page" ? [child] : [],
+            count: parentId === "snap-page" ? 1 : 0,
+            error: null,
+          }),
+      } as never;
+      return builder;
+    });
+
+    const result = await getSectionNodes("us-co/policy/cdhs/snap-page");
+
+    expect(result.currentRule?.citation_path).toBe(
+      "us-co/policy/co-cdhs-snap-page"
+    );
+    expect(result.nodes.map((node) => node.segment)).toEqual(["block-1"]);
+  });
 });

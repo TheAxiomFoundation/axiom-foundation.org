@@ -65,6 +65,9 @@ rules:
     expect(out?.heading).toBe(
       "Internal Revenue Code §3101(a) imposes a 6.2 percent OASDI tax"
     );
+    expect(out?.body).toBe(
+      "Internal Revenue Code §3101(a) imposes a 6.2 percent OASDI tax. More text."
+    );
   });
 
   it("falls back to the first rule's name when there is no summary", async () => {

@@ -38,11 +38,13 @@ export function isSynthesisedRuleId(ruleId: string): boolean {
  * exists, so callers can fall through to the normal "not found"
  * path.
  *
- * The returned Rule is synthetic: ``parent_id`` is null,
- * ``effective_date``/``ordinal``/``body`` are absent, and the
- * heading is derived from the YAML's module summary or first
- * declared rule. The rest of the atlas treats it as a real leaf —
- * the only difference is that ``id`` carries the
+ * The returned Rule is synthetic: ``parent_id`` is null and
+ * ``effective_date``/``ordinal`` are absent. The heading is derived
+ * from the YAML's module summary or first declared rule; when the
+ * module has a summary, we also expose the full summary as ``body`` so
+ * the reader pane does not collapse to the shortened heading. The
+ * rest of the atlas treats it as a real leaf — the only difference is
+ * that ``id`` carries the
  * {@link SYNTHESISED_ID_PREFIX} so the encoding fetcher can skip
  * the corpus and go straight to GitHub.
  */
@@ -54,6 +56,7 @@ export async function synthesiseRuleFromCitationPath(
   if (!fetched) return null;
   const doc = parseRuleSpec(fetched.content);
   const heading = pickHeading(doc.module.summary, doc.rules[0]?.name ?? null);
+  const body = doc.module.summary?.trim() || null;
   return {
     id: synthesisedRuleId(citationPath),
     jurisdiction,
@@ -62,7 +65,7 @@ export async function synthesiseRuleFromCitationPath(
     level: 0,
     ordinal: null,
     heading,
-    body: null,
+    body,
     effective_date: null,
     repeal_date: null,
     source_url: null,

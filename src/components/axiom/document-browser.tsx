@@ -429,7 +429,7 @@ export function AxiomBrowser({
           <PaletteTrigger variant="hero" />
         </div>
 
-        <AxiomStats />
+        <AxiomStats onNavigateHref={navigateHref} />
 
         <div className="mt-12 flex justify-center">
           <Link

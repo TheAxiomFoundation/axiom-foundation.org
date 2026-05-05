@@ -19,6 +19,8 @@ interface PageProps {
   params: Promise<{ segments?: string[] }>;
 }
 
+const INITIAL_TREE_STATE_TIMEOUT_MS = 1500;
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -96,7 +98,12 @@ async function getInitialTreeState(
 
   if (ruleSegments.length === 0) {
     if (hasCitationPaths) {
-      const nodes = await getDocTypeNodes(slug);
+      const nodes = await withTimeout(
+        getDocTypeNodes(slug),
+        INITIAL_TREE_STATE_TIMEOUT_MS,
+        null
+      );
+      if (!nodes) return null;
       return {
         cacheKey,
         nodes,
@@ -117,7 +124,12 @@ async function getInitialTreeState(
   }
 
   if (hasCitationPaths && ruleSegments.length === 1) {
-    const nodes = await getTitleNodes(slug, ruleSegments[0], undefined, false);
+    const nodes = await withTimeout(
+      getTitleNodes(slug, ruleSegments[0], undefined, false),
+      INITIAL_TREE_STATE_TIMEOUT_MS,
+      null
+    );
+    if (!nodes) return null;
     return {
       cacheKey,
       nodes,
@@ -128,4 +140,24 @@ async function getInitialTreeState(
   }
 
   return null;
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallback: T
+): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
 }

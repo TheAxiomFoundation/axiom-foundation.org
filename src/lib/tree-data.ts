@@ -117,21 +117,29 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   if (!rule.parent_id) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const parentResult = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("id", rule.parent_id)
-    .single();
-  const parent = parentResult.data as Rule | null;
+  const parentResult = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .eq("id", rule.parent_id)
+      .single(),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const parent = (parentResult?.data as Rule | null) ?? null;
   if (!parent) {
     return { rule, parentBody: null, siblings: [rule], targetIndex: 0 };
   }
-  const siblingsResult = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("parent_id", rule.parent_id)
-    .order("ordinal");
-  const siblings = (siblingsResult.data || []) as Rule[];
+  const siblingsResult = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .eq("parent_id", rule.parent_id)
+      .order("ordinal"),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const siblings = (siblingsResult?.data || []) as Rule[];
   const targetIndex = siblings.findIndex((s) => s.id === rule.id);
   return {
     rule,
@@ -144,23 +152,27 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
 // ---- Pagination ----
 
 const PAGE_SIZE = 100;
+const TREE_QUERY_TIMEOUT_MS = 2500;
 const PREFIX_SCAN_PAGE_SIZE = 1000;
 const PREFIX_SCAN_MAX_ROWS = 10000;
 const ROOT_SCAN_PAGE_SIZE = 1000;
 const ROOT_SCAN_MAX_ROWS = 10000;
+const AXIOM_ROOT_NODE_LIMIT = 500;
 const KNOWN_DOC_TYPES = ["statute", "regulation", "policy", "legislation"];
-const TITLE_SEGMENT_BUCKETS = [..."0123456789abcdefghijklmnopqrstuvwxyz"];
 
 // ---- Query functions ----
 
 /* v8 ignore start -- Supabase queries tested via integration/e2e */
 
-function hasNextPage(page: number, total: number): boolean {
-  return (page + 1) * PAGE_SIZE < total;
+export class TreeDataUnavailableError extends Error {
+  constructor(message = "Navigation data is temporarily unavailable.") {
+    super(message);
+    this.name = "TreeDataUnavailableError";
+  }
 }
 
-function citationPrefixLowerBound(pathPrefix: string): string {
-  return `${pathPrefix}/`;
+function hasNextPage(page: number, total: number): boolean {
+  return (page + 1) * PAGE_SIZE < total;
 }
 
 function citationPrefixUpperBound(pathPrefix: string): string {
@@ -173,6 +185,49 @@ function citationDepth(citationPath: string): number {
     if (citationPath[i] === "/") depth++;
   }
   return depth;
+}
+
+function withTimeout<T, F = T>(
+  work: PromiseLike<T> | T,
+  ms: number,
+  fallback: F
+): Promise<T | F> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    Promise.resolve(work).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
+}
+
+async function withTimeoutStatus<T>(
+  work: PromiseLike<T> | T,
+  ms: number
+): Promise<
+  | { status: "ok"; value: T }
+  | { status: "timeout" }
+  | { status: "error"; error: unknown }
+> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ status: "timeout" }), ms);
+    Promise.resolve(work).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve({ status: "ok", value });
+      },
+      (error) => {
+        clearTimeout(timer);
+        resolve({ status: "error", error });
+      }
+    );
+  });
 }
 
 function sortRulesByOrdinalThenCitation(rules: Rule[]): Rule[] {
@@ -200,13 +255,19 @@ async function fetchDirectRootChildrenByCitationPrefix(
   let cursor = pathPrefix;
 
   while (rows.length < PREFIX_SCAN_MAX_ROWS) {
-    const { data, error } = await supabaseCorpus
-      .from("provisions")
-      .select("*")
-      .gte("citation_path", cursor)
-      .lt("citation_path", upperBound)
-      .order("citation_path")
-      .limit(PREFIX_SCAN_PAGE_SIZE);
+    const result = await withTimeout(
+      supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .gte("citation_path", cursor)
+        .lt("citation_path", upperBound)
+        .order("citation_path")
+        .limit(PREFIX_SCAN_PAGE_SIZE),
+      TREE_QUERY_TIMEOUT_MS,
+      null
+    );
+    if (!result) return { rows, truncated: true };
+    const { data, error } = result;
 
     if (error || !data || data.length === 0) {
       return { rows, truncated: false };
@@ -261,11 +322,15 @@ export async function getJurisdictionCounts(
   const counts = new Map<string, number>();
   await Promise.all(
     dbIds.map(async (id) => {
-      const { count } = await supabaseCorpus
-        .from("provisions")
-        .select("*", { count: "exact", head: true })
-        .eq("jurisdiction", id);
-      counts.set(id, count || 0);
+      const result = await withTimeout(
+        supabaseCorpus
+          .from("provisions")
+          .select("*", { count: "exact", head: true })
+          .eq("jurisdiction", id),
+        TREE_QUERY_TIMEOUT_MS,
+        null
+      );
+      counts.set(id, result?.count || 0);
     })
   );
   return counts;
@@ -279,44 +344,56 @@ export async function getDocTypeNodes(
   // ``order(citation_path)`` even though a simple existence check by
   // doc_type is fast. Query the known doc-type buckets directly, then
   // fall back to a bounded unsorted scan only for unexpected buckets.
-  const discovered = await Promise.all(
-    KNOWN_DOC_TYPES.map(async (segment) => {
-      const rootPath = `${jurisdiction}/${segment}`;
-      const { data: rootData } = await supabaseCorpus
-        .from("provisions")
-        .select("id")
-        .eq("citation_path", rootPath)
-        .limit(1);
-      if (rootData && rootData.length > 0) return segment;
+  const discovered = await withTimeout(
+    Promise.all(
+      KNOWN_DOC_TYPES.map(async (segment) => {
+        const rootPath = `${jurisdiction}/${segment}`;
+        const { data: rootData } = await supabaseCorpus
+          .from("provisions")
+          .select("id")
+          .eq("citation_path", rootPath)
+          .limit(1);
+        if (rootData && rootData.length > 0) return segment;
 
-      const { data } = await supabaseCorpus
-        .from("provisions")
-        .select("citation_path")
-        .eq("jurisdiction", jurisdiction)
-        .eq("doc_type", segment)
-        .is("parent_id", null)
-        .limit(1);
-      const citationPath = data?.[0]?.citation_path;
-      const citationSegment = citationPath?.split("/")[1];
-      return data &&
-        data.length > 0 &&
-        (!citationSegment || citationSegment === segment)
-        ? segment
-        : null;
-    })
+        const { data } = await supabaseCorpus
+          .from("provisions")
+          .select("citation_path")
+          .eq("jurisdiction", jurisdiction)
+          .eq("doc_type", segment)
+          .is("parent_id", null)
+          .limit(1);
+        const citationPath = data?.[0]?.citation_path;
+        const citationSegment = citationPath?.split("/")[1];
+        return data &&
+          data.length > 0 &&
+          (!citationSegment || citationSegment === segment)
+          ? segment
+          : null;
+      })
+    ),
+    TREE_QUERY_TIMEOUT_MS,
+    null
   );
+  if (!discovered) return fallbackDocTypeNodes(jurisdiction);
+
   const docTypes = new Set(
     discovered.filter((segment): segment is string => segment !== null)
   );
 
   if (docTypes.size === 0) {
     for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
-      const { data } = await supabaseCorpus
-        .from("provisions")
-        .select("doc_type")
-        .eq("jurisdiction", jurisdiction)
-        .is("parent_id", null)
-        .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
+      const result = await withTimeout(
+        supabaseCorpus
+          .from("provisions")
+          .select("doc_type")
+          .eq("jurisdiction", jurisdiction)
+          .is("parent_id", null)
+          .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1),
+        TREE_QUERY_TIMEOUT_MS,
+        null
+      );
+      if (!result) return fallbackDocTypeNodes(jurisdiction);
+      const { data } = result;
 
       if (!data || data.length === 0) break;
 
@@ -333,125 +410,119 @@ export async function getDocTypeNodes(
     .map((segment) => docTypeNode(segment));
 }
 
-async function scanTitleSegmentsFromRootRows(
-  jurisdiction: string,
-  docType: string
-): Promise<string[]> {
-  const titleSet = new Set<string>();
-
-  for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
-    const { data } = await supabaseCorpus
-      .from("provisions")
-      .select("citation_path")
-      .eq("jurisdiction", jurisdiction)
-      .eq("doc_type", docType)
-      .is("parent_id", null)
-      .range(offset, offset + ROOT_SCAN_PAGE_SIZE - 1);
-
-    if (!data || data.length === 0) break;
-
-    for (const row of data) {
-      if (!row.citation_path) continue;
-      const parts = row.citation_path.split("/");
-      if (parts.length >= 3 && parts[1] === docType) {
-        titleSet.add(parts[2]);
-      }
-    }
-
-    if (data.length < ROOT_SCAN_PAGE_SIZE) break;
+function fallbackDocTypeNodes(jurisdiction: string): TreeNode[] {
+  if (jurisdiction === "uk") return [docTypeNode("legislation")];
+  if (jurisdiction === "canada") return [docTypeNode("statute")];
+  if (jurisdiction === "us") {
+    return ["regulation", "statute"].map((segment) => docTypeNode(segment));
   }
-
-  return Array.from(titleSet).sort(naturalCompare);
+  if (jurisdiction.startsWith("us-")) {
+    return ["policy", "regulation", "statute"].map((segment) =>
+      docTypeNode(segment)
+    );
+  }
+  return KNOWN_DOC_TYPES.map((segment) => docTypeNode(segment));
 }
 
-async function fetchTitleEntriesByCitationPrefix(
+async function fetchChildEntriesByCitationPrefix(
+  pathPrefix: string
+): Promise<Array<{ segment: string; rule?: Rule }>> {
+  const childPrefix = `${pathPrefix}/`;
+  const expectedDepth = citationDepth(pathPrefix) + 1;
+  const upperBound = citationPrefixUpperBound(pathPrefix);
+  const entries: Array<{ segment: string; rule?: Rule }> = [];
+  const seen = new Set<string>();
+  let cursor = childPrefix;
+
+  while (entries.length < PREFIX_SCAN_MAX_ROWS && cursor < upperBound) {
+    const result = await withTimeoutStatus(
+      supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .gte("citation_path", cursor)
+        .lt("citation_path", upperBound)
+        .order("citation_path")
+        .limit(PREFIX_SCAN_PAGE_SIZE),
+      TREE_QUERY_TIMEOUT_MS
+    );
+
+    if (result.status !== "ok") {
+      throw new TreeDataUnavailableError();
+    }
+
+    const { data, error } = result.value;
+    if (error) throw new TreeDataUnavailableError();
+    if (!data || data.length === 0) return entries;
+
+    let nextSegment: string | null = null;
+    let nextRule: Rule | undefined;
+    for (const row of data as Rule[]) {
+      if (!row.citation_path?.startsWith(childPrefix)) continue;
+      const parts = row.citation_path.split("/");
+      const segment = parts[expectedDepth - 1];
+      if (!segment || seen.has(segment)) continue;
+      nextSegment = segment;
+      if (citationDepth(row.citation_path) === expectedDepth) {
+        nextRule = row;
+      }
+      break;
+    }
+
+    if (!nextSegment) {
+      if (data.length < PREFIX_SCAN_PAGE_SIZE) return entries;
+      const lastPath = (data[data.length - 1] as Rule).citation_path;
+      if (!lastPath || lastPath <= cursor) return entries;
+      cursor = `${lastPath}~`;
+      continue;
+    }
+
+    seen.add(nextSegment);
+    entries.push(
+      nextRule ? { segment: nextSegment, rule: nextRule } : { segment: nextSegment }
+    );
+    cursor = `${pathPrefix}/${nextSegment}~`;
+  }
+
+  return entries;
+}
+
+async function fetchRootLevelEntries(
   jurisdiction: string,
   docType: string
 ): Promise<Array<{ segment: string; rule?: Rule }>> {
   const pathPrefix = `${jurisdiction}/${docType}`;
-  const childPrefix = `${pathPrefix}/`;
-  const expectedDepth = citationDepth(pathPrefix) + 1;
-  const upperBound = citationPrefixUpperBound(pathPrefix);
-
-  const walkBucket = async (
-    lower: string,
-    bucketUpper: string
-  ): Promise<Array<{ segment: string; rule?: Rule }>> => {
-    const entries: Array<{ segment: string; rule?: Rule }> = [];
-    const seen = new Set<string>();
-    let cursor = lower;
-
-    while (entries.length < PREFIX_SCAN_MAX_ROWS) {
-      const { data, error } = await supabaseCorpus
-        .from("provisions")
-        .select("*")
-        .gte("citation_path", cursor)
-        .lt("citation_path", bucketUpper)
-        .order("citation_path")
-        .limit(PREFIX_SCAN_PAGE_SIZE);
-
-      if (error || !data || data.length === 0) {
-        return entries;
-      }
-
-      let nextSegment: string | null = null;
-      let nextRule: Rule | undefined;
-      for (const row of data as Rule[]) {
-        if (!row.citation_path?.startsWith(childPrefix)) continue;
-        const parts = row.citation_path.split("/");
-        const segment = parts[expectedDepth - 1];
-        if (!segment || seen.has(segment)) continue;
-        nextSegment = segment;
-        if (citationDepth(row.citation_path) === expectedDepth) {
-          nextRule = row;
-        }
-        break;
-      }
-
-      if (!nextSegment) {
-        if (data.length < PREFIX_SCAN_PAGE_SIZE) {
-          return entries;
-        }
-        const lastPath = (data[data.length - 1] as Rule).citation_path;
-        if (!lastPath || lastPath <= cursor) {
-          return entries;
-        }
-        cursor = `${lastPath}~`;
-        continue;
-      }
-
-      seen.add(nextSegment);
-      entries.push(
-        nextRule?.jurisdiction === jurisdiction
-          ? { segment: nextSegment, rule: nextRule }
-          : { segment: nextSegment }
-      );
-      cursor = `${pathPrefix}/${nextSegment}~`;
-
-      if (cursor >= bucketUpper) {
-        return entries;
-      }
-    }
-
-    return entries;
-  };
-
-  const bucketEntries = await Promise.all(
-    TITLE_SEGMENT_BUCKETS.map((bucket, index) => {
-      const nextBucket = TITLE_SEGMENT_BUCKETS[index + 1];
-      const lower = `${pathPrefix}/${bucket}`;
-      const bucketUpper = nextBucket
-        ? `${pathPrefix}/${nextBucket}`
-        : upperBound;
-      return walkBucket(lower, bucketUpper);
-    })
+  const result = await withTimeoutStatus(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .eq("jurisdiction", jurisdiction)
+      .eq("doc_type", docType)
+      .eq("level", 0)
+      .gte("citation_path", `${pathPrefix}/`)
+      .lt("citation_path", citationPrefixUpperBound(pathPrefix))
+      .order("citation_path")
+      .limit(AXIOM_ROOT_NODE_LIMIT),
+    TREE_QUERY_TIMEOUT_MS
   );
+
+  if (result.status !== "ok") {
+    throw new TreeDataUnavailableError();
+  }
+
+  const { data, error } = result.value;
+  if (error) throw new TreeDataUnavailableError();
+
   const bySegment = new Map<string, { segment: string; rule?: Rule }>();
-  for (const entry of bucketEntries.flat()) {
+  for (const rule of (data ?? []) as Rule[]) {
+    if (!rule.citation_path) continue;
+    const segment = rule.citation_path.split("/")[2];
+    if (!segment) continue;
+    const entry = { segment, rule };
     if (!bySegment.has(entry.segment) || entry.rule) {
       bySegment.set(entry.segment, entry);
     }
   }
+
   return Array.from(bySegment.values()).sort((a, b) =>
     naturalCompare(a.segment, b.segment)
   );
@@ -486,83 +557,14 @@ export async function getTitleNodes(
   encodedPaths?: Set<string>,
   encodedOnly?: boolean
 ): Promise<TreeNode[]> {
-  const rootPath = `${jurisdiction}/${_docType}`;
-  const { data: parentRule } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("citation_path", rootPath)
-    .maybeSingle();
-
-  if (parentRule) {
-    // When the encoded-only filter is on, narrow the query to the
-    // exact set of children whose citation paths are encoded
-    // ancestors. Otherwise a parent like "Code of Colorado
-    // Regulations" (~1k children) can push the encoded entry past
-    // the default 1000-row limit and the filter ends up matching
-    // nothing.
-    if (encodedOnly && encodedPaths) {
-      const wantedTitles = new Set<string>();
-      const docTypePrefix = `${_docType}/`;
-      for (const p of encodedPaths) {
-        if (!p.startsWith(docTypePrefix)) continue;
-        const tail = p.slice(docTypePrefix.length);
-        const firstSeg = tail.split("/")[0];
-        if (firstSeg) wantedTitles.add(firstSeg);
-      }
-      if (wantedTitles.size === 0) return [];
-      const wantedPaths = Array.from(wantedTitles).map(
-        (t) => `${jurisdiction}/${_docType}/${t}`
-      );
-      const { data } = await supabaseCorpus
-        .from("provisions")
-        .select("*")
-        .eq("parent_id", parentRule.id)
-        .in("citation_path", wantedPaths)
-        .order("ordinal");
-      return ((data || []) as Rule[]).map((r) =>
-        ruleToSectionNode(r, encodedPaths)
-      );
-    }
-
-    const { data } = await supabaseCorpus
-      .from("provisions")
-      .select("*")
-      .eq("parent_id", parentRule.id)
-      .order("ordinal");
-
-    const rules = (data || []) as Rule[];
-    if (rules.length > 0) {
-      return rules.map((r) => ruleToSectionNode(r, encodedPaths));
-    }
-
-    const prefixEntries = await fetchTitleEntriesByCitationPrefix(
-      jurisdiction,
-      _docType
-    );
-    if (prefixEntries.length > 0) {
-      return prefixEntries.map((entry) =>
-        titleEntryToNode(entry, encodedPaths)
-      );
-    }
-
-    const fallbackTitles = await scanTitleSegmentsFromRootRows(
-      jurisdiction,
-      _docType
-    );
-    return fallbackTitles.map((title) => titleNode(title));
+  const deterministicFallback = fallbackTitleSegments(jurisdiction, _docType);
+  if (!encodedOnly && deterministicFallback.length > 0) {
+    return deterministicFallback.map((title) => titleNode(title));
   }
 
-  // ``citation_path is not null`` server-side intermittently triggers
-  // statement timeout for large jurisdictions; fetch the parent_id=null
-  // roots unfiltered and skip nulls in JS.
   // When the encoded-only filter is on, derive the title list
-  // directly from the encoded-paths set rather than scanning corpus.
-  // Some jurisdictions have so many parent_id=null rows that the
-  // first 1000-row page misses encoded titles entirely (e.g. CFR
-  // title 7 sits after the 33–41 wall in ``us``). The encoded set
-  // is small and authoritative.
-  let titles: string[];
-  let includeTitleCounts = true;
+  // directly from the encoded-paths set. It is small and authoritative,
+  // and it avoids touching broad corpus navigation queries.
   if (encodedOnly && encodedPaths) {
     const encoded = new Set<string>();
     const docTypePrefix = `${_docType}/`;
@@ -573,43 +575,30 @@ export async function getTitleNodes(
       if (firstSeg) encoded.add(firstSeg);
     }
     if (encoded.size === 0) return [];
-    titles = Array.from(encoded).sort(naturalCompare);
-  } else {
-    titles = await scanTitleSegmentsFromRootRows(jurisdiction, _docType);
-    if (titles.length === 0) {
-      const prefixEntries = await fetchTitleEntriesByCitationPrefix(
-        jurisdiction,
-        _docType
-      );
-      if (prefixEntries.length > 0) {
-        return prefixEntries.map((entry) =>
-          titleEntryToNode(entry, encodedPaths)
-        );
-      }
-      return [];
-    }
-    includeTitleCounts = false;
+    return Array.from(encoded)
+      .sort(naturalCompare)
+      .map((title) => titleNode(title));
   }
 
-  const nodes = await Promise.all(
-    titles.map(async (title) => {
-      let childCount: number | undefined;
-      if (includeTitleCounts) {
-        const prefix = `${jurisdiction}/${_docType}/${title}`;
-        const { count } = await supabaseCorpus
-          .from("provisions")
-          .select("*", { count: "exact", head: true })
-          .gte("citation_path", citationPrefixLowerBound(prefix))
-          .lt("citation_path", citationPrefixUpperBound(prefix))
-          .is("parent_id", null);
-        childCount = count || 0;
-      }
+  const rootEntries = await fetchRootLevelEntries(jurisdiction, _docType);
+  if (rootEntries.length > 0) {
+    return rootEntries.map((entry) => titleEntryToNode(entry, encodedPaths));
+  }
 
-      return titleNode(title, childCount);
-    })
+  const prefixEntries = await fetchChildEntriesByCitationPrefix(
+    `${jurisdiction}/${_docType}`
   );
+  return prefixEntries.map((entry) => titleEntryToNode(entry, encodedPaths));
+}
 
-  return nodes;
+function fallbackTitleSegments(jurisdiction: string, docType: string): string[] {
+  if (jurisdiction === "us" && docType === "statute") {
+    return Array.from({ length: 54 }, (_, index) => String(index + 1));
+  }
+  if (jurisdiction === "us" && docType === "regulation") {
+    return Array.from({ length: 50 }, (_, index) => String(index + 1));
+  }
+  return [];
 }
 
 function titleNode(title: string, childCount?: number): TreeNode {
@@ -634,12 +623,17 @@ async function fetchDottedSubsectionSiblings(rule: Rule): Promise<Rule[]> {
   const lower = `${rule.citation_path}.`;
   const upper =
     lower.slice(0, -1) + String.fromCharCode(lower.charCodeAt(lower.length - 1) + 1);
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .gte("citation_path", lower)
-    .lt("citation_path", upper)
-    .order("citation_path");
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .gte("citation_path", lower)
+      .lt("citation_path", upper)
+      .order("citation_path"),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data;
   return (data ?? []) as Rule[];
 }
 
@@ -680,13 +674,19 @@ async function fetchColoradoPolicyAgencyNodes(
   const seen = new Set<string>();
 
   for (let offset = 0; offset < PREFIX_SCAN_MAX_ROWS; offset += PREFIX_SCAN_PAGE_SIZE) {
-    const { data } = await supabaseCorpus
-      .from("provisions")
-      .select("*")
-      .gte("citation_path", canonicalPrefix)
-      .lt("citation_path", canonicalUpperBound)
-      .order("citation_path")
-      .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1);
+    const result = await withTimeout(
+      supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .gte("citation_path", canonicalPrefix)
+        .lt("citation_path", canonicalUpperBound)
+        .order("citation_path")
+        .range(offset, offset + PREFIX_SCAN_PAGE_SIZE - 1),
+      TREE_QUERY_TIMEOUT_MS,
+      null
+    );
+    if (!result) break;
+    const { data } = result;
 
     if (!data || data.length === 0) break;
 
@@ -740,11 +740,16 @@ export async function getSectionNodes(
   encodedPaths?: Set<string>,
   encodedOnly?: boolean
 ): Promise<TreeResult> {
-  const { data: parentRule } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("citation_path", pathPrefix)
-    .maybeSingle();
+  const parentResult = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .eq("citation_path", pathPrefix)
+      .maybeSingle(),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const parentRule = parentResult?.data ?? null;
 
   if (parentRule) {
     // Encoded-only short-circuit: pull the encoded descendants
@@ -775,11 +780,16 @@ export async function getSectionNodes(
       const wantedPaths = Array.from(wantedTails).map(
         (t) => `${pathPrefix}/${t}`
       );
-      const { data: encodedRows } = await supabaseCorpus
-        .from("provisions")
-        .select("*")
-        .in("citation_path", wantedPaths)
-        .order("citation_path");
+      const encodedRowsResult = await withTimeout(
+        supabaseCorpus
+          .from("provisions")
+          .select("*")
+          .in("citation_path", wantedPaths)
+          .order("citation_path"),
+        TREE_QUERY_TIMEOUT_MS,
+        null
+      );
+      const encodedRows = encodedRowsResult?.data;
       const rules = (encodedRows ?? []) as Rule[];
       void jurisdiction;
       return {
@@ -792,12 +802,18 @@ export async function getSectionNodes(
 
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const { data, count } = await supabaseCorpus
-      .from("provisions")
-      .select("*", { count: "exact" })
-      .eq("parent_id", parentRule.id)
-      .order("ordinal")
-      .range(from, to);
+    const childrenResult = await withTimeout(
+      supabaseCorpus
+        .from("provisions")
+        .select("*", { count: "exact" })
+        .eq("parent_id", parentRule.id)
+        .order("ordinal")
+        .range(from, to),
+      TREE_QUERY_TIMEOUT_MS,
+      null
+    );
+    const data = childrenResult?.data;
+    const count = childrenResult?.count;
 
     const rules = (data || []) as Rule[];
     const total = count || 0;
@@ -844,17 +860,20 @@ export async function getSectionNodes(
     return getSectionNodes(aliasPath, page, encodedPaths, encodedOnly);
   }
 
-  const coloradoPolicyAgency = await fetchColoradoPolicyAgencyNodes(
-    pathPrefix,
-    encodedPaths,
-    encodedOnly
+  const coloradoPolicyAgency = await withTimeout(
+    fetchColoradoPolicyAgencyNodes(pathPrefix, encodedPaths, encodedOnly),
+    TREE_QUERY_TIMEOUT_MS,
+    null
   );
   if (coloradoPolicyAgency) {
     return coloradoPolicyAgency;
   }
 
-  const { rows, truncated } =
-    await fetchDirectRootChildrenByCitationPrefix(pathPrefix);
+  const { rows, truncated } = await withTimeout(
+    fetchDirectRootChildrenByCitationPrefix(pathPrefix),
+    TREE_QUERY_TIMEOUT_MS,
+    { rows: [], truncated: true }
+  );
   const sortedRules = sortRulesByOrdinalThenCitation(rows);
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE;
@@ -902,10 +921,13 @@ export async function getEncodedPaths(
 
   // Source 1: rules-* GitHub tree
   try {
-    const { listEncodedFiles } = await import(
-      "@/lib/axiom/rulespec/repo-listing"
+    const files = await withTimeout(
+      import("@/lib/axiom/rulespec/repo-listing").then(({ listEncodedFiles }) =>
+        listEncodedFiles(jurisdiction)
+      ),
+      TREE_QUERY_TIMEOUT_MS,
+      []
     );
-    const files = await listEncodedFiles(jurisdiction);
     for (const f of files) {
       const parts = f.citationPath.split("/");
       paths.add(parts.slice(1).join("/"));
@@ -916,11 +938,16 @@ export async function getEncodedPaths(
   }
 
   // Source 2: corpus.has_rulespec
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("citation_path")
-    .eq("jurisdiction", jurisdiction)
-    .eq("has_rulespec", true);
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("citation_path")
+      .eq("jurisdiction", jurisdiction)
+      .eq("has_rulespec", true),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data;
 
   if (data) {
     for (const row of data) {
@@ -1004,13 +1031,19 @@ export async function getActNodes(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseCorpus
-    .from("provisions")
-    .select("*", { count: "exact" })
-    .eq("jurisdiction", jurisdiction)
-    .is("parent_id", null)
-    .order("heading")
-    .range(from, to);
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*", { count: "exact" })
+      .eq("jurisdiction", jurisdiction)
+      .is("parent_id", null)
+      .order("heading")
+      .range(from, to),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data;
+  const count = result?.count;
 
   const rules = (data || []) as Rule[];
   const total = count || 0;
@@ -1035,12 +1068,18 @@ export async function getChildrenByParentId(
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count } = await supabaseCorpus
-    .from("provisions")
-    .select("*", { count: "exact" })
-    .eq("parent_id", parentId)
-    .order("ordinal")
-    .range(from, to);
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*", { count: "exact" })
+      .eq("parent_id", parentId)
+      .order("ordinal")
+      .range(from, to),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data;
+  const count = result?.count;
 
   const rules = (data || []) as Rule[];
   const total = count || 0;
@@ -1059,11 +1098,13 @@ export async function getChildrenByParentId(
 }
 
 export async function getRuleById(id: string): Promise<Rule | null> {
-  const { data, error } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const result = await withTimeout(
+    supabaseCorpus.from("provisions").select("*").eq("id", id).single(),
+    TREE_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data;
+  const error = result?.error;
 
   if (error || !data) return null;
   return data as Rule;

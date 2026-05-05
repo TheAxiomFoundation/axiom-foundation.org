@@ -11,6 +11,7 @@ import {
   getTitleNodes,
   getSectionNodes,
   JURISDICTIONS,
+  TreeDataUnavailableError,
 } from "./tree-data";
 import type { Rule } from "@/lib/supabase";
 import { supabaseCorpus } from "@/lib/supabase";
@@ -19,6 +20,24 @@ vi.mock("@/lib/supabase", () => ({
   supabaseCorpus: { from: vi.fn() },
   supabase: { from: vi.fn() },
 }));
+
+function queryMock(result: unknown, terminal = "limit") {
+  const query: Record<string, unknown> = {};
+  for (const method of [
+    "select",
+    "eq",
+    "is",
+    "gte",
+    "lt",
+    "order",
+    "range",
+    "in",
+  ]) {
+    query[method] = vi.fn(() => query);
+  }
+  query[terminal] = vi.fn(() => Promise.resolve(result));
+  return query as never;
+}
 
 describe("JURISDICTIONS", () => {
   it("contains US Federal, Colorado, Ohio, UK, and Canada", () => {
@@ -372,132 +391,35 @@ describe("getDocTypeNodes", () => {
   });
 });
 
-describe("getTitleNodes — root fallback", () => {
+describe("getTitleNodes — root navigation", () => {
   beforeEach(() => {
     vi.mocked(supabaseCorpus.from).mockReset();
   });
 
-  it("derives titles from doc-type-filtered root rows without citation-path sorting", async () => {
-    const rangeSpy = vi.fn();
-    const parentLookup = {
-      select: () => parentLookup,
-      eq: () => parentLookup,
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
-    } as never;
-    const rootScan = {
-      select: () => rootScan,
-      eq: () => rootScan,
-      is: () => rootScan,
-      range: (...args: unknown[]) => {
-        rangeSpy(...args);
-        return Promise.resolve({
-          data: [
-            { citation_path: "us-co/regulation/10-CCR-2506-1" },
-            { citation_path: "us-co/statute/crs" },
-            { citation_path: null },
-          ],
-          error: null,
-        });
-      },
-    } as never;
-    vi.mocked(supabaseCorpus.from)
-      .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(rootScan);
+  it("uses one root-level query for state doc-type navigation", async () => {
+    const rootQuery = queryMock({
+      data: [
+        {
+          id: "10-ccr",
+          jurisdiction: "us-co",
+          doc_type: "regulation",
+          citation_path: "us-co/regulation/10-CCR-2506-1",
+          heading: "Human Services",
+        },
+      ],
+      error: null,
+    }) as unknown as Record<string, ReturnType<typeof vi.fn>>;
+    vi.mocked(supabaseCorpus.from).mockReturnValue(rootQuery as never);
 
     const nodes = await getTitleNodes("us-co", "regulation");
 
-    expect(rangeSpy).toHaveBeenCalledWith(0, 999);
     expect(nodes.map((n) => n.segment)).toEqual(["10-CCR-2506-1"]);
-    expect(nodes[0].childCount).toBeUndefined();
+    expect(nodes[0].label).toBe("Human Services");
+    expect(rootQuery.eq).toHaveBeenCalledWith("level", 0);
   });
 
-  it("continues scanning when an early root page has only null citation paths", async () => {
-    const parentLookup = {
-      select: () => parentLookup,
-      eq: () => parentLookup,
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
-    } as never;
-    const firstScanPage = {
-      select: () => firstScanPage,
-      eq: () => firstScanPage,
-      is: () => firstScanPage,
-      range: () =>
-        Promise.resolve({
-          data: Array.from({ length: 1000 }, () => ({ citation_path: null })),
-          error: null,
-        }),
-    } as never;
-    const secondScanPage = {
-      select: () => secondScanPage,
-      eq: () => secondScanPage,
-      is: () => secondScanPage,
-      range: () =>
-        Promise.resolve({
-          data: [{ citation_path: "us-ky/statute/3" }],
-          error: null,
-        }),
-    } as never;
-    vi.mocked(supabaseCorpus.from)
-      .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(firstScanPage)
-      .mockReturnValueOnce(secondScanPage);
-
-    const nodes = await getTitleNodes("us-ky", "statute");
-
-    expect(nodes.map((n) => n.segment)).toEqual(["3"]);
-  });
-
-  it("falls back to root-row titles when a doc-type root has no parent_id children", async () => {
-    const parentLookup = {
-      select: () => parentLookup,
-      eq: () => parentLookup,
-      maybeSingle: () =>
-        Promise.resolve({ data: { id: "statute-root" }, error: null }),
-    } as never;
-    const emptyChildren = {
-      select: () => emptyChildren,
-      eq: () => emptyChildren,
-      order: () => Promise.resolve({ data: [], error: null }),
-    } as never;
-    const prefixPages = [
-      [
-        {
-          id: "crs",
-          jurisdiction: "us-co",
-          doc_type: "statute",
-          citation_path: "us-co/statute/crs",
-          heading: "Colorado Revised Statutes",
-        },
-      ],
-      [],
-    ];
-    const prefixWalk = {
-      select: () => prefixWalk,
-      gte: () => prefixWalk,
-      lt: () => prefixWalk,
-      order: () => prefixWalk,
-      limit: () =>
-        Promise.resolve({
-          data: prefixPages.shift(),
-          error: null,
-        }),
-    } as never;
-    vi.mocked(supabaseCorpus.from)
-      .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(emptyChildren)
-      .mockReturnValue(prefixWalk);
-
-    const nodes = await getTitleNodes("us-co", "statute");
-
-    expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
-  });
-
-  it("walks citation-path title buckets without scanning parent_id roots", async () => {
-    const parentLookup = {
-      select: () => parentLookup,
-      eq: () => parentLookup,
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
-    } as never;
+  it("walks citation-path children when root-level rows are absent", async () => {
+    const emptyRootQuery = queryMock({ data: [], error: null });
     const pages = [
       [
         {
@@ -526,84 +448,72 @@ describe("getTitleNodes — root fallback", () => {
       ],
       [],
     ];
-    const limitSpy = vi
-      .fn()
-      .mockImplementation(() =>
-        Promise.resolve({ data: pages.shift(), error: null })
-      );
-    const emptyRootScan = {
-      select: () => emptyRootScan,
-      eq: () => emptyRootScan,
-      is: () => emptyRootScan,
-      range: () => Promise.resolve({ data: [], error: null }),
-    } as never;
-    const prefixWalk = {
-      select: () => prefixWalk,
-      gte: () => prefixWalk,
-      lt: () => prefixWalk,
-      order: () => prefixWalk,
-      limit: limitSpy,
-    } as never;
+    const prefixQuery = queryMock(
+      { data: [], error: null },
+      "limit"
+    ) as unknown as Record<string, unknown>;
+    prefixQuery.limit = vi.fn(() =>
+      Promise.resolve({ data: pages.shift(), error: null })
+    );
     vi.mocked(supabaseCorpus.from)
-      .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(emptyRootScan)
-      .mockReturnValue(prefixWalk);
+      .mockReturnValueOnce(emptyRootQuery)
+      .mockReturnValue(prefixQuery as never);
 
     const nodes = await getTitleNodes("us-ca", "statute");
 
     expect(nodes.map((n) => n.segment)).toEqual(["bpc", "ccp"]);
-    expect(limitSpy).toHaveBeenCalled();
   });
 
-  it("derives title buckets from deeper rows when no title root row exists", async () => {
-    const parentLookup = {
-      select: () => parentLookup,
-      eq: () => parentLookup,
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
-    } as never;
+  it("derives synthetic title buckets from deeper rows when title roots are absent", async () => {
+    const emptyRootQuery = queryMock({ data: [], error: null });
     const pages = [
       [
         {
           id: "title-1-part",
-          jurisdiction: "us",
+          jurisdiction: "canada",
           doc_type: "regulation",
-          citation_path: "us/regulation/1/1",
+          citation_path: "canada/regulation/1/1",
           heading: "Part 1",
         },
       ],
       [
         {
           id: "title-10-part",
-          jurisdiction: "us",
+          jurisdiction: "canada",
           doc_type: "regulation",
-          citation_path: "us/regulation/10/1",
+          citation_path: "canada/regulation/10/1",
           heading: "Part 1",
         },
       ],
       [],
     ];
-    const prefixWalk = {
-      select: () => prefixWalk,
-      gte: () => prefixWalk,
-      lt: () => prefixWalk,
-      order: () => prefixWalk,
-      limit: () => Promise.resolve({ data: pages.shift(), error: null }),
-    } as never;
-    const emptyRootScan = {
-      select: () => emptyRootScan,
-      eq: () => emptyRootScan,
-      is: () => emptyRootScan,
-      range: () => Promise.resolve({ data: [], error: null }),
-    } as never;
+    const prefixQuery = queryMock(
+      { data: [], error: null },
+      "limit"
+    ) as unknown as Record<string, unknown>;
+    prefixQuery.limit = vi.fn(() =>
+      Promise.resolve({ data: pages.shift(), error: null })
+    );
     vi.mocked(supabaseCorpus.from)
-      .mockReturnValueOnce(parentLookup)
-      .mockReturnValueOnce(emptyRootScan)
-      .mockReturnValue(prefixWalk);
+      .mockReturnValueOnce(emptyRootQuery)
+      .mockReturnValue(prefixQuery as never);
 
-    const nodes = await getTitleNodes("us", "regulation");
+    const nodes = await getTitleNodes("canada", "regulation");
 
     expect(nodes.map((n) => n.segment)).toEqual(["1", "10"]);
     expect(nodes.map((n) => n.rule)).toEqual([undefined, undefined]);
+  });
+
+  it("throws unavailable instead of returning an empty tree on corpus errors", async () => {
+    const failingRootQuery = queryMock({
+      data: null,
+      error: { message: "network unavailable" },
+    });
+    vi.mocked(supabaseCorpus.from).mockReturnValue(failingRootQuery);
+
+    await expect(getTitleNodes("us-co", "statute")).rejects.toBeInstanceOf(
+      TreeDataUnavailableError
+    );
   });
 });
 

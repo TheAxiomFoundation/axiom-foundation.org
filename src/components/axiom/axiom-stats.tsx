@@ -7,7 +7,7 @@ import {
   type AxiomJurisdictionCount,
   type AxiomStats,
 } from "@/lib/supabase";
-import { getJurisdictionBySlug } from "@/lib/tree-data";
+import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
 
 /**
  * Landing-page stat block + primary jurisdiction navigation.
@@ -18,10 +18,16 @@ import { getJurisdictionBySlug } from "@/lib/tree-data";
  * into its axiom tree, grouped as federal/national pills on top
  * and US states / territories in an alphabetical grid below.
  *
- * Returns null while the RPC is in flight so the layout doesn't
- * jump when the numbers arrive.
+ * The jurisdiction navigation renders immediately from the static
+ * jurisdiction seed. When the stats RPC resolves, counts are layered
+ * onto the same links. If the RPC is unavailable in production, the
+ * main rule entry points still remain visible.
  */
-export function AxiomStats() {
+export function AxiomStats({
+  onNavigateHref,
+}: {
+  onNavigateHref?: (href: string) => void;
+}) {
   const [stats, setStats] = useState<AxiomStats | null>(null);
 
   useEffect(() => {
@@ -34,18 +40,24 @@ export function AxiomStats() {
     };
   }, []);
 
-  if (!stats) return null;
+  const jurisdictions =
+    stats?.jurisdictions && stats.jurisdictions.length > 0
+      ? stats.jurisdictions
+      : fallbackJurisdictions();
 
   return (
     <div data-testid="axiom-stats" className="mb-8">
-      <div className="flex justify-center gap-12">
-        <Stat value={stats.provisions_count} label="provisions indexed" />
-        <Stat value={stats.references_count} label="citations extracted" />
-        <Stat value={stats.jurisdictions_count} label="jurisdictions" />
-      </div>
-      {stats.jurisdictions && stats.jurisdictions.length > 0 && (
-        <JurisdictionPills jurisdictions={stats.jurisdictions} />
+      {stats && (
+        <div className="flex justify-center gap-12">
+          <Stat value={stats.provisions_count} label="provisions indexed" />
+          <Stat value={stats.references_count} label="citations extracted" />
+          <Stat value={stats.jurisdictions_count} label="jurisdictions" />
+        </div>
       )}
+      <JurisdictionPills
+        jurisdictions={jurisdictions}
+        onNavigateHref={onNavigateHref}
+      />
     </div>
   );
 }
@@ -61,12 +73,16 @@ interface JurisdictionGroup {
   items: Array<{
     slug: string;
     label: string;
-    count: number;
+    count: number | null;
   }>;
 }
 
+type JurisdictionNavCount =
+  | AxiomJurisdictionCount
+  | { jurisdiction: string; count: null };
+
 function groupJurisdictions(
-  jurisdictions: AxiomJurisdictionCount[]
+  jurisdictions: JurisdictionNavCount[]
 ): JurisdictionGroup[] {
   type Item = JurisdictionGroup["items"][number];
   const federal: Item[] = [];
@@ -90,9 +106,10 @@ function groupJurisdictions(
     }
   }
 
-  // Federal ordered by count desc so the biggest corpus surfaces
-  // first; states by label alphabetical so people can find theirs.
-  federal.sort((a, b) => b.count - a.count);
+  // Federal ordered by count desc when counts exist so the biggest
+  // corpus surfaces first; states by label alphabetical so people can
+  // find theirs.
+  federal.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   states.sort((a, b) => a.label.localeCompare(b.label));
   other.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -105,8 +122,10 @@ function groupJurisdictions(
 
 function JurisdictionPills({
   jurisdictions,
+  onNavigateHref,
 }: {
-  jurisdictions: AxiomJurisdictionCount[];
+  jurisdictions: JurisdictionNavCount[];
+  onNavigateHref?: (href: string) => void;
 }) {
   const groups = groupJurisdictions(jurisdictions);
 
@@ -122,17 +141,24 @@ function JurisdictionPills({
             <span className="eyebrow">{group.title}</span>
             <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
               {group.items.length}
-              {" · "}
-              {formatCompact(
-                group.items.reduce((sum, i) => sum + i.count, 0)
-              )}{" "}
-              rules
+              {group.items.some((i) => i.count !== null) && (
+                <>
+                  {" · "}
+                  {formatCompact(
+                    group.items.reduce((sum, i) => sum + (i.count ?? 0), 0)
+                  )}{" "}
+                  rules
+                </>
+              )}
             </span>
           </div>
           <ul className="flex flex-wrap justify-center gap-2 m-0 p-0 list-none">
             {group.items.map((item) => (
               <li key={item.slug}>
-                <JurisdictionPill {...item} />
+                <JurisdictionPill
+                  {...item}
+                  onNavigateHref={onNavigateHref}
+                />
               </li>
             ))}
           </ul>
@@ -146,25 +172,45 @@ function JurisdictionPill({
   slug,
   label,
   count,
+  onNavigateHref,
 }: {
   slug: string;
   label: string;
-  count: number;
+  count: number | null;
+  onNavigateHref?: (href: string) => void;
 }) {
+  const title =
+    count === null
+      ? `Open ${label}`
+      : `${label} — ${count.toLocaleString()} rules`;
+  const href = `/${slug}`;
+
   return (
     <Link
-      href={`/${slug}`}
-      title={`${label} — ${count.toLocaleString()} rules`}
+      href={href}
+      title={title}
+      onClick={(event) => {
+        if (!onNavigateHref) return;
+        event.preventDefault();
+        onNavigateHref(href);
+      }}
       className="group inline-flex items-baseline gap-2 px-4 py-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-sm text-[var(--color-ink-secondary)] !no-underline hover:!no-underline focus-visible:!no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
     >
       <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
         {label}
       </span>
       <span className="font-mono text-xs text-[var(--color-ink-muted)] tabular-nums">
-        {formatCompact(count)}
+        {count === null ? "" : formatCompact(count)}
       </span>
     </Link>
   );
+}
+
+function fallbackJurisdictions(): JurisdictionNavCount[] {
+  return JURISDICTIONS.map((jurisdiction) => ({
+    jurisdiction: jurisdiction.slug,
+    count: null,
+  }));
 }
 
 /**

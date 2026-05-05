@@ -1,5 +1,6 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { AXIOM_APP_URL } from "@/lib/urls";
+import { browseRootLevels } from "@/lib/axiom/browse-root-levels";
 
 export const AXIOM_API_SCHEMA_VERSION = "2026-04-25";
 export const AXIOM_API_DEFAULT_LIMIT = 100;
@@ -496,6 +497,72 @@ export async function listAxiomDocuments(
         offset: options.offset,
         total: null,
         has_more: options.offset + options.limit < US_STATUTE_ROOT_PATHS.length,
+      },
+      filters: compactFilters({
+        jurisdiction: options.jurisdiction,
+        docType: options.docType,
+        root: true,
+        includeBody: options.includeBody || undefined,
+      }),
+    };
+  }
+
+  if (
+    !parentId &&
+    options.root &&
+    options.jurisdiction &&
+    options.docType &&
+    !options.id &&
+    !options.citationPath
+  ) {
+    for (const level of browseRootLevels(options.jurisdiction, options.docType)) {
+      const { data, error } = await supabaseCorpus
+        .from("provisions")
+        .select(selectColumns(options.includeBody))
+        .eq("jurisdiction", options.jurisdiction)
+        .eq("doc_type", options.docType)
+        .eq("level", level)
+        .not("citation_path", "is", null)
+        .order("ordinal")
+        .range(options.offset, options.offset + options.limit);
+
+      if (error) {
+        throw new AxiomApiError(500, "Failed to fetch Axiom documents.", error);
+      }
+
+      const fetchedRows = (data || []) as unknown as Rule[];
+      if (fetchedRows.length === 0) continue;
+
+      const hasMore = fetchedRows.length > options.limit;
+      const rows = hasMore ? fetchedRows.slice(0, options.limit) : fetchedRows;
+      return {
+        schema_version: AXIOM_API_SCHEMA_VERSION,
+        data: sortRowsByOrdinalThenCitation(rows).map((rule) =>
+          publicAxiomRuleFromRule(rule, { includeBody: options.includeBody })
+        ),
+        pagination: {
+          limit: options.limit,
+          offset: options.offset,
+          total: null,
+          has_more: hasMore,
+        },
+        filters: compactFilters({
+          jurisdiction: options.jurisdiction,
+          docType: options.docType,
+          root: true,
+          includeBody: options.includeBody || undefined,
+        }),
+      };
+    }
+
+    return {
+      schema_version: AXIOM_API_SCHEMA_VERSION,
+      data: [],
+      pagination: {
+        limit: options.limit,
+        offset: options.offset,
+        total: null,
+        has_more: false,
       },
       filters: compactFilters({
         jurisdiction: options.jurisdiction,

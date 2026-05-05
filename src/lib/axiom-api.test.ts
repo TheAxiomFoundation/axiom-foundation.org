@@ -251,4 +251,42 @@ describe("axiom API helpers", () => {
     ]);
     expect(result.pagination.has_more).toBe(true);
   });
+
+  it("uses state regulation browse roots from level 1", async () => {
+    const chain: any = {
+      select: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      is: vi.fn(() => chain),
+      not: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      range: vi.fn().mockResolvedValue({
+        data: [
+          makeRule({
+            jurisdiction: "us-co",
+            doc_type: "regulation",
+            level: 1,
+            citation_path: "us-co/regulation/5-ccr-1005-4",
+            heading: "5 CCR 1005-4",
+          }),
+        ],
+        error: null,
+      }),
+    };
+    mockFrom.mockReturnValue(chain);
+
+    const result = await listAxiomDocuments({
+      jurisdiction: "us-co",
+      docType: "regulation",
+      root: true,
+      includeBody: false,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(chain.eq).toHaveBeenCalledWith("level", 1);
+    expect(chain.not).toHaveBeenCalledWith("citation_path", "is", null);
+    expect(result.data.map((rule) => rule.citation_path)).toEqual([
+      "us-co/regulation/5-ccr-1005-4",
+    ]);
+  });
 });

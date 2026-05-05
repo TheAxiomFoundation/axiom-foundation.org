@@ -5,6 +5,7 @@ import {
   synthesiseJurisdiction,
 } from "@/lib/axiom/jurisdictions-seed";
 import { chapterlessSectionAlias } from "@/lib/axiom/citation-path-aliases";
+import { browseRootLevels } from "@/lib/axiom/browse-root-levels";
 
 export type NodeType =
   | "jurisdiction"
@@ -490,39 +491,50 @@ async function fetchRootLevelEntries(
   jurisdiction: string,
   docType: string
 ): Promise<Array<{ segment: string; rule?: Rule }>> {
-  const pathPrefix = `${jurisdiction}/${docType}`;
-  const result = await withTimeoutStatus(
-    supabaseCorpus
-      .from("provisions")
-      .select("*")
-      .eq("jurisdiction", jurisdiction)
-      .eq("doc_type", docType)
-      .eq("level", 0)
-      .gte("citation_path", `${pathPrefix}/`)
-      .lt("citation_path", citationPrefixUpperBound(pathPrefix))
-      .order("citation_path")
-      .limit(AXIOM_ROOT_NODE_LIMIT),
-    TREE_QUERY_TIMEOUT_MS
-  );
+  for (const level of browseRootLevels(jurisdiction, docType)) {
+    const result = await withTimeoutStatus(
+      supabaseCorpus
+        .from("provisions")
+        .select("*")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", docType)
+        .eq("level", level)
+        .order("ordinal")
+        .limit(AXIOM_ROOT_NODE_LIMIT),
+      TREE_QUERY_TIMEOUT_MS
+    );
 
-  if (result.status !== "ok") {
-    throw new TreeDataUnavailableError();
+    if (result.status !== "ok") {
+      throw new TreeDataUnavailableError();
+    }
+
+    const { data, error } = result.value;
+    if (error) throw new TreeDataUnavailableError();
+
+    const entries = titleEntriesFromRootRows((data ?? []) as Rule[]);
+    if (entries.length > 0) return entries;
   }
 
-  const { data, error } = result.value;
-  if (error) throw new TreeDataUnavailableError();
+  return [];
+}
 
+function titleEntriesFromRootRows(
+  rows: Rule[]
+): Array<{ segment: string; rule?: Rule }> {
   const bySegment = new Map<string, { segment: string; rule?: Rule }>();
-  for (const rule of (data ?? []) as Rule[]) {
+  for (const rule of rows) {
     if (!rule.citation_path) continue;
     const segment = rule.citation_path.split("/")[2];
     if (!segment) continue;
-    const entry = { segment, rule };
-    if (!bySegment.has(entry.segment) || entry.rule) {
-      bySegment.set(entry.segment, entry);
+    const existing = bySegment.get(segment);
+    if (
+      !existing ||
+      citationDepth(rule.citation_path) <
+        citationDepth(existing.rule?.citation_path ?? "")
+    ) {
+      bySegment.set(segment, { segment, rule });
     }
   }
-
   return Array.from(bySegment.values()).sort((a, b) =>
     naturalCompare(a.segment, b.segment)
   );

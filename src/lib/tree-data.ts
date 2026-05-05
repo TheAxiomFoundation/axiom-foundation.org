@@ -428,6 +428,7 @@ function fallbackDocTypeNodes(jurisdiction: string): TreeNode[] {
 async function fetchChildEntriesByCitationPrefix(
   pathPrefix: string
 ): Promise<Array<{ segment: string; rule?: Rule }>> {
+  const [jurisdiction, docType] = pathPrefix.split("/");
   const childPrefix = `${pathPrefix}/`;
   const expectedDepth = citationDepth(pathPrefix) + 1;
   const upperBound = citationPrefixUpperBound(pathPrefix);
@@ -440,6 +441,8 @@ async function fetchChildEntriesByCitationPrefix(
       supabaseCorpus
         .from("provisions")
         .select("*")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", docType)
         .gte("citation_path", cursor)
         .lt("citation_path", upperBound)
         .order("citation_path")
@@ -504,12 +507,10 @@ async function fetchRootLevelEntries(
       TREE_QUERY_TIMEOUT_MS
     );
 
-    if (result.status !== "ok") {
-      throw new TreeDataUnavailableError();
-    }
+    if (result.status !== "ok") continue;
 
     const { data, error } = result.value;
-    if (error) throw new TreeDataUnavailableError();
+    if (error) continue;
 
     const entries = titleEntriesFromRootRows((data ?? []) as Rule[]);
     if (entries.length > 0) return entries;

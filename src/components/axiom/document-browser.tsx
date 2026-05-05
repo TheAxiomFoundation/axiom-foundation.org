@@ -273,11 +273,11 @@ function RuleTreeView({
   const showBrowseContent = !currentRule || currentRuleIsNavigationContainer;
   const waitingForPossibleRule =
     (treeStateStale || loading) &&
-    nodes.length === 0 &&
     !currentRule &&
     !leafRule &&
     !routeIsKnownBrowseLevel;
   const showFilterToggle = showBrowseContent && !waitingForPossibleRule;
+  const treeListUpdating = (treeStateStale || loading) && nodes.length > 0;
 
   return (
     <div className="max-w-[1280px] mx-auto px-8">
@@ -351,6 +351,7 @@ function RuleTreeView({
               onNavigate={handleNavigate}
               loading={loading}
               error={error}
+              updating={treeListUpdating}
             />
             {hasMore && (
               <div className="flex justify-center py-4 border-t border-[var(--color-rule)]">

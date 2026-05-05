@@ -466,6 +466,52 @@ describe("getTitleNodes — root navigation", () => {
     expect(nodes.map((n) => n.segment)).toEqual(["bpc", "ccp"]);
   });
 
+  it("walks citation-path children when root-level navigation queries fail", async () => {
+    const failingRootQuery = queryMock({
+      data: null,
+      error: { message: "root query timed out" },
+    });
+    const failingAlternateRootQuery = queryMock({
+      data: null,
+      error: { message: "alternate root query timed out" },
+    });
+    const pages = [
+      [
+        {
+          id: "crs",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs",
+          heading: "Colorado Revised Statutes",
+        },
+        {
+          id: "crs-26",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs/26-2-703",
+          heading: "26-2-703.",
+        },
+      ],
+      [],
+    ];
+    const prefixQuery = queryMock(
+      { data: [], error: null },
+      "limit"
+    ) as unknown as Record<string, unknown>;
+    prefixQuery.limit = vi.fn(() =>
+      Promise.resolve({ data: pages.shift(), error: null })
+    );
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(failingRootQuery)
+      .mockReturnValueOnce(failingAlternateRootQuery)
+      .mockReturnValue(prefixQuery as never);
+
+    const nodes = await getTitleNodes("us-co", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
+    expect(nodes[0].label).toBe("Colorado Revised Statutes");
+  });
+
   it("derives synthetic title buckets from deeper rows when title roots are absent", async () => {
     const emptyRootQuery = queryMock({ data: [], error: null });
     const emptyAlternateRootQuery = queryMock({ data: [], error: null });

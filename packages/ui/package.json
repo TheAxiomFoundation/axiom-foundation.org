@@ -48,7 +48,7 @@
     "vitest": "^4.1.5"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json && mkdir -p dist/styles && cp src/styles/tokens.css dist/styles/tokens.css",
+    "build": "node ../../scripts/build-ui.mjs",
     "pack:check": "npm pack --dry-run",
     "prepack": "bun run build",
     "test": "vitest run",

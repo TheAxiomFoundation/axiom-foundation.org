@@ -29,9 +29,24 @@ describe("transformRuleToViewerDoc", () => {
   it("creates subsections from children", () => {
     const rule = makeRule();
     const children = [
-      makeRule({ id: "c1", body: "Child 1 text", heading: null }),
-      makeRule({ id: "c2", body: null, heading: "Child 2 heading" }),
-      makeRule({ id: "c3", body: null, heading: null }),
+      makeRule({
+        id: "c1",
+        body: "Child 1 text",
+        heading: null,
+        citation_path: "us/statute/26/1/a",
+      }),
+      makeRule({
+        id: "c2",
+        body: null,
+        heading: "Child 2 heading",
+        citation_path: "us/statute/26/1/b",
+      }),
+      makeRule({
+        id: "c3",
+        body: null,
+        heading: null,
+        citation_path: "us/statute/26/1/c",
+      }),
     ];
     const doc = transformRuleToViewerDoc(rule, children);
     expect(doc.subsections).toEqual([
@@ -43,29 +58,23 @@ describe("transformRuleToViewerDoc", () => {
     expect(doc.citation).toBe("26 U.S.C. § 1");
   });
 
-  it("splits body into paragraphs when no children", () => {
+  it("keeps leaf body text as raw source instead of synthesized subsections", () => {
     const rule = makeRule({ body: "Paragraph one.\n\nParagraph two." });
     const doc = transformRuleToViewerDoc(rule, []);
-    expect(doc.subsections).toEqual([
-      { id: "a", text: "Paragraph one." },
-      { id: "b", text: "Paragraph two." },
-    ]);
+    expect(doc.subsections).toEqual([]);
+    expect(doc.body).toBe("Paragraph one.\n\nParagraph two.");
   });
 
-  it("uses heading fallback when no body and no children", () => {
+  it("does not synthesize a heading subsection when no children exist", () => {
     const rule = makeRule({ body: null });
     const doc = transformRuleToViewerDoc(rule, []);
-    expect(doc.subsections).toEqual([
-      { id: "a", text: "Section 1 - Tax imposed" },
-    ]);
+    expect(doc.subsections).toEqual([]);
   });
 
-  it('uses "No content available." when no heading, body, or children', () => {
+  it("does not synthesize a default subsection when no source content exists", () => {
     const rule = makeRule({ heading: null, body: null });
     const doc = transformRuleToViewerDoc(rule, []);
-    expect(doc.subsections).toEqual([
-      { id: "a", text: "No content available." },
-    ]);
+    expect(doc.subsections).toEqual([]);
     expect(doc.title).toBe("Untitled");
   });
 

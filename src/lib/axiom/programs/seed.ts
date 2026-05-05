@@ -3,12 +3,9 @@ import type { Program } from "./types";
 /**
  * Flagship seed of the program registry.
  *
- * Anchors reference real atomic citation_paths; when a path hasn't
- * been ingested yet the resolver will land on the nearest ancestor
- * and the Axiom viewer shows a "not yet ingested" marker. This is the
- * correct behaviour — the registry captures intent, the axiom
- * captures reality, and the gap is a coverage signal rather than a
- * bug.
+ * Anchors reference real indexed citation_paths. The registry is a
+ * navigation surface, so it should not advertise intended future
+ * paths that the current Axiom corpus cannot open.
  */
 export const PROGRAM_SEED: Program[] = [
   // ─────────────────────────────────────────────── US federal
@@ -40,22 +37,10 @@ export const PROGRAM_SEED: Program[] = [
         displayCitation: "7 CFR § 273.9",
       },
       {
-        role: "deductions",
-        citationPath: "us/regulation/7/273/9/c/1",
-        label: "Standard deduction",
-        displayCitation: "7 CFR § 273.9(c)(1)",
-      },
-      {
-        role: "deductions",
-        citationPath: "us/regulation/7/273/9/d/6",
-        label: "Excess shelter deduction",
-        displayCitation: "7 CFR § 273.9(d)(6)",
-      },
-      {
         role: "benefit_calculation",
-        citationPath: "us/regulation/7/273/10/e",
+        citationPath: "us/regulation/7/273/10",
         label: "Benefit calculation",
-        displayCitation: "7 CFR § 273.10(e)",
+        displayCitation: "7 CFR § 273.10",
       },
     ],
   },
@@ -73,24 +58,6 @@ export const PROGRAM_SEED: Program[] = [
         citationPath: "us/statute/26/32",
         label: "EITC statute",
         displayCitation: "26 U.S.C. § 32",
-      },
-      {
-        role: "benefit_calculation",
-        citationPath: "us/statute/26/32/a",
-        label: "Credit amount",
-        displayCitation: "26 U.S.C. § 32(a)",
-      },
-      {
-        role: "phase_out",
-        citationPath: "us/statute/26/32/b",
-        label: "Phase-out rules",
-        displayCitation: "26 U.S.C. § 32(b)",
-      },
-      {
-        role: "eligibility",
-        citationPath: "us/statute/26/32/c",
-        label: "Qualifying child and taxpayer",
-        displayCitation: "26 U.S.C. § 32(c)",
       },
     ],
   },
@@ -113,30 +80,6 @@ export const PROGRAM_SEED: Program[] = [
         citationPath: "us/statute/26/24",
         label: "CTC statute",
         displayCitation: "26 U.S.C. § 24",
-      },
-      {
-        role: "benefit_calculation",
-        citationPath: "us/statute/26/24/a",
-        label: "Credit amount",
-        displayCitation: "26 U.S.C. § 24(a)",
-      },
-      {
-        role: "phase_out",
-        citationPath: "us/statute/26/24/b",
-        label: "Income phase-out",
-        displayCitation: "26 U.S.C. § 24(b)",
-      },
-      {
-        role: "eligibility",
-        citationPath: "us/statute/26/24/c",
-        label: "Qualifying child",
-        displayCitation: "26 U.S.C. § 24(c)",
-      },
-      {
-        role: "benefit_calculation",
-        citationPath: "us/statute/26/24/d",
-        label: "Refundable portion (ACTC)",
-        displayCitation: "26 U.S.C. § 24(d)",
       },
     ],
   },
@@ -196,18 +139,6 @@ export const PROGRAM_SEED: Program[] = [
         citationPath: "us/statute/26/36B",
         label: "Premium tax credit statute",
         displayCitation: "26 U.S.C. § 36B",
-      },
-      {
-        role: "benefit_calculation",
-        citationPath: "us/statute/26/36B/b",
-        label: "Premium assistance amount",
-        displayCitation: "26 U.S.C. § 36B(b)",
-      },
-      {
-        role: "income_tests",
-        citationPath: "us/statute/26/36B/c",
-        label: "Applicable taxpayer and household income",
-        displayCitation: "26 U.S.C. § 36B(c)",
       },
     ],
   },
@@ -310,31 +241,30 @@ export const PROGRAM_SEED: Program[] = [
   },
   // ─────────────────────────────────────────────── US-CO
   {
-    slug: "colorado-works",
-    displayName: "Colorado Works (TANF)",
-    aliases: ["colorado works", "cw", "colorado tanf"],
+    slug: "colorado-snap",
+    displayName: "Colorado SNAP",
+    aliases: [
+      "colorado snap",
+      "co snap",
+      "colorado food stamps",
+      "colorado supplemental nutrition assistance",
+    ],
     jurisdiction: "us-co",
     governingBody: "Colorado Department of Human Services",
     summary:
-      "Colorado's TANF implementation — Basic Cash Assistance, work supports, and related services.",
+      "Colorado's state-administered SNAP program pages and eligibility guidance.",
     anchors: [
       {
-        role: "authorizing_statute",
-        citationPath: "us-co/statute/crs/26-2-706",
-        label: "Program authorisation",
-        displayCitation: "C.R.S. § 26-2-706",
+        role: "eligibility",
+        citationPath: "us-co/policy/co-cdhs-snap-page",
+        label: "SNAP program page",
+        displayCitation: "Colorado CDHS SNAP",
       },
       {
-        role: "regulations",
-        citationPath: "us-co/regulation/9-CCR-2503-6",
-        label: "Program regulations",
-        displayCitation: "9 CCR 2503-6",
-      },
-      {
-        role: "benefit_calculation",
-        citationPath: "us-co/regulation/9-CCR-2503-6/3.606.1",
-        label: "Basic Cash Assistance grant",
-        displayCitation: "9 CCR 2503-6 § 3.606.1",
+        role: "eligibility",
+        citationPath: "us-co/policy/co-cdhs-snap-page/block-1",
+        label: "SNAP eligibility guidance",
+        displayCitation: "Colorado CDHS SNAP eligibility",
       },
     ],
   },
@@ -349,12 +279,6 @@ export const PROGRAM_SEED: Program[] = [
       "Means-tested benefit combining six prior working-age benefits into a single payment.",
     anchors: [
       {
-        role: "authorizing_statute",
-        citationPath: "uk/legislation/ukpga/2012/5",
-        label: "Welfare Reform Act 2012",
-        displayCitation: "UKPGA 2012 c.5",
-      },
-      {
         role: "regulations",
         citationPath: "uk/legislation/uksi/2013/376",
         label: "Universal Credit Regulations 2013",
@@ -365,24 +289,6 @@ export const PROGRAM_SEED: Program[] = [
         citationPath: "uk/legislation/uksi/2013/376/regulation/22",
         label: "Work allowance",
         displayCitation: "UKSI 2013/376 regulation 22",
-      },
-    ],
-  },
-  // ─────────────────────────────────────────────── Canada
-  {
-    slug: "ccb",
-    displayName: "Canada Child Benefit",
-    aliases: ["ccb", "canada child benefit"],
-    jurisdiction: "canada",
-    governingBody: "Canada Revenue Agency",
-    summary:
-      "Tax-free monthly payment to help with the cost of raising children under 18.",
-    anchors: [
-      {
-        role: "authorizing_statute",
-        citationPath: "canada/statute/rsc-1985/c-1-5th-supp/122.61",
-        label: "Canada Child Benefit",
-        displayCitation: "Income Tax Act, s 122.61",
       },
     ],
   },

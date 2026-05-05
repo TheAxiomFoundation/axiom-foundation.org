@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: any) => (
@@ -12,6 +12,10 @@ vi.mock("next/link", () => ({
 import { TreeBreadcrumbs } from "./tree-breadcrumbs";
 
 describe("TreeBreadcrumbs", () => {
+  beforeEach(() => {
+    window.history.pushState(null, "", "/");
+  });
+
   it("returns null for empty items", () => {
     const { container } = render(<TreeBreadcrumbs items={[]} />);
     expect(container.innerHTML).toBe("");
@@ -45,6 +49,39 @@ describe("TreeBreadcrumbs", () => {
     expect(screen.getByText("United States").closest("a")).toBeNull();
   });
 
+  it("keeps the Axiom root link explicit on the catchall route", () => {
+    window.history.pushState(null, "", "/axiom");
+    render(
+      <TreeBreadcrumbs
+        items={[
+          { label: "Axiom", href: "/" },
+          { label: "United States", href: "/us" },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Axiom").closest("a")).toHaveAttribute(
+      "href",
+      "/axiom"
+    );
+  });
+
+  it("does not rewrite a non-root first crumb", () => {
+    render(
+      <TreeBreadcrumbs
+        items={[
+          { label: "Custom", href: "/custom" },
+          { label: "United States", href: "/us" },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Custom").closest("a")).toHaveAttribute(
+      "href",
+      "/custom"
+    );
+  });
+
   it("renders separator slashes between items", () => {
     render(
       <TreeBreadcrumbs
@@ -72,5 +109,39 @@ describe("TreeBreadcrumbs", () => {
     expect(screen.getByText("Axiom").closest("a")).not.toBeNull();
     expect(screen.getByText("US").closest("a")).not.toBeNull();
     expect(screen.getByText("Title 26").closest("a")).toBeNull();
+  });
+
+  it("uses the provided navigation handler for linked crumbs", () => {
+    const onNavigate = vi.fn();
+    render(
+      <TreeBreadcrumbs
+        items={[
+          { label: "Axiom", href: "/" },
+          { label: "US", href: "/us" },
+          { label: "Statutes", href: "/us/statute" },
+        ]}
+        onNavigate={onNavigate}
+      />
+    );
+
+    fireEvent.click(screen.getByText("US"));
+    expect(onNavigate).toHaveBeenCalledWith("/us");
+  });
+
+  it("falls back to normal link behavior without a navigation handler", () => {
+    render(
+      <TreeBreadcrumbs
+        items={[
+          { label: "Axiom", href: "/" },
+          { label: "US", href: "/us" },
+          { label: "Statutes", href: "/us/statute" },
+        ]}
+      />
+    );
+
+    const link = screen.getByText("US").closest("a");
+    link?.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(screen.getByText("US"));
+    expect(link).toHaveAttribute("href", "/us");
   });
 });

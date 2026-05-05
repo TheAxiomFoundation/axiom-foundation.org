@@ -4,7 +4,6 @@ import {
   JURISDICTIONS_SEED,
   synthesiseJurisdiction,
 } from "@/lib/axiom/jurisdictions-seed";
-import { splitBodyIntoSubsections } from "@/lib/axiom/body-subsections";
 import { chapterlessSectionAlias } from "@/lib/axiom/citation-path-aliases";
 
 export type NodeType =
@@ -644,44 +643,6 @@ async function fetchDottedSubsectionSiblings(rule: Rule): Promise<Rule[]> {
   return (data ?? []) as Rule[];
 }
 
-async function resolveBodySubsectionRule(
-  pathPrefix: string
-): Promise<Rule | null> {
-  const parts = pathPrefix.split("/");
-  if (parts.length < 5) return null;
-  const label = parts.at(-1);
-  const parentCitationPath = parts.slice(0, -1).join("/");
-  if (!label || !parentCitationPath) return null;
-
-  const { data: parentRule } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .eq("citation_path", parentCitationPath)
-    .maybeSingle();
-
-  const parent = parentRule as Rule | null;
-  if (!parent?.body) return null;
-
-  const subsections = splitBodyIntoSubsections(parent.body);
-  if (!subsections) return null;
-  const index = subsections.findIndex((s) => s.label === label);
-  if (index < 0) return null;
-
-  const subsection = subsections[index];
-  return {
-    ...parent,
-    id: `${parent.id}:body-subsection:${label}`,
-    parent_id: parent.id,
-    level: parent.level + 1,
-    ordinal: index,
-    heading: parent.heading ? `(${label}) ${parent.heading}` : `(${label})`,
-    body: subsection.text,
-    citation_path: pathPrefix,
-    has_rulespec: false,
-    rulespec_path: null,
-  };
-}
-
 function coloradoPolicyCanonicalAlias(pathPrefix: string): string | null {
   const parts = pathPrefix.split("/");
   if (parts[0] !== "us-co" || parts[1] !== "policy" || parts.length < 4) {
@@ -881,16 +842,6 @@ export async function getSectionNodes(
   const aliasPath = canonicalCitationPathAlias(pathPrefix);
   if (aliasPath && aliasPath !== pathPrefix) {
     return getSectionNodes(aliasPath, page, encodedPaths, encodedOnly);
-  }
-
-  const bodySubsectionRule = await resolveBodySubsectionRule(pathPrefix);
-  if (bodySubsectionRule) {
-    return {
-      nodes: [],
-      hasMore: false,
-      total: 0,
-      leafRule: bodySubsectionRule,
-    };
   }
 
   const coloradoPolicyAgency = await fetchColoradoPolicyAgencyNodes(

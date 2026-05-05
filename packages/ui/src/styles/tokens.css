@@ -17,6 +17,16 @@
   --color-accent-light: rgba(146, 64, 14, 0.06);
   --color-code-bg: #1c1917;
   --color-code-text: #e7e5e4;
+  --color-code-comment: #a8a29e;
+  --color-code-keyword: #fbbf24;
+  --color-code-string: #fdba74;
+  --color-code-number: #7dd3fc;
+  --color-code-function: #86efac;
+  --color-code-variable: #bfdbfe;
+  --color-code-operator: #d6d3d1;
+  --color-code-punctuation: #a8a29e;
+  --color-code-tag: #fbbf24;
+  --color-code-attribute: #7dd3fc;
   --color-success: #166534;
   --color-warning: #b45309;
   --color-error: #991b1b;
@@ -120,6 +130,84 @@ pre {
   padding: 1.25rem;
   overflow-x: auto;
   color: var(--color-code-text);
+}
+
+/* Prism syntax theme. CodeBlock adds ``code-syntax`` and language classes
+   everywhere, so all product code surfaces share one predictable palette. */
+.code-syntax {
+  color: var(--color-code-text);
+  text-shadow: none;
+  tab-size: 2;
+}
+
+.code-syntax .token.comment,
+.code-syntax .token.prolog,
+.code-syntax .token.doctype,
+.code-syntax .token.cdata {
+  color: var(--color-code-comment);
+  font-style: italic;
+}
+
+.code-syntax .token.punctuation {
+  color: var(--color-code-punctuation);
+}
+
+.code-syntax .token.property,
+.code-syntax .token.tag,
+.code-syntax .token.constant,
+.code-syntax .token.symbol,
+.code-syntax .token.deleted {
+  color: var(--color-code-tag);
+}
+
+.code-syntax .token.boolean,
+.code-syntax .token.number {
+  color: var(--color-code-number);
+}
+
+.code-syntax .token.selector,
+.code-syntax .token.string,
+.code-syntax .token.char,
+.code-syntax .token.inserted {
+  color: var(--color-code-string);
+}
+
+.code-syntax .token.attr-name {
+  color: var(--color-code-attribute);
+}
+
+.code-syntax .token.operator,
+.code-syntax .token.entity,
+.code-syntax .token.url {
+  color: var(--color-code-operator);
+}
+
+.code-syntax .token.atrule,
+.code-syntax .token.attr-value,
+.code-syntax .token.keyword {
+  color: var(--color-code-keyword);
+  font-weight: 500;
+}
+
+.code-syntax .token.function,
+.code-syntax .token.builtin,
+.code-syntax .token.class-name {
+  color: var(--color-code-function);
+}
+
+.code-syntax .token.regex,
+.code-syntax .token.important,
+.code-syntax .token.variable {
+  color: var(--color-code-variable);
+}
+
+.code-syntax .token.important,
+.code-syntax .token.bold {
+  font-weight: 700;
+}
+
+.code-syntax .token.italic {
+  font-style: italic;
 }
 
 /* ── Keyframes ── */

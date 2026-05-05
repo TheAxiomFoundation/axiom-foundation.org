@@ -10,11 +10,20 @@ describe('CodeBlock', () => {
 
   it('renders RuleSpec YAML with Prism YAML highlighting', () => {
     const { container } = render(
-      <CodeBlock code="format: rulespec/v1\nrules: []" language="yaml" />,
+      <CodeBlock
+        code={
+          "format: rulespec/v1\nrules:\n  - formula: max(0, wages - base_wages)"
+        }
+        language="yaml"
+      />,
     )
     const codeEl = container.querySelector('code')
     expect(codeEl).toBeInTheDocument()
+    expect(codeEl).toHaveClass('code-syntax')
+    expect(codeEl).toHaveClass('language-yaml')
     expect(codeEl?.innerHTML).toContain('span')
+    expect(codeEl?.innerHTML).toContain('token function')
+    expect(codeEl?.innerHTML).toContain('token variable')
   })
 
   it('renders xml code with Prism highlighting', () => {
@@ -31,6 +40,18 @@ describe('CodeBlock', () => {
     )
     const codeEl = container.querySelector('code')
     expect(codeEl).toBeInTheDocument()
+    expect(codeEl).toHaveClass('language-python')
+  })
+
+  it('renders formula code with Python-like highlighting', () => {
+    const { container } = render(
+      <CodeBlock code="max(0, wages - base_wages)" language="formula" />,
+    )
+    const codeEl = container.querySelector('code')
+    expect(codeEl).toHaveClass('language-rulespec-formula')
+    expect(codeEl?.innerHTML).toContain('token function')
+    expect(codeEl?.innerHTML).toContain('token variable')
+    expect(codeEl?.innerHTML).toContain('token number')
   })
 
   it('renders yaml code with Prism highlighting', () => {

@@ -13,12 +13,28 @@ import {
   isUUID,
 } from "@/lib/tree-data";
 import { synthesiseRuleFromCitationPath } from "@/lib/axiom/rulespec/synth-rule";
+import {
+  treeNodesCacheKey,
+  type InitialTreeNodesState,
+} from "@/lib/axiom/tree-cache";
 import type { Rule } from "@/lib/supabase";
 
 interface CacheEntry {
   nodes: TreeNode[];
   hasMore: boolean;
   currentRule: Rule | null;
+  leafRule: Rule | null;
+}
+
+interface UseTreeNodesResult {
+  nodes: TreeNode[];
+  loading: boolean;
+  error: string | null;
+  hasMore: boolean;
+  loadMore: () => void;
+  leafRule: Rule | null;
+  currentRule: Rule | null;
+  stale?: boolean;
 }
 
 const MAX_CACHE_ENTRIES = 20;
@@ -31,17 +47,48 @@ export function useTreeNodes(
   dbJurisdictionId: string,
   ruleSegments: string[],
   hasCitationPaths: boolean,
-  encodedOnly: boolean = false
-) {
-  const [nodes, setNodes] = useState<TreeNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  encodedOnly: boolean = false,
+  initialState?: InitialTreeNodesState | null
+): UseTreeNodesResult {
+  const cacheKey = treeNodesCacheKey(
+    dbJurisdictionId,
+    ruleSegments,
+    encodedOnly
+  );
+  const matchingInitialState =
+    initialState?.cacheKey === cacheKey ? initialState : null;
+
+  const [nodes, setNodes] = useState<TreeNode[]>(
+    matchingInitialState?.nodes ?? []
+  );
+  const [loading, setLoading] = useState(!matchingInitialState);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [leafRule, setLeafRule] = useState<Rule | null>(null);
-  const [currentRule, setCurrentRule] = useState<Rule | null>(null);
+  const [hasMore, setHasMore] = useState(
+    matchingInitialState?.hasMore ?? false
+  );
+  const [leafRule, setLeafRule] = useState<Rule | null>(
+    matchingInitialState?.leafRule ?? null
+  );
+  const [currentRule, setCurrentRule] = useState<Rule | null>(
+    matchingInitialState?.currentRule ?? null
+  );
 
   const pageRef = useRef(0);
-  const cache = useRef<Map<string, CacheEntry>>(new Map());
+  const cache = useRef<Map<string, CacheEntry>>(
+    matchingInitialState
+      ? new Map([
+          [
+            cacheKey,
+            {
+              nodes: matchingInitialState.nodes,
+              hasMore: matchingInitialState.hasMore,
+              currentRule: matchingInitialState.currentRule,
+              leafRule: matchingInitialState.leafRule,
+            },
+          ],
+        ])
+      : new Map()
+  );
   // Encoded-paths set is jurisdiction-scoped — keyed so a navigation
   // from /us to /us-co doesn't keep filtering against US paths.
   const encodedPathsRef = useRef<{
@@ -54,7 +101,9 @@ export function useTreeNodes(
   // silently dropped on resolution.
   const inflight = useRef(0);
 
-  const cacheKey = `${dbJurisdictionId}/${ruleSegments.join("/")}${encodedOnly ? ":encoded" : ""}`;
+  const [stateKey, setStateKey] = useState(
+    matchingInitialState ? cacheKey : ""
+  );
 
   useEffect(() => {
     // Invalidate any in-flight fetch for the previous cacheKey —
@@ -66,13 +115,19 @@ export function useTreeNodes(
       setNodes(cached.nodes);
       setHasMore(cached.hasMore);
       setCurrentRule(cached.currentRule);
+      setLeafRule(cached.leafRule);
       setLoading(false);
-      setLeafRule(null);
       setError(null);
+      setStateKey(cacheKey);
       pageRef.current = 0;
       return;
     }
 
+    setNodes([]);
+    setHasMore(false);
+    setLeafRule(null);
+    setCurrentRule(null);
+    setStateKey(cacheKey);
     fetchNodes(ruleSegments, 0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
@@ -115,14 +170,23 @@ export function useTreeNodes(
         // jurisdiction. The ref is keyed on ``dbJurisdictionId`` so a
         // navigation across jurisdictions doesn't leak the previous
         // jurisdiction's encoded set into the current filter.
-        if (
-          !encodedPathsRef.current ||
-          encodedPathsRef.current.jurisdiction !== dbJurisdictionId
-        ) {
-          const paths = await getEncodedPaths(dbJurisdictionId);
-          encodedPathsRef.current = { jurisdiction: dbJurisdictionId, paths };
+        let encodedPaths: Set<string> | undefined;
+        if (encodedOnly) {
+          if (
+            !encodedPathsRef.current ||
+            encodedPathsRef.current.jurisdiction !== dbJurisdictionId
+          ) {
+            const paths = await getEncodedPaths(dbJurisdictionId);
+            encodedPathsRef.current = { jurisdiction: dbJurisdictionId, paths };
+          }
+          encodedPaths = encodedPathsRef.current.paths;
+        } else if (encodedPathsRef.current?.jurisdiction === dbJurisdictionId) {
+          // Reuse a previously loaded encoded index for badges, but do
+          // not block normal browsing on the GitHub/corpus encoded-path
+          // lookup. The index is required for the Encoded only filter,
+          // not for showing unfiltered tree content.
+          encodedPaths = encodedPathsRef.current.paths;
         }
-        const encodedPaths = encodedPathsRef.current.paths;
 
         if (segs.length === 1) {
           // Doc type selected, show titles.
@@ -222,6 +286,7 @@ export function useTreeNodes(
           nodes: result.nodes,
           hasMore: result.hasMore,
           currentRule: result.currentRule ?? null,
+          leafRule: result.leafRule ?? null,
         });
       }
     } catch (err) {
@@ -240,5 +305,16 @@ export function useTreeNodes(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, hasMore, cacheKey]);
 
-  return { nodes, loading, error, hasMore, loadMore, leafRule, currentRule };
+  const stale = stateKey !== cacheKey;
+
+  return {
+    nodes: stale ? [] : nodes,
+    loading: loading || stale,
+    error: stale ? null : error,
+    hasMore: stale ? false : hasMore,
+    loadMore,
+    leafRule: stale ? null : leafRule,
+    currentRule: stale ? null : currentRule,
+    stale,
+  };
 }

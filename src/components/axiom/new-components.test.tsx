@@ -665,6 +665,23 @@ describe('RuleDetailPanel', () => {
     expect(screen.getByText(/2 subsections/)).toBeInTheDocument()
   })
 
+  it('marks repealed provisions without source text as repealed', () => {
+    render(
+      <RuleDetailPanel
+        document={makeDoc({
+          body: undefined,
+          hasRuleSpec: false,
+          isRepealed: true,
+          subsections: [],
+        })}
+        rule={makeRule({ has_rulespec: false, repeal_date: '2010-01-01' })}
+      />
+    )
+    expect(screen.getAllByText('Repealed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Repealed provision').length).toBeGreaterThan(0)
+    expect(screen.getByText(/No current source text/i)).toBeInTheDocument()
+  })
+
   it('shows RuleSpec available in status bar when encoding exists', () => {
     mockUseEncoding.mockReturnValue({
       encoding: makeEncoding(),

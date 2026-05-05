@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { useTreeNodes } from "./use-tree-nodes";
+import { treeNodesCacheKey } from "@/lib/axiom/tree-cache";
+import type { TreeNode } from "@/lib/tree-data";
 
 // ---- Mock @/lib/tree-data ----
 
@@ -31,7 +33,7 @@ vi.mock("@/lib/supabase", () => ({}));
 
 const SAMPLE_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
-function makeNode(overrides: Record<string, unknown> = {}) {
+function makeNode(overrides: Partial<TreeNode> = {}): TreeNode {
   return {
     segment: "us",
     label: "United States",
@@ -52,6 +54,30 @@ beforeEach(() => {
 
 describe("useTreeNodes", () => {
   describe("root of citation-path jurisdiction (empty ruleSegments)", () => {
+    it("uses matching server-provided initial nodes without an initial loading state", () => {
+      const docNodes = [
+        makeNode({
+          segment: "statute",
+          label: "Statutes",
+          nodeType: "doc_type",
+        }),
+      ];
+
+      const { result } = renderHook(() =>
+        useTreeNodes("us", [], true, false, {
+          cacheKey: treeNodesCacheKey("us", [], false),
+          nodes: docNodes,
+          hasMore: false,
+          currentRule: null,
+          leafRule: null,
+        })
+      );
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.nodes).toEqual(docNodes);
+      expect(mockGetDocTypeNodes).not.toHaveBeenCalled();
+    });
+
     it("calls getDocTypeNodes", async () => {
       const docNodes = [
         makeNode({
@@ -143,9 +169,10 @@ describe("useTreeNodes", () => {
       expect(mockGetTitleNodes).toHaveBeenCalledWith(
         "us",
         "statute",
-        expect.any(Set),
+        undefined,
         false
       );
+      expect(mockGetEncodedPaths).not.toHaveBeenCalled();
       expect(result.current.nodes).toEqual(titleNodes);
     });
 
@@ -168,9 +195,10 @@ describe("useTreeNodes", () => {
       expect(mockGetTitleNodes).toHaveBeenCalledWith(
         "uk",
         "legislation",
-        expect.any(Set),
+        undefined,
         false
       );
+      expect(mockGetEncodedPaths).not.toHaveBeenCalled();
       expect(result.current.nodes).toEqual(nodes);
     });
   });
@@ -195,9 +223,10 @@ describe("useTreeNodes", () => {
       expect(mockGetSectionNodes).toHaveBeenCalledWith(
         "us/statute/26",
         0,
-        expect.any(Set),
+        undefined,
         false
       );
+      expect(mockGetEncodedPaths).not.toHaveBeenCalled();
       expect(result.current.nodes).toEqual(sectionNodes);
     });
   });
@@ -274,9 +303,10 @@ describe("useTreeNodes", () => {
       expect(mockGetSectionNodes).toHaveBeenCalledWith(
         "us/statute/12/4",
         0,
-        expect.any(Set),
+        undefined,
         false
       );
+      expect(mockGetEncodedPaths).not.toHaveBeenCalled();
       expect(result.current.leafRule).toEqual(fakeRule);
       expect(result.current.nodes).toEqual([]);
     });
@@ -433,6 +463,78 @@ describe("useTreeNodes", () => {
 
       expect(mockGetDocTypeNodes).toHaveBeenCalledOnce();
       expect(result.current.nodes).toEqual(docNodes);
+    });
+
+    it("uses cached leaf rules on return navigation", async () => {
+      const leafRule = { id: "rule-leaf", heading: "Leaf" };
+      mockGetSectionNodes.mockResolvedValue({
+        nodes: [],
+        hasMore: false,
+        total: 0,
+        leafRule,
+      });
+
+      const { result, rerender } = renderHook(
+        ({ segs }: { segs: string[] }) => useTreeNodes("us", segs, true),
+        {
+          initialProps: { segs: ["statute", "12", "4"] },
+        }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.leafRule).toEqual(leafRule);
+      expect(mockGetSectionNodes).toHaveBeenCalledOnce();
+
+      mockGetTitleNodes.mockResolvedValue([
+        makeNode({ segment: "26", label: "Title 26" }),
+      ]);
+      rerender({ segs: ["statute"] });
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      rerender({ segs: ["statute", "12", "4"] });
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(mockGetSectionNodes).toHaveBeenCalledOnce();
+      expect(result.current.leafRule).toEqual(leafRule);
+    });
+
+    it("clears stale nodes while a new uncached path loads", async () => {
+      const docNodes = [
+        makeNode({ segment: "statute", label: "Statutes" }),
+        makeNode({ segment: "regulation", label: "Regulations" }),
+      ];
+      mockGetDocTypeNodes.mockResolvedValue(docNodes);
+
+      let resolveTitles: (nodes: ReturnType<typeof makeNode>[]) => void;
+      mockGetTitleNodes.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveTitles = resolve;
+          })
+      );
+
+      const { result, rerender } = renderHook(
+        ({ segs }: { segs: string[] }) => useTreeNodes("us", segs, true),
+        {
+          initialProps: { segs: [] as string[] },
+        }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.nodes).toEqual(docNodes);
+
+      rerender({ segs: ["statute"] });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(true);
+        expect(result.current.nodes).toEqual([]);
+      });
+
+      resolveTitles!([makeNode({ segment: "26", label: "Title 26" })]);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.nodes).toEqual([
+        expect.objectContaining({ segment: "26", label: "Title 26" }),
+      ]);
     });
   });
 

@@ -6,6 +6,7 @@ import type { BreadcrumbItem } from "@/lib/tree-data";
 
 interface TreeBreadcrumbsProps {
   items: BreadcrumbItem[];
+  onNavigate?: (href: string) => void;
 }
 
 /**
@@ -18,7 +19,7 @@ interface TreeBreadcrumbsProps {
  * entirely. Detect that case on mount and rewrite the root href to
  * the explicit ``/axiom`` route.
  */
-export function TreeBreadcrumbs({ items }: TreeBreadcrumbsProps) {
+export function TreeBreadcrumbs({ items, onNavigate }: TreeBreadcrumbsProps) {
   const [resolved, setResolved] = useState(items);
 
   useEffect(() => {
@@ -63,6 +64,11 @@ export function TreeBreadcrumbs({ items }: TreeBreadcrumbsProps) {
             ) : (
               <Link
                 href={item.href}
+                onClick={(event) => {
+                  if (!onNavigate) return;
+                  event.preventDefault();
+                  onNavigate(item.href);
+                }}
                 className="text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
               >
                 {item.label}

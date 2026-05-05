@@ -25,7 +25,12 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import { AxiomStats, formatCompact, jurisdictionDisplay } from "./axiom-stats";
+import {
+  AxiomStats,
+  formatCompact,
+  humanizeIdentifier,
+  jurisdictionDisplay,
+} from "./axiom-stats";
 
 describe("formatCompact", () => {
   it("leaves small numbers unformatted", () => {
@@ -63,7 +68,12 @@ describe("jurisdictionDisplay", () => {
     expect(jurisdictionDisplay("canada")).toBe("CAN");
   });
   it("falls back to uppercasing an unknown jurisdiction", () => {
-    expect(jurisdictionDisplay("mars")).toBe("MARS");
+    expect(jurisdictionDisplay("mars")).toBe("Mars");
+  });
+  it("removes separators from unknown jurisdiction labels", () => {
+    expect(jurisdictionDisplay("tribal_courts")).toBe("Tribal Courts");
+    expect(jurisdictionDisplay("eu-member_states")).toBe("EU Member States");
+    expect(humanizeIdentifier("new_policy_bucket")).toBe("New Policy Bucket");
   });
 });
 
@@ -148,6 +158,23 @@ describe("AxiomStats", () => {
         "/us-ny",
       ])
     );
+  });
+
+  it("humanizes uncurated jurisdiction labels instead of showing underscores", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions: [
+        ...fullPayload.jurisdictions,
+        { jurisdiction: "tribal_courts", count: 12 },
+      ],
+    });
+    render(<AxiomStats />);
+    await waitFor(() =>
+      expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument()
+    );
+
+    expect(screen.getByText("Tribal Courts")).toBeInTheDocument();
+    expect(screen.queryByText("TRIBAL_COURTS")).not.toBeInTheDocument();
   });
 
   it("shows the full label + rule count in the pill title for hover", async () => {

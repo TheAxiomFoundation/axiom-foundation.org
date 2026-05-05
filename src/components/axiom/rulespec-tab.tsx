@@ -36,15 +36,17 @@ export function RuleSpecTab({
   loading,
   jurisdiction,
   citationPath,
+  isRepealed,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
   jurisdiction: string;
   /** Citation path for the rule being viewed. When ``encoding`` is
-   *  null, used to look up encoded descendants so a container page
-   *  (e.g. ``us/statute/26/3101``) can point readers down to the
-   *  subsections that actually have YAMLs (``…/a``, ``…/b/1``). */
+   *  null, used to look up related RuleSpec files below this citation
+   *  path in the rules repo. These files are encodings, not proof that
+   *  the source corpus has materialized child provisions. */
   citationPath?: string | null;
+  isRepealed?: boolean;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -70,18 +72,21 @@ export function RuleSpecTab({
           className="text-base text-[var(--color-ink-secondary)] mb-2"
           style={{ fontFamily: "var(--f-serif)" }}
         >
-          {descendants.length > 0 ? "Encoded in subsections" : "Not yet encoded"}
+          {descendants.length > 0
+            ? "Available RuleSpec encodings"
+            : isRepealed
+              ? "Repealed provision"
+              : "Not yet encoded"}
         </div>
         <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
           {descendants.length > 0
-            ? `${descendants.length} ${descendants.length === 1 ? "subsection has" : "subsections have"} a RuleSpec encoding.`
+            ? `This source provision is partially encoded. No RuleSpec file exists for the exact provision, but ${descendants.length} related RuleSpec ${descendants.length === 1 ? "file is" : "files are"} available.`
+            : isRepealed
+              ? "No active RuleSpec encoding is shown for this repealed provision."
             : "This rule has not been encoded into RuleSpec format yet."}
         </p>
         {descendants.length > 0 && (
-          <DescendantList
-            descendants={descendants}
-            parentCitation={citationPath ?? ""}
-          />
+          <RelatedEncodingList descendants={descendants} />
         )}
       </div>
     );
@@ -560,9 +565,9 @@ function useRuleSpecTests(
 }
 
 /**
- * Look up encoded descendants of ``citationPath`` in the rules-* repo.
- * Skipped when the rule itself has an encoding — we only want this
- * surface on container pages whose YAML lives a level (or more) down.
+ * Look up RuleSpec files below ``citationPath`` in the rules-* repo.
+ * Skipped when the rule itself has an encoding. These are related
+ * repository files, not necessarily materialized source-tree children.
  */
 function useEncodedDescendants(citationPath: string | null): EncodedFile[] {
   const [descendants, setDescendants] = useState<EncodedFile[]>([]);
@@ -585,12 +590,10 @@ function useEncodedDescendants(citationPath: string | null): EncodedFile[] {
   return descendants;
 }
 
-function DescendantList({
+function RelatedEncodingList({
   descendants,
-  parentCitation,
 }: {
   descendants: EncodedFile[];
-  parentCitation: string;
 }) {
   return (
     <ul className="mt-5 m-0 p-0 list-none text-left max-w-[320px] mx-auto space-y-1">
@@ -598,28 +601,17 @@ function DescendantList({
         <li key={d.citationPath}>
           <a
             href={`/axiom/${d.citationPath}`}
-            className="block px-3 py-2 rounded font-mono text-xs text-[var(--color-accent)] no-underline hover:bg-[var(--color-paper-elevated)] hover:underline focus-visible:underline"
+            className="block px-3 py-2 rounded no-underline hover:bg-[var(--color-paper-elevated)] focus-visible:bg-[var(--color-paper-elevated)]"
           >
-            {relativeCitation(parentCitation, d.citationPath)}
+            <span className="block font-mono text-xs text-[var(--color-accent)] break-all">
+              {d.citationPath}
+            </span>
+            <span className="mt-1 block font-mono text-[10px] text-[var(--color-ink-muted)] break-all">
+              {d.filePath}
+            </span>
           </a>
         </li>
       ))}
     </ul>
   );
-}
-
-/**
- * Render a descendant's path relative to its parent so the link reads
- * as ``(a)``, ``(b)/(1)`` instead of repeating the full citation.
- * Falls back to the absolute citation when the parent prefix doesn't
- * match (defensive — shouldn't happen given the caller filter).
- */
-function relativeCitation(parent: string, child: string): string {
-  const prefix = parent.endsWith("/") ? parent : `${parent}/`;
-  if (!child.startsWith(prefix)) return child;
-  const tail = child.slice(prefix.length);
-  return tail
-    .split("/")
-    .map((s) => `(${s})`)
-    .join("/");
 }

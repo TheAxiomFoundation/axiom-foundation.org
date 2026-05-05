@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ViewerDocument } from "@/lib/axiom-utils";
 import type { RuleReference } from "@/lib/supabase";
 import { RuleBody } from "./rule-body";
-import {
-  refsForSubsection,
-  splitBodyIntoSubsections,
-  type BodySubsection,
-} from "@/lib/axiom/body-subsections";
 
 /* v8 ignore start -- markdown table parsing, tested via integration */
 function parseMarkdownTable(tableLines: string[]): {
@@ -115,76 +110,12 @@ function RichText({ text }: { text: string }) {
 }
 /* v8 ignore stop */
 
-/**
- * Render a body-derived subsection list with a TOC at the top. Each
- * labelled subsection becomes its own anchored block so the TOC
- * links can scroll-jump within the page. Refs are re-offset per
- * subsection so citation splicing keeps working block-by-block.
- */
-function BodySubsectionView({
-  parentCitationPath,
-  subsections,
-  refs,
-}: {
-  parentCitationPath?: string | null;
-  subsections: BodySubsection[];
-  refs: RuleReference[];
-}) {
-  const labelled = subsections.filter((s) => s.label !== null);
-  return (
-    <div>
-      {labelled.length > 1 && (
-        <nav
-          aria-label="Subsections in this section"
-          className="mb-8 px-5 py-4 bg-[var(--color-paper)] border border-[var(--color-rule)] rounded-md"
-        >
-          <div className="flex items-baseline justify-between mb-3 gap-4">
-            <span className="eyebrow">In this section</span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              {labelled.length} subsection{labelled.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <ul className="flex flex-wrap gap-x-3 gap-y-2 m-0 p-0 list-none">
-            {labelled.map((s) => (
-              <li key={s.label!}>
-                <a
-                  href={
-                    parentCitationPath
-                      ? `/${parentCitationPath}/${s.label}`
-                      : `#sub-${s.label}`
-                  }
-                  className="font-mono text-xs text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
-                >
-                  ({s.label})
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
-      <div className="space-y-7">
-        {subsections.map((s, i) => (
-          <section
-            key={s.label ?? `lead-${i}`}
-            id={s.label ? `sub-${s.label}` : undefined}
-            className="scroll-mt-8"
-          >
-            <RuleBody body={s.text} refs={refsForSubsection(s, refs)} />
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function SourceTab({
   document,
   outgoingRefs,
-  citationPath,
 }: {
   document: ViewerDocument;
   outgoingRefs?: RuleReference[];
-  citationPath?: string | null;
 }) {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -194,16 +125,7 @@ export function SourceTab({
   // The existing subsection list is a fallback for rules whose content
   // lives in children.
   const renderInline = !!document.body;
-
-  // Body-derived subsections: regulations whose corpus rows have no
-  // children but whose body text carries CFR-style ``(a)``/``(b)``/...
-  // labels. Pulling that structure out of the body itself gives the
-  // reader a navigable subsection TOC even when corpus ingestion
-  // didn't materialise the subsections as separate rows.
-  const bodySubsections = useMemo(
-    () => (document.body ? splitBodyIntoSubsections(document.body) : null),
-    [document.body]
-  );
+  const hasSourceContent = renderInline || document.subsections.length > 0;
 
   useEffect(() => {
     const target = document.highlightedSubsection;
@@ -227,15 +149,18 @@ export function SourceTab({
         </aside>
       )}
 
-      {renderInline && bodySubsections ? (
-        <BodySubsectionView
-          parentCitationPath={citationPath}
-          subsections={bodySubsections}
-          refs={outgoingRefs ?? []}
-        />
-      ) : renderInline ? (
+      {document.isRepealed && hasSourceContent && (
+        <aside className="mb-6 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] px-4 py-3">
+          <div className="eyebrow mb-1">Repealed provision</div>
+          <p className="m-0 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+            This source provision has been repealed.
+          </p>
+        </aside>
+      )}
+
+      {renderInline ? (
         <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
-      ) : (
+      ) : document.subsections.length > 0 ? (
         <div className="space-y-7">
           {document.subsections.map((subsection) => {
             const isHighlighted =
@@ -268,6 +193,18 @@ export function SourceTab({
               </section>
             );
           })}
+        </div>
+      ) : document.isRepealed ? (
+        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] px-5 py-4">
+          <div className="eyebrow mb-2">Repealed provision</div>
+          <p className="m-0 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+            This provision has been repealed. No current source text is
+            available in the corpus row.
+          </p>
+        </div>
+      ) : (
+        <div className="py-8 text-sm text-[var(--color-ink-muted)]">
+          No source text available.
         </div>
       )}
 

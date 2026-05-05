@@ -8,6 +8,7 @@ import type { Rule } from "@/lib/supabase";
 
 interface SiblingStripProps {
   rule: Rule;
+  onNavigate?: (href: string) => void;
 }
 
 /**
@@ -21,7 +22,7 @@ interface SiblingStripProps {
  * The palette's own dialog captures its own arrow keys before they
  * bubble to the window, so there's no conflict with ⌘K navigation.
  */
-export function SiblingStrip({ rule }: SiblingStripProps) {
+export function SiblingStrip({ rule, onNavigate }: SiblingStripProps) {
   const router = useRouter();
   const [siblings, setSiblings] = useState<Rule[] | null>(null);
 
@@ -65,15 +66,17 @@ export function SiblingStrip({ rule }: SiblingStripProps) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "ArrowLeft" && prev?.citation_path) {
         e.preventDefault();
-        router.push(`/${prev.citation_path}`);
+        const href = `/${prev.citation_path}`;
+        onNavigate ? onNavigate(href) : router.push(href);
       } else if (e.key === "ArrowRight" && next?.citation_path) {
         e.preventDefault();
-        router.push(`/${next.citation_path}`);
+        const href = `/${next.citation_path}`;
+        onNavigate ? onNavigate(href) : router.push(href);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [prev, next, router]);
+  }, [prev, next, router, onNavigate]);
 
   if (!siblings || siblings.length <= 1 || index < 0) {
     return null;
@@ -95,6 +98,11 @@ export function SiblingStrip({ rule }: SiblingStripProps) {
       {prev?.citation_path ? (
         <Link
           href={`/${prev.citation_path}`}
+          onClick={(event) => {
+            if (!onNavigate || !prev.citation_path) return;
+            event.preventDefault();
+            onNavigate(`/${prev.citation_path}`);
+          }}
           aria-label="Previous sibling"
           className="inline-flex items-center justify-center w-7 h-7 shrink-0 rounded border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
         >
@@ -144,6 +152,11 @@ export function SiblingStrip({ rule }: SiblingStripProps) {
             <li key={sib.id}>
               <Link
                 href={`/${sib.citation_path ?? ""}`}
+                onClick={(event) => {
+                  if (!onNavigate || !sib.citation_path) return;
+                  event.preventDefault();
+                  onNavigate(`/${sib.citation_path}`);
+                }}
                 className="inline-flex items-center px-2 py-0.5 font-mono text-xs text-[var(--color-ink-muted)] border border-[var(--color-rule)] bg-transparent rounded-sm whitespace-nowrap hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
               >
                 {label}
@@ -162,6 +175,11 @@ export function SiblingStrip({ rule }: SiblingStripProps) {
       {next?.citation_path ? (
         <Link
           href={`/${next.citation_path}`}
+          onClick={(event) => {
+            if (!onNavigate || !next.citation_path) return;
+            event.preventDefault();
+            onNavigate(`/${next.citation_path}`);
+          }}
           aria-label="Next sibling"
           className="inline-flex items-center justify-center w-7 h-7 shrink-0 rounded border border-[var(--color-rule)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
         >

@@ -3,16 +3,12 @@ import {
   buildLegislationJsonLd,
   getAxiomRuleMetadata,
 } from "@/lib/axiom/metadata";
-import {
-  getActNodes,
-  getDocTypeNodes,
-  getTitleNodes,
-  resolveAxiomPath,
-} from "@/lib/tree-data";
+import { resolveAxiomPath } from "@/lib/tree-data";
 import {
   treeNodesCacheKey,
   type InitialTreeNodesState,
 } from "@/lib/axiom/tree-cache";
+import { loadTreeNodes } from "@/lib/axiom/tree-node-loader";
 import { AxiomClient } from "./axiom-client";
 
 interface PageProps {
@@ -96,50 +92,26 @@ async function getInitialTreeState(
   } = resolved;
   const cacheKey = treeNodesCacheKey(slug, ruleSegments, false);
 
-  if (ruleSegments.length === 0) {
-    if (hasCitationPaths) {
-      const nodes = await withTimeout(
-        getDocTypeNodes(slug),
-        INITIAL_TREE_STATE_TIMEOUT_MS,
-        null
-      );
-      if (!nodes) return null;
-      return {
-        cacheKey,
-        nodes,
-        hasMore: false,
-        currentRule: null,
-        leafRule: null,
-      };
-    }
+  const result = await withTimeout(
+    loadTreeNodes({
+      dbJurisdictionId: slug,
+      ruleSegments,
+      hasCitationPaths,
+      encodedOnly: false,
+      page: 0,
+    }),
+    INITIAL_TREE_STATE_TIMEOUT_MS,
+    null
+  );
+  if (!result) return null;
 
-    const result = await getActNodes(slug, 0);
-    return {
-      cacheKey,
-      nodes: result.nodes,
-      hasMore: result.hasMore,
-      currentRule: null,
-      leafRule: null,
-    };
-  }
-
-  if (hasCitationPaths && ruleSegments.length === 1) {
-    const nodes = await withTimeout(
-      getTitleNodes(slug, ruleSegments[0], undefined, false),
-      INITIAL_TREE_STATE_TIMEOUT_MS,
-      null
-    );
-    if (!nodes) return null;
-    return {
-      cacheKey,
-      nodes,
-      hasMore: false,
-      currentRule: null,
-      leafRule: null,
-    };
-  }
-
-  return null;
+  return {
+    cacheKey,
+    nodes: result.nodes,
+    hasMore: result.hasMore,
+    currentRule: result.currentRule ?? null,
+    leafRule: result.leafRule ?? null,
+  };
 }
 
 function withTimeout<T>(

@@ -415,11 +415,12 @@ describe("getTitleNodes — root navigation", () => {
 
     expect(nodes.map((n) => n.segment)).toEqual(["10-CCR-2506-1"]);
     expect(nodes[0].label).toBe("Human Services");
-    expect(rootQuery.eq).toHaveBeenCalledWith("level", 0);
+    expect(rootQuery.eq).toHaveBeenCalledWith("level", 1);
   });
 
   it("walks citation-path children when root-level rows are absent", async () => {
     const emptyRootQuery = queryMock({ data: [], error: null });
+    const emptyAlternateRootQuery = queryMock({ data: [], error: null });
     const pages = [
       [
         {
@@ -457,6 +458,7 @@ describe("getTitleNodes — root navigation", () => {
     );
     vi.mocked(supabaseCorpus.from)
       .mockReturnValueOnce(emptyRootQuery)
+      .mockReturnValueOnce(emptyAlternateRootQuery)
       .mockReturnValue(prefixQuery as never);
 
     const nodes = await getTitleNodes("us-ca", "statute");
@@ -466,6 +468,7 @@ describe("getTitleNodes — root navigation", () => {
 
   it("derives synthetic title buckets from deeper rows when title roots are absent", async () => {
     const emptyRootQuery = queryMock({ data: [], error: null });
+    const emptyAlternateRootQuery = queryMock({ data: [], error: null });
     const pages = [
       [
         {
@@ -496,6 +499,7 @@ describe("getTitleNodes — root navigation", () => {
     );
     vi.mocked(supabaseCorpus.from)
       .mockReturnValueOnce(emptyRootQuery)
+      .mockReturnValueOnce(emptyAlternateRootQuery)
       .mockReturnValue(prefixQuery as never);
 
     const nodes = await getTitleNodes("canada", "regulation");

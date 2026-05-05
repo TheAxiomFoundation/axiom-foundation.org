@@ -498,7 +498,7 @@ describe("useTreeNodes", () => {
       expect(result.current.leafRule).toEqual(leafRule);
     });
 
-    it("clears stale nodes while a new uncached path loads", async () => {
+    it("retains stale nodes while a new uncached path loads", async () => {
       const docNodes = [
         makeNode({ segment: "statute", label: "Statutes" }),
         makeNode({ segment: "regulation", label: "Regulations" }),
@@ -527,7 +527,8 @@ describe("useTreeNodes", () => {
 
       await waitFor(() => {
         expect(result.current.loading).toBe(true);
-        expect(result.current.nodes).toEqual([]);
+        expect(result.current.nodes).toEqual(docNodes);
+        expect(result.current.stale).toBe(true);
       });
 
       resolveTitles!([makeNode({ segment: "26", label: "Title 26" })]);

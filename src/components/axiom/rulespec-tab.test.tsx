@@ -226,6 +226,81 @@ rules:
     expect(screen.getByText(/missing `name`/i)).toBeInTheDocument();
   });
 
+  it("renders source relations as first-class non-executable RuleSpec records", () => {
+    const content = `format: rulespec/v1
+rules:
+  - name: restates_standard_deduction
+    kind: source_relation
+    source: 10 CCR 2506-1 section 4.407.1
+    source_relation:
+      type: restates
+      target: us:policies/usda/snap/fy-2026-cola/deductions#snap_standard_deduction
+      authority: federal
+`;
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: content })}
+        loading={false}
+        jurisdiction="us-co"
+      />
+    );
+    expect(
+      screen.getByText("Restates snap_standard_deduction")
+    ).toBeInTheDocument();
+    expect(screen.getByText("#restates_standard_deduction")).toBeInTheDocument();
+    expect(screen.getAllByText(/us:policies\/usda\/snap/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/no `versions`/i)).toBeNull();
+  });
+
+  it("renders source-relation spans and value refs", () => {
+    const content = `format: rulespec/v1
+rules:
+  - name: sets_state_utility_allowance
+    kind: source_relation
+    source:
+      ref: us-co:regulations/10-ccr-2506-1/4.407.3
+      span: table A
+    source_relation:
+      type: sets
+      target: us:regulations/7-cfr/273/9
+      value: us-co:policies/cdhs/snap/fy-2026#heating_cooling_sua
+      authority: state
+`;
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: content })}
+        loading={false}
+        jurisdiction="us-co"
+      />
+    );
+    expect(screen.getByText("Sets 9")).toBeInTheDocument();
+    expect(screen.getByText("table A")).toBeInTheDocument();
+    expect(screen.getAllByText(/heating_cooling_sua/).length).toBeGreaterThan(0);
+  });
+
+  it("renders data relations without binding tests to relation declarations", () => {
+    const content = `format: rulespec/v1
+rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      predicate: us:statutes/7/2012/j#relation.member_of_household
+      arity: 2
+`;
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: content })}
+        loading={false}
+        jurisdiction="us"
+      />
+    );
+    expect(
+      screen.getByText("Data relation relation.member_of_household")
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/no `versions`/i)).toBeNull();
+  });
+
   it("renders related RuleSpec files when the exact source provision has no YAML", async () => {
     vi.stubGlobal(
       "fetch",

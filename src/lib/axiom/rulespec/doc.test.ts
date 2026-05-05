@@ -98,6 +98,72 @@ describe("parseRuleSpec", () => {
     expect(doc.parseErrors.some((e) => e.includes("no `versions`"))).toBe(true);
   });
 
+  it("parses data relations without requiring executable versions", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      predicate: us:statutes/7/2012/j#relation.member_of_household
+      arity: 2
+`);
+    expect(doc.parseErrors).toEqual([]);
+    expect(doc.rules[0].data_relation).toMatchObject({
+      predicate: "us:statutes/7/2012/j#relation.member_of_household",
+      arity: 2,
+    });
+  });
+
+  it("coerces numeric data-relation arity strings", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      arity: '2'
+`);
+    expect(doc.rules[0].data_relation?.arity).toBe(2);
+  });
+
+  it("leaves nonnumeric data-relation arity values unset", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      arity: two
+  - name: empty_arity
+    kind: data_relation
+    data_relation:
+      arity: ''
+`);
+    expect(doc.rules[0].data_relation?.arity).toBeNull();
+    expect(doc.rules[1].data_relation?.arity).toBeNull();
+  });
+
+  it("parses source relations and structured source references", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: restates_standard_deduction
+    kind: source_relation
+    source:
+      ref: us-co:regulations/10-ccr-2506-1/4.407.1
+      span: table 1
+    source_relation:
+      type: restates
+      target: us:policies/usda/snap/fy-2026-cola/deductions#snap_standard_deduction
+      authority: federal
+`);
+    expect(doc.parseErrors).toEqual([]);
+    expect(doc.rules[0]).toMatchObject({
+      source: "us-co:regulations/10-ccr-2506-1/4.407.1 table 1",
+      source_ref: "us-co:regulations/10-ccr-2506-1/4.407.1",
+      source_span: "table 1",
+      source_relation: {
+        type: "restates",
+        target:
+          "us:policies/usda/snap/fy-2026-cola/deductions#snap_standard_deduction",
+        authority: "federal",
+      },
+    });
+  });
+
   it("flags non-mapping version entries", () => {
     const doc = parseRuleSpec(
       "rules:\n  - name: r\n    versions:\n      - just-a-string\n"

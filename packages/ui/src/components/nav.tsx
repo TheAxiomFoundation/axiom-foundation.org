@@ -126,10 +126,8 @@ export function Nav({
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link))}
           <a
-            href="https://github.com/TheAxiomFoundation/rulespec"
+            href="/docs"
             className={`${NAV_LINK} opacity-70 hover:opacity-100`}
-            target="_blank"
-            rel="noopener noreferrer"
           >
             Docs
           </a>
@@ -175,10 +173,8 @@ export function Nav({
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link, true))}
           <a
-            href="https://github.com/TheAxiomFoundation/rulespec"
+            href="/docs"
             className={`${MOBILE_LINK} opacity-70 hover:opacity-100`}
-            target="_blank"
-            rel="noopener noreferrer"
             onClick={close}
           >
             Docs

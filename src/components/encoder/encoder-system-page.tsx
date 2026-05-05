@@ -165,7 +165,7 @@ assessed_income_period_satisfied:
     ],
     checks: [
       "compile",
-      "rulespec.test_runner",
+      "RuleSpec test harness",
       "embedded scalar detector",
       "numeric occurrence coverage",
       "decomposed date scalar rejection",

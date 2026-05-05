@@ -165,8 +165,7 @@ file path as the durable legal module ID.
 | \`format\` | Schema discriminator. |
 | \`module\` | Summary and source verification metadata. |
 | \`imports\` | Other RuleSpec modules by canonical path. |
-| \`relations\` | Declared entity relations. |
-| \`rules\` | Parameters, derived outputs, relations, and reiterations. |
+| \`rules\` | Parameters, derived outputs, runtime data relations, and source relations. |
 
 ## Imports and IDs
 
@@ -191,6 +190,11 @@ notebooks, traces, and machine-readable outputs use durable legal IDs.
 
 \`\`\`yaml
 rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      predicate: us:statutes/7/2012/j#relation.member_of_household
+      arity: 2
   - name: snap_maximum_allotment_table
     kind: parameter
     dtype: Money
@@ -210,11 +214,19 @@ rules:
     versions:
       - effective_from: '2025-10-01'
         formula: snap_maximum_allotment_table[household_size]
+  - name: restates_maximum_allotment
+    kind: source_relation
+    source: 10 CCR 2506-1 section 4.207.3
+    source_relation:
+      type: restates
+      target: us:policies/usda/snap/fy-2026-cola/maximum-allotments#snap_maximum_allotment
+      authority: federal
 \`\`\`
 
 Use table parameters for source-stated tables so reforms can target specific
-cells. Use derived rules for computations. Use \`reiteration\` for provisions
-that restate an upstream rule without changing computation.
+cells. Use derived rules for computations. Use \`data_relation\` for runtime
+predicate declarations and \`source_relation\` for non-executable provenance
+edges such as restatements, delegated settings, implementations, and amendments.
 
 ## Tests and execution
 
@@ -231,8 +243,8 @@ that restate an upstream rule without changing computation.
 \`\`\`
 
 Bare friendly keys are invalid at public boundaries. Input slots use
-\`#input.<local symbol>\`, relation facts use \`#relation.<relation name>\`, and
-imported values use the upstream rule ID.
+\`#input.<local symbol>\`, runtime relation facts use
+\`#relation.<relation name>\`, and imported values use the upstream rule ID.
 
 ## Formula syntax
 

@@ -137,6 +137,21 @@ describe("RuleSpecTab — rendering edge cases", () => {
     expect(container.textContent).not.toContain("Formulas");
   });
 
+  it("applies shared formula highlighting inside per-rule YAML cards", () => {
+    const { container } = render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
+        loading={false}
+        jurisdiction="us"
+      />
+    );
+    const html = Array.from(container.querySelectorAll("code.language-yaml"))
+      .map((el) => el.innerHTML)
+      .join("\n");
+    expect(html).toContain("token number");
+    expect(html).toContain("token variable");
+  });
+
   it("expands the per-rule tests block on click and shows input/output rows", async () => {
     const tests = [
       {

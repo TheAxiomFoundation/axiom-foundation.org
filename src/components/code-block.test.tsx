@@ -26,6 +26,41 @@ describe('CodeBlock', () => {
     expect(codeEl?.innerHTML).toContain('token variable')
   })
 
+  it('highlights quoted RuleSpec formula values as formulas, not plain YAML strings', () => {
+    const { container } = render(
+      <CodeBlock
+        code={"versions:\n  - formula: '0.062'\n  - formula: \"max(0, wages - base_wages)\""}
+        language="yaml"
+      />,
+    )
+    const codeEl = container.querySelector('code')
+    expect(codeEl?.innerHTML).toContain('token number')
+    expect(codeEl?.innerHTML).toContain('token function')
+    expect(codeEl?.innerHTML).toContain('token variable')
+  })
+
+  it('highlights RuleSpec formula block scalar bodies as formulas', () => {
+    const { container } = render(
+      <CodeBlock
+        code={`versions:
+  - formula: |-
+      max(
+        0,
+        current_year_indian_employment_costs
+        - base_year_1993_indian_employment_costs
+      )
+    effective_from: '1993-01-01'`}
+        language="yaml"
+      />,
+    )
+    const codeEl = container.querySelector('code')
+    expect(codeEl?.innerHTML).toContain('token function')
+    expect(codeEl?.innerHTML).toContain('current_year_indian_employment_costs')
+    expect(codeEl?.innerHTML).toContain('token variable')
+    expect(codeEl?.innerHTML).not.toContain('token variable">effective_from')
+    expect(codeEl?.textContent).toContain("effective_from: '1993-01-01'")
+  })
+
   it('renders xml code with Prism highlighting', () => {
     const { container } = render(
       <CodeBlock code="<tag>content</tag>" language="xml" />,

@@ -1,10 +1,26 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockGetAxiomStats = vi.fn();
+const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
+  mockGetAxiomStats: vi.fn(),
+  TEST_JURISDICTIONS: [
+    { slug: "us", label: "US Federal", hasCitationPaths: true },
+    { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
+    { slug: "canada", label: "Canada", hasCitationPaths: false },
+    { slug: "us-co", label: "Colorado", hasCitationPaths: true },
+    { slug: "us-dc", label: "District of Columbia", hasCitationPaths: true },
+    { slug: "us-ny", label: "New York", hasCitationPaths: true },
+  ],
+}));
 
 vi.mock("@/lib/supabase", () => ({
   getAxiomStats: (...args: unknown[]) => mockGetAxiomStats(...args),
+}));
+
+vi.mock("@/lib/tree-data", () => ({
+  JURISDICTIONS: TEST_JURISDICTIONS,
+  getJurisdictionBySlug: (slug: string) =>
+    TEST_JURISDICTIONS.find((j) => j.slug === slug),
 }));
 
 // The pill nav uses next/link; use a plain anchor so hrefs land in
@@ -94,27 +110,39 @@ describe("AxiomStats", () => {
     ],
   };
 
-  it("renders nothing while the RPC is in flight", () => {
+  it("renders jurisdiction links while the RPC is in flight", () => {
     mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
-    const { container } = render(<AxiomStats />);
-    expect(container.querySelector("[data-testid='axiom-stats']")).toBeNull();
+    render(<AxiomStats />);
+    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
+    expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.queryByText("provisions indexed")).not.toBeInTheDocument();
   });
 
-  it("renders nothing when the RPC resolves null", async () => {
+  it("keeps jurisdiction links when the RPC resolves null", async () => {
     mockGetAxiomStats.mockResolvedValue(null);
-    const { container } = render(<AxiomStats />);
+    render(<AxiomStats />);
     await waitFor(() => expect(mockGetAxiomStats).toHaveBeenCalledTimes(1));
-    await new Promise((r) => setTimeout(r, 10));
-    expect(container.querySelector("[data-testid='axiom-stats']")).toBeNull();
+    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
+  });
+
+  it("uses client Axiom navigation for jurisdiction clicks when provided", () => {
+    mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
+    const onNavigateHref = vi.fn();
+    render(<AxiomStats onNavigateHref={onNavigateHref} />);
+
+    fireEvent.click(screen.getByText("Colorado").closest("a")!);
+
+    expect(onNavigateHref).toHaveBeenCalledWith("/us-co");
   });
 
   it("renders the three stats with compact formatting", async () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
     await waitFor(() =>
-      expect(screen.getByTestId("axiom-stats")).toBeInTheDocument()
+      expect(screen.getByText("659K")).toBeInTheDocument()
     );
-    expect(screen.getByText("659K")).toBeInTheDocument();
     expect(screen.getByText("149K")).toBeInTheDocument();
     expect(screen.getByText("17")).toBeInTheDocument();
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
@@ -126,7 +154,7 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
     await waitFor(() =>
-      expect(screen.getByTestId("axiom-stats")).toBeInTheDocument()
+      expect(screen.getByText("659K")).toBeInTheDocument()
     );
     const rulesNumber = screen.getByText("659K");
     expect(rulesNumber).toHaveAttribute("title", "658,899");
@@ -136,7 +164,11 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
     await waitFor(() =>
-      expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument()
+      expect(
+        screen
+          .getByTestId("axiom-stats-pills")
+          .querySelector("a[title='District of Columbia — 130,617 rules']")
+      ).not.toBeNull()
     );
     // Federal / national band appears on top with full labels; US
     // states render alphabetically beneath.
@@ -170,10 +202,9 @@ describe("AxiomStats", () => {
     });
     render(<AxiomStats />);
     await waitFor(() =>
-      expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument()
+      expect(screen.getByText("Tribal Courts")).toBeInTheDocument()
     );
 
-    expect(screen.getByText("Tribal Courts")).toBeInTheDocument();
     expect(screen.queryByText("TRIBAL_COURTS")).not.toBeInTheDocument();
   });
 
@@ -181,7 +212,11 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
     await waitFor(() =>
-      expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument()
+      expect(
+        screen
+          .getByTestId("axiom-stats-pills")
+          .querySelector("a[title='District of Columbia — 130,617 rules']")
+      ).not.toBeNull()
     );
     const dcPill = screen
       .getByTestId("axiom-stats-pills")
@@ -189,7 +224,7 @@ describe("AxiomStats", () => {
     expect(dcPill).not.toBeNull();
   });
 
-  it("does not render the pills section when jurisdictions array is empty", async () => {
+  it("falls back to seeded jurisdictions when the stats payload has no jurisdiction counts", async () => {
     mockGetAxiomStats.mockResolvedValue({
       ...fullPayload,
       jurisdictions: [],
@@ -198,8 +233,8 @@ describe("AxiomStats", () => {
     await waitFor(() =>
       expect(screen.getByTestId("axiom-stats")).toBeInTheDocument()
     );
-    expect(
-      screen.queryByTestId("axiom-stats-pills")
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
+    expect(screen.getByText("Colorado")).toBeInTheDocument();
   });
 });

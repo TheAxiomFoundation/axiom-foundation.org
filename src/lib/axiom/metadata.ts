@@ -24,6 +24,8 @@ export interface AxiomRuleMetadata {
   docType: string | null;
 }
 
+const METADATA_QUERY_TIMEOUT_MS = 1200;
+
 function firstSentence(text: string, maxLen = 200): string {
   const trimmed = text.trim().replace(/\s+/g, " ");
   if (trimmed.length <= maxLen) return trimmed;
@@ -66,10 +68,15 @@ export async function getAxiomRuleMetadata(
     ...lookupCandidates,
     ...citationPathPrefixes(citationPath),
   ]);
-  const { data } = await supabaseCorpus
-    .from("provisions")
-    .select("*")
-    .in("citation_path", prefixes);
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("provisions")
+      .select("*")
+      .in("citation_path", prefixes),
+    METADATA_QUERY_TIMEOUT_MS,
+    null
+  );
+  const data = result?.data ?? null;
 
   const byPath = new Map<string, Rule>();
   for (const row of (data as Rule[] | null) ?? []) {
@@ -129,6 +136,26 @@ export async function getAxiomRuleMetadata(
 
 function uniqueCitationPaths(paths: string[]): string[] {
   return Array.from(new Set(paths));
+}
+
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms: number,
+  fallback: T
+): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
 }
 
 /**

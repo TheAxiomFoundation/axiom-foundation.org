@@ -18,6 +18,13 @@ import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
  */
 
 const CHUNK_SIZE = 1000;
+
+// The corpus-backed sitemap queries can exceed Vercel's static-page
+// generation timeout when every chunk is pre-rendered during build.
+// Keep sitemap XML generated on demand so deploys do not depend on a
+// full corpus scan completing inside the build worker.
+export const dynamic = "force-dynamic";
+
 /**
  * Upper bound on paginated sitemap chunks. Each chunk is a
  * build-time Supabase query so leaving a lot of empty chunks just

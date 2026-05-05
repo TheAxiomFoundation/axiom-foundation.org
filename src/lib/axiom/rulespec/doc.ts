@@ -21,6 +21,20 @@ export interface RuleSpecVersion {
   formula: string | null;
 }
 
+export interface RuleSpecSourceRelation {
+  type: string | null;
+  target: string | null;
+  authority: string | null;
+  value: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface RuleSpecDataRelation {
+  predicate: string | null;
+  arity: number | null;
+  raw: Record<string, unknown>;
+}
+
 export interface RuleSpecRule {
   name: string;
   kind: string | null;
@@ -30,7 +44,11 @@ export interface RuleSpecRule {
   unit: string | null;
   source: string | null;
   source_url: string | null;
+  source_ref: string | null;
+  source_span: string | null;
   versions: RuleSpecVersion[];
+  source_relation: RuleSpecSourceRelation | null;
+  data_relation: RuleSpecDataRelation | null;
   /** The original rule mapping as parsed from YAML, kept so the
    *  renderer can dump it back as a single code block without
    *  losing fields the typed view doesn't model. */
@@ -78,6 +96,15 @@ function asString(v: unknown): string | null {
   return null;
 }
 
+function asNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 function parseVersion(v: unknown, errors: string[]): RuleSpecVersion {
   const rec = asRecord(v);
   if (!rec) {
@@ -88,6 +115,54 @@ function parseVersion(v: unknown, errors: string[]): RuleSpecVersion {
     effective_from: asString(rec.effective_from),
     effective_to: asString(rec.effective_to),
     formula: asString(rec.formula),
+  };
+}
+
+function parseSource(
+  rule: Record<string, unknown>
+): {
+  label: string | null;
+  url: string | null;
+  ref: string | null;
+  span: string | null;
+} {
+  const sourceRec = asRecord(rule.source);
+  const url = sourceRec
+    ? asString(sourceRec.url) ?? asString(rule.source_url)
+    : asString(rule.source_url);
+  if (sourceRec) {
+    const ref = asString(sourceRec.ref);
+    const span = asString(sourceRec.span);
+    return {
+      label: [ref, span].filter(Boolean).join(" ") || ref || span || null,
+      url,
+      ref,
+      span,
+    };
+  }
+  const label = asString(rule.source);
+  return { label, url, ref: label, span: null };
+}
+
+function parseSourceRelation(v: unknown): RuleSpecSourceRelation | null {
+  const rec = asRecord(v);
+  if (!rec) return null;
+  return {
+    type: asString(rec.type),
+    target: asString(rec.target),
+    authority: asString(rec.authority),
+    value: asString(rec.value),
+    raw: rec,
+  };
+}
+
+function parseDataRelation(v: unknown): RuleSpecDataRelation | null {
+  const rec = asRecord(v);
+  if (!rec) return null;
+  return {
+    predicate: asString(rec.predicate),
+    arity: asNumber(rec.arity),
+    raw: rec,
   };
 }
 
@@ -102,20 +177,27 @@ function parseRule(v: unknown, errors: string[]): RuleSpecRule | null {
     errors.push("rule entry is missing `name`");
     return null;
   }
+  const kind = asString(rec.kind);
   const versionsRaw = Array.isArray(rec.versions) ? rec.versions : [];
-  if (!Array.isArray(rec.versions)) {
+  const expectsVersions = kind !== "source_relation" && kind !== "data_relation";
+  if (expectsVersions && !Array.isArray(rec.versions)) {
     errors.push(`rule "${name}" has no \`versions\` list`);
   }
+  const source = parseSource(rec);
   return {
     name,
-    kind: asString(rec.kind),
+    kind,
     entity: asString(rec.entity),
     dtype: asString(rec.dtype),
     period: asString(rec.period),
     unit: asString(rec.unit),
-    source: asString(rec.source),
-    source_url: asString(rec.source_url),
+    source: source.label,
+    source_url: source.url,
+    source_ref: source.ref,
+    source_span: source.span,
     versions: versionsRaw.map((v) => parseVersion(v, errors)),
+    source_relation: parseSourceRelation(rec.source_relation),
+    data_relation: parseDataRelation(rec.data_relation),
     raw: rec,
   };
 }

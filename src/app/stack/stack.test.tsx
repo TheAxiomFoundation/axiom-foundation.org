@@ -50,7 +50,7 @@ describe("StackPage", () => {
     fireEvent.click(
       screen.getAllByRole("button", { name: /compile, validate, test, and execute/i })[0]
     );
-    expect(screen.getAllByText(/rulespec\.validate/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/test harness/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/python\/js\/rust codegen/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /exact source slice/i }));

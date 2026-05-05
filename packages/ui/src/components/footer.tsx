@@ -76,7 +76,7 @@ export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: Foo
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
               <li>{renderFooterLink("/about", "About")}</li>
               <li>{renderFooterLink("https://app.axiom-foundation.org", "Axiom platform")}</li>
-              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/rulespec", "RuleSpec")}</li>
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-rules", "RuleSpec")}</li>
               <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-encode", "Encoder")}</li>
             </ul>
           </div>

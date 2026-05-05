@@ -47,7 +47,7 @@ export function FoundationSection() {
               title: "Validate our work",
               body:
                 "Every encoding is open and cross-checked. Find a discrepancy and we’ll explain why — or fix it.",
-              href: "https://github.com/TheAxiomFoundation/rulespec/issues",
+              href: "https://github.com/TheAxiomFoundation/axiom-rules/issues",
               cta: "Browse open issues",
               icon: <GitHubIcon className="w-5 h-5" />,
             },

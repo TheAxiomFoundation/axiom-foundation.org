@@ -164,20 +164,25 @@ context_files:
       "wave manifests",
       "import graph",
     ],
-    repos: ["rulespec", "rules-uk", "rules-us", "rules-us-co"],
+    repos: ["axiom-rules", "rules-uk", "rules-us", "rules-us-co"],
     outputs: ["compileable rules", "tests", "provenance manifests"],
     snippetLabel: "RuleSpec leaf",
     snippetLanguage: "yaml",
-    snippet: `claimant_or_partner_had_award_of_state_pension_credit:
-  entity: Family
-  period: Day
-  dtype: Boolean
-  from 2025-03-21:
-    claimant_had_award_of_state_pension_credit
-      or (
-        claimant_has_partner
-        and partner_had_award_of_state_pension_credit
-      )`,
+    snippet: `format: rulespec/v1
+rules:
+  - name: claimant_or_partner_had_award_of_state_pension_credit
+    kind: derived
+    entity: Family
+    period: Day
+    dtype: Boolean
+    versions:
+      - effective_from: '2025-03-21'
+        formula: |-
+          claimant_had_award_of_state_pension_credit
+          or (
+            claimant_has_partner
+            and partner_had_award_of_state_pension_credit
+          )`,
     icon: <CodeIcon className="w-5 h-5" />,
   },
   {
@@ -220,22 +225,22 @@ context_files:
     summary:
       "The RuleSpec engine is what turns encodings into something executable: validators, test runners, interpreters, and code generation targets.",
     details: [
-      "`rulespec.validate` and `rulespec.test_runner` are the first execution surfaces every encoding sees.",
+      "The `axiom-rules` compiler, runtime, and test harness are the first execution surfaces every encoding sees.",
       "The runtime and codegen layers are what make a `.yaml` file more than documentation: they let the same encoding drive evaluation and external integrations.",
       "This is where imports, periods, dtypes, formulas, and built-ins become machine behavior.",
     ],
     components: [
-      "rulespec.validate",
-      "rulespec.test_runner",
+      "compiler",
+      "test harness",
       "executor",
       "python/js/rust codegen",
     ],
-    repos: ["rulespec"],
+    repos: ["axiom-rules"],
     outputs: ["validation results", "test results", "runtime values", "generated code"],
     snippetLabel: "execution commands",
     snippetLanguage: "plain",
-    snippet: `uv run python -m rulespec.validate all /path/to/repo
-uv run python -m rulespec.test_runner /path/to/repo -v`,
+    snippet: `cargo test
+python -m pytest -q python/tests`,
     icon: <TerminalIcon className="w-5 h-5" />,
   },
   {
@@ -322,7 +327,7 @@ const repoLanes: RepoLane[] = [
     title: "Language and harness",
     summary:
       "The RuleSpec engine executes rules, while Encoder builds, benchmarks, and repairs encodings.",
-    repos: ["rulespec", "axiom-encode"],
+    repos: ["axiom-rules", "axiom-encode"],
   },
   {
     id: "presentation",

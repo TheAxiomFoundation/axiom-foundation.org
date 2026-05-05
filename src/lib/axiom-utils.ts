@@ -1,6 +1,6 @@
 import type { Rule, RuleEncodingData } from "@/lib/supabase";
 
-/** True when the encoding was fetched from a GitHub rulespec-* repo (not from the encoding DB). */
+/** True when the encoding was fetched from a GitHub rules-* repo (not from the encoding DB). */
 export function isGitHubEncoding(encoding: RuleEncodingData | null): boolean {
   return !!encoding?.encoding_run_id.startsWith("github:");
 }

@@ -97,7 +97,9 @@ export function RuleSpecTab({
     : "Displaying the latest stored encoding run. It may differ from the repository file.";
   const scores = encoding.final_scores;
 
-  const localNames = new Set(doc?.rules.map((r) => r.name) ?? []);
+  const localNames = new Set(
+    doc?.rules.filter(isExecutableRule).map((r) => r.name) ?? []
+  );
   const testsByRule = groupTestsByRule(tests, localNames);
 
   const docHasContent =
@@ -251,30 +253,52 @@ function RuleCard({
 }) {
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
+  const meta = ruleMeta(rule);
   return (
     <article
       id={anchor}
       className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-4 scroll-mt-8"
     >
-      <header className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
-        <h3 className="m-0 font-mono text-sm font-semibold text-[var(--color-ink)] break-all">
-          {rule.name}
-        </h3>
-        {rule.source && (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {rule.source_url ? (
-              <a
-                href={rule.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--color-accent)] no-underline hover:underline"
-              >
-                {rule.source}
-              </a>
-            ) : (
-              rule.source
-            )}
-          </span>
+      <header className="mb-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="m-0 font-mono text-sm font-semibold text-[var(--color-ink)] break-all">
+              {ruleTitle(rule)}
+            </h3>
+            <code className="mt-1 block font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
+              #{rule.name}
+            </code>
+          </div>
+          {rule.kind && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              {humanizeKind(rule.kind)}
+            </span>
+          )}
+        </div>
+        {meta.length > 0 && (
+          <dl className="mt-3 grid grid-cols-1 gap-1.5 text-[11px]">
+            {meta.map(({ label, value, href }) => (
+              <div key={label} className="flex gap-2 min-w-0">
+                <dt className="w-20 shrink-0 font-mono uppercase tracking-wider text-[var(--color-ink-muted)]">
+                  {label}
+                </dt>
+                <dd className="m-0 min-w-0 font-mono text-[var(--color-ink-secondary)] break-all">
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[var(--color-accent)] no-underline hover:underline"
+                    >
+                      {value}
+                    </a>
+                  ) : (
+                    value
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
       </header>
       <ExpandableCode
@@ -424,6 +448,72 @@ export function groupTestsByRule(
     out.set(owner, list);
   }
   return out;
+}
+
+function isExecutableRule(rule: RuleSpecRule): boolean {
+  return rule.kind !== "source_relation" && rule.kind !== "data_relation";
+}
+
+function ruleTitle(rule: RuleSpecRule): string {
+  if (rule.kind === "source_relation" && rule.source_relation) {
+    const type = humanizeKind(rule.source_relation.type ?? "source_relation");
+    const target = compactRulePath(rule.source_relation.target);
+    return target ? `${type} ${target}` : type;
+  }
+  if (rule.kind === "data_relation") {
+    const predicate = compactRulePath(rule.data_relation?.predicate);
+    return predicate ? `Data relation ${predicate}` : `Data relation ${rule.name}`;
+  }
+  return rule.name;
+}
+
+function humanizeKind(kind: string): string {
+  return kind
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function compactRulePath(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const hash = path.split("#").pop();
+  if (hash && hash !== path) return hash;
+  return path.split("/").filter(Boolean).pop() ?? path;
+}
+
+function ruleMeta(
+  rule: RuleSpecRule
+): Array<{ label: string; value: string; href?: string }> {
+  const meta: Array<{ label: string; value: string; href?: string }> = [];
+  if (rule.source) {
+    meta.push({
+      label: "source",
+      value: rule.source,
+      href: rule.source_url ?? undefined,
+    });
+  }
+  if (rule.source_span && rule.source_span !== rule.source) {
+    meta.push({ label: "span", value: rule.source_span });
+  }
+  if (rule.kind === "source_relation" && rule.source_relation) {
+    if (rule.source_relation.target) {
+      meta.push({ label: "target", value: rule.source_relation.target });
+    }
+    if (rule.source_relation.value) {
+      meta.push({ label: "value", value: rule.source_relation.value });
+    }
+    if (rule.source_relation.authority) {
+      meta.push({ label: "authority", value: rule.source_relation.authority });
+    }
+  }
+  if (rule.kind === "data_relation" && rule.data_relation) {
+    if (rule.data_relation.predicate) {
+      meta.push({ label: "predicate", value: rule.data_relation.predicate });
+    }
+    if (rule.data_relation.arity != null) {
+      meta.push({ label: "arity", value: String(rule.data_relation.arity) });
+    }
+  }
+  return meta;
 }
 
 // ----------------------------------------------------------------------------

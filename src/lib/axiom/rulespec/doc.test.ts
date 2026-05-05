@@ -113,6 +113,31 @@ describe("parseRuleSpec", () => {
     });
   });
 
+  it("coerces numeric data-relation arity strings", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      arity: '2'
+`);
+    expect(doc.rules[0].data_relation?.arity).toBe(2);
+  });
+
+  it("leaves nonnumeric data-relation arity values unset", () => {
+    const doc = parseRuleSpec(`rules:
+  - name: member_of_household
+    kind: data_relation
+    data_relation:
+      arity: two
+  - name: empty_arity
+    kind: data_relation
+    data_relation:
+      arity: ''
+`);
+    expect(doc.rules[0].data_relation?.arity).toBeNull();
+    expect(doc.rules[1].data_relation?.arity).toBeNull();
+  });
+
   it("parses source relations and structured source references", () => {
     const doc = parseRuleSpec(`rules:
   - name: restates_standard_deduction

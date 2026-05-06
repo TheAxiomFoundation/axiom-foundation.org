@@ -81,7 +81,6 @@ export function EncodedLawSection() {
           {LAYERS.map((layer) => (
             <article key={layer.n} className="card-edition p-8 flex flex-col">
               <div className="flex items-baseline justify-between mb-5">
-                <span className="serial">{layer.n}</span>
                 <span className="font-mono text-[0.65rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)]">
                   {layer.kicker}
                 </span>

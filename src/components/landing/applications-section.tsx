@@ -55,7 +55,6 @@ export function ApplicationsSection() {
           {APPLICATIONS.map((app) => (
             <div key={app.n} className="card-edition p-8 flex flex-col">
               <div className="flex items-baseline justify-between mb-5">
-                <span className="serial">{app.n}</span>
                 <span className="serif-italic text-[0.95rem] text-[var(--color-ink-muted)]">
                   {app.actor}
                 </span>

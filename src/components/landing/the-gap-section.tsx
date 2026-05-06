@@ -16,11 +16,8 @@ export function TheGapSection() {
           <p>
             Every benefit calculator, tax program, and policy assistant has to
             translate the law from human prose into something a machine can run.
-            Most do it from scratch. Most do it differently. Most do it{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              out of public view, making it hard to verify
-            </span>{" "}
-            and harder to fix.
+            Most do it from scratch. Most do it differently. Most do it
+            out of public view, making it hard to verify and harder to fix.
           </p>
           <p>
             There is no shared layer to point at. No canonical source for what

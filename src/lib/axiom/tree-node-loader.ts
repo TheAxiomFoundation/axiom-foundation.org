@@ -56,11 +56,18 @@ export async function loadTreeNodes({
   }
 
   const [docType] = segs;
+  const scopePath = navigationPath(dbJurisdictionId, [docType]);
+  const scopeRoot = await getNavigationIndexNode(scopePath);
+  const queryDocType = scopeRoot?.doc_type ?? docType;
   const parentPath =
-    segs.length === 1 ? null : navigationPath(dbJurisdictionId, segs);
+    segs.length === 1
+      ? scopeRoot?.has_children
+        ? scopePath
+        : null
+      : navigationPath(dbJurisdictionId, segs);
   const childResult = await getNavigationIndexChildren({
     jurisdiction: dbJurisdictionId,
-    docType,
+    docType: queryDocType,
     parentPath,
     encodedOnly,
     page,

@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import {
   buildLegislationJsonLd,
   getAxiomRuleMetadata,
 } from "@/lib/axiom/metadata";
+import { AXIOM_ENCODED_ONLY_COOKIE } from "@/lib/axiom/preferences";
 import { resolveAxiomPath } from "@/lib/tree-data";
 import {
   treeNodesCacheKey,
   type InitialTreeNodesState,
 } from "@/lib/axiom/tree-cache";
 import { loadTreeNodes } from "@/lib/axiom/tree-node-loader";
+import { getAxiomStats, type AxiomStats } from "@/lib/supabase";
 import { AxiomClient } from "./axiom-client";
 
 interface PageProps {
@@ -16,6 +19,7 @@ interface PageProps {
 }
 
 const INITIAL_TREE_STATE_TIMEOUT_MS = 1500;
+const INITIAL_AXIOM_STATS_TIMEOUT_MS = 1500;
 
 export async function generateMetadata({
   params,
@@ -47,10 +51,15 @@ export async function generateMetadata({
 
 export default async function AxiomPage({ params }: PageProps) {
   const { segments } = await params;
-  const [meta, initialTreeState] = await Promise.all([
+  const [meta, initialEncodedOnly, initialStats] = await Promise.all([
     getAxiomRuleMetadata(segments),
-    getInitialTreeState(segments ?? []),
+    getInitialEncodedOnly(),
+    getInitialAxiomStats(segments ?? []),
   ]);
+  const initialTreeState = await getInitialTreeState(
+    segments ?? [],
+    initialEncodedOnly
+  );
   const jsonLd = buildLegislationJsonLd(meta);
 
   return (
@@ -64,8 +73,30 @@ export default async function AxiomPage({ params }: PageProps) {
       <AxiomClient
         segments={segments ?? []}
         initialTreeState={initialTreeState}
+        initialStats={initialStats}
+        initialEncodedOnly={initialEncodedOnly}
       />
     </>
+  );
+}
+
+async function getInitialEncodedOnly(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return store.get(AXIOM_ENCODED_ONLY_COOKIE)?.value === "1";
+  } catch {
+    return false;
+  }
+}
+
+async function getInitialAxiomStats(
+  segments: string[]
+): Promise<AxiomStats | null> {
+  if (segments.length > 0) return null;
+  return withTimeout(
+    getAxiomStats(),
+    INITIAL_AXIOM_STATS_TIMEOUT_MS,
+    null
   );
 }
 
@@ -78,7 +109,8 @@ function decodeSegment(segment: string): string {
 }
 
 async function getInitialTreeState(
-  segments: string[]
+  segments: string[],
+  encodedOnly: boolean
 ): Promise<InitialTreeNodesState | null> {
   const decodedSegments = segments.map(decodeSegment);
   const resolved = resolveAxiomPath(decodedSegments);
@@ -90,14 +122,14 @@ async function getInitialTreeState(
     jurisdiction: { slug, hasCitationPaths },
     ruleSegments,
   } = resolved;
-  const cacheKey = treeNodesCacheKey(slug, ruleSegments, false);
+  const cacheKey = treeNodesCacheKey(slug, ruleSegments, encodedOnly);
 
   const result = await withTimeout(
     loadTreeNodes({
       dbJurisdictionId: slug,
       ruleSegments,
       hasCitationPaths,
-      encodedOnly: false,
+      encodedOnly,
       page: 0,
     }),
     INITIAL_TREE_STATE_TIMEOUT_MS,

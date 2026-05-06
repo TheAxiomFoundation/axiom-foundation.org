@@ -31,14 +31,14 @@ export async function getNavigationDocTypes(
 ): Promise<NavigationDocTypeResult> {
   let query = supabaseCorpus
     .from("navigation_nodes")
-    .select("doc_type,encoded_descendant_count")
+    .select("doc_type,path,has_rulespec,encoded_descendant_count")
     .eq("jurisdiction", jurisdiction)
     .is("parent_path", null)
     .order("doc_type")
     .limit(DOC_TYPE_DISCOVERY_LIMIT);
 
   if (encodedOnly) {
-    query = query.gt("encoded_descendant_count", 0);
+    query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
   }
 
   const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
@@ -47,8 +47,11 @@ export async function getNavigationDocTypes(
 
   const docTypes = Array.from(
     new Set(
-      ((result.data ?? []) as Array<{ doc_type?: string | null }>)
-        .map((row) => row.doc_type)
+      ((result.data ?? []) as Array<{
+        doc_type?: string | null;
+        path?: string | null;
+      }>)
+        .map((row) => navigationRootSegment(row.path, row.doc_type))
         .filter((docType): docType is string => Boolean(docType))
     )
   ).sort();
@@ -86,7 +89,7 @@ export async function getNavigationIndexChildren({
       : query.eq("parent_path", parentPath);
 
   if (encodedOnly) {
-    query = query.gt("encoded_descendant_count", 0);
+    query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
   }
 
   const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
@@ -192,6 +195,15 @@ function formatGenericSegmentLabel(segment: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function navigationRootSegment(
+  path: string | null | undefined,
+  docType: string | null | undefined
+): string | null {
+  const parts = path?.split("/") ?? [];
+  if (parts.length === 2) return parts[1] || null;
+  return docType || null;
 }
 
 function withTimeout<T>(

@@ -91,8 +91,15 @@ describe("loadTreeNodes", () => {
     expect(result.hasMore).toBe(false);
   });
 
-  it("loads top-level doc_type children from parent_path null", async () => {
+  it("loads top-level doc_type children from an explicit scope root when present", async () => {
+    const scopeRoot = navRow({
+      path: "us-co/regulation",
+      segment: "regulation",
+      parent_path: null,
+      has_children: true,
+    });
     const row = navRow();
+    mockGetNavigationIndexNode.mockResolvedValue(scopeRoot);
     mockGetNavigationIndexChildren.mockResolvedValue({
       rows: [row],
       hasMore: true,
@@ -110,7 +117,7 @@ describe("loadTreeNodes", () => {
     expect(mockGetNavigationIndexChildren).toHaveBeenCalledWith({
       jurisdiction: "us-co",
       docType: "regulation",
-      parentPath: null,
+      parentPath: "us-co/regulation",
       encodedOnly: true,
       page: 1,
     });
@@ -118,6 +125,38 @@ describe("loadTreeNodes", () => {
       expect.objectContaining({ segment: "10-ccr-2506-1" })
     );
     expect(result.hasMore).toBe(true);
+  });
+
+  it("loads top-level doc_type children from parent_path null when no scope root exists", async () => {
+    const row = navRow({
+      jurisdiction: "us",
+      doc_type: "statute",
+      path: "us/statute/26",
+      segment: "26",
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [row],
+      hasMore: false,
+      total: 1,
+    });
+
+    await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["statute"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(mockGetNavigationIndexNode).toHaveBeenCalledWith("us/statute");
+    expect(mockGetNavigationIndexChildren).toHaveBeenCalledWith({
+      jurisdiction: "us",
+      docType: "statute",
+      parentPath: null,
+      encodedOnly: false,
+      page: 0,
+    });
   });
 
   it("loads deep children and current provision from the index path", async () => {

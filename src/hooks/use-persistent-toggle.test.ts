@@ -28,6 +28,7 @@ function installLocalStorage() {
 describe("usePersistentToggle", () => {
   beforeEach(() => {
     installLocalStorage();
+    document.cookie = "pref=; path=/; max-age=0";
   });
 
   it("defaults to false", () => {
@@ -66,5 +67,27 @@ describe("usePersistentToggle", () => {
     unmount();
     const { result: second } = renderHook(() => usePersistentToggle("k"));
     expect(second.current[0]).toBe(true);
+  });
+
+  it("uses the server-provided initial value when present", () => {
+    window.localStorage.setItem("k", "1");
+    const { result } = renderHook(() =>
+      usePersistentToggle("k", { initialValue: false })
+    );
+    expect(result.current[0]).toBe(false);
+  });
+
+  it("writes the optional cookie on changes", () => {
+    const { result } = renderHook(() =>
+      usePersistentToggle("k", {
+        initialValue: false,
+        cookieName: "pref",
+      })
+    );
+
+    act(() => result.current[1](true));
+
+    expect(window.localStorage.getItem("k")).toBe("1");
+    expect(document.cookie).toContain("pref=1");
   });
 });

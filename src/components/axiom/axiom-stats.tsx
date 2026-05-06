@@ -7,6 +7,7 @@ import {
   type AxiomJurisdictionCount,
   type AxiomStats,
 } from "@/lib/supabase";
+import { isNavigationJurisdictionEnabled } from "@/lib/axiom/navigation-availability";
 import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
 
 /**
@@ -25,12 +26,15 @@ import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
  */
 export function AxiomStats({
   onNavigateHref,
+  initialStats = null,
 }: {
   onNavigateHref?: (href: string) => void;
+  initialStats?: AxiomStats | null;
 }) {
-  const [stats, setStats] = useState<AxiomStats | null>(null);
+  const [stats, setStats] = useState<AxiomStats | null>(initialStats);
 
   useEffect(() => {
+    if (initialStats) return;
     let cancelled = false;
     getAxiomStats().then((s) => {
       if (!cancelled) setStats(s);
@@ -38,12 +42,16 @@ export function AxiomStats({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialStats]);
 
-  const jurisdictions =
+  const jurisdictions = filterNavigableJurisdictions(
     stats?.jurisdictions && stats.jurisdictions.length > 0
       ? stats.jurisdictions
-      : fallbackJurisdictions();
+      : fallbackJurisdictions()
+  );
+  const visibleJurisdictionsCount = stats
+    ? Math.max(0, stats.jurisdictions_count - hiddenJurisdictionsIn(stats))
+    : 0;
 
   return (
     <div data-testid="axiom-stats" className="mb-8">
@@ -51,7 +59,7 @@ export function AxiomStats({
         <div className="flex justify-center gap-12">
           <Stat value={stats.provisions_count} label="provisions indexed" />
           <Stat value={stats.references_count} label="citations extracted" />
-          <Stat value={stats.jurisdictions_count} label="jurisdictions" />
+          <Stat value={visibleJurisdictionsCount} label="jurisdictions" />
         </div>
       )}
       <JurisdictionPills
@@ -211,6 +219,20 @@ function fallbackJurisdictions(): JurisdictionNavCount[] {
     jurisdiction: jurisdiction.slug,
     count: null,
   }));
+}
+
+function filterNavigableJurisdictions(
+  jurisdictions: JurisdictionNavCount[]
+): JurisdictionNavCount[] {
+  return jurisdictions.filter((j) =>
+    isNavigationJurisdictionEnabled(j.jurisdiction)
+  );
+}
+
+function hiddenJurisdictionsIn(stats: AxiomStats): number {
+  return stats.jurisdictions.filter(
+    (j) => !isNavigationJurisdictionEnabled(j.jurisdiction)
+  ).length;
 }
 
 /**

@@ -150,6 +150,34 @@ describe("AxiomStats", () => {
     expect(screen.getByText("jurisdictions")).toBeInTheDocument();
   });
 
+  it("hides jurisdictions without generated navigation roots", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions_count: 18,
+      jurisdictions: [
+        ...fullPayload.jurisdictions,
+        { jurisdiction: "canada", count: 2_000 },
+      ],
+    });
+    render(<AxiomStats />);
+
+    await waitFor(() =>
+      expect(screen.getByText("US Federal")).toBeInTheDocument()
+    );
+
+    expect(screen.queryByText("Canada")).not.toBeInTheDocument();
+    expect(screen.getByText("17")).toBeInTheDocument();
+  });
+
+  it("renders server-provided stats immediately without the client RPC tick", () => {
+    render(<AxiomStats initialStats={fullPayload} />);
+
+    expect(screen.getByText("659K")).toBeInTheDocument();
+    expect(screen.getByText("149K")).toBeInTheDocument();
+    expect(screen.getByText("17")).toBeInTheDocument();
+    expect(mockGetAxiomStats).not.toHaveBeenCalled();
+  });
+
   it("puts the full count in the title attribute for tooltip", async () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
@@ -236,5 +264,6 @@ describe("AxiomStats", () => {
     expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
     expect(screen.getByText("US Federal")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.queryByText("Canada")).not.toBeInTheDocument();
   });
 });

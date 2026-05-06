@@ -13,6 +13,11 @@ import { SiblingStrip } from "./sibling-strip";
 import { AxiomStats } from "./axiom-stats";
 import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/axiom-utils";
+import type { AxiomStats as AxiomStatsPayload } from "@/lib/supabase";
+import {
+  AXIOM_ENCODED_ONLY_COOKIE,
+  AXIOM_ENCODED_ONLY_STORAGE_KEY,
+} from "@/lib/axiom/preferences";
 import {
   resolveAxiomPath,
   buildBreadcrumbs,
@@ -103,6 +108,7 @@ function RuleTreeView({
   hasCitationPaths,
   onNavigateHref,
   initialTreeState,
+  initialEncodedOnly,
 }: {
   segments: string[];
   dbJurisdictionId: string;
@@ -110,9 +116,14 @@ function RuleTreeView({
   hasCitationPaths: boolean;
   onNavigateHref: (href: string) => void;
   initialTreeState?: InitialTreeNodesState | null;
+  initialEncodedOnly?: boolean;
 }) {
   const [encodedOnly, setEncodedOnly] = usePersistentToggle(
-    "axiom:encoded-only"
+    AXIOM_ENCODED_ONLY_STORAGE_KEY,
+    {
+      initialValue: initialEncodedOnly ?? false,
+      cookieName: AXIOM_ENCODED_ONLY_COOKIE,
+    }
   );
   const {
     nodes,
@@ -374,9 +385,13 @@ function RuleTreeView({
 export function AxiomBrowser({
   segments,
   initialTreeState,
+  initialStats,
+  initialEncodedOnly,
 }: {
   segments: string[];
   initialTreeState?: InitialTreeNodesState | null;
+  initialStats?: AxiomStatsPayload | null;
+  initialEncodedOnly?: boolean;
 }) {
   const normalisedSegments = useMemo(() => decodeSegments(segments), [segments]);
   const [activeSegments, setActiveSegments] = useState(normalisedSegments);
@@ -430,7 +445,10 @@ export function AxiomBrowser({
           <PaletteTrigger variant="hero" />
         </div>
 
-        <AxiomStats onNavigateHref={navigateHref} />
+        <AxiomStats
+          onNavigateHref={navigateHref}
+          initialStats={initialStats}
+        />
 
         <div className="mt-12 flex justify-center">
           <Link
@@ -455,6 +473,7 @@ export function AxiomBrowser({
         hasCitationPaths={resolved.jurisdiction.hasCitationPaths}
         onNavigateHref={navigateHref}
         initialTreeState={initialTreeState}
+        initialEncodedOnly={initialEncodedOnly}
       />
     );
   }

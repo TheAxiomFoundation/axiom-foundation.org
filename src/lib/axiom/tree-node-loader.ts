@@ -1,16 +1,15 @@
 import type { Rule } from "@/lib/supabase";
-import type { TreeNode, TreeResult } from "@/lib/tree-data";
+import type { TreeNode } from "@/lib/tree-data";
 import {
-  getActNodes,
-  getChildrenByParentId,
-  getDocTypeNodes,
-  getEncodedPaths,
-  getRuleById,
-  getSectionNodes,
-  getTitleNodes,
-  isUUID,
-} from "@/lib/tree-data";
-import { synthesiseRuleFromCitationPath } from "@/lib/axiom/rulespec/synth-rule";
+  getNavigationDocTypes,
+  getNavigationIndexChildren,
+  getNavigationIndexNode,
+  getProvisionForNavigationNode,
+  navigationDocTypeToTreeNode,
+  navigationRowToTreeNode,
+  NavigationIndexMissingError,
+} from "@/lib/axiom/navigation-index/read";
+import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
 
 export interface TreeNodeLoadParams {
   dbJurisdictionId: string;
@@ -29,99 +28,121 @@ export interface TreeNodeLoadResult {
   encodedPaths?: Set<string>;
 }
 
+/**
+ * Load browse-tree nodes from the precomputed corpus.navigation_nodes index.
+ *
+ * The legal text still lives in corpus.provisions. This loader only uses
+ * provisions for the exact current/leaf rule detail after the navigation
+ * index has resolved the route. It intentionally does not fall back to the
+ * old broad provisions scans; missing index coverage should be visible.
+ */
 export async function loadTreeNodes({
   dbJurisdictionId,
   ruleSegments: segs,
-  hasCitationPaths,
   encodedOnly,
   page,
   encodedPaths: existingEncodedPaths,
 }: TreeNodeLoadParams): Promise<TreeNodeLoadResult> {
   if (segs.length === 0) {
-    if (hasCitationPaths) {
-      const nodes = await getDocTypeNodes(dbJurisdictionId);
-      return { nodes, hasMore: false, encodedPaths: existingEncodedPaths };
-    }
-    const r: TreeResult = await getActNodes(dbJurisdictionId, page);
+    const { docTypes } = await getNavigationDocTypes(
+      dbJurisdictionId,
+      encodedOnly
+    );
     return {
-      nodes: r.nodes,
-      hasMore: r.hasMore,
+      nodes: docTypes.map(navigationDocTypeToTreeNode),
+      hasMore: false,
       encodedPaths: existingEncodedPaths,
     };
   }
 
-  if (hasCitationPaths) {
-    let encodedPaths = existingEncodedPaths;
-    if (encodedOnly && !encodedPaths) {
-      encodedPaths = await getEncodedPaths(dbJurisdictionId);
-    }
+  const [docType] = segs;
+  const scopePath = navigationPath(dbJurisdictionId, [docType]);
+  const scopeRoot = await getNavigationIndexNode(scopePath);
+  const queryDocType = scopeRoot?.doc_type ?? docType;
+  const parentPath =
+    segs.length === 1
+      ? scopeRoot?.has_children
+        ? scopePath
+        : null
+      : navigationPath(dbJurisdictionId, segs);
+  const childResult = await getNavigationIndexChildren({
+    jurisdiction: dbJurisdictionId,
+    docType: queryDocType,
+    parentPath,
+    encodedOnly,
+    page,
+  });
 
-    if (segs.length === 1) {
-      const nodes = await getTitleNodes(
-        dbJurisdictionId,
-        segs[0],
-        encodedPaths,
-        encodedOnly
-      );
-      return { nodes, hasMore: false, encodedPaths };
-    }
-
-    const pathPrefix = `${dbJurisdictionId}/${segs.join("/")}`;
-    const r: TreeResult = await getSectionNodes(
-      pathPrefix,
-      page,
-      encodedPaths,
-      encodedOnly
-    );
-    if (r.leafRule) {
-      return {
-        nodes: [],
-        hasMore: false,
-        leafRule: r.leafRule,
-        encodedPaths,
-      };
-    }
-    if (r.nodes.length === 0 && !r.currentRule && segs.length >= 2) {
-      const synth = await synthesiseRuleFromCitationPath(
-        dbJurisdictionId,
-        pathPrefix
-      );
-      if (synth) {
+  if (segs.length === 1) {
+    if (childResult.rows.length === 0 && page === 0) {
+      if (encodedOnly) {
         return {
           nodes: [],
           hasMore: false,
-          leafRule: synth,
-          encodedPaths,
+          encodedPaths: existingEncodedPaths,
         };
       }
+      throw new NavigationIndexMissingError(
+        `Navigation index has no rows for ${dbJurisdictionId}/${docType}.`
+      );
     }
-
     return {
-      nodes: r.nodes,
-      hasMore: r.hasMore,
-      currentRule: r.currentRule ?? null,
-      encodedPaths,
+      nodes: childResult.rows.map(navigationRowToTreeNode),
+      hasMore: childResult.hasMore,
+      encodedPaths: existingEncodedPaths,
     };
   }
 
-  const lastSegment = segs[segs.length - 1];
-  if (isUUID(lastSegment)) {
-    const r: TreeResult = await getChildrenByParentId(lastSegment, page);
-    if (r.nodes.length === 0) {
-      const rule = await getRuleById(lastSegment);
+  const currentPath = navigationPath(dbJurisdictionId, segs);
+  const currentNode = await getNavigationIndexNode(currentPath);
+
+  if (childResult.rows.length === 0) {
+    if (!currentNode) {
+      throw new NavigationIndexMissingError(
+        `Navigation index has no node for ${currentPath}.`
+      );
+    }
+    const rule = await requireProvisionForNode(currentNode);
+    if (currentNode.has_children) {
       return {
         nodes: [],
         hasMore: false,
-        leafRule: rule,
+        currentRule: rule,
         encodedPaths: existingEncodedPaths,
       };
     }
     return {
-      nodes: r.nodes,
-      hasMore: r.hasMore,
+      nodes: [],
+      hasMore: false,
+      leafRule: rule,
       encodedPaths: existingEncodedPaths,
     };
   }
 
-  return { nodes: [], hasMore: false, encodedPaths: existingEncodedPaths };
+  const currentRule = currentNode
+    ? await getProvisionForNavigationNode(currentNode)
+    : null;
+
+  return {
+    nodes: childResult.rows.map(navigationRowToTreeNode),
+    hasMore: childResult.hasMore,
+    currentRule,
+    encodedPaths: existingEncodedPaths,
+  };
+}
+
+function navigationPath(jurisdiction: string, ruleSegments: string[]): string {
+  return `${jurisdiction}/${ruleSegments.join("/")}`;
+}
+
+async function requireProvisionForNode(
+  node: NavigationNodeRow
+): Promise<Rule> {
+  const rule = await getProvisionForNavigationNode(node);
+  if (!rule) {
+    throw new NavigationIndexMissingError(
+      `Navigation node ${node.path} does not resolve to a corpus provision.`
+    );
+  }
+  return rule;
 }

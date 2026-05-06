@@ -17,17 +17,9 @@ export function FoundationSection() {
             A 501(c)(3) doing the public-interest work
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[680px] mx-auto">
-            Axiom Foundation is a nonprofit fiscally sponsored by{" "}
-            <a
-              href="https://psl-foundation.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link-quiet text-[var(--color-ink)]"
-            >
-              PSL Foundation
-            </a>
-            . Open code, open data, open governance. The infrastructure is
-            meant to outlast any single project that builds on it.
+            Axiom Foundation is a nonprofit. Open code, open data, open
+            governance. The infrastructure is meant to outlast any single
+            project that builds on it.
           </p>
         </div>
 

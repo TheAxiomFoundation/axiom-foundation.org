@@ -7,6 +7,7 @@ import {
   type AxiomJurisdictionCount,
   type AxiomStats,
 } from "@/lib/supabase";
+import { getLandingJurisdictions } from "@/lib/axiom/landing-jurisdictions";
 import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
 
 /**
@@ -43,10 +44,11 @@ export function AxiomStats({
     };
   }, [initialStats]);
 
-  const jurisdictions =
-    stats?.jurisdictions && stats.jurisdictions.length > 0
-      ? stats.jurisdictions
-      : fallbackJurisdictions();
+  const jurisdictions = mergeJurisdictionCounts(stats?.jurisdictions ?? []);
+  const jurisdictionStatCount = Math.max(
+    stats?.jurisdictions_count ?? 0,
+    jurisdictions.length
+  );
 
   return (
     <div data-testid="axiom-stats" className="mb-8">
@@ -54,7 +56,7 @@ export function AxiomStats({
         <div className="flex justify-center gap-12">
           <Stat value={stats.provisions_count} label="provisions indexed" />
           <Stat value={stats.references_count} label="citations extracted" />
-          <Stat value={stats.jurisdictions_count} label="jurisdictions" />
+          <Stat value={jurisdictionStatCount} label="jurisdictions" />
         </div>
       )}
       <JurisdictionPills
@@ -209,11 +211,28 @@ function JurisdictionPill({
   );
 }
 
-function fallbackJurisdictions(): JurisdictionNavCount[] {
-  return JURISDICTIONS.map((jurisdiction) => ({
-    jurisdiction: jurisdiction.slug,
-    count: null,
-  }));
+function mergeJurisdictionCounts(
+  counts: AxiomJurisdictionCount[]
+): JurisdictionNavCount[] {
+  const seededSlugs = new Set(JURISDICTIONS.map((j) => j.slug));
+  const countBySlug = new Map(counts.map((j) => [j.jurisdiction, j.count]));
+
+  const seeded = getLandingJurisdictions(countedSlugs(counts)).map(
+    (jurisdiction) => ({
+      jurisdiction: jurisdiction.slug,
+      count: countBySlug.get(jurisdiction.slug) ?? null,
+    })
+  );
+
+  const unseeded = counts
+    .filter((j) => !seededSlugs.has(j.jurisdiction))
+    .map((j) => ({ jurisdiction: j.jurisdiction, count: j.count }));
+
+  return [...seeded, ...unseeded];
+}
+
+function countedSlugs(counts: AxiomJurisdictionCount[]): Set<string> {
+  return new Set(counts.map((j) => j.jurisdiction));
 }
 
 /**

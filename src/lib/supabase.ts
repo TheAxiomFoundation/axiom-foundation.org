@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getLandingJurisdictions } from '@/lib/axiom/landing-jurisdictions'
 import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 
@@ -688,5 +689,82 @@ export async function getAxiomStats(): Promise<AxiomStats | null> {
     console.error('get_corpus_stats RPC failed:', error)
     return null
   }
-  return (data || null) as AxiomStats | null
+  const stats = (data || null) as AxiomStats | null
+  if (!stats) return null
+  return enrichAxiomStatsWithNavigationCounts(stats)
+}
+
+async function enrichAxiomStatsWithNavigationCounts(
+  stats: AxiomStats
+): Promise<AxiomStats> {
+  const existingJurisdictions = stats.jurisdictions ?? []
+  const existingSlugs = new Set(
+    existingJurisdictions.map((j) => j.jurisdiction)
+  )
+  const missingSlugs = getLandingJurisdictions()
+    .map((j) => j.slug)
+    .filter((slug) => !existingSlugs.has(slug))
+
+  if (missingSlugs.length === 0) return stats
+
+  const navigationCounts = await withStatsTimeout(
+    getNavigationJurisdictionCounts(missingSlugs),
+    NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS,
+    []
+  )
+
+  if (navigationCounts.length === 0) return stats
+
+  const jurisdictions = [...existingJurisdictions, ...navigationCounts].sort(
+    (a, b) => b.count - a.count
+  )
+
+  return {
+    ...stats,
+    jurisdictions,
+    jurisdictions_count: Math.max(
+      stats.jurisdictions_count,
+      new Set(jurisdictions.map((j) => j.jurisdiction)).size
+    ),
+  }
+}
+
+async function getNavigationJurisdictionCounts(
+  jurisdictions: string[]
+): Promise<AxiomJurisdictionCount[]> {
+  const rows = await Promise.all(
+    jurisdictions.map(async (jurisdiction) => {
+      const { count, error } = await supabaseCorpus
+        .from('navigation_nodes')
+        .select('id', { count: 'exact', head: true })
+        .eq('jurisdiction', jurisdiction)
+
+      if (error || !count) return null
+      return { jurisdiction, count }
+    })
+  )
+
+  return rows.filter((row): row is AxiomJurisdictionCount => row !== null)
+}
+
+const NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS = 1200
+
+function withStatsTimeout<T, F = T>(
+  work: PromiseLike<T> | T,
+  ms: number,
+  fallback: F
+): Promise<T | F> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms)
+    Promise.resolve(work).then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(fallback)
+      }
+    )
+  })
 }

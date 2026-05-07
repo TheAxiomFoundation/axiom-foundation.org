@@ -975,6 +975,13 @@ describe('supabase lib', () => {
   })
 
   describe('getAxiomStats', () => {
+    function mockNavigationCount(count = 0) {
+      const eq = vi.fn().mockResolvedValue({ count, error: null })
+      const select = vi.fn().mockReturnValue({ eq })
+      mockFrom.mockReturnValue({ select })
+      return { eq, select }
+    }
+
     it('calls the get_corpus_stats RPC and returns its payload', async () => {
       const stats = {
         provisions_count: 658899,
@@ -986,9 +993,39 @@ describe('supabase lib', () => {
         ],
       }
       mockRpc.mockResolvedValue({ data: stats, error: null })
+      mockNavigationCount(0)
       const result = await getAxiomStats()
       expect(mockRpc).toHaveBeenCalledWith('get_corpus_stats')
       expect(result).toEqual(stats)
+    })
+
+    it('fills missing landing jurisdiction counts from navigation_nodes', async () => {
+      const stats = {
+        provisions_count: 658899,
+        references_count: 148604,
+        jurisdictions_count: 1,
+        jurisdictions: [{ jurisdiction: 'us', count: 467993 }],
+      }
+      mockRpc.mockResolvedValue({ data: stats, error: null })
+      const eq = vi.fn((_column: string, jurisdiction: string) =>
+        Promise.resolve({
+          count: jurisdiction === 'canada' ? 22275 : 0,
+          error: null,
+        })
+      )
+      const select = vi.fn().mockReturnValue({ eq })
+      mockFrom.mockReturnValue({ select })
+
+      const result = await getAxiomStats()
+
+      expect(mockFrom).toHaveBeenCalledWith('navigation_nodes')
+      expect(result?.jurisdictions).toEqual(
+        expect.arrayContaining([
+          { jurisdiction: 'us', count: 467993 },
+          { jurisdiction: 'canada', count: 22275 },
+        ])
+      )
+      expect(result?.jurisdictions_count).toBeGreaterThanOrEqual(2)
     })
 
     it('returns null on RPC error', async () => {

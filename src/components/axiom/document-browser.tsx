@@ -57,7 +57,7 @@ function EncodedOnlyToggle({
         });
         setEncodedOnly(next);
       }}
-      className={`flex h-8 items-center gap-2 whitespace-nowrap px-3 py-1.5 font-mono text-xs uppercase tracking-wider rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
+      className={`flex h-10 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 sm:h-8 sm:text-xs ${
         encodedOnly
           ? "text-[var(--color-accent)] border-[var(--color-accent)] bg-[var(--color-accent-light)]"
           : "text-[var(--color-ink-muted)] border-[var(--color-rule)] bg-transparent hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
@@ -87,8 +87,8 @@ function BrowserToolbarActions({
   setEncodedOnly: (next: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <div className="flex h-8 w-[132px] shrink-0 justify-end">
+    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:shrink-0">
+      <div className="flex min-w-0 justify-stretch sm:h-8 sm:w-[132px] sm:shrink-0 sm:justify-end">
         {showEncodedFilter ? (
           <EncodedOnlyToggle
             encodedOnly={encodedOnly}
@@ -184,8 +184,8 @@ function RuleTreeView({
   if (leafRule) {
     if (!displayCtx) {
       return (
-        <div className="max-w-[1280px] mx-auto px-8">
-          <div className="flex items-start justify-between gap-4">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex-1 min-w-0">
               <TreeBreadcrumbs
                 items={breadcrumbs}
@@ -217,8 +217,8 @@ function RuleTreeView({
     );
 
     return (
-      <div className="max-w-[1280px] mx-auto px-8">
-        <div className="flex items-start justify-between gap-4">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex-1 min-w-0">
             <TreeBreadcrumbs items={breadcrumbs} onNavigate={onNavigateHref} />
           </div>
@@ -291,8 +291,8 @@ function RuleTreeView({
   const treeListUpdating = (treeStateStale || loading) && nodes.length > 0;
 
   return (
-    <div className="max-w-[1280px] mx-auto px-8">
-      <div className="flex items-start justify-between gap-4">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex-1 min-w-0">
           <TreeBreadcrumbs items={breadcrumbs} onNavigate={onNavigateHref} />
         </div>
@@ -310,7 +310,7 @@ function RuleTreeView({
       )}
 
       {currentRule && currentRuleIsNavigationContainer && currentRuleDetail && (
-        <div className="mb-6 mt-4 px-6 py-5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
+        <div className="mb-6 mt-4 px-4 py-5 sm:px-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
           <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mb-1">
             {currentRuleDetail.citation_path}
           </div>
@@ -428,7 +428,7 @@ export function AxiomBrowser({
 
   if (resolved.phase === "jurisdiction-picker") {
     return (
-      <div className="max-w-[1280px] mx-auto px-8">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="heading-section text-[var(--color-ink)] mb-4">
@@ -479,7 +479,7 @@ export function AxiomBrowser({
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-8">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
       <div className="flex items-center justify-center py-20 text-[var(--color-ink-muted)]">
         Invalid path.{" "}
         <button

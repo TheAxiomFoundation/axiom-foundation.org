@@ -44,20 +44,23 @@ export function TreeBreadcrumbs({ items, onNavigate }: TreeBreadcrumbsProps) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-2 mb-6 font-mono text-sm"
+      className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm"
     >
       {resolved.map((item, index) => {
         const isLast = index === resolved.length - 1;
 
         return (
-          <span key={item.href} className="flex items-center gap-2">
+          <span
+            key={item.href}
+            className="flex min-w-0 items-center gap-2"
+          >
             {index > 0 && (
               <span className="text-[var(--color-ink-muted)]">/</span>
             )}
             {isLast ? (
               <span
                 aria-current="page"
-                className="text-[var(--color-ink-secondary)]"
+                className="min-w-0 break-words text-[var(--color-ink-secondary)]"
               >
                 {item.label}
               </span>
@@ -69,7 +72,7 @@ export function TreeBreadcrumbs({ items, onNavigate }: TreeBreadcrumbsProps) {
                   event.preventDefault();
                   onNavigate(item.href);
                 }}
-                className="text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
+                className="min-w-0 break-words text-[var(--color-accent)] no-underline hover:underline focus-visible:underline"
               >
                 {item.label}
               </Link>

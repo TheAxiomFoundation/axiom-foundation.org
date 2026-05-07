@@ -36,3 +36,10 @@ export interface NavigationIndexChildrenResult {
 export interface NavigationDocTypeResult {
   docTypes: string[];
 }
+
+export interface NavigationIndexPrefixRowsParams {
+  jurisdiction: string;
+  docType: string;
+  pathPrefix: string;
+  encodedOnly: boolean;
+}

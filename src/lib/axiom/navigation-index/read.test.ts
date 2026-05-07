@@ -15,6 +15,7 @@ import {
   getNavigationDocTypes,
   getNavigationIndexChildren,
   getNavigationIndexNode,
+  getNavigationIndexPrefixRows,
   getProvisionForNavigationNode,
   navigationDocTypeToTreeNode,
   navigationRowToTreeNode,
@@ -40,6 +41,14 @@ class QueryBuilder implements PromiseLike<QueryResult> {
 
   eq(...args: unknown[]) {
     return this.call("eq", args);
+  }
+
+  gte(...args: unknown[]) {
+    return this.call("gte", args);
+  }
+
+  lt(...args: unknown[]) {
+    return this.call("lt", args);
   }
 
   is(...args: unknown[]) {
@@ -196,6 +205,33 @@ describe("navigation index read helpers", () => {
       "us/statute",
     ]);
     expect(calls(builder, "range")).toContainEqual([100, 199]);
+    expect(calls(builder, "or")).toContainEqual([
+      "has_rulespec.eq.true,encoded_descendant_count.gt.0",
+    ]);
+  });
+
+  it("loads sparse prefix rows for paths whose intermediate parents are omitted", async () => {
+    const row = navRow({
+      path: "us/guidance/usda/fns/snap-fy2026-cola",
+      doc_type: "guidance",
+    });
+    const builder = enqueue({ data: [row] });
+
+    const result = await getNavigationIndexPrefixRows({
+      jurisdiction: "us",
+      docType: "guidance",
+      pathPrefix: "us/guidance/usda",
+      encodedOnly: true,
+    });
+
+    expect(result).toEqual([row]);
+    expect(calls(builder, "eq")).toContainEqual(["jurisdiction", "us"]);
+    expect(calls(builder, "eq")).toContainEqual(["doc_type", "guidance"]);
+    expect(calls(builder, "gte")).toContainEqual([
+      "path",
+      "us/guidance/usda/",
+    ]);
+    expect(calls(builder, "lt")).toContainEqual(["path", "us/guidance/usda~"]);
     expect(calls(builder, "or")).toContainEqual([
       "has_rulespec.eq.true,encoded_descendant_count.gt.0",
     ]);

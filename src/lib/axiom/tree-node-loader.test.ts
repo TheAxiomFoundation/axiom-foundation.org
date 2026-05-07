@@ -6,7 +6,10 @@ import type { NavigationNodeRow } from "./navigation-index/types";
 const mockGetNavigationDocTypes = vi.fn();
 const mockGetNavigationIndexChildren = vi.fn();
 const mockGetNavigationIndexNode = vi.fn();
+const mockGetNavigationIndexPrefixRows = vi.fn();
 const mockGetProvisionForNavigationNode = vi.fn();
+const mockListEncodedFiles = vi.fn();
+const mockSynthesiseRuleFromCitationPath = vi.fn();
 const mockNavigationDocTypeToTreeNode = vi.fn((segment: string) => ({
   segment,
   label: segment,
@@ -34,12 +37,29 @@ vi.mock("./navigation-index/read", async () => {
       mockGetNavigationIndexChildren(...args),
     getNavigationIndexNode: (...args: unknown[]) =>
       mockGetNavigationIndexNode(...args),
+    getNavigationIndexPrefixRows: (...args: unknown[]) =>
+      mockGetNavigationIndexPrefixRows(...args),
     getProvisionForNavigationNode: (...args: unknown[]) =>
       mockGetProvisionForNavigationNode(...args),
     navigationDocTypeToTreeNode: (segment: string) =>
       mockNavigationDocTypeToTreeNode(segment),
     navigationRowToTreeNode: (row: NavigationNodeRow) =>
       mockNavigationRowToTreeNode(row),
+  };
+});
+
+vi.mock("@/lib/axiom/rulespec/repo-listing", () => ({
+  listEncodedFiles: (...args: unknown[]) => mockListEncodedFiles(...args),
+}));
+
+vi.mock("@/lib/axiom/rulespec/synth-rule", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/axiom/rulespec/synth-rule")
+  >("@/lib/axiom/rulespec/synth-rule");
+  return {
+    ...actual,
+    synthesiseRuleFromCitationPath: (...args: unknown[]) =>
+      mockSynthesiseRuleFromCitationPath(...args),
   };
 });
 
@@ -67,6 +87,8 @@ function navRow(overrides: Partial<NavigationNodeRow> = {}): NavigationNodeRow {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockListEncodedFiles.mockResolvedValue([]);
+  mockGetNavigationIndexPrefixRows.mockResolvedValue([]);
 });
 
 describe("loadTreeNodes", () => {
@@ -89,6 +111,259 @@ describe("loadTreeNodes", () => {
       "statute",
     ]);
     expect(result.hasMore).toBe(false);
+  });
+
+  it("adds document type roots that only exist in RuleSpec repos", async () => {
+    mockGetNavigationDocTypes.mockResolvedValue({
+      docTypes: ["guidance", "regulation"],
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "policies/usda/snap/fy-2026-cola/deductions.yaml",
+        citationPath: "us/policy/usda/snap/fy-2026-cola/deductions",
+        bucket: "policies",
+      },
+      {
+        filePath: "statutes/26/3101/a.yaml",
+        citationPath: "us/statute/26/3101/a",
+        bucket: "statutes",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: [],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes.map((node) => node.segment)).toEqual([
+      "guidance",
+      "policy",
+      "regulation",
+      "statute",
+    ]);
+  });
+
+  it("builds tree branches from RuleSpec-only files when corpus navigation has no node", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "policies/usda/snap/fy-2026-cola/deductions.yaml",
+        citationPath: "us/policy/usda/snap/fy-2026-cola/deductions",
+        bucket: "policies",
+      },
+      {
+        filePath: "policies/irs/rev-proc-2025-32/standard-deduction.yaml",
+        citationPath: "us/policy/irs/rev-proc-2025-32/standard-deduction",
+        bucket: "policies",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["policy"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "irs",
+        label: "IRS",
+        hasChildren: true,
+        hasRuleSpec: true,
+      }),
+      expect.objectContaining({
+        segment: "usda",
+        label: "USDA",
+        hasChildren: true,
+        hasRuleSpec: true,
+      }),
+    ]);
+  });
+
+  it("marks exact RuleSpec-only child files as clickable encoded leaves", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "policies/irs/rev-proc-2025-32.yaml",
+        citationPath: "us/policy/irs/rev-proc-2025-32",
+        bucket: "policies",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["policy", "irs"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "rev-proc-2025-32",
+        hasChildren: false,
+        hasRuleSpec: true,
+        rule: expect.objectContaining({
+          id: "github:us/policy/irs/rev-proc-2025-32",
+          citation_path: "us/policy/irs/rev-proc-2025-32",
+          rulespec_path: "policies/irs/rev-proc-2025-32.yaml",
+        }),
+      }),
+    ]);
+  });
+
+  it("returns a synthesised leaf rule for an exact RuleSpec-only path", async () => {
+    const leafRule = {
+      id: "github:us/policy/usda/snap/fy-2026-cola/deductions",
+      citation_path: "us/policy/usda/snap/fy-2026-cola/deductions",
+    };
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "policies/usda/snap/fy-2026-cola/deductions.yaml",
+        citationPath: "us/policy/usda/snap/fy-2026-cola/deductions",
+        bucket: "policies",
+      },
+    ]);
+    mockSynthesiseRuleFromCitationPath.mockResolvedValue(leafRule);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["policy", "usda", "snap", "fy-2026-cola", "deductions"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(mockSynthesiseRuleFromCitationPath).toHaveBeenCalledWith(
+      "us",
+      "us/policy/usda/snap/fy-2026-cola/deductions"
+    );
+    expect(result.leafRule).toEqual(leafRule);
+    expect(result.nodes).toEqual([]);
+  });
+
+  it("builds sparse intermediate folders when indexed citation paths skip parent nodes", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexPrefixRows.mockResolvedValue([
+      navRow({
+        jurisdiction: "us",
+        doc_type: "guidance",
+        path: "us/guidance/usda/fns/snap-fy2026-cola",
+        segment: "snap-fy2026-cola",
+        label: "SNAP FY 2026 Maximum Allotments and Deductions",
+      }),
+      navRow({
+        jurisdiction: "us",
+        doc_type: "guidance",
+        path: "us/guidance/usda/fns/snap-fy2026-income-eligibility-standards",
+        segment: "snap-fy2026-income-eligibility-standards",
+        label: "SNAP FY 2026 Income Eligibility Standards",
+      }),
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["guidance", "usda"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(mockGetNavigationIndexPrefixRows).toHaveBeenCalledWith({
+      jurisdiction: "us",
+      docType: "guidance",
+      pathPrefix: "us/guidance/usda",
+      encodedOnly: false,
+    });
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "fns",
+        label: "FNS",
+        hasChildren: true,
+        childCount: 2,
+      }),
+    ]);
+  });
+
+  it("uses the real sparse row when the next prefix child has an exact index node", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexPrefixRows.mockResolvedValue([
+      navRow({
+        jurisdiction: "us",
+        doc_type: "guidance",
+        path: "us/guidance/usda/fns/snap-fy2026-cola",
+        segment: "snap-fy2026-cola",
+        label: "SNAP FY 2026 Maximum Allotments and Deductions",
+        has_children: true,
+      }),
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["guidance", "usda", "fns"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "snap-fy2026-cola",
+        label: "SNAP FY 2026 Maximum Allotments and Deductions",
+        hasChildren: true,
+      }),
+    ]);
+  });
+
+  it("does not use RuleSpec-only fallback for later top-level pagination pages", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["policy"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 1,
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(mockListEncodedFiles).not.toHaveBeenCalled();
   });
 
   it("loads top-level doc_type children from an explicit scope root when present", async () => {
@@ -231,6 +506,35 @@ describe("loadTreeNodes", () => {
 
     expect(result.leafRule).toEqual(leafRule);
     expect(result.nodes).toEqual([]);
+  });
+
+  it("throws a clear missing-index error when an indexed node has no provision", async () => {
+    const leaf = navRow({
+      path: "us-co/regulation/10-ccr-2506-1/4.401",
+      parent_path: "us-co/regulation/10-ccr-2506-1",
+      segment: "4.401",
+      has_children: false,
+      child_count: 0,
+    });
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(leaf);
+    mockGetProvisionForNavigationNode.mockResolvedValue(null);
+
+    await expect(
+      loadTreeNodes({
+        dbJurisdictionId: "us-co",
+        ruleSegments: ["regulation", "10-ccr-2506-1", "4.401"],
+        hasCitationPaths: true,
+        encodedOnly: false,
+        page: 0,
+      })
+    ).rejects.toThrow(
+      "Navigation node us-co/regulation/10-ccr-2506-1/4.401 does not resolve"
+    );
   });
 
   it("throws a clear missing-index error when a deep route has no node", async () => {

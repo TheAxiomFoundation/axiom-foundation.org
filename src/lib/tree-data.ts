@@ -1164,6 +1164,17 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
 }
 
 function formatGenericSegmentLabel(segment: string): string {
+  const acronyms = new Set([
+    "cfr",
+    "cola",
+    "fns",
+    "irs",
+    "snap",
+    "uk",
+    "us",
+    "usc",
+    "usda",
+  ]);
   switch (segment) {
     case "legislation":
       return "Legislation";
@@ -1182,7 +1193,15 @@ function formatGenericSegmentLabel(segment: string): string {
     default:
       return segment
         .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (m) => m.toUpperCase());
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => {
+          const lower = part.toLowerCase();
+          if (acronyms.has(lower)) return lower.toUpperCase();
+          if (/^fy\d+$/i.test(part)) return part.toUpperCase();
+          return part.charAt(0).toUpperCase() + part.slice(1);
+        })
+        .join(" ");
   }
 }
 
@@ -1241,13 +1260,22 @@ function formatRuleSegmentLabel(
   // Default path (us federal and similar): handle statute and regulation lanes
   const isRegulationLane =
     Array.isArray(allSegments) && allSegments[1] === "regulation";
+  const isStatuteLane =
+    Array.isArray(allSegments) && allSegments[1] === "statute";
+  const isSourceDocumentLane =
+    Array.isArray(allSegments) &&
+    !["statute", "regulation"].includes(allSegments[1] ?? "");
   const isSubpart =
     typeof segment === "string" && segment.startsWith("subpart-");
 
   if (ruleIndex === 0) {
     if (segment === "statute") return "Statutes";
     if (segment === "regulation") return "Regulations";
-    return segment;
+    return formatGenericSegmentLabel(segment);
+  }
+
+  if (isSourceDocumentLane) {
+    return formatGenericSegmentLabel(segment);
   }
 
   if (ruleIndex === 1) {
@@ -1272,12 +1300,11 @@ function formatRuleSegmentLabel(
     return `(${segment})`;
   }
 
-  // Statute lane
-  if (ruleIndex === 2) {
+  if (isStatuteLane && ruleIndex === 2) {
     return `§ ${segment}`;
   }
 
-  if (ruleIndex > 2) {
+  if (isStatuteLane && ruleIndex > 2) {
     return `(${segment})`;
   }
 

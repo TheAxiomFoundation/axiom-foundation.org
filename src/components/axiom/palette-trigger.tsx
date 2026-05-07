@@ -70,7 +70,7 @@ export function PaletteTrigger({
     <button
       type="button"
       onClick={open}
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
+      className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1.5 text-[var(--color-ink-muted)] transition-colors cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 sm:h-8"
       aria-label="Open Axiom command palette"
     >
       <svg
@@ -87,7 +87,7 @@ export function PaletteTrigger({
       <span className="font-mono text-[11px] uppercase tracking-wider">
         Search
       </span>
-      <span className="font-mono text-[10px] uppercase tracking-wider border border-[var(--color-rule)] rounded px-1 py-px">
+      <span className="hidden rounded border border-[var(--color-rule)] px-1 py-px font-mono text-[10px] uppercase tracking-wider sm:inline">
         {shortcut}
       </span>
     </button>

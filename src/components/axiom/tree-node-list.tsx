@@ -80,7 +80,7 @@ export function TreeNodeList({
                   if (!updating) onNavigate(node);
                 }
               }}
-              className={`group flex items-center gap-3 px-5 py-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:-outline-offset-2 ${
+              className={`group flex items-center gap-2 px-3 py-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:-outline-offset-2 sm:gap-3 sm:px-5 ${
                 updating
                   ? "cursor-default"
                   : "cursor-pointer hover:bg-[var(--color-accent-light)]"
@@ -92,7 +92,7 @@ export function TreeNodeList({
               >
                 {node.hasChildren ? "▸" : "·"}
               </span>
-              <span className="flex-1 text-sm text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] truncate transition-colors">
+              <span className="min-w-0 flex-1 truncate text-sm text-[var(--color-ink-secondary)] transition-colors group-hover:text-[var(--color-ink)]">
                 {node.label}
               </span>
               {node.hasRuleSpec && (

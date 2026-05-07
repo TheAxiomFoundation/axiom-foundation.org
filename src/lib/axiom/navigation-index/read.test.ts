@@ -269,7 +269,7 @@ describe("navigation index read helpers", () => {
       getProvisionForNavigationNode(navRow({ provision_id: "provision-1" }))
     ).resolves.toEqual(provision);
 
-    expect(mockFrom).toHaveBeenCalledWith("provisions");
+    expect(mockFrom).toHaveBeenCalledWith("current_provisions");
     expect(calls(builder, "eq")).toContainEqual(["id", "provision-1"]);
   });
 

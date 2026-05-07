@@ -421,7 +421,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   } else {
     const { data, error } = await supabaseCorpus
-      .from('provisions')
+      .from('current_provisions')
       .select('citation_path, jurisdiction, rulespec_path, has_rulespec')
       .eq('id', ruleId)
       .single()
@@ -515,7 +515,7 @@ export interface SearchOptions {
 }
 
 /**
- * Search corpus.provisions via the server-side `search_provisions` RPC.
+ * Search current corpus provisions via the server-side `search_provisions` RPC.
  *
  * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
  * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
@@ -569,7 +569,7 @@ async function searchRulesFallback(
   if (terms.length === 0) return []
 
   let builder = supabaseCorpus
-    .from('provisions')
+    .from('current_provisions')
     .select(
       'id, jurisdiction, doc_type, citation_path, heading, body, has_rulespec'
     )
@@ -637,7 +637,7 @@ export interface RuleReference {
   other_citation_path: string
   other_provision_id: string | null
   other_heading: string | null
-  /** Outgoing only — whether the target is ingested in corpus.provisions. */
+  /** Outgoing only — whether the target is ingested in current corpus provisions. */
   target_resolved: boolean
 }
 

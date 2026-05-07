@@ -8,7 +8,7 @@ import { AXIOM_APP_URL, SITE_URL } from "@/lib/urls";
  *
  * Each rule URL is addressed at its atomic ``citation_path`` — the
  * same atomic grammar the viewer uses. The axiom is large enough
- * that a ``count('exact')`` scan of ``corpus.provisions`` regularly hits
+ * that a ``count('exact')`` scan of ``corpus.current_provisions`` regularly hits
  * statement-timeout, so we skip the count and pre-declare a
  * generous upper bound of chunks. Empty tail chunks render as
  * empty sitemaps, which Google tolerates.
@@ -85,7 +85,7 @@ export default async function sitemap({
   const safeChunk = Number.isFinite(chunk) ? chunk : 0;
   const offset = safeChunk * CHUNK_SIZE;
   const { data, error } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("citation_path, updated_at, has_rulespec")
     .not("citation_path", "is", null)
     .order("citation_path", { ascending: true })

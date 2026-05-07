@@ -152,7 +152,7 @@ export async function getNavigationIndexPrefixRows({
 export async function getProvisionForNavigationNode(
   node: NavigationNodeRow
 ): Promise<Rule | null> {
-  let query = supabaseCorpus.from("provisions").select("*");
+  let query = supabaseCorpus.from("current_provisions").select("*");
   query = node.provision_id
     ? query.eq("id", node.provision_id)
     : query.eq("citation_path", node.path);

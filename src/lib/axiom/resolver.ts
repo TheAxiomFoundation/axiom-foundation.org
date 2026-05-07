@@ -2,7 +2,7 @@ import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
 
 /**
- * Outcome of resolving a citation_path against ``corpus.provisions``.
+ * Outcome of resolving a citation_path against ``corpus.current_provisions``.
  *
  * - ``exact``: the full path exists as an atomic rule.
  * - ``ancestor``: the full path does not exist, but some prefix does;
@@ -82,7 +82,7 @@ export async function resolveCitationPath(
   }
 
   const { data, error } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("*")
     .in("citation_path", prefixes);
 
@@ -131,7 +131,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
     if (!parentPath) return [rule];
 
     const { data } = await supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .gte("citation_path", `${parentPath}/`)
       .lt("citation_path", `${parentPath}~`)
@@ -141,7 +141,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
     return sortSiblings((data as Rule[] | null) ?? []);
   }
   const { data } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("*")
     .eq("parent_id", rule.parent_id)
     .order("ordinal", { ascending: true, nullsFirst: false });

@@ -120,7 +120,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   }
   const parentResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("id", rule.parent_id)
       .single(),
@@ -133,7 +133,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   }
   const siblingsResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("parent_id", rule.parent_id)
       .order("ordinal"),
@@ -258,7 +258,7 @@ async function fetchDirectRootChildrenByCitationPrefix(
   while (rows.length < PREFIX_SCAN_MAX_ROWS) {
     const result = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .gte("citation_path", cursor)
         .lt("citation_path", upperBound)
@@ -325,7 +325,7 @@ export async function getJurisdictionCounts(
     dbIds.map(async (id) => {
       const result = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*", { count: "exact", head: true })
           .eq("jurisdiction", id),
         TREE_QUERY_TIMEOUT_MS,
@@ -350,14 +350,14 @@ export async function getDocTypeNodes(
       KNOWN_DOC_TYPES.map(async (segment) => {
         const rootPath = `${jurisdiction}/${segment}`;
         const { data: rootData } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("id")
           .eq("citation_path", rootPath)
           .limit(1);
         if (rootData && rootData.length > 0) return segment;
 
         const { data } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("citation_path")
           .eq("jurisdiction", jurisdiction)
           .eq("doc_type", segment)
@@ -385,7 +385,7 @@ export async function getDocTypeNodes(
     for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
       const result = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("doc_type")
           .eq("jurisdiction", jurisdiction)
           .is("parent_id", null)
@@ -439,7 +439,7 @@ async function fetchChildEntriesByCitationPrefix(
   while (entries.length < PREFIX_SCAN_MAX_ROWS && cursor < upperBound) {
     const result = await withTimeoutStatus(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .eq("jurisdiction", jurisdiction)
         .eq("doc_type", docType)
@@ -497,7 +497,7 @@ async function fetchRootLevelEntries(
   for (const level of browseRootLevels(jurisdiction, docType)) {
     const result = await withTimeoutStatus(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .eq("jurisdiction", jurisdiction)
         .eq("doc_type", docType)
@@ -638,7 +638,7 @@ async function fetchDottedSubsectionSiblings(rule: Rule): Promise<Rule[]> {
     lower.slice(0, -1) + String.fromCharCode(lower.charCodeAt(lower.length - 1) + 1);
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .gte("citation_path", lower)
       .lt("citation_path", upper)
@@ -689,7 +689,7 @@ async function fetchColoradoPolicyAgencyNodes(
   for (let offset = 0; offset < PREFIX_SCAN_MAX_ROWS; offset += PREFIX_SCAN_PAGE_SIZE) {
     const result = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .gte("citation_path", canonicalPrefix)
         .lt("citation_path", canonicalUpperBound)
@@ -755,7 +755,7 @@ export async function getSectionNodes(
 ): Promise<TreeResult> {
   const parentResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("citation_path", pathPrefix)
       .maybeSingle(),
@@ -795,7 +795,7 @@ export async function getSectionNodes(
       );
       const encodedRowsResult = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*")
           .in("citation_path", wantedPaths)
           .order("citation_path"),
@@ -817,7 +817,7 @@ export async function getSectionNodes(
     const to = from + PAGE_SIZE - 1;
     const childrenResult = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*", { count: "exact" })
         .eq("parent_id", parentRule.id)
         .order("ordinal")
@@ -953,7 +953,7 @@ export async function getEncodedPaths(
   // Source 2: corpus.has_rulespec
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("citation_path")
       .eq("jurisdiction", jurisdiction)
       .eq("has_rulespec", true),
@@ -1046,7 +1046,7 @@ export async function getActNodes(
 
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*", { count: "exact" })
       .eq("jurisdiction", jurisdiction)
       .is("parent_id", null)
@@ -1083,7 +1083,7 @@ export async function getChildrenByParentId(
 
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*", { count: "exact" })
       .eq("parent_id", parentId)
       .order("ordinal")
@@ -1112,7 +1112,7 @@ export async function getChildrenByParentId(
 
 export async function getRuleById(id: string): Promise<Rule | null> {
   const result = await withTimeout(
-    supabaseCorpus.from("provisions").select("*").eq("id", id).single(),
+    supabaseCorpus.from("current_provisions").select("*").eq("id", id).single(),
     TREE_QUERY_TIMEOUT_MS,
     null
   );

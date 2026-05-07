@@ -432,10 +432,10 @@ describe('supabase lib', () => {
 
   describe('getRuleEncoding', () => {
     it('returns encoding data when rule has citation_path and encoding exists', async () => {
-      // getRuleEncoding calls supabaseCorpus.from('provisions') then supabaseEncodings.from('encoding_runs')
+      // getRuleEncoding calls supabaseCorpus.from('current_provisions') then supabaseEncodings.from('encoding_runs')
       // Both clients use the same mockFrom since createClient is mocked once
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -483,7 +483,7 @@ describe('supabase lib', () => {
 
     it('picks the most specific path when multiple matches exist', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -515,7 +515,7 @@ describe('supabase lib', () => {
 
     it('checks duplicated terminal section file paths for US section roots', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -547,7 +547,7 @@ describe('supabase lib', () => {
 
     it('returns encoding-run metadata fields from encoding_runs', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -595,7 +595,7 @@ describe('supabase lib', () => {
 
     it('uses rulespec_path when citation_path is null', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -662,7 +662,7 @@ describe('supabase lib', () => {
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -687,7 +687,7 @@ describe('supabase lib', () => {
 
     it('returns null when encoding_runs query errors', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -714,7 +714,7 @@ describe('supabase lib', () => {
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -748,7 +748,7 @@ describe('supabase lib', () => {
       // The corpus shouldn't be queried at all for synth ids — fail
       // hard if it is so the regression is loud.
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           throw new Error('synthesised id should not query corpus')
         }
         return mockEncodingRunsChain({ data: [], error: null })

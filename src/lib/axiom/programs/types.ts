@@ -26,7 +26,7 @@ export type AnchorRole =
 
 export interface ProgramAnchor {
   role: AnchorRole;
-  /** citation_path into ``corpus.provisions``; resolver handles the miss case. */
+  /** citation_path into current corpus provisions; resolver handles the miss case. */
   citationPath: string;
   /** Short human label for the palette row (e.g. "Standard deduction"). */
   label: string;

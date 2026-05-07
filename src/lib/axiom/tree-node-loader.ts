@@ -40,7 +40,7 @@ export interface TreeNodeLoadResult {
 /**
  * Load browse-tree nodes from the precomputed corpus.navigation_nodes index.
  *
- * The legal text still lives in corpus.provisions. This loader only uses
+ * The legal text still lives in corpus.current_provisions. This loader only uses
  * provisions for the exact current/leaf rule detail after the navigation
  * index has resolved the route. It intentionally does not fall back to the
  * old broad provisions scans; source-index gaps should stay visible. The

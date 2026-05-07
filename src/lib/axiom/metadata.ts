@@ -70,7 +70,7 @@ export async function getAxiomRuleMetadata(
   ]);
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .in("citation_path", prefixes),
     METADATA_QUERY_TIMEOUT_MS,

@@ -6,7 +6,7 @@
  * the map here prevents those surfaces from drifting.
  *
  * Keys are the axiom's canonical jurisdiction slugs as they land in
- * ``corpus.provisions.jurisdiction`` — so ``canada`` (not ``ca``) for Canada.
+ * ``jurisdiction`` in corpus provision rows — so ``canada`` (not ``ca``) for Canada.
  *
  * Only jurisdictions with a corresponding ``rules-*`` repo on
  * github.com/TheAxiomFoundation belong here. A jurisdiction that

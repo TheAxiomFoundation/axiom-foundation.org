@@ -209,6 +209,27 @@ describe("buildBreadcrumbs", () => {
     ]);
   });
 
+  it("formats federal guidance breadcrumbs as source-document path segments", () => {
+    const crumbs = buildBreadcrumbs([
+      "us",
+      "guidance",
+      "usda",
+      "fns",
+      "snap-fy2026-cola",
+    ]);
+    expect(crumbs).toEqual([
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
+      { label: "Guidance", href: "/us/guidance" },
+      { label: "USDA", href: "/us/guidance/usda" },
+      { label: "FNS", href: "/us/guidance/usda/fns" },
+      {
+        label: "SNAP FY2026 COLA",
+        href: "/us/guidance/usda/fns/snap-fy2026-cola",
+      },
+    ]);
+  });
+
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([

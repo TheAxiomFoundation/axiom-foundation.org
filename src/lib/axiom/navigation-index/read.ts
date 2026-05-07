@@ -4,6 +4,7 @@ import type {
   NavigationDocTypeResult,
   NavigationIndexChildrenParams,
   NavigationIndexChildrenResult,
+  NavigationIndexPrefixRowsParams,
   NavigationNodeRow,
 } from "./types";
 
@@ -120,6 +121,32 @@ export async function getNavigationIndexNode(
   if (!result) throw new NavigationIndexUnavailableError();
   if (result.error) throw new NavigationIndexUnavailableError();
   return (result.data as NavigationNodeRow | null) ?? null;
+}
+
+export async function getNavigationIndexPrefixRows({
+  jurisdiction,
+  docType,
+  pathPrefix,
+  encodedOnly,
+}: NavigationIndexPrefixRowsParams): Promise<NavigationNodeRow[]> {
+  let query = supabaseCorpus
+    .from("navigation_nodes")
+    .select("*")
+    .eq("jurisdiction", jurisdiction)
+    .eq("doc_type", docType)
+    .gte("path", `${pathPrefix}/`)
+    .lt("path", `${pathPrefix}~`)
+    .order("path")
+    .limit(DOC_TYPE_DISCOVERY_LIMIT);
+
+  if (encodedOnly) {
+    query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
+  }
+
+  const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
+  if (!result) throw new NavigationIndexUnavailableError();
+  if (result.error) throw new NavigationIndexUnavailableError();
+  return (result.data ?? []) as NavigationNodeRow[];
 }
 
 export async function getProvisionForNavigationNode(

@@ -87,15 +87,24 @@ export async function loadTreeNodes({
     encodedOnly,
     page,
   });
+  const rulespecOnly =
+    page === 0 && (encodedOnly || childResult.rows.length === 0)
+      ? await loadRulespecOnlyTreeNodes(dbJurisdictionId, segs, page)
+      : null;
 
   if (segs.length === 1) {
-    if (childResult.rows.length === 0 && page === 0) {
-      const rulespecOnly = await loadRulespecOnlyTreeNodes(
-        dbJurisdictionId,
-        segs,
-        page
-      );
-      if (rulespecOnly) return rulespecOnly;
+    const nodes = mergeTreeNodes(
+      childResult.rows.map(navigationRowToTreeNode),
+      rulespecOnly?.nodes
+    );
+    if (nodes.length === 0) {
+      if (page > 0) {
+        return {
+          nodes: [],
+          hasMore: false,
+          encodedPaths: existingEncodedPaths,
+        };
+      }
       if (encodedOnly) {
         return {
           nodes: [],
@@ -108,7 +117,7 @@ export async function loadTreeNodes({
       );
     }
     return {
-      nodes: childResult.rows.map(navigationRowToTreeNode),
+      nodes,
       hasMore: childResult.hasMore,
       encodedPaths: existingEncodedPaths,
     };
@@ -127,17 +136,18 @@ export async function loadTreeNodes({
         encodedOnly,
       });
       if (sparsePrefix) return sparsePrefix;
-      const rulespecOnly = await loadRulespecOnlyTreeNodes(
-        dbJurisdictionId,
-        segs,
-        page
-      );
       if (rulespecOnly) return rulespecOnly;
       throw new NavigationIndexMissingError(
         `Navigation index has no node for ${currentPath}.`
       );
     }
     const rule = await requireProvisionForNode(currentNode);
+    if (rulespecOnly) {
+      return {
+        ...rulespecOnly,
+        currentRule: rule,
+      };
+    }
     if (currentNode.has_children) {
       return {
         nodes: [],
@@ -159,7 +169,10 @@ export async function loadTreeNodes({
     : null;
 
   return {
-    nodes: childResult.rows.map(navigationRowToTreeNode),
+    nodes: mergeTreeNodes(
+      childResult.rows.map(navigationRowToTreeNode),
+      rulespecOnly?.nodes
+    ),
     hasMore: childResult.hasMore,
     currentRule,
     encodedPaths: existingEncodedPaths,
@@ -195,6 +208,20 @@ async function getEncodedDocTypes(jurisdiction: string): Promise<string[]> {
 
 function mergeDocTypes(docTypes: string[], encodedDocTypes: string[]): string[] {
   return Array.from(new Set([...docTypes, ...encodedDocTypes])).sort();
+}
+
+function mergeTreeNodes(indexNodes: TreeNode[], rulespecNodes?: TreeNode[]): TreeNode[] {
+  if (!rulespecNodes || rulespecNodes.length === 0) return indexNodes;
+  const bySegment = new Map<string, TreeNode>();
+  for (const node of rulespecNodes) {
+    bySegment.set(node.segment, node);
+  }
+  for (const node of indexNodes) {
+    bySegment.set(node.segment, node);
+  }
+  return Array.from(bySegment.values()).sort((a, b) =>
+    a.segment.localeCompare(b.segment, undefined, { numeric: true })
+  );
 }
 
 async function loadSparsePrefixTreeNodes({
@@ -354,7 +381,7 @@ function rulespecOnlyChildren(
       const exactOnly = Boolean(entry.exact) && !entry.hasDeeper;
       return {
         segment,
-        label: formatRulespecOnlySegment(segment),
+        label: formatRulespecOnlyNodeLabel(segs, segment),
         hasChildren: entry.hasDeeper,
         childCount: entry.hasDeeper ? entry.descendantCount : undefined,
         nodeType: "section",
@@ -397,6 +424,20 @@ function rulespecOnlyMinimalRule(
     created_at: now,
     updated_at: now,
   };
+}
+
+function formatRulespecOnlyNodeLabel(segs: string[], segment: string): string {
+  const docType = segs[0];
+  if (segs.length === 1 && (docType === "statute" || docType === "regulation")) {
+    return `Title ${segment}`;
+  }
+  if (
+    (docType === "statute" || docType === "regulation") &&
+    /^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(segment)
+  ) {
+    return `§ ${segment}`;
+  }
+  return formatRulespecOnlySegment(segment);
 }
 
 function formatRulespecOnlySegment(segment: string): string {

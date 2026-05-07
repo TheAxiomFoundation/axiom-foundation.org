@@ -190,6 +190,121 @@ describe("loadTreeNodes", () => {
     ]);
   });
 
+  it("merges RuleSpec-only encoded title branches with encoded navigation rows", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(
+      navRow({
+        jurisdiction: "us",
+        doc_type: "statute",
+        path: "us/statute",
+        segment: "statute",
+        has_children: true,
+      })
+    );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [
+        navRow({
+          jurisdiction: "us",
+          doc_type: "statute",
+          path: "us/statute/26",
+          segment: "26",
+          label: "INTERNAL REVENUE CODE",
+          has_children: true,
+          encoded_descendant_count: 10,
+        }),
+      ],
+      hasMore: false,
+      total: 1,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "statutes/7/2017/a.yaml",
+        citationPath: "us/statute/7/2017/a",
+        bucket: "statutes",
+      },
+      {
+        filePath: "statutes/26/3101/a.yaml",
+        citationPath: "us/statute/26/3101/a",
+        bucket: "statutes",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["statute"],
+      hasCitationPaths: true,
+      encodedOnly: true,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "7",
+        hasRuleSpec: true,
+      }),
+      expect.objectContaining({
+        segment: "26",
+        label: "INTERNAL REVENUE CODE",
+      }),
+    ]);
+  });
+
+  it("surfaces RuleSpec-only descendants under an existing encoded-only corpus node", async () => {
+    mockGetNavigationIndexNode
+      .mockResolvedValueOnce(
+        navRow({
+          jurisdiction: "us",
+          doc_type: "statute",
+          path: "us/statute",
+          segment: "statute",
+          has_children: true,
+        })
+      )
+      .mockResolvedValueOnce(
+        navRow({
+          jurisdiction: "us",
+          doc_type: "statute",
+          path: "us/statute/7",
+          segment: "7",
+          label: "AGRICULTURE",
+          has_children: true,
+        })
+      );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    const currentRule = {
+      id: "title-7",
+      citation_path: "us/statute/7",
+    };
+    mockGetProvisionForNavigationNode.mockResolvedValue(currentRule);
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "statutes/7/2017/a.yaml",
+        citationPath: "us/statute/7/2017/a",
+        bucket: "statutes",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["statute", "7"],
+      hasCitationPaths: true,
+      encodedOnly: true,
+      page: 0,
+    });
+
+    expect(result.currentRule).toEqual(currentRule);
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "2017",
+        hasRuleSpec: true,
+        childCount: 1,
+      }),
+    ]);
+  });
+
   it("marks exact RuleSpec-only child files as clickable encoded leaves", async () => {
     mockGetNavigationIndexNode.mockResolvedValue(null);
     mockGetNavigationIndexChildren.mockResolvedValue({

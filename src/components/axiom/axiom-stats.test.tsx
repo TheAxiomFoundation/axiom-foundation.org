@@ -150,7 +150,7 @@ describe("AxiomStats", () => {
     expect(screen.getByText("jurisdictions")).toBeInTheDocument();
   });
 
-  it("hides jurisdictions without generated navigation roots", async () => {
+  it("shows Canada once generated navigation roots are available", async () => {
     mockGetAxiomStats.mockResolvedValue({
       ...fullPayload,
       jurisdictions_count: 18,
@@ -165,8 +165,8 @@ describe("AxiomStats", () => {
       expect(screen.getByText("US Federal")).toBeInTheDocument()
     );
 
-    expect(screen.queryByText("Canada")).not.toBeInTheDocument();
-    expect(screen.getByText("17")).toBeInTheDocument();
+    expect(screen.getByText("Canada")).toBeInTheDocument();
+    expect(screen.getByText("18")).toBeInTheDocument();
   });
 
   it("renders server-provided stats immediately without the client RPC tick", () => {
@@ -264,6 +264,6 @@ describe("AxiomStats", () => {
     expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
     expect(screen.getByText("US Federal")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.queryByText("Canada")).not.toBeInTheDocument();
+    expect(screen.getByText("Canada")).toBeInTheDocument();
   });
 });

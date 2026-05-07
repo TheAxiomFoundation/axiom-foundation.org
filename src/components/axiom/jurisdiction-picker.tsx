@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { isNavigationJurisdictionEnabled } from "@/lib/axiom/navigation-availability";
 import { JURISDICTIONS, getJurisdictionCounts } from "@/lib/tree-data";
 import { trackAxiomEvent } from "@/lib/analytics";
 
@@ -35,9 +34,7 @@ export function JurisdictionPicker() {
       label: j.label,
       href: `/${j.slug}`,
       count: counts.get(j.slug) || 0,
-    })).filter(
-      (c) => isNavigationJurisdictionEnabled(c.slug) && (c.count ?? 0) > 0
-    );
+    })).filter((c) => (c.count ?? 0) > 0);
 
     setCards(jurisdictionCards);
     setLoading(false);

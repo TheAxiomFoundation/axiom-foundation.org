@@ -61,8 +61,8 @@ describe("JurisdictionPicker", () => {
     expect(screen.getByText("10,000 rules")).toBeInTheDocument();
     expect(screen.getByText("United Kingdom")).toBeInTheDocument();
     expect(screen.getByText("1,500 rules")).toBeInTheDocument();
-    expect(screen.queryByText("Canada")).not.toBeInTheDocument();
-    expect(screen.queryByText("2,000 rules")).not.toBeInTheDocument();
+    expect(screen.getByText("Canada")).toBeInTheDocument();
+    expect(screen.getByText("2,000 rules")).toBeInTheDocument();
   });
 
   it("filters out jurisdictions with zero rules", async () => {

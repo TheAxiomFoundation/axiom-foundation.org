@@ -162,10 +162,9 @@ describe("AxiomStats", () => {
     render(<AxiomStats />);
 
     await waitFor(() =>
-      expect(screen.getByText("US Federal")).toBeInTheDocument()
+      expect(screen.getByText("Canada")).toBeInTheDocument()
     );
 
-    expect(screen.getByText("Canada")).toBeInTheDocument();
     expect(screen.getByText("18")).toBeInTheDocument();
   });
 

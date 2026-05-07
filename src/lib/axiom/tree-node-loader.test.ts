@@ -591,6 +591,63 @@ describe("loadTreeNodes", () => {
     expect(result.nodes.map((node) => node.segment)).toEqual(["4.401"]);
   });
 
+  it("keeps deep navigation available when the optional current provision lookup fails", async () => {
+    const child = navRow({
+      path: "us-co/regulation/10-ccr-2506-1/4.401",
+      parent_path: "us-co/regulation/10-ccr-2506-1",
+      segment: "4.401",
+      label: "4.401",
+    });
+    const current = navRow();
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [child],
+      hasMore: false,
+      total: 1,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(current);
+    mockGetProvisionForNavigationNode.mockRejectedValue(
+      new Error("permission denied")
+    );
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us-co",
+      ruleSegments: ["regulation", "10-ccr-2506-1"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.currentRule).toBeNull();
+    expect(result.nodes.map((node) => node.segment)).toEqual(["4.401"]);
+  });
+
+  it("keeps empty indexed containers available when the optional current provision lookup fails", async () => {
+    const current = navRow({
+      has_children: true,
+      child_count: 1,
+    });
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(current);
+    mockGetProvisionForNavigationNode.mockRejectedValue(
+      new Error("permission denied")
+    );
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us-co",
+      ruleSegments: ["regulation", "10-ccr-2506-1"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.currentRule).toBeNull();
+    expect(result.nodes).toEqual([]);
+  });
+
   it("returns a leaf rule when the indexed node has no children", async () => {
     const leaf = navRow({
       path: "us-co/regulation/10-ccr-2506-1/4.401",

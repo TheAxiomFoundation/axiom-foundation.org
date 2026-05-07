@@ -141,14 +141,18 @@ export async function loadTreeNodes({
         `Navigation index has no node for ${currentPath}.`
       );
     }
-    const rule = await requireProvisionForNode(currentNode);
     if (rulespecOnly) {
+      const rule =
+        rulespecOnly.nodes.length > 0
+          ? await getOptionalProvisionForNode(currentNode)
+          : await requireProvisionForNode(currentNode);
       return {
         ...rulespecOnly,
         currentRule: rule,
       };
     }
     if (currentNode.has_children) {
+      const rule = await getOptionalProvisionForNode(currentNode);
       return {
         nodes: [],
         hasMore: false,
@@ -156,6 +160,7 @@ export async function loadTreeNodes({
         encodedPaths: existingEncodedPaths,
       };
     }
+    const rule = await requireProvisionForNode(currentNode);
     return {
       nodes: [],
       hasMore: false,
@@ -165,7 +170,7 @@ export async function loadTreeNodes({
   }
 
   const currentRule = currentNode
-    ? await getProvisionForNavigationNode(currentNode)
+    ? await getOptionalProvisionForNode(currentNode)
     : null;
 
   return {
@@ -193,6 +198,16 @@ async function requireProvisionForNode(
     );
   }
   return rule;
+}
+
+async function getOptionalProvisionForNode(
+  node: NavigationNodeRow
+): Promise<Rule | null> {
+  try {
+    return await getProvisionForNavigationNode(node);
+  } catch {
+    return null;
+  }
 }
 
 async function getEncodedDocTypes(jurisdiction: string): Promise<string[]> {

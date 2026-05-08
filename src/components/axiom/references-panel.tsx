@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { RuleReference } from "@/lib/supabase";
+import type { InlineReference } from "@/lib/axiom/inline-references";
 
 /**
  * Format a canonical Axiom citation_path into a human-readable label.
@@ -21,6 +22,9 @@ export function formatCitationLabel(path: string): string {
     const [jurisdiction, , title, section, ...rest] = parts;
     const restSuffix = rest.length ? ` (${rest.join(")(")})` : "";
     if (jurisdiction === "us") return `${title} USC § ${section}${restSuffix}`;
+    if (jurisdiction === "us-co" && title === "crs") {
+      return `CO CRS § ${section}${restSuffix}`;
+    }
     if (jurisdiction.startsWith("us-")) {
       const state = jurisdiction.slice(3).toUpperCase();
       return `${state} ${title} § ${section}${restSuffix}`;
@@ -39,7 +43,7 @@ export function formatCitationLabel(path: string): string {
   return path;
 }
 
-function RefItem({ ref }: { ref: RuleReference }) {
+function RefItem({ ref }: { ref: InlineReference }) {
   // Incoming refs carry offsets into the citing rule's body; pass
   // them through as ``?mark=start-end`` so the target page scrolls
   // to and highlights the exact citing passage.
@@ -55,7 +59,9 @@ function RefItem({ ref }: { ref: RuleReference }) {
     ? "text-[var(--color-accent)] hover:underline"
     : "text-[var(--color-ink-secondary)] cursor-help";
   const title = resolved
-    ? ref.other_heading || ref.other_citation_path
+    ? ref.inferred
+      ? `Inferred link to ${ref.other_citation_path}`
+      : ref.other_heading || ref.other_citation_path
     : `${ref.other_citation_path} — not yet ingested`;
 
   return (
@@ -73,6 +79,11 @@ function RefItem({ ref }: { ref: RuleReference }) {
           pending
         </span>
       )}
+      {ref.inferred && (
+        <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+          inferred
+        </span>
+      )}
     </li>
   );
 }
@@ -85,7 +96,7 @@ function RefGroup({
 }: {
   title: string;
   subtitle: string;
-  refs: RuleReference[];
+  refs: InlineReference[];
   isFirst: boolean;
 }) {
   if (refs.length === 0) return null;
@@ -108,7 +119,7 @@ export function ReferencesPanel({
   outgoing,
   incoming,
 }: {
-  outgoing: RuleReference[];
+  outgoing: InlineReference[];
   incoming: RuleReference[];
 }) {
   if (outgoing.length === 0 && incoming.length === 0) return null;

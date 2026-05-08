@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { loadTreeNodes } from "@/lib/axiom/tree-node-loader";
+import {
+  NavigationIndexMissingError,
+  NavigationIndexUnavailableError,
+} from "@/lib/axiom/navigation-index/read";
 
 export const dynamic = "force-dynamic";
 
@@ -36,14 +40,18 @@ export async function GET(request: NextRequest) {
       leafRule: result.leafRule ?? null,
     });
   } catch (error) {
+    const missing = error instanceof NavigationIndexMissingError;
+    const unavailable = error instanceof NavigationIndexUnavailableError;
     return NextResponse.json(
       {
         error:
-          error instanceof Error
+          unavailable
+            ? "Navigation data is temporarily unavailable."
+            : error instanceof Error
             ? error.message
             : "Navigation data is temporarily unavailable.",
       },
-      { status: 503 }
+      { status: missing ? 404 : 503 }
     );
   }
 }

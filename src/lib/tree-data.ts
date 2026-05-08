@@ -1171,6 +1171,8 @@ function formatGenericSegmentLabel(segment: string): string {
     "irs",
     "snap",
     "uk",
+    "ukpga",
+    "uksi",
     "us",
     "usc",
     "usda",

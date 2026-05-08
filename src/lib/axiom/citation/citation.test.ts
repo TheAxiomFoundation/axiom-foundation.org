@@ -190,6 +190,16 @@ describe("parseCitation — direct citation_path slug", () => {
     );
   });
 
+  it("preserves case-sensitive path segments in pasted slugs", () => {
+    expect(
+      parseCitation("UK/Legislation/UKPGA/2002/16/Section/3ZA/3")
+        ?.citationPath
+    ).toBe("uk/legislation/ukpga/2002/16/section/3ZA/3");
+    expect(parseCitation("US/Statute/26/36B")?.citationPath).toBe(
+      "us/statute/26/36B"
+    );
+  });
+
   it("rejects slugs whose second segment is not a known doc type", () => {
     expect(parseCitation("us/bananas/26/32")).toBeNull();
   });

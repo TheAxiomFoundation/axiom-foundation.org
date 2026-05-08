@@ -92,7 +92,7 @@ describe("resolveCitationPath", () => {
     expect(out.missingTail).toEqual(["z"]);
   });
 
-  it("normalises leading slashes and casing", async () => {
+  it("normalises leading slashes and structural casing", async () => {
     mockIn.mockResolvedValue({
       data: [{ id: "r", citation_path: "us/statute/26/32" }],
       error: null,
@@ -100,6 +100,35 @@ describe("resolveCitationPath", () => {
     const out = await resolveCitationPath("/US/Statute/26/32");
     expect(out.citationPath).toBe("us/statute/26/32");
     expect(out.match).toBe("exact");
+  });
+
+  it("preserves case-sensitive legal identifier segments", async () => {
+    mockIn.mockResolvedValue({
+      data: [
+        {
+          id: "uk",
+          citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+        },
+      ],
+      error: null,
+    });
+    const out = await resolveCitationPath(
+      "/UK/Legislation/UKPGA/2002/16/Section/3ZA/3"
+    );
+    expect(mockIn).toHaveBeenCalledWith("citation_path", [
+      "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      "uk/legislation/ukpga/2002/16/section/3ZA",
+      "uk/legislation/ukpga/2002/16/section",
+      "uk/legislation/ukpga/2002/16",
+      "uk/legislation/ukpga/2002",
+      "uk/legislation/ukpga",
+      "uk/legislation",
+      "uk",
+    ]);
+    expect(out.match).toBe("exact");
+    expect(out.citationPath).toBe(
+      "uk/legislation/ukpga/2002/16/section/3ZA/3"
+    );
   });
 
   it("returns none on empty input", async () => {

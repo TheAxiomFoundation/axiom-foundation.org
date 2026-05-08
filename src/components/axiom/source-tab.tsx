@@ -159,7 +159,11 @@ export function SourceTab({
       )}
 
       {renderInline ? (
-        <RuleBody body={document.body!} refs={outgoingRefs ?? []} />
+        <RuleBody
+          body={document.body!}
+          refs={outgoingRefs ?? []}
+          citationPath={document.citationPath}
+        />
       ) : document.subsections.length > 0 ? (
         <div className="space-y-7">
           {document.subsections.map((subsection) => {
@@ -210,7 +214,7 @@ export function SourceTab({
 
       {document.sourcePath && (
         <div className="mt-8 pt-4 border-t border-[var(--color-rule)]">
-          <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+          <span className="font-mono text-xs font-semibold text-[var(--color-ink-muted)]">
             Source:{" "}
           </span>
           <code className="font-mono text-xs text-[var(--color-accent)] break-all">

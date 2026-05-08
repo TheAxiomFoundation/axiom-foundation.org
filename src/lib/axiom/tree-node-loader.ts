@@ -192,12 +192,14 @@ async function requireProvisionForNode(
   node: NavigationNodeRow
 ): Promise<Rule> {
   const rule = await getProvisionForNavigationNode(node);
-  if (!rule) {
-    throw new NavigationIndexMissingError(
-      `Navigation node ${node.path} does not resolve to a corpus provision.`
-    );
-  }
-  return rule;
+  if (rule) return rule;
+
+  const encodedRule = await synthesiseEncodedNavigationLeaf(node);
+  if (encodedRule) return encodedRule;
+
+  throw new NavigationIndexMissingError(
+    `Navigation node ${node.path} does not resolve to a corpus provision.`
+  );
 }
 
 async function getOptionalProvisionForNode(
@@ -208,6 +210,27 @@ async function getOptionalProvisionForNode(
   } catch {
     return null;
   }
+}
+
+async function synthesiseEncodedNavigationLeaf(
+  node: NavigationNodeRow
+): Promise<Rule | null> {
+  if (!node.has_rulespec) return null;
+
+  const citationPath = node.citation_path ?? node.path;
+  const repoRule = await synthesiseRuleFromCitationPath(
+    node.jurisdiction,
+    citationPath
+  );
+  if (repoRule) return repoRule;
+
+  return rulespecOnlyMinimalRule(
+    node.jurisdiction,
+    citationPath.split("/").slice(1),
+    citationPath,
+    undefined,
+    node.label
+  );
 }
 
 async function getEncodedDocTypes(jurisdiction: string): Promise<string[]> {
@@ -417,7 +440,8 @@ function rulespecOnlyMinimalRule(
   jurisdiction: string,
   segs: string[],
   citationPath: string,
-  file?: EncodedFile
+  file?: EncodedFile,
+  heading?: string
 ): Rule {
   const now = "";
   return {
@@ -427,7 +451,8 @@ function rulespecOnlyMinimalRule(
     parent_id: null,
     level: segs.length,
     ordinal: null,
-    heading: formatRulespecOnlySegment(segs[segs.length - 1] ?? citationPath),
+    heading:
+      heading ?? formatRulespecOnlySegment(segs[segs.length - 1] ?? citationPath),
     body: null,
     effective_date: null,
     repeal_date: null,

@@ -7,6 +7,7 @@ import {
 import { allStateParsers } from "./us-states";
 import { allUKParsers } from "./uk";
 import { allCanadaParsers } from "./canada";
+import { normalizeCitationPathInput } from "@/lib/axiom/citation-path";
 
 export type { ParsedCitation, JurisdictionParser } from "./types";
 
@@ -26,7 +27,7 @@ const directSlugParser: JurisdictionParser = {
   parse(input) {
     const m = input.match(DIRECT_SLUG_RE);
     if (!m) return null;
-    const slug = m[1].toLowerCase();
+    const slug = normalizeCitationPathInput(m[1]);
     const parts = slug.split("/");
     if (parts.length < 2) return null;
     const [jurisdiction, docType] = parts;

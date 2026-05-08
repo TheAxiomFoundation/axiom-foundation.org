@@ -146,6 +146,16 @@ describe("AxiomStats", () => {
     expect(onNavigateHref).toHaveBeenCalledWith("/us-co");
   });
 
+  it("leaves jurisdiction links as normal anchors without a client navigator", () => {
+    mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
+    render(<AxiomStats />);
+
+    const colorado = screen.getByText("Colorado").closest("a");
+    expect(colorado).toHaveAttribute("href", "/us-co");
+    colorado?.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(colorado!);
+  });
+
   it("renders the three stats with compact formatting", async () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
@@ -157,6 +167,8 @@ describe("AxiomStats", () => {
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
     expect(screen.getByText("citations extracted")).toBeInTheDocument();
     expect(screen.getByText("jurisdictions")).toBeInTheDocument();
+    expect(screen.queryByText(/4 · .* rules/)).not.toBeInTheDocument();
+    expect(screen.getByText(/473K\s+rules/)).toBeInTheDocument();
   });
 
   it("shows Canada once generated navigation roots are available", async () => {

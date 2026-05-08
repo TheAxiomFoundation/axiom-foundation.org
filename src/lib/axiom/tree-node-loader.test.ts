@@ -680,6 +680,59 @@ describe("loadTreeNodes", () => {
     expect(result.nodes).toEqual([]);
   });
 
+  it("returns a synthetic leaf when an encoded navigation leaf has no current provision", async () => {
+    const leaf = navRow({
+      jurisdiction: "uk",
+      doc_type: "regulation",
+      path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      parent_path: "uk/legislation/ukpga/2002/16/section/3ZA",
+      segment: "3",
+      label: "(3)",
+      has_children: false,
+      child_count: 0,
+      has_rulespec: true,
+    });
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(leaf);
+    mockGetProvisionForNavigationNode.mockResolvedValue(null);
+    mockSynthesiseRuleFromCitationPath.mockResolvedValue(null);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: [
+        "legislation",
+        "ukpga",
+        "2002",
+        "16",
+        "section",
+        "3ZA",
+        "3",
+      ],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(mockSynthesiseRuleFromCitationPath).toHaveBeenCalledWith(
+      "uk",
+      "uk/legislation/ukpga/2002/16/section/3ZA/3"
+    );
+    expect(result.nodes).toEqual([]);
+    expect(result.leafRule).toEqual(
+      expect.objectContaining({
+        id: "github:uk/legislation/ukpga/2002/16/section/3ZA/3",
+        citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+        heading: "(3)",
+        has_rulespec: true,
+      })
+    );
+  });
+
   it("throws a clear missing-index error when an indexed node has no provision", async () => {
     const leaf = navRow({
       path: "us-co/regulation/10-ccr-2506-1/4.401",

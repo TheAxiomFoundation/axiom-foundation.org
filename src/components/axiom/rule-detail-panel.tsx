@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   getJurisdictionLabel,
   isGitHubEncoding,
@@ -16,6 +16,10 @@ import { RuleSpecTab } from "./rulespec-tab";
 import { AgentLogsTab } from "./agent-logs-tab";
 import { ReferencesPanel } from "./references-panel";
 import type { RuleReference } from "@/lib/supabase";
+import {
+  buildInlineReferences,
+  type InlineReference,
+} from "@/lib/axiom/inline-references";
 
 export function RuleDetailPanel({
   document,
@@ -34,12 +38,21 @@ export function RuleDetailPanel({
    * (and supports ``?mark=…`` highlighting + outgoing-ref splicing).
    * When omitted, the default reader renders via ``SourceTab``.
    */
-  heroSlot?: (ctx: { outgoingRefs: RuleReference[] }) => React.ReactNode;
+  heroSlot?: (ctx: { outgoingRefs: InlineReference[] }) => React.ReactNode;
 }) {
   const { encoding, sessionEvents, agentTranscripts, loading } = useEncoding(rule.id);
   const { outgoing, incoming } = useRuleReferences(rule.citation_path);
   const [logsOpen, setLogsOpen] = useState(false);
   const hasEncodingRunData = isEncodingRun(encoding);
+  const outgoingWithInferred = useMemo(
+    () =>
+      buildInlineReferences(
+        rule.body ?? document.body ?? null,
+        rule.citation_path ?? document.citationPath,
+        outgoing
+      ),
+    [document.body, document.citationPath, outgoing, rule.body, rule.citation_path]
+  );
 
   /* v8 ignore start -- analytics side effect */
   useEffect(() => {
@@ -135,11 +148,11 @@ export function RuleDetailPanel({
           <article className="px-8 py-8 overflow-y-auto">
             <div className="eyebrow mb-6">Source</div>
             {heroSlot ? (
-              heroSlot({ outgoingRefs: outgoing })
+              heroSlot({ outgoingRefs: outgoingWithInferred })
             ) : (
               <SourceTab
                 document={document}
-                outgoingRefs={outgoing}
+                outgoingRefs={outgoingWithInferred}
               />
             )}
           </article>
@@ -159,9 +172,12 @@ export function RuleDetailPanel({
                 isRepealed={document.isRepealed}
               />
             </section>
-            {(outgoing.length > 0 || incoming.length > 0) && (
+            {(outgoingWithInferred.length > 0 || incoming.length > 0) && (
               <section className="px-6 pb-8 border-t border-[var(--color-rule)] pt-8">
-                <ReferencesPanel outgoing={outgoing} incoming={incoming} />
+                <ReferencesPanel
+                  outgoing={outgoingWithInferred}
+                  incoming={incoming}
+                />
               </section>
             )}
           </aside>

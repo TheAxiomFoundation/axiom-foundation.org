@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { RuleReference } from "@/lib/supabase";
+import type { InlineReference } from "@/lib/axiom/inline-references";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, title }: { children: React.ReactNode; href: string; title?: string }) => (
@@ -63,6 +64,9 @@ describe("formatCitationLabel", () => {
   it("formats state statutes", () => {
     expect(formatCitationLabel("us-ny/statute/tax/606")).toBe(
       "NY tax § 606"
+    );
+    expect(formatCitationLabel("us-co/statute/crs/39-26-202")).toBe(
+      "CO CRS § 39-26-202"
     );
   });
   it("falls back to the raw path for unknown shapes", () => {
@@ -157,5 +161,25 @@ describe("ReferencesPanel", () => {
       />
     );
     expect(screen.getByText("pending")).toBeInTheDocument();
+  });
+
+  it("marks inferred outgoing references", () => {
+    render(
+      <ReferencesPanel
+        outgoing={[
+          {
+            ...ref({
+              direction: "outgoing",
+              other_citation_path: "us-co/statute/crs/39-26-202",
+              target_resolved: true,
+            }),
+            inferred: true,
+          } satisfies InlineReference,
+        ]}
+        incoming={[]}
+      />
+    );
+    expect(screen.getByText("CO CRS § 39-26-202")).toBeInTheDocument();
+    expect(screen.getByText("inferred")).toBeInTheDocument();
   });
 });

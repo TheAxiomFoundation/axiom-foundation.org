@@ -1,5 +1,6 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
+import { normalizeCitationPathInput } from "@/lib/axiom/citation-path";
 
 /**
  * Outcome of resolving a citation_path against ``corpus.current_provisions``.
@@ -51,10 +52,6 @@ export function citationPathPrefixes(path: string): string[] {
   return out;
 }
 
-function normalise(path: string): string {
-  return path.replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();
-}
-
 /**
  * Resolve a citation_path against the ingested axiom. Single DB query
  * fetches every possible ancestor; we pick the deepest match.
@@ -66,7 +63,7 @@ function normalise(path: string): string {
 export async function resolveCitationPath(
   input: string
 ): Promise<ResolveResult> {
-  const citationPath = normalise(input);
+  const citationPath = normalizeCitationPathInput(input);
   if (!citationPath) {
     return {
       match: "none",

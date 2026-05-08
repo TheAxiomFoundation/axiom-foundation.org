@@ -16,6 +16,7 @@ export interface ViewerDocument {
   subsections: Array<{ id: string; text: string }>;
   hasRuleSpec: boolean;
   jurisdiction: string;
+  citationPath?: string;
   sourcePath: string | null;
   isRepealed?: boolean;
   contextText?: string;
@@ -159,6 +160,7 @@ export function transformRuleToViewerDoc(
     subsections,
     hasRuleSpec: rule.has_rulespec,
     jurisdiction: rule.jurisdiction,
+    ...(rule.citation_path && { citationPath: rule.citation_path }),
     sourcePath: rule.source_path,
     ...(isRuleRepealed(rule) && { isRepealed: true }),
     ...(options?.contextText && { contextText: options.contextText }),

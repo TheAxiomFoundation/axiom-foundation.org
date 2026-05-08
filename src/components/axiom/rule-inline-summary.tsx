@@ -130,12 +130,12 @@ function TreeNode({
           </Link>
         )}
         {hasBody && (
-          <p
-            className="m-0 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] whitespace-pre-wrap"
-            style={{ fontFamily: "var(--f-serif)" }}
-          >
-            {body}
-          </p>
+          <RuleBody
+            body={body}
+            refs={[]}
+            citationPath={rule.citation_path ?? undefined}
+            testId={null}
+          />
         )}
         {node.children.length > 0 && (
           <div className="mt-4 space-y-5">
@@ -191,7 +191,11 @@ export function RuleInlineSummary({
     return (
       <div data-testid="rule-inline-summary" className="max-w-[720px]">
         {children.length > 0 && <RuleOutline childRules={children} />}
-        <RuleBody body={rule.body} refs={outgoingRefs ?? []} />
+        <RuleBody
+          body={rule.body}
+          refs={outgoingRefs ?? []}
+          citationPath={rule.citation_path ?? undefined}
+        />
       </div>
     );
   }
@@ -201,7 +205,11 @@ export function RuleInlineSummary({
     if (!ruleHasBody || !rule.body) return null;
     return (
       <div data-testid="rule-inline-summary" className="max-w-[720px]">
-        <RuleBody body={rule.body} refs={outgoingRefs ?? []} />
+        <RuleBody
+          body={rule.body}
+          refs={outgoingRefs ?? []}
+          citationPath={rule.citation_path ?? undefined}
+        />
       </div>
     );
   }
@@ -259,12 +267,14 @@ function RuleInlineTree({
     <div data-testid="rule-inline-summary" className="max-w-[720px]">
       <RuleOutline childRules={immediateChildren} />
       {showRootBody && (
-        <p
-          className="mb-8 text-[1rem] leading-[1.8] text-[var(--color-ink-secondary)] whitespace-pre-wrap"
-          style={{ fontFamily: "var(--f-serif)" }}
-        >
-          {strippedBody}
-        </p>
+        <div className="mb-8">
+          <RuleBody
+            body={strippedBody}
+            refs={[]}
+            citationPath={rule.citation_path ?? undefined}
+            testId={null}
+          />
+        </div>
       )}
       <div className="space-y-8">
         {tree.children.map((child) => (

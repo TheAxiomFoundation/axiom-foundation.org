@@ -368,73 +368,25 @@ function KeyValueTable({
   if (entries.length === 0) {
     return (
       <div>
-        <div className="eyebrow mb-1.5">{humanizeKind(label)}</div>
+        <div className="eyebrow mb-1.5">{label}</div>
         <p className="text-[var(--color-ink-muted)] italic">∅</p>
       </div>
     );
   }
   return (
     <div>
-      <div className="eyebrow mb-1.5">{humanizeKind(label)}</div>
-      <div className="space-y-2">
-        {entries.map(([key, value]) => (
-          <KeyValueEntry key={key} name={key} value={value} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function KeyValueEntry({
-  name,
-  value,
-}: {
-  name: string;
-  value: unknown;
-}) {
-  if (isPlainRecord(value)) {
-    const entries = Object.entries(value);
-    return (
-      <section className="rounded border border-[var(--color-rule-subtle)] bg-[var(--color-paper-elevated)] px-2.5 py-2">
-        <div className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {name}
-        </div>
-        {entries.length > 0 ? (
-          <div className="space-y-1.5">
-            {entries.map(([childKey, childValue]) => (
-              <KeyValueEntry
-                key={childKey}
-                name={childKey}
-                value={childValue}
-              />
-            ))}
+      <div className="eyebrow mb-1.5">{label}</div>
+      <dl className="space-y-1 m-0">
+        {entries.map(([k, v]) => (
+          <div key={k} className="flex gap-2 font-mono">
+            <dt className="text-[var(--color-ink-muted)]">{k}</dt>
+            <dd className="m-0 text-[var(--color-ink)] break-all">
+              {formatScalar(v)}
+            </dd>
           </div>
-        ) : (
-          <p className="m-0 text-[var(--color-ink-muted)] italic">∅</p>
-        )}
-      </section>
-    );
-  }
-
-  return (
-    <dl className="m-0 font-mono">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
-        <dt className="min-w-0 text-[var(--color-ink-muted)] break-all">
-          {name}
-        </dt>
-        <dd className="m-0 max-w-[14rem] text-right text-[var(--color-ink)] break-all">
-          {formatStructuredScalar(value)}
-        </dd>
-      </div>
-    </dl>
-  );
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    !Array.isArray(value)
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -476,14 +428,6 @@ export function formatScalar(v: unknown): string {
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean") return String(v);
   return JSON.stringify(v);
-}
-
-function formatStructuredScalar(value: unknown): string {
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "[]";
-    return value.map(formatScalar).join(", ");
-  }
-  return formatScalar(value);
 }
 
 export function ownerRuleFor(

@@ -179,44 +179,6 @@ describe("RuleSpecTab — rendering edge cases", () => {
     void tests; // silence unused warning if shape evolves
   });
 
-  it("groups nested test inputs and outputs consistently", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: async () =>
-          `- name: grouped_case
-  input:
-    household:
-      wages: 100
-      members: [adult, child]
-  output:
-    tax:
-      amount: 6
-`,
-      })
-    );
-    render(
-      <RuleSpecTab
-        encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
-        loading={false}
-        jurisdiction="us"
-      />
-    );
-    await waitFor(() =>
-      expect(screen.getByText(/^\(1\)$/)).toBeInTheDocument()
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Tests/i }));
-
-    expect(screen.getByText("Input")).toBeInTheDocument();
-    expect(screen.getByText("Output")).toBeInTheDocument();
-    expect(screen.getByText("household")).toBeInTheDocument();
-    expect(screen.getAllByText("tax").length).toBeGreaterThan(1);
-    expect(screen.getByText("members")).toBeInTheDocument();
-    expect(screen.getByText("adult, child")).toBeInTheDocument();
-    expect(screen.getByText("amount")).toBeInTheDocument();
-  });
-
   it("does not render tests whose output keys do not match any local rule", async () => {
     vi.stubGlobal(
       "fetch",

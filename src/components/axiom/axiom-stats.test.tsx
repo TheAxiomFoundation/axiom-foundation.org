@@ -124,7 +124,8 @@ describe("AxiomStats", () => {
     expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
     expect(screen.getByText("US Federal")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.queryByText("provisions indexed")).not.toBeInTheDocument();
+    expect(screen.getByText("provisions indexed")).toBeInTheDocument();
+    expect(screen.queryByText("659K")).not.toBeInTheDocument();
   });
 
   it("keeps jurisdiction links when the RPC resolves null", async () => {

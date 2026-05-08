@@ -143,16 +143,14 @@ function JurisdictionPills({
           <div className="flex items-baseline justify-between mb-3 px-2">
             <span className="eyebrow">{group.title}</span>
             <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              {group.items.length}
               <span
                 aria-hidden={!group.items.some((i) => i.count !== null)}
-                className={`inline-block min-w-[13ch] transition-opacity duration-200 ${
+                className={`inline-block min-w-[8ch] text-right transition-opacity duration-200 ${
                   group.items.some((i) => i.count !== null)
                     ? "opacity-100"
                     : "opacity-0"
                 }`}
               >
-                {" · "}
                 {formatCompact(
                   group.items.reduce((sum, i) => sum + (i.count ?? 0), 0)
                 )}{" "}
@@ -209,7 +207,7 @@ function JurisdictionPill({
       </span>
       <span
         aria-hidden={count === null}
-        className={`inline-block min-w-[5ch] text-right font-mono text-xs text-[var(--color-ink-muted)] tabular-nums transition-opacity duration-200 ${
+        className={`inline-block min-w-[2.75ch] text-right font-mono text-xs text-[var(--color-ink-muted)] tabular-nums transition-opacity duration-200 ${
           count === null ? "opacity-0" : "opacity-100"
         }`}
       >

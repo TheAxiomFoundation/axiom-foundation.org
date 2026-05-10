@@ -6,9 +6,11 @@ const STATUS_REVALIDATE_SECONDS = 300;
 
 export const STATE_STATUTE_COMPLETION_KEY =
   "analytics/state-statute-completion-current.json";
+export const REGULATION_COMPLETION_KEY =
+  "analytics/regulation-completion-current.json";
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
-const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
+const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-10.json";
 const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
 const ENCODING_LOOKBACK_DAYS = 7;
 
@@ -44,6 +46,14 @@ export interface StateStatuteCompletionReport {
   validation_report_ok: boolean | null;
   validation_report_path: string | null;
   supabase_counts_path: string | null;
+}
+
+export type RegulationCompletionRow = StateStatuteCompletionRow;
+
+export interface RegulationCompletionReport
+  extends StateStatuteCompletionReport {
+  document_class: string;
+  release_regulation_scope_count: number;
 }
 
 export interface ArtifactScopeRow {
@@ -155,6 +165,7 @@ export interface CorpusStatusArtifact<T> {
 
 export interface CorpusStatusData {
   stateStatutes: CorpusStatusArtifact<StateStatuteCompletionReport>;
+  regulations: CorpusStatusArtifact<RegulationCompletionReport>;
   artifactReport: CorpusStatusArtifact<ArtifactReport>;
   validationReport: CorpusStatusArtifact<ValidationReport>;
   provisionCounts: CorpusStatusArtifact<ProvisionCountsSnapshot>;
@@ -179,15 +190,18 @@ interface ReadAttempt<T> {
 }
 
 export async function getCorpusStatus(): Promise<CorpusStatusData> {
-  const [stateStatutes, artifactReport, validationReport] = await Promise.all([
-    readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
-    readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
-    readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
-  ]);
+  const [stateStatutes, regulations, artifactReport, validationReport] =
+    await Promise.all([
+      readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
+      readCorpusJson<RegulationCompletionReport>(REGULATION_COMPLETION_KEY),
+      readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
+      readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
+    ]);
 
   const provisionCountsKey =
     process.env.AXIOM_CORPUS_PROVISION_COUNTS_KEY ??
     provisionCountsKeyFromStateReport(stateStatutes.value) ??
+    provisionCountsKeyFromCompletionReport(regulations.value) ??
     DEFAULT_PROVISION_COUNTS_KEY;
 
   const [provisionCounts, encodingStatus] = await Promise.all([
@@ -197,6 +211,7 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
 
   return {
     stateStatutes,
+    regulations,
     artifactReport,
     validationReport,
     provisionCounts,
@@ -206,6 +221,12 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
 
 export function provisionCountsKeyFromStateReport(
   report: StateStatuteCompletionReport | null
+): string | null {
+  return provisionCountsKeyFromCompletionReport(report);
+}
+
+function provisionCountsKeyFromCompletionReport(
+  report: { supabase_counts_path: string | null } | null
 ): string | null {
   if (!report?.supabase_counts_path) return null;
   return corpusKeyFromPath(report.supabase_counts_path);

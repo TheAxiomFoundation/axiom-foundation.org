@@ -6,6 +6,7 @@ import type {
   EncodingStatusRun,
   EncodingStatusSession,
   ProvisionCountRow,
+  RegulationCompletionRow,
   StateStatuteCompletionRow,
   ValidationIssue,
 } from "@/lib/corpus-status";
@@ -36,15 +37,30 @@ export function CorpusStatusPage({
   corpusHref = "/axiom",
 }: CorpusStatusPageProps) {
   const stateReport = status.stateStatutes.value;
+  const regulationReport = status.regulations.value;
   const artifactReport = status.artifactReport.value;
   const validationReport = status.validationReport.value;
   const provisionCounts = status.provisionCounts.value;
   const encodingStatus = status.encodingStatus.value;
   const source = firstSource(status);
   const stateRows = stateReport?.rows ?? [];
+  const regulationRows = regulationReport?.rows ?? [];
   const productionized = stateReport?.productionized_and_validated_count ?? 0;
   const expectedStates = stateReport?.expected_jurisdiction_count ?? 0;
+  const unfinishedStates = stateReport?.unfinished_count ?? 0;
   const legacyStates = stateReport?.status_counts.supabase_only_legacy ?? 0;
+  const missingStates =
+    stateReport?.status_counts.missing_source_first_extraction ?? 0;
+  const blockedStates = unfinishedNonMissingCount(stateReport?.status_counts);
+  const productionizedRegulations =
+    regulationReport?.productionized_and_validated_count ?? 0;
+  const expectedRegulations = regulationReport?.expected_jurisdiction_count ?? 0;
+  const unfinishedRegulations = regulationReport?.unfinished_count ?? 0;
+  const missingRegulations =
+    regulationReport?.status_counts.missing_source_first_extraction ?? 0;
+  const blockedRegulations = unfinishedNonMissingCount(
+    regulationReport?.status_counts
+  );
   const documentSummaries = summarizeDocumentClasses(provisionCounts?.rows ?? []);
   const releaseRows = artifactReport?.rows ?? [];
   const totalProvisions = sumBy(provisionCounts?.rows ?? [], "provision_count");
@@ -57,6 +73,7 @@ export function CorpusStatusPage({
     null;
   const errors = [
     status.stateStatutes,
+    status.regulations,
     status.artifactReport,
     status.validationReport,
     status.provisionCounts,
@@ -107,11 +124,34 @@ export function CorpusStatusPage({
         expectedStates > 0
           ? `${productionized}/${expectedStates}`
           : formatNumber(productionized),
-      detail: `${legacyStates} legacy-only states to rerun`,
+      detail: completionDetail({
+        unfinished: unfinishedStates,
+        missing: missingStates,
+        blocked: blockedStates,
+        legacy: legacyStates,
+      }),
       state:
         stateReport?.complete
           ? "good"
           : productionized > 0
+            ? "warn"
+            : "neutral",
+    },
+    {
+      label: "Regulations",
+      value:
+        expectedRegulations > 0
+          ? `${productionizedRegulations}/${expectedRegulations}`
+          : formatNumber(productionizedRegulations),
+      detail: completionDetail({
+        unfinished: unfinishedRegulations,
+        missing: missingRegulations,
+        blocked: blockedRegulations,
+      }),
+      state:
+        regulationReport?.complete
+          ? "good"
+          : productionizedRegulations > 0
             ? "warn"
             : "neutral",
     },
@@ -169,7 +209,7 @@ export function CorpusStatusPage({
           </section>
         )}
 
-        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
           {metrics.map((metric) => (
             <MetricTile key={metric.label} metric={metric} />
           ))}
@@ -283,7 +323,12 @@ export function CorpusStatusPage({
           <SectionHeader
             eyebrow="States"
             title="State Statute Productionization"
-            detail={`${productionized} productionized, ${legacyStates} legacy-only`}
+            detail={`${productionized} productionized, ${completionDetail({
+              unfinished: unfinishedStates,
+              missing: missingStates,
+              blocked: blockedStates,
+              legacy: legacyStates,
+            })}`}
           />
           <div className="mt-3 overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
             <table className="w-full min-w-[1040px] text-sm">
@@ -305,7 +350,46 @@ export function CorpusStatusPage({
               </thead>
               <tbody>
                 {stateRows.map((row) => (
-                  <StateStatuteTableRow key={row.jurisdiction} row={row} />
+                  <CompletionTableRow key={row.jurisdiction} row={row} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Regulations"
+            title="Regulation Productionization"
+            detail={`${productionizedRegulations} productionized, ${completionDetail({
+              unfinished: unfinishedRegulations,
+              missing: missingRegulations,
+              blocked: blockedRegulations,
+            })}`}
+          />
+          <div className="mt-3 overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+            <table className="w-full min-w-[1040px] text-sm">
+              <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+                <tr className="font-mono text-[10px] uppercase tracking-wider">
+                  <th className="text-left font-medium px-4 py-3">
+                    Jurisdiction
+                  </th>
+                  <th className="text-left font-medium px-4 py-3">Status</th>
+                  <th className="text-right font-medium px-4 py-3">
+                    Supabase
+                  </th>
+                  <th className="text-right font-medium px-4 py-3">
+                    Release
+                  </th>
+                  <th className="text-left font-medium px-4 py-3">Version</th>
+                  <th className="text-left font-medium px-4 py-3">
+                    Next action
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {regulationRows.map((row) => (
+                  <CompletionTableRow key={row.jurisdiction} row={row} />
                 ))}
               </tbody>
             </table>
@@ -329,6 +413,10 @@ export function CorpusStatusPage({
             </h2>
             <dl className="mt-4 space-y-3 text-sm">
               <InputRow label="State completion" artifact={status.stateStatutes} />
+              <InputRow
+                label="Regulation completion"
+                artifact={status.regulations}
+              />
               <InputRow label="Artifact report" artifact={status.artifactReport} />
               <InputRow label="Validation" artifact={status.validationReport} />
               <InputRow label="Provision counts" artifact={status.provisionCounts} />
@@ -615,7 +703,11 @@ function ArtifactScopeTableRow({ row }: { row: ArtifactScopeRow }) {
   );
 }
 
-function StateStatuteTableRow({ row }: { row: StateStatuteCompletionRow }) {
+function CompletionTableRow({
+  row,
+}: {
+  row: StateStatuteCompletionRow | RegulationCompletionRow;
+}) {
   return (
     <tr className="border-t border-[var(--color-rule)]">
       <td className="px-4 py-3">
@@ -657,9 +749,9 @@ function ValidationIssues({ issues }: { issues: ValidationIssue[] }) {
 
   return (
     <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] divide-y divide-[var(--color-rule)]">
-      {issues.slice(0, 12).map((issue) => (
+      {issues.slice(0, 12).map((issue, index) => (
         <div
-          key={`${issue.code}:${issue.jurisdiction}:${issue.document_class}:${issue.message}`}
+          key={`${issue.code}:${issue.jurisdiction}:${issue.document_class}:${issue.version}:${index}`}
           className="p-4"
         >
           <div className="flex flex-wrap items-center gap-2">
@@ -820,9 +912,40 @@ function stateStatusLabel(value: string): string {
   return value.replaceAll("_", " ");
 }
 
+function unfinishedNonMissingCount(
+  statusCounts: Record<string, number> | undefined
+): number {
+  if (!statusCounts) return 0;
+  return (
+    (statusCounts.local_artifacts_incomplete ?? 0) +
+    (statusCounts.local_artifacts_present_not_promoted ?? 0) +
+    (statusCounts.production_blocked_or_incomplete ?? 0)
+  );
+}
+
+function completionDetail({
+  unfinished,
+  missing,
+  blocked,
+  legacy = 0,
+}: {
+  unfinished: number;
+  missing: number;
+  blocked: number;
+  legacy?: number;
+}): string {
+  if (unfinished === 0) return "complete";
+  const parts = [`${formatNumber(unfinished)} unfinished`];
+  if (missing > 0) parts.push(`${formatNumber(missing)} missing source-first`);
+  if (blocked > 0) parts.push(`${formatNumber(blocked)} blocked/partial`);
+  if (legacy > 0) parts.push(`${formatNumber(legacy)} legacy-only`);
+  return parts.join(", ");
+}
+
 function firstSource(status: CorpusStatusData): string | null {
   return (
     status.stateStatutes.source ??
+    status.regulations.source ??
     status.artifactReport.source ??
     status.validationReport.source ??
     status.provisionCounts.source ??

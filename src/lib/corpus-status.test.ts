@@ -41,6 +41,26 @@ const artifactReport = {
   rows: [],
 };
 
+const regulationReport = {
+  complete: false,
+  document_class: "regulation",
+  expected_jurisdiction_count: 52,
+  release_regulation_scope_count: 3,
+  productionized_and_validated_count: 2,
+  unfinished_count: 50,
+  release: "current",
+  status_counts: {
+    productionized_and_validated: 2,
+    missing_source_first_extraction: 49,
+    production_blocked_or_incomplete: 1,
+  },
+  rows: [],
+  unfinished_jurisdictions: ["us-al"],
+  validation_report_ok: true,
+  validation_report_path: null,
+  supabase_counts_path: "data/corpus/snapshots/provision-counts-test.json",
+};
+
 const validationReport = {
   ok: true,
   release: "current",
@@ -174,6 +194,7 @@ describe("corpus status helpers", () => {
     const status = await getCorpusStatus();
 
     expect(status.stateStatutes.source).toBe("status-url");
+    expect(status.regulations.source).toBe("status-url");
     expect(status.provisionCounts.key).toBe("snapshots/provision-counts-test.json");
     expect(status.encodingStatus.source).toBe("supabase");
     expect(status.encodingStatus.value?.run_count).toBe(42);
@@ -189,6 +210,7 @@ describe("corpus status helpers", () => {
   it("loads corpus artifacts from a local root when no remote source is configured", async () => {
     const root = path.join(tmpdir(), `axiom-corpus-status-${crypto.randomUUID()}`);
     await writeJson(path.join(root, "analytics/state-statute-completion-current.json"), stateReport);
+    await writeJson(path.join(root, "analytics/regulation-completion-current.json"), regulationReport);
     await writeJson(path.join(root, "analytics/artifact-report-current-r2.json"), artifactReport);
     await writeJson(path.join(root, "analytics/validate-release-current.json"), validationReport);
     await writeJson(path.join(root, "snapshots/provision-counts-test.json"), provisionCounts);
@@ -205,6 +227,7 @@ describe("corpus status helpers", () => {
       const status = await getCorpusStatus();
 
       expect(status.stateStatutes.source).toBe("local");
+      expect(status.regulations.value?.release_regulation_scope_count).toBe(3);
       expect(status.artifactReport.value?.local_count).toBe(2);
       expect(status.encodingStatus.value).toBeNull();
       expect(status.encodingStatus.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
@@ -226,6 +249,7 @@ describe("corpus status helpers", () => {
     const status = await getCorpusStatus();
 
     expect(status.stateStatutes.source).toBe("r2");
+    expect(status.regulations.source).toBe("r2");
     expect(status.validationReport.value?.ok).toBe(true);
     expect(status.provisionCounts.source).toBe("r2");
   });
@@ -233,6 +257,7 @@ describe("corpus status helpers", () => {
   it("falls through to local artifacts when a status URL read fails", async () => {
     const root = path.join(tmpdir(), `axiom-corpus-status-${crypto.randomUUID()}`);
     await writeJson(path.join(root, "analytics/state-statute-completion-current.json"), stateReport);
+    await writeJson(path.join(root, "analytics/regulation-completion-current.json"), regulationReport);
     await writeJson(path.join(root, "analytics/artifact-report-current-r2.json"), artifactReport);
     await writeJson(path.join(root, "analytics/validate-release-current.json"), validationReport);
     await writeJson(path.join(root, "snapshots/provision-counts-test.json"), provisionCounts);
@@ -272,6 +297,7 @@ describe("corpus status helpers", () => {
     const status = await getCorpusStatus();
 
     expect(status.stateStatutes.value).toBeNull();
+    expect(status.regulations.value).toBeNull();
     expect(status.stateStatutes.error).toMatch(/AXIOM_CORPUS_LOCAL_ROOT/);
     expect(status.encodingStatus.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
   });
@@ -345,6 +371,7 @@ function mockStatusFetch(input: RequestInfo | URL) {
   if (url.hostname === "status.example") {
     const artifacts: Record<string, unknown> = {
       "/analytics/state-statute-completion-current.json": stateReport,
+      "/analytics/regulation-completion-current.json": regulationReport,
       "/analytics/artifact-report-current-r2.json": artifactReport,
       "/analytics/validate-release-current.json": validationReport,
       "/snapshots/provision-counts-test.json": provisionCounts,
@@ -423,6 +450,7 @@ function mockR2Fetch(input: RequestInfo | URL) {
   const key = url.pathname.replace("/axiom-corpus/", "/");
   const artifacts: Record<string, unknown> = {
     "/analytics/state-statute-completion-current.json": stateReport,
+    "/analytics/regulation-completion-current.json": regulationReport,
     "/analytics/artifact-report-current-r2.json": artifactReport,
     "/analytics/validate-release-current.json": validationReport,
     "/snapshots/provision-counts-test.json": provisionCounts,

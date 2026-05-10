@@ -14,12 +14,14 @@ const status: CorpusStatusData = {
     value: {
       complete: false,
       expected_jurisdiction_count: 51,
-      productionized_and_validated_count: 14,
-      unfinished_count: 37,
+      productionized_and_validated_count: 47,
+      unfinished_count: 4,
       release: "current",
       status_counts: {
-        productionized_and_validated: 14,
-        supabase_only_legacy: 37,
+        local_artifacts_incomplete: 1,
+        missing_source_first_extraction: 3,
+        productionized_and_validated: 47,
+        supabase_only_legacy: 0,
       },
       unfinished_jurisdictions: ["us-al"],
       validation_report_ok: true,
@@ -45,10 +47,10 @@ const status: CorpusStatusData = {
           validation_warning_count: 0,
         },
         {
-          jurisdiction: "us-al",
-          name: "Alabama",
-          status: "supabase_only_legacy",
-          supabase_count: 110,
+          jurisdiction: "us-ar",
+          name: "Arkansas",
+          status: "missing_source_first_extraction",
+          supabase_count: null,
           release_provision_count: null,
           release_version: null,
           best_local_provision_count: null,
@@ -56,8 +58,85 @@ const status: CorpusStatusData = {
           local_complete: false,
           r2_complete: null,
           supabase_matches_release: null,
-          next_action: "rerun from primary official sources into source-first artifacts",
+          next_action: "build source-first extraction from primary official sources",
           mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+      ],
+    },
+  },
+  regulations: {
+    key: "analytics/regulation-completion-current.json",
+    source: "local",
+    error: null,
+    value: {
+      complete: false,
+      document_class: "regulation",
+      expected_jurisdiction_count: 52,
+      release_regulation_scope_count: 3,
+      productionized_and_validated_count: 2,
+      unfinished_count: 50,
+      release: "current",
+      status_counts: {
+        productionized_and_validated: 2,
+        missing_source_first_extraction: 49,
+        production_blocked_or_incomplete: 1,
+      },
+      unfinished_jurisdictions: ["us-al"],
+      validation_report_ok: true,
+      validation_report_path: "data/corpus/analytics/validate-release-current.json",
+      supabase_counts_path:
+        "data/corpus/snapshots/provision-counts-2026-05-10.json",
+      rows: [
+        {
+          jurisdiction: "us",
+          name: "Federal",
+          status: "productionized_and_validated",
+          supabase_count: 246477,
+          release_provision_count: 246477,
+          release_version: "2026-05-01",
+          best_local_provision_count: null,
+          best_local_version: null,
+          local_complete: false,
+          r2_complete: true,
+          supabase_matches_release: true,
+          next_action: "none",
+          mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 1,
+        },
+        {
+          jurisdiction: "us-al",
+          name: "Alabama",
+          status: "missing_source_first_extraction",
+          supabase_count: null,
+          release_provision_count: null,
+          release_version: null,
+          best_local_provision_count: null,
+          best_local_version: null,
+          local_complete: false,
+          r2_complete: null,
+          supabase_matches_release: null,
+          next_action: "build source-first extraction from primary official sources",
+          mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+        {
+          jurisdiction: "us-ny",
+          name: "New York",
+          status: "production_blocked_or_incomplete",
+          supabase_count: 0,
+          release_provision_count: null,
+          release_version: "2026-05-09",
+          best_local_provision_count: null,
+          best_local_version: null,
+          local_complete: false,
+          r2_complete: null,
+          supabase_matches_release: null,
+          next_action: "repair release artifacts, R2 sync, Supabase counts, or validation errors",
+          mismatch_reasons: ["missing_release_artifacts"],
           validation_error_count: 0,
           validation_warning_count: 0,
         },
@@ -206,7 +285,16 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /operations dashboard/i })
     ).toBeInTheDocument();
     expect(screen.getByText("Passing")).toBeInTheDocument();
-    expect(screen.getByText("14/51")).toBeInTheDocument();
+    expect(screen.getByText("47/51")).toBeInTheDocument();
+    expect(screen.getByText("2/52")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/4 unfinished, 3 missing source-first, 1 blocked\/partial/i)
+        .length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/50 unfinished, 49 missing source-first, 1 blocked\/partial/i)
+        .length
+    ).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: /indexed corpus by document class/i })
     ).toBeInTheDocument();
@@ -217,13 +305,19 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /state statute productionization/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /regulation productionization/i })
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /encoding run health/i })
     ).toBeInTheDocument();
     expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
     expect(screen.getAllByText("reviewer agent").length).toBeGreaterThan(0);
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(screen.getByText("Federal")).toBeInTheDocument();
+    expect(screen.getByText("Arkansas")).toBeInTheDocument();
+    expect(screen.getAllByText("Alabama").length).toBeGreaterThan(0);
+    expect(screen.getByText("New York")).toBeInTheDocument();
     expect(screen.getByText(/empty_provision_text/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to corpus browser/i })).toHaveAttribute(
       "href",
@@ -380,6 +474,57 @@ describe("CorpusStatusPage", () => {
     expect(
       screen.getByText(/Supabase returned 500 for encodings\.encoding_runs/i)
     ).toBeInTheDocument();
+  });
+
+  it("renders unavailable completion reports and validation fallback text", () => {
+    render(
+      <CorpusStatusPage
+        status={{
+          ...status,
+          stateStatutes: {
+            key: "analytics/state-statute-completion-current.json",
+            source: null,
+            error: "state report missing",
+            value: null,
+          },
+          regulations: {
+            key: "analytics/regulation-completion-current.json",
+            source: null,
+            error: "regulation report missing",
+            value: null,
+          },
+          artifactReport: {
+            key: "analytics/artifact-report-current-r2.json",
+            source: null,
+            error: "artifact report missing",
+            value: null,
+          },
+          validationReport: {
+            key: "analytics/validate-release-current.json",
+            source: null,
+            error: "validation report missing",
+            value: null,
+          },
+          provisionCounts: {
+            key: "snapshots/provision-counts-2026-05-10.json",
+            source: null,
+            error: "provision counts missing",
+            value: null,
+          },
+          encodingStatus: {
+            key: "supabase://encodings.encoding_runs",
+            source: null,
+            error: "encoding status missing",
+            value: null,
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Current validation report not loaded")).toBeInTheDocument();
+    expect(screen.getByText("Artifact report not loaded")).toBeInTheDocument();
+    expect(screen.getAllByText("complete").length).toBeGreaterThan(0);
+    expect(screen.getByText(/regulation report missing/i)).toBeInTheDocument();
   });
 
   it("renders stale run timing and missing release artifact states", () => {

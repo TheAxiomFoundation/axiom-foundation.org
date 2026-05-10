@@ -7,6 +7,8 @@ describe("tokens", () => {
     expect(colors.inkMuted).toBe("#78716c");
     expect(colors.accent).toBe("#92400e");
     expect(colors.accentHover).toBe("#7c2d12");
+    expect(colors.ruleStrong).toBe("#78716c");
+    expect(colors.focusRing).toBe("#92400e");
   });
 
   it("exports all expected color keys", () => {
@@ -18,9 +20,11 @@ describe("tokens", () => {
       "inkMuted",
       "rule",
       "ruleSubtle",
+      "ruleStrong",
       "accent",
       "accentHover",
       "accentLight",
+      "focusRing",
       "codeBg",
       "codeText",
       "success",
@@ -44,15 +48,17 @@ describe("tokens", () => {
         "codeBg": "#1c1917",
         "codeText": "#e7e5e4",
         "error": "#991b1b",
+        "focusRing": "#92400e",
         "ink": "#1c1917",
         "inkMuted": "#78716c",
         "inkSecondary": "#57534e",
         "paper": "#faf9f6",
         "paperElevated": "#ffffff",
         "rule": "#e7e5e4",
+        "ruleStrong": "#78716c",
         "ruleSubtle": "#f5f5f4",
         "success": "#166534",
-        "warning": "#b45309",
+        "warning": "#92400e",
       }
     `);
   });

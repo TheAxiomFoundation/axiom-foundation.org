@@ -10,11 +10,26 @@
   --color-ink: #1c1917;
   --color-ink-secondary: #57534e;
   --color-ink-muted: #78716c;
+
+  /* Borders. `--color-rule` is decorative (1.19:1, intentionally hairline).
+     `--color-rule-strong` is for interactive boundaries — form input
+     borders, dividers between actionable regions — and clears WCAG SC
+     1.4.11 (3:1 non-text) at 4.56:1 on paper. Use it on inputs. */
   --color-rule: #e7e5e4;
   --color-rule-subtle: #f5f5f4;
+  --color-rule-strong: #78716c;
+
+  /* Brand accent — primary actions, links, focus indicators */
   --color-accent: #92400e;
   --color-accent-hover: #7c2d12;
   --color-accent-light: rgba(146, 64, 14, 0.06);
+
+  /* Focus ring. Apply to every interactive element's :focus-visible
+     outline. 6.73:1 on paper / 7.09:1 on paperElevated — comfortable
+     SC 1.4.11 margin. */
+  --color-focus-ring: #92400e;
+
+  /* Code surfaces */
   --color-code-bg: #1c1917;
   --color-code-text: #e7e5e4;
   --color-code-comment: #a8a29e;
@@ -27,8 +42,11 @@
   --color-code-punctuation: #a8a29e;
   --color-code-tag: #fbbf24;
   --color-code-attribute: #7dd3fc;
+
+  /* Status colors. All AA on paper as text. Warning bumped from #b45309
+     (4.77:1) to #92400e (6.73:1) for AA margin on small text/low-DPI. */
   --color-success: #166534;
-  --color-warning: #b45309;
+  --color-warning: #92400e;
   --color-error: #991b1b;
 
   /* Animation curves */

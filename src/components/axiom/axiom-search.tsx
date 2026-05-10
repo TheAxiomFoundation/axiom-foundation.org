@@ -156,7 +156,7 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search statutes and regulations (e.g. "SNAP standard deduction")'
-          className="w-full px-4 py-3 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+          className="w-full px-4 py-3 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule-strong)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-2 focus:outline-[var(--color-focus-ring)] focus:outline-offset-2 focus:border-[var(--color-accent)] transition-colors"
           aria-describedby="axiom-search-help"
         />
         <p

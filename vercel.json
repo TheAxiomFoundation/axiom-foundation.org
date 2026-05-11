@@ -10,11 +10,11 @@
     },
     {
       "source": "/pbif-proposal/:path*",
-      "destination": "https://pbif-concept-note.vercel.app/:path*"
+      "destination": "https://pbif-proposal.axiom-foundation.org/:path*"
     },
     {
       "source": "/pbif-proposal",
-      "destination": "https://pbif-concept-note.vercel.app/"
+      "destination": "https://pbif-proposal.axiom-foundation.org/"
     }
   ],
   "redirects": [

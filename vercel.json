@@ -7,6 +7,14 @@
     {
       "source": "/proposal",
       "destination": "https://proposal.axiom-foundation.org/"
+    },
+    {
+      "source": "/pbif-proposal/:path*",
+      "destination": "https://pbif-concept-note.vercel.app/:path*"
+    },
+    {
+      "source": "/pbif-proposal",
+      "destination": "https://pbif-concept-note.vercel.app/"
     }
   ],
   "redirects": [

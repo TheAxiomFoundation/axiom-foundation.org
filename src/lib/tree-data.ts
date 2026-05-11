@@ -768,7 +768,7 @@ export async function getSectionNodes(
     // Encoded-only short-circuit: pull the encoded descendants
     // directly by their citation_path instead of walking the
     // corpus's parent_id tree. The corpus parents 7 CFR 273.3 under
-    // ``subpart-B`` and the rules-us repo files it as bare
+    // ``subpart-B`` and the rulespec-us repo files it as bare
     // ``273/3.yaml``, so a path-prefix descendant check on the
     // subpart node never matches. Picking up the encoded paths
     // straight from the set produces the right list regardless.
@@ -920,7 +920,7 @@ export async function getSectionNodes(
  * filter narrows the tree to branches whose paths show up in this
  * set.
  *
- * The canonical source is the jurisdiction's ``rules-*`` GitHub repo
+ * The canonical source is the jurisdiction's ``rulespec-*`` GitHub repo
  * — that's the file-system of truth about what's been checked in,
  * regardless of whether ``has_rulespec`` has been backfilled in the
  * corpus DB. We layer in any corpus rows that already carry the flag
@@ -932,7 +932,7 @@ export async function getEncodedPaths(
 ): Promise<Set<string>> {
   const paths = new Set<string>();
 
-  // Source 1: rules-* GitHub tree
+  // Source 1: rulespec-* GitHub tree
   try {
     const files = await withTimeout(
       import("@/lib/axiom/rulespec/repo-listing").then(({ listEncodedFiles }) =>

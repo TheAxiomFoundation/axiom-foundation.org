@@ -317,7 +317,7 @@ function duplicateTerminalSectionPath(basePath: string): string | null {
 }
 
 // citation_path uses singular doc-type buckets ("statute", "regulation",
-// "policy"); the rules-* repos store files under plural buckets
+// "policy"); the rulespec-* repos store files under plural buckets
 // ("statutes/", "regulations/", "policies/"). Translate at the repo
 // boundary so the rest of the path machinery can keep speaking the
 // citation_path dialect.
@@ -360,7 +360,7 @@ export function candidatePaths(
   return candidates
 }
 
-// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
+// Fetch RuleSpec content from GitHub rulespec-us repo (fallback for hand-written encodings)
 /* v8 ignore start -- network fetch to GitHub, tested via integration */
 async function fetchRuleSpecFromGitHub(
   candidates: string[],
@@ -398,7 +398,7 @@ async function fetchRuleSpecFromGitHub(
 // Fetch encoding data for a source provision by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
   // Synthesised IDs ("github:<citation_path>") are minted client-side
-  // for citation paths that have a YAML in the rules-* repo but no
+  // for citation paths that have a YAML in the rulespec-* repo but no
   // corpus row backing them. Skip the corpus lookup and resolve the
   // path directly so the standard rule-detail rail can render the
   // encoding without waiting on the DB backfill.
@@ -434,7 +434,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   let basePath = rule.citation_path
     ? rule.citation_path.replace(rule.jurisdiction + '/', '')
     : null
-  // The rules-us repo prefixes federal-regulation titles with "-cfr"
+  // The rulespec-us repo prefixes federal-regulation titles with "-cfr"
   // (``regulations/7-cfr/...``) while corpus drops it. Add the suffix
   // back when assembling repo candidates so the GitHub fetch hits the
   // right file.
@@ -484,7 +484,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   }
 
-  // Fallback: fetch from the jurisdiction's rules-* repo. We used to
+  // Fallback: fetch from the jurisdiction's rulespec-* repo. We used to
   // gate this on ``has_rulespec`` or an explicit ``rulespec_path``,
   // but the corpus flag is far behind the actual repo state during
   // the rolling migration — most YAMLs that exist on GitHub don't

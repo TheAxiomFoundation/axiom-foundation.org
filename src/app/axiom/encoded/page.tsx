@@ -54,7 +54,7 @@ export default async function EncodedRulesIndexPage() {
         <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-secondary)] max-w-[60ch]">
           Every RuleSpec encoding currently checked into a{" "}
           <code className="font-mono text-xs text-[var(--color-accent)]">
-            rules-*
+            rulespec-*
           </code>{" "}
           repository. This view is fetched directly from GitHub and reflects
           the canonical repo state — independent of the corpus database&apos;s
@@ -64,7 +64,7 @@ export default async function EncodedRulesIndexPage() {
 
       {groups.length === 0 ? (
         <div className="py-16 text-center text-[var(--color-ink-muted)]">
-          No encodings found in any rules-* repo.
+          No encodings found in any rulespec-* repo.
         </div>
       ) : (
         <div className="space-y-10">

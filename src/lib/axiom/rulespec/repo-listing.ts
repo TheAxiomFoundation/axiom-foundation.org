@@ -3,11 +3,11 @@ import { cachedRawFetch } from "./raw-cache";
 
 /**
  * Fetch the list of RuleSpec encoding files in a jurisdiction's
- * ``rules-*`` GitHub repo. Filters down to ``.yaml`` files that are
+ * ``rulespec-*`` GitHub repo. Filters down to ``.yaml`` files that are
  * actual encodings (not ``.test.yaml`` test fixtures, not
  * ``.meta.yaml`` source-target overlays).
  *
- * The atlas's encoded-rules surface uses this to render a directory
+ * The Axiom app's encoded-rules surface uses this to render a directory
  * of every encoding that exists in the canonical repos today —
  * independent of the corpus DB's ``has_rulespec`` flag, which is
  * out-of-date for most jurisdictions during the rolling migration.
@@ -16,7 +16,7 @@ export interface EncodedFile {
   /** Repo-relative path, e.g. ``statutes/26/3101/a.yaml``. */
   filePath: string;
   /** Citation path, e.g. ``us/statute/26/3101/a``. Bucket-renamed
-   *  back to the singular form the rest of the atlas speaks. */
+   *  back to the singular form the rest of the Axiom app speaks. */
   citationPath: string;
   /** Top-level bucket: ``statutes`` | ``regulations`` | ``policies``
    *  | other. Useful for grouping in the index UI. */
@@ -102,8 +102,8 @@ export function parseTreeEntries(
 }
 
 /**
- * Some rules-* repos include a publication-system suffix on the
- * regulation title that the corpus citation_path drops. ``rules-us``
+ * Some rulespec-* repos include a publication-system suffix on the
+ * regulation title that the corpus citation_path drops. ``rulespec-us``
  * stores federal regulations under ``regulations/7-cfr/…``, but the
  * corpus carries the bare ``us/regulation/7/…``. Normalise here so
  * the citation paths line up across the two stores.
@@ -159,7 +159,7 @@ export function citationPathToFilePath(citationPath: string): string | null {
   const [jurisdiction, citationBucket, ...rest] = parts;
   const repoBucket = citationBucketToRepoBucket(citationBucket);
   // Inverse of the title-segment normalisation in parseTreeEntries —
-  // the corpus drops the ``-cfr`` suffix that the rules-us repo
+  // the corpus drops the ``-cfr`` suffix that the rulespec-us repo
   // carries on federal-regulation titles.
   if (
     jurisdiction === "us" &&
@@ -180,7 +180,7 @@ function citationBucketToRepoBucket(citationBucket: string): string {
 }
 
 /**
- * Fetch the raw YAML from the canonical ``rules-*`` repo for a given
+ * Fetch the raw YAML from the canonical ``rulespec-*`` repo for a given
  * citation path. Returns null when the repo or file is missing.
  */
 export async function fetchEncodedFile(

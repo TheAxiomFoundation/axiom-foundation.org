@@ -8,27 +8,28 @@
  * Keys are the axiom's canonical jurisdiction slugs as they land in
  * ``jurisdiction`` in corpus provision rows — so ``canada`` (not ``ca``) for Canada.
  *
- * Only jurisdictions with a corresponding ``rules-*`` repo on
+ * Only jurisdictions with a corresponding ``rulespec-*`` repo on
  * github.com/TheAxiomFoundation belong here. A jurisdiction that
- * lives in the corpus but has no repo (e.g. New York today) just
+ * lives in the corpus but has no repo just
  * returns ``null`` — the UI degrades gracefully into "Not yet
  * encoded" without spurious 404s against a missing repo.
  */
 const JURISDICTION_TO_REPO: Readonly<Record<string, string>> = Object.freeze({
-  us: "rules-us",
-  uk: "rules-uk",
-  canada: "rules-ca",
-  "us-al": "rules-us-al",
-  "us-ar": "rules-us-ar",
-  "us-ca": "rules-us-ca",
-  "us-co": "rules-us-co",
-  "us-fl": "rules-us-fl",
-  "us-ga": "rules-us-ga",
-  "us-md": "rules-us-md",
-  "us-nc": "rules-us-nc",
-  "us-sc": "rules-us-sc",
-  "us-tn": "rules-us-tn",
-  "us-tx": "rules-us-tx",
+  us: "rulespec-us",
+  uk: "rulespec-uk",
+  canada: "rulespec-ca",
+  "us-al": "rulespec-us-al",
+  "us-ar": "rulespec-us-ar",
+  "us-ca": "rulespec-us-ca",
+  "us-co": "rulespec-us-co",
+  "us-fl": "rulespec-us-fl",
+  "us-ga": "rulespec-us-ga",
+  "us-md": "rulespec-us-md",
+  "us-nc": "rulespec-us-nc",
+  "us-ny": "rulespec-us-ny",
+  "us-sc": "rulespec-us-sc",
+  "us-tn": "rulespec-us-tn",
+  "us-tx": "rulespec-us-tx",
 });
 
 export function getRuleSpecRepoForJurisdiction(

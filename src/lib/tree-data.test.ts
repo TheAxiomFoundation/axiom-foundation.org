@@ -790,7 +790,7 @@ describe("getTitleNodes — encoded-only at /us/regulation", () => {
     vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
 
     // After ``parseTreeEntries`` strips the ``-cfr`` suffix on US
-    // regulation titles, the three encoded ``rules-us`` files surface
+    // regulation titles, the three encoded ``rulespec-us`` files surface
     // in the encoded-paths set as ``regulation/7/273/{3,4,5}``.
     const encodedPaths = new Set<string>([
       "regulation/7/273/3",
@@ -851,7 +851,7 @@ describe("getSectionNodes — encoded-only short-circuit", () => {
 
   it("pulls encoded sections directly when the parent_id tree puts them under intermediate subparts", async () => {
     // Corpus parents 7 CFR 273.3 under ``subpart-B`` while the
-    // rules-us repo files it as bare ``273/3.yaml``. The encoded-only
+    // rulespec-us repo files it as bare ``273/3.yaml``. The encoded-only
     // branch should resolve that mismatch by querying the encoded
     // citation paths directly.
     const partRow = {

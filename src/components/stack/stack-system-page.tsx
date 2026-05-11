@@ -77,7 +77,7 @@ const stackLayers: StackLayer[] = [
       "archive snapshots",
       "source specs and converters",
     ],
-    repos: ["axiom", "rules-uk", "rules-us", "rules-us-co"],
+    repos: ["axiom", "rulespec-uk", "rulespec-us", "rulespec-us-co"],
     outputs: ["official PDF and HTML snapshots", "source refs", "archived raw text"],
     snippetLabel: "source acquisition shape",
     snippetLanguage: "plain",
@@ -106,7 +106,7 @@ const stackLayers: StackLayer[] = [
       "eId generation",
       "hierarchy extraction",
     ],
-    repos: ["axiom", "rules-us-co"],
+    repos: ["axiom", "rulespec-us-co"],
     outputs: ["source.xml", "source tree", "section and paragraph ids"],
     snippetLabel: "source XML slice",
     snippetLanguage: "xml",
@@ -164,7 +164,7 @@ context_files:
       "wave manifests",
       "import graph",
     ],
-    repos: ["axiom-rules", "rules-uk", "rules-us", "rules-us-co"],
+    repos: ["axiom-rules-engine", "rulespec-uk", "rulespec-us", "rulespec-us-co"],
     outputs: ["compileable rules", "tests", "provenance manifests"],
     snippetLabel: "RuleSpec leaf",
     snippetLanguage: "yaml",
@@ -225,7 +225,7 @@ rules:
     summary:
       "The RuleSpec engine is what turns encodings into something executable: validators, test runners, interpreters, and code generation targets.",
     details: [
-      "The `axiom-rules` compiler, runtime, and test harness are the first execution surfaces every encoding sees.",
+      "The `axiom-rules-engine` compiler, runtime, and test harness are the first execution surfaces every encoding sees.",
       "The runtime and codegen layers are what make a `.yaml` file more than documentation: they let the same encoding drive evaluation and external integrations.",
       "This is where imports, periods, dtypes, formulas, and built-ins become machine behavior.",
     ],
@@ -235,7 +235,7 @@ rules:
       "executor",
       "python/js/rust codegen",
     ],
-    repos: ["axiom-rules"],
+    repos: ["axiom-rules-engine"],
     outputs: ["validation results", "test results", "runtime values", "generated code"],
     snippetLabel: "execution commands",
     snippetLanguage: "plain",
@@ -313,21 +313,21 @@ const repoLanes: RepoLane[] = [
     title: "Source and structure",
     summary:
       "Document acquisition, converters, and source XML structure live here before any rules encoding starts.",
-    repos: ["axiom", "rules-uk sources", "rules-us sources", "rules-us-co sources"],
+    repos: ["axiom", "rulespec-uk sources", "rulespec-us sources", "rulespec-us-co sources"],
   },
   {
     id: "corpus",
     title: "Rule corpora",
     summary:
       "Jurisdiction-specific `.yaml` files, tests, imports, and provenance manifests.",
-    repos: ["rules-uk", "rules-us", "rules-us-co"],
+    repos: ["rulespec-uk", "rulespec-us", "rulespec-us-co"],
   },
   {
     id: "tooling",
     title: "Language and harness",
     summary:
       "The RuleSpec engine executes rules, while Encoder builds, benchmarks, and repairs encodings.",
-    repos: ["axiom-rules", "axiom-encode"],
+    repos: ["axiom-rules-engine", "axiom-encode"],
   },
   {
     id: "presentation",
@@ -365,7 +365,7 @@ Official point-in-time source for regulation 4A(1)(a).`,
     title: "Repo source snapshot",
     summary:
       "The official source is mirrored into the corpus repo so later encoding and review steps use a stable input.",
-    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/sources/official/uksi/2002/1792/2025-03-31/source.xml",
+    href: "https://github.com/TheAxiomFoundation/rulespec-uk/blob/main/sources/official/uksi/2002/1792/2025-03-31/source.xml",
     linkLabel: "Open repo source snapshot",
     previewLabel: "repo source.xml",
     preview: `sources/official/uksi/2002/1792/2025-03-31/source.xml
@@ -395,7 +395,7 @@ Stable checked-in source snapshot used downstream by the stack.`,
     title: "Promoted RuleSpec rule",
     summary:
       "The encoded rule is checked in as a versioned `.yaml` file in the jurisdiction corpus.",
-    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml",
+    href: "https://github.com/TheAxiomFoundation/rulespec-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml",
     linkLabel: "Open .yaml file",
     previewLabel: "4A(1)(a).yaml",
     preview: `legislation/uksi/2002/1792/regulation/4A/1/a.yaml
@@ -415,7 +415,7 @@ qualifying_young_person_4A_1_a:
     title: "Companion execution test",
     summary:
       "The rule ships with a checked-in `.yaml.test` file so the execution engine can validate behavior deterministically.",
-    href: "https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml.test",
+    href: "https://github.com/TheAxiomFoundation/rulespec-uk/blob/main/legislation/uksi/2002/1792/regulation/4A/1/a.yaml.test",
     linkLabel: "Open .yaml.test file",
     previewLabel: "4A(1)(a).yaml.test",
     preview: `legislation/uksi/2002/1792/regulation/4A/1/a.yaml.test

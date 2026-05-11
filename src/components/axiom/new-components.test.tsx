@@ -279,7 +279,7 @@ rules:
     const link = screen.getByText('View canonical repo file').closest('a')
     expect(link).toHaveAttribute(
       'href',
-      'https://github.com/TheAxiomFoundation/rules-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml'
+      'https://github.com/TheAxiomFoundation/rulespec-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml'
     )
   })
 })

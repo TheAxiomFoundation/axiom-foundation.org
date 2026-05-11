@@ -33,7 +33,7 @@ export function isSynthesisedRuleId(ruleId: string): boolean {
 
 /**
  * Try to build a minimal {@link Rule} for a citation path that
- * exists as a YAML in the canonical ``rules-*`` repo even if the
+ * exists as a YAML in the canonical ``rulespec-*`` repo even if the
  * corpus DB has no row for it. Returns ``null`` when no such file
  * exists, so callers can fall through to the normal "not found"
  * path.
@@ -43,7 +43,7 @@ export function isSynthesisedRuleId(ruleId: string): boolean {
  * from the YAML's module summary or first declared rule; when the
  * module has a summary, we also expose the full summary as ``body`` so
  * the reader pane does not collapse to the shortened heading. The
- * rest of the atlas treats it as a real leaf — the only difference is
+ * rest of the Axiom app treats it as a real leaf — the only difference is
  * that ``id`` carries the
  * {@link SYNTHESISED_ID_PREFIX} so the encoding fetcher can skip
  * the corpus and go straight to GitHub.

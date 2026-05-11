@@ -2,7 +2,7 @@ import yaml from "js-yaml";
 
 /**
  * Typed view of a RuleSpec YAML document as stored in the
- * ``TheAxiomFoundation/rules-*`` repos. The shape mirrors what
+ * ``TheAxiomFoundation/rulespec-*`` repos. The shape mirrors what
  * encoders actually emit (one ``module`` block, one or more ``rules``
  * with ``versions`` of effective-dated formulas) — not the older
  * DSL form some marketing/spec pages still show.

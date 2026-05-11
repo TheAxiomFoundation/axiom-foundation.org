@@ -44,7 +44,7 @@ export interface TreeNodeLoadResult {
  * provisions for the exact current/leaf rule detail after the navigation
  * index has resolved the route. It intentionally does not fall back to the
  * old broad provisions scans; source-index gaps should stay visible. The
- * one exception is RuleSpec-only branches from the canonical rules-* repos:
+ * one exception is RuleSpec-only branches from the canonical rulespec-* repos:
  * those are surfaced as synthetic encoded leaves so checked-in encodings are
  * not hidden just because the source corpus has not ingested the document.
  */

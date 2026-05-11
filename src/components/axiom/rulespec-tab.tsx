@@ -527,7 +527,7 @@ function ruleMeta(
 
 /**
  * Fetch the sibling ``*.test.yaml`` from the same path in the
- * jurisdiction's ``rules-*`` repo. We only attempt this when the
+ * jurisdiction's ``rulespec-*`` repo. We only attempt this when the
  * encoding came from GitHub (canonical repo state); for stored
  * Encoder-run encodings the file path may not correspond to anything
  * checked in yet, so we'd be probing for something that isn't there.
@@ -565,7 +565,7 @@ function useRuleSpecTests(
 }
 
 /**
- * Look up RuleSpec files below ``citationPath`` in the rules-* repo.
+ * Look up RuleSpec files below ``citationPath`` in the rulespec-* repo.
  * Skipped when the rule itself has an encoding. These are related
  * repository files, not necessarily materialized source-tree children.
  */

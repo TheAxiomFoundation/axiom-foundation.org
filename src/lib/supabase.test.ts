@@ -497,7 +497,7 @@ describe('supabase lib', () => {
         }
         // Return both a parent and child match — should pick child (more specific).
         // Paths are stored under the plural ``statutes/`` bucket because that
-        // is the canonical layout in the rules-* repos; candidatePaths
+        // is the canonical layout in the rulespec-* repos; candidatePaths
         // translates the citation_path doc-type segment to match.
         return mockEncodingRunsChain({
           data: [
@@ -657,7 +657,7 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('returns null when neither encoding_runs nor the rules-* repo has the path', async () => {
+    it('returns null when neither encoding_runs nor the rulespec-* repo has the path', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => '' })
       vi.stubGlobal('fetch', fetchMock)
 
@@ -679,7 +679,7 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-no-encoding')
       expect(result).toBeNull()
-      // Falls through to the rules-* fallback regardless of has_rulespec —
+      // Falls through to the rulespec-* fallback regardless of has_rulespec —
       // the corpus flag is unreliable during the rolling migration.
       expect(fetchMock).toHaveBeenCalled()
       vi.unstubAllGlobals()
@@ -706,7 +706,7 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('falls back to rules-us-co GitHub paths for Colorado rules', async () => {
+    it('falls back to rulespec-us-co GitHub paths for Colorado rules', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         text: async () => 'colorado rule',
@@ -732,13 +732,13 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('rule-us-co')
       expect(result?.encoding_run_id).toBe('github:statutes/crs/26-2-703/2.5.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us-co/main/statutes/crs/26-2-703/2.5.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us-co/main/statutes/crs/26-2-703/2.5.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()
     })
 
-    it('skips the corpus lookup for a synthesised github: id and fetches from rules-* directly', async () => {
+    it('skips the corpus lookup for a synthesised github: id and fetches from rulespec-* directly', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         text: async () => 'format: rulespec/v1\n',
@@ -757,7 +757,7 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('github:us/statute/26/3101/a')
       expect(result?.file_path).toBe('statutes/26/3101/a.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us/main/statutes/26/3101/a.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/statutes/26/3101/a.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()

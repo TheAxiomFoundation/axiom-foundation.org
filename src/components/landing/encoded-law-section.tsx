@@ -189,7 +189,7 @@ export function EncodedLawSection() {
               <ArrowRightIcon className="w-5 h-5" />
             </a>
             <a
-              href="https://github.com/TheAxiomFoundation/axiom-rules"
+              href="https://github.com/TheAxiomFoundation/axiom-rules-engine"
               className="btn-outline"
             >
               Spec on GitHub

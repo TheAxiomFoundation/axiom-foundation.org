@@ -51,6 +51,8 @@ export function CorpusStatusPage({
   const productionized = stateReport?.productionized_and_validated_count ?? 0;
   const expectedStates = stateReport?.expected_jurisdiction_count ?? 0;
   const legacyStates = stateReport?.status_counts.supabase_only_legacy ?? 0;
+  const sourceAccessBlockedStates =
+    stateReport?.status_counts.source_access_blocked ?? 0;
   const regulationProductionized =
     regulationReport?.productionized_and_validated_count ?? 0;
   const expectedRegulations = regulationReport?.expected_jurisdiction_count ?? 0;
@@ -119,7 +121,10 @@ export function CorpusStatusPage({
         expectedStates > 0
           ? `${productionized}/${expectedStates}`
           : formatNumber(productionized),
-      detail: `${legacyStates} legacy-only states to rerun`,
+      detail:
+        sourceAccessBlockedStates > 0
+          ? `${sourceAccessBlockedStates} source-access blocked, ${legacyStates} legacy-only`
+          : `${legacyStates} legacy-only states to rerun`,
       state:
         stateReport?.complete
           ? "good"

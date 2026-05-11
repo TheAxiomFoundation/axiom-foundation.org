@@ -32,6 +32,8 @@ export interface CorpusCompletionRow {
   supabase_matches_release: boolean | null;
   next_action: string;
   mismatch_reasons: string[];
+  source_access_status?: string | null;
+  source_access_note?: string | null;
   validation_error_count: number;
   validation_warning_count: number;
   coverage_complete?: boolean;

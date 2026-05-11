@@ -19,7 +19,8 @@ const status: CorpusStatusData = {
       release: "current",
       status_counts: {
         productionized_and_validated: 14,
-        supabase_only_legacy: 37,
+        source_access_blocked: 4,
+        supabase_only_legacy: 33,
       },
       unfinished_jurisdictions: ["us-al"],
       validation_report_ok: true,
@@ -47,7 +48,7 @@ const status: CorpusStatusData = {
         {
           jurisdiction: "us-al",
           name: "Alabama",
-          status: "supabase_only_legacy",
+          status: "source_access_blocked",
           supabase_count: 110,
           release_provision_count: null,
           release_version: null,
@@ -56,8 +57,11 @@ const status: CorpusStatusData = {
           local_complete: false,
           r2_complete: null,
           supabase_matches_release: null,
-          next_action: "rerun from primary official sources into source-first artifacts",
+          next_action:
+            "wait for official bulk/source export, permission/license path, or cleared official-site access",
           mismatch_reasons: [],
+          source_access_status: "blocked_primary_source",
+          source_access_note: "Official source access requires permission.",
           validation_error_count: 0,
           validation_warning_count: 0,
         },
@@ -353,6 +357,7 @@ describe("CorpusStatusPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Passing")).toBeInTheDocument();
     expect(screen.getByText("14/51")).toBeInTheDocument();
+    expect(screen.getByText(/4 source-access blocked/i)).toBeInTheDocument();
     expect(screen.getByText("3/52")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /indexed corpus by document class/i })

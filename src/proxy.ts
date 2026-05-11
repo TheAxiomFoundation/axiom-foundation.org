@@ -40,6 +40,10 @@ function isLocalDevHost(host: string): boolean {
   return host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost");
 }
 
+function isInternalAxiomPath(pathname: string): boolean {
+  return pathname === "/axiom" || pathname.startsWith("/axiom/");
+}
+
 export function proxy(request: NextRequest) {
   const host = cleanHost(request);
   const { pathname } = request.nextUrl;
@@ -49,13 +53,17 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    if (pathname === "/axiom" || pathname.startsWith("/axiom/")) {
-      return NextResponse.next();
+    if (isInternalAxiomPath(pathname)) {
+      return new NextResponse(null, { status: 404 });
     }
 
     const target = request.nextUrl.clone();
     target.pathname = pathname === "/" ? "/axiom" : `/axiom${pathname}`;
     return NextResponse.rewrite(target);
+  }
+
+  if (host === SITE_HOST && isInternalAxiomPath(pathname)) {
+    return new NextResponse(null, { status: 404 });
   }
 
   // Local-dev convenience: the breadcrumb hrefs are subdomain-clean

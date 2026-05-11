@@ -106,7 +106,7 @@ function JurisdictionSection({ group }: { group: JurisdictionGroup }) {
         {group.files.map((f) => (
           <li key={f.citationPath}>
             <Link
-              href={`/axiom/encoded/${f.citationPath}`}
+              href={`/encoded/${f.citationPath}`}
               className="flex items-baseline justify-between gap-4 px-2 py-2 no-underline text-[var(--color-ink)] hover:bg-[var(--color-paper-elevated)]"
             >
               <span className="font-mono text-xs break-all">

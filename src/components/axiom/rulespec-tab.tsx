@@ -600,7 +600,7 @@ function RelatedEncodingList({
       {descendants.map((d) => (
         <li key={d.citationPath}>
           <a
-            href={`/axiom/${d.citationPath}`}
+            href={`/${d.citationPath}`}
             className="block px-3 py-2 rounded no-underline hover:bg-[var(--color-paper-elevated)] focus-visible:bg-[var(--color-paper-elevated)]"
           >
             <span className="block font-mono text-xs text-[var(--color-accent)] break-all">

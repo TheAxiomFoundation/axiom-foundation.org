@@ -11,10 +11,6 @@
     {
       "source": "/pbif-proposal/:path*",
       "destination": "https://pbif-proposal.axiom-foundation.org/:path*"
-    },
-    {
-      "source": "/pbif-proposal",
-      "destination": "https://pbif-proposal.axiom-foundation.org/"
     }
   ],
   "redirects": [
@@ -23,6 +19,11 @@
       "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],
       "destination": "https://axiom-foundation.org/:path",
       "permanent": true
+    },
+    {
+      "source": "/pbif-proposal",
+      "destination": "/pbif-proposal/",
+      "permanent": false
     }
   ]
 }

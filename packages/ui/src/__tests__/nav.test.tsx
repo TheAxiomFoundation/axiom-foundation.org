@@ -13,6 +13,14 @@ describe("Nav", () => {
     expect(screen.getByText("Docs")).toBeInTheDocument();
   });
 
+  it("allows the Axiom app link to be overridden", () => {
+    render(<Nav appUrl="https://app-axiom-preview.vercel.app" />);
+    expect(screen.getByText("Axiom")).toHaveAttribute(
+      "href",
+      "https://app-axiom-preview.vercel.app",
+    );
+  });
+
   it("renders the Axiom Foundation logo", () => {
     render(<Nav />);
     expect(screen.getByAltText("Axiom Foundation")).toBeInTheDocument();
@@ -36,6 +44,10 @@ describe("Nav", () => {
     expect(screen.getAllByText("Encoder")[0]).toHaveAttribute(
       "href",
       "https://axiom-foundation.org/#encoder",
+    );
+    expect(screen.getByText("Docs")).toHaveAttribute(
+      "href",
+      "https://axiom-foundation.org/docs",
     );
   });
 

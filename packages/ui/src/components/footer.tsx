@@ -3,6 +3,8 @@ import { resolveHref, type RenderLinkComponent } from "./link-utils";
 export interface FooterProps {
   /** Base URL for generating absolute links (e.g. "https://axiom-foundation.org") */
   baseUrl?: string;
+  /** URL for the Axiom app link. Defaults to the production app subdomain. */
+  appUrl?: string;
   /** Custom link renderer for framework integration (e.g. Next.js Link) */
   renderLink?: RenderLinkComponent;
   /** Logo image src. Defaults to "/logos/axiom-foundation.svg". */
@@ -14,7 +16,12 @@ const LINK_CLASS =
 
 const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
-export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: FooterProps = {}) {
+export function Footer({
+  baseUrl = "",
+  appUrl = "https://app.axiom-foundation.org",
+  renderLink: LinkComponent,
+  logoSrc,
+}: FooterProps = {}) {
   const resolvedLogoSrc = logoSrc
     ? logoSrc
     : baseUrl
@@ -75,7 +82,7 @@ export function Footer({ baseUrl = "", renderLink: LinkComponent, logoSrc }: Foo
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
               <li>{renderFooterLink("/about", "About")}</li>
-              <li>{renderFooterLink("https://app.axiom-foundation.org", "Axiom platform")}</li>
+              <li>{renderFooterLink(appUrl, "Axiom platform")}</li>
               <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-rules-engine", "RuleSpec")}</li>
               <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-encode", "Encoder")}</li>
             </ul>

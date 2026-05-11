@@ -170,6 +170,14 @@ describe("navigation index read helpers", () => {
     ]);
   });
 
+  it("allows an empty encoded-only root without treating the index as missing", async () => {
+    enqueue({ data: [] });
+
+    await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
+      docTypes: [],
+    });
+  });
+
   it("throws a missing-index error for an empty unfiltered jurisdiction", async () => {
     enqueue({ data: [] });
 
@@ -180,6 +188,14 @@ describe("navigation index read helpers", () => {
 
   it("throws an unavailable error when the index query errors", async () => {
     enqueue({ error: { message: "statement timeout" } });
+
+    await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
+      NavigationIndexUnavailableError
+    );
+  });
+
+  it("throws an unavailable error when the index query rejects", async () => {
+    enqueue(Promise.reject(new Error("network")));
 
     await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
       NavigationIndexUnavailableError
@@ -208,6 +224,21 @@ describe("navigation index read helpers", () => {
     expect(calls(builder, "or")).toContainEqual([
       "has_rulespec.eq.true,encoded_descendant_count.gt.0",
     ]);
+  });
+
+  it("falls back to row length when child query count is absent", async () => {
+    const rows = [navRow({ id: "nav-1" }), navRow({ id: "nav-2" })];
+    enqueue({ data: rows, count: null });
+
+    await expect(
+      getNavigationIndexChildren({
+        jurisdiction: "us",
+        docType: "statute",
+        parentPath: "us/statute",
+        encodedOnly: false,
+        page: 0,
+      })
+    ).resolves.toEqual({ rows, total: 2, hasMore: false });
   });
 
   it("loads sparse prefix rows for paths whose intermediate parents are omitted", async () => {
@@ -290,6 +321,9 @@ describe("navigation index read helpers", () => {
     expect(navigationDocTypeToTreeNode("statute")).toEqual(
       expect.objectContaining({ segment: "statute", label: "Statutes" })
     );
+    expect(navigationDocTypeToTreeNode("regulation")).toEqual(
+      expect.objectContaining({ segment: "regulation", label: "Regulations" })
+    );
     expect(navigationDocTypeToTreeNode("policy-guidance")).toEqual(
       expect.objectContaining({
         segment: "policy-guidance",
@@ -315,6 +349,34 @@ describe("navigation index read helpers", () => {
           id: "provision-1",
           citation_path: "us/statute/26",
           updated_at: "2026-05-02T00:00:00Z",
+        }),
+      })
+    );
+  });
+
+  it("falls back to navigation row defaults when optional rule fields are absent", () => {
+    const treeNode = navigationRowToTreeNode(
+      navRow({
+        provision_id: null,
+        citation_path: null,
+        label: "",
+        updated_at: null,
+        created_at: null,
+        child_count: 4,
+        has_rulespec: true,
+        encoded_descendant_count: 0,
+      })
+    );
+
+    expect(treeNode).toEqual(
+      expect.objectContaining({
+        label: "26",
+        childCount: 4,
+        hasRuleSpec: true,
+        rule: expect.objectContaining({
+          id: "nav-1",
+          citation_path: "us/statute/26",
+          updated_at: "",
         }),
       })
     );

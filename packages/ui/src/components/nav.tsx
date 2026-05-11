@@ -19,6 +19,8 @@ export interface NavProps {
   /** Base URL for generating absolute links (e.g. "https://axiom-foundation.org").
    *  When set, all nav links become absolute URLs. */
   baseUrl?: string;
+  /** URL for the Axiom app link. Defaults to the production app subdomain. */
+  appUrl?: string;
   /** Current pathname for active-state detection (e.g. from usePathname()) */
   pathname?: string;
   /** Custom link renderer for framework integration (e.g. Next.js Link).
@@ -32,7 +34,6 @@ export interface NavProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
-  { href: "https://app.axiom-foundation.org", label: "Axiom" },
   { href: "/#gap", label: "Why" },
   { href: "/#encoded", label: "Encoding" },
   { href: "/#encoder", label: "Encoder" },
@@ -43,6 +44,7 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Nav({
   baseUrl = "",
+  appUrl = "https://app.axiom-foundation.org",
   pathname,
   renderLink: LinkComponent,
   extraLinks = [],
@@ -52,8 +54,8 @@ export function Nav({
   const close = useCallback(() => setOpen(false), []);
 
   const navLinks = useMemo(
-    () => [...DEFAULT_LINKS, ...extraLinks],
-    [extraLinks],
+    () => [{ href: appUrl, label: "Axiom" }, ...DEFAULT_LINKS, ...extraLinks],
+    [appUrl, extraLinks],
   );
 
   const resolvedLogoSrc = logoSrc
@@ -126,7 +128,7 @@ export function Nav({
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link))}
           <a
-            href="/docs"
+            href={resolveHref("/docs", baseUrl)}
             className={`${NAV_LINK} opacity-70 hover:opacity-100`}
           >
             Docs
@@ -173,7 +175,7 @@ export function Nav({
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link, true))}
           <a
-            href="/docs"
+            href={resolveHref("/docs", baseUrl)}
             className={`${MOBILE_LINK} opacity-70 hover:opacity-100`}
             onClick={close}
           >

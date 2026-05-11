@@ -46,6 +46,11 @@ describe("Footer", () => {
     );
   });
 
+  it("allows the Axiom app link to be overridden", () => {
+    render(<Footer appUrl="/axiom" />);
+    expect(screen.getByText("Axiom platform")).toHaveAttribute("href", "/axiom");
+  });
+
   it("uses renderLink for internal links when no baseUrl", () => {
     function TestLink({
       href,

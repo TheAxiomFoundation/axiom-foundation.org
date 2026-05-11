@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { axiomAppHref } from "@/lib/urls";
 
 export const metadata: Metadata = {
   title: "Documentation — Axiom Foundation",
@@ -205,7 +206,7 @@ export default function DocsPage() {
                 Encoder system map
               </Link>
               <a
-                href="https://app.axiom-foundation.org"
+                href={axiomAppHref()}
                 className="btn-outline"
               >
                 Open Axiom

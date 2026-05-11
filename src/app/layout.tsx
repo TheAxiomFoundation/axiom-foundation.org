@@ -7,7 +7,7 @@ import { NavWrapper } from "@/components/nav-wrapper";
 import { Footer, GradientSync } from "@axiom-foundation/ui";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { PostHogProvider } from "@/components/posthog-provider";
-import { SITE_URL } from "@/lib/urls";
+import { SITE_URL, axiomAppHref } from "@/lib/urls";
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -56,7 +56,7 @@ export default function RootLayout({
         <GradientSync />
         <NavWrapper />
         <main className="relative z-10">{children}</main>
-        <Footer renderLink={Link} />
+        <Footer renderLink={Link} appUrl={axiomAppHref()} />
       </body>
     </html>
   );

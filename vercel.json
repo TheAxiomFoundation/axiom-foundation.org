@@ -7,10 +7,6 @@
     {
       "source": "/proposal",
       "destination": "https://proposal.axiom-foundation.org/"
-    },
-    {
-      "source": "/pbif-proposal/:path*",
-      "destination": "https://pbif-proposal.axiom-foundation.org/:path*"
     }
   ],
   "redirects": [
@@ -22,7 +18,12 @@
     },
     {
       "source": "/pbif-proposal",
-      "destination": "/pbif-proposal/",
+      "destination": "https://pbif-proposal.axiom-foundation.org/",
+      "permanent": false
+    },
+    {
+      "source": "/pbif-proposal/:path*",
+      "destination": "https://pbif-proposal.axiom-foundation.org/:path*",
       "permanent": false
     }
   ]

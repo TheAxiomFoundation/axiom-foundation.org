@@ -8,6 +8,8 @@ export const STATE_STATUTE_COMPLETION_KEY =
   "analytics/state-statute-completion-current.json";
 export const REGULATION_COMPLETION_KEY =
   "analytics/regulation-completion-current.json";
+export const SOURCE_DISCOVERY_KEY =
+  "analytics/source-discovery-current.json";
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
 const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
@@ -125,6 +127,41 @@ export interface ProvisionCountsSnapshot {
   rows: ProvisionCountRow[];
 }
 
+export interface SourceDiscoveryDomainRow {
+  host: string;
+  url_count: number;
+  ready_for_manifest_count: number;
+  needs_review_count: number;
+  excluded_count: number;
+  release_scope_present_count: number;
+  source_status_counts: Record<string, number>;
+  disposition_counts: Record<string, number>;
+  document_class_counts: Record<string, number>;
+  jurisdiction_counts: Record<string, number>;
+  sample_urls: string[];
+}
+
+export interface SourceDiscoveryReport {
+  generated_at: string;
+  source_name: string;
+  input_paths: string[];
+  raw_url_count: number;
+  invalid_url_count: number;
+  unique_url_count: number;
+  release: string | null;
+  release_scope_count: number;
+  ready_for_manifest_count: number;
+  needs_review_count: number;
+  blocked_or_excluded_count: number;
+  release_scope_present_count: number;
+  source_status_counts: Record<string, number>;
+  disposition_counts: Record<string, number>;
+  document_class_counts: Record<string, number>;
+  jurisdiction_counts: Record<string, number>;
+  domain_rows: SourceDiscoveryDomainRow[];
+  corpus_source_policy?: string;
+}
+
 export interface EncodingStatusRun {
   id: string;
   timestamp: string;
@@ -175,6 +212,7 @@ export interface CorpusStatusData {
   artifactReport: CorpusStatusArtifact<ArtifactReport>;
   validationReport: CorpusStatusArtifact<ValidationReport>;
   provisionCounts: CorpusStatusArtifact<ProvisionCountsSnapshot>;
+  sourceDiscovery: CorpusStatusArtifact<SourceDiscoveryReport>;
   encodingStatus: CorpusStatusArtifact<EncodingOpsStatus>;
 }
 
@@ -196,12 +234,19 @@ interface ReadAttempt<T> {
 }
 
 export async function getCorpusStatus(): Promise<CorpusStatusData> {
-  const [stateStatutes, regulations, artifactReport, validationReport] =
+  const [
+    stateStatutes,
+    regulations,
+    artifactReport,
+    validationReport,
+    sourceDiscovery,
+  ] =
     await Promise.all([
       readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
       readCorpusJson<RegulationCompletionReport>(REGULATION_COMPLETION_KEY),
       readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
       readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
+      readCorpusJson<SourceDiscoveryReport>(SOURCE_DISCOVERY_KEY),
     ]);
 
   const provisionCountsKey =
@@ -220,6 +265,7 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     artifactReport,
     validationReport,
     provisionCounts,
+    sourceDiscovery,
     encodingStatus,
   };
 }

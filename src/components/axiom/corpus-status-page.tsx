@@ -7,6 +7,8 @@ import type {
   EncodingStatusSession,
   ProvisionCountRow,
   RegulationCompletionRow,
+  SourceDiscoveryDomainRow,
+  SourceDiscoveryReport,
   StateStatuteCompletionRow,
   ValidationIssue,
 } from "@/lib/corpus-status";
@@ -41,6 +43,7 @@ export function CorpusStatusPage({
   const artifactReport = status.artifactReport.value;
   const validationReport = status.validationReport.value;
   const provisionCounts = status.provisionCounts.value;
+  const sourceDiscovery = status.sourceDiscovery.value;
   const encodingStatus = status.encodingStatus.value;
   const source = firstSource(status);
   const stateRows = stateReport?.rows ?? [];
@@ -68,6 +71,7 @@ export function CorpusStatusPage({
     status.artifactReport,
     status.validationReport,
     status.provisionCounts,
+    status.sourceDiscovery,
     status.encodingStatus,
   ].filter((artifact) => artifact.error);
 
@@ -137,6 +141,14 @@ export function CorpusStatusPage({
             ? "warn"
             : "neutral",
     },
+    {
+      label: "Source leads",
+      value: formatNullableNumber(sourceDiscovery?.ready_for_manifest_count ?? null),
+      detail: sourceDiscovery
+        ? `${formatNumber(sourceDiscovery.unique_url_count)} deduped, ${formatNumber(sourceDiscovery.needs_review_count)} need review`
+        : "Discovery report not loaded",
+      state: sourceDiscovery ? "neutral" : "warn",
+    },
   ];
 
   return (
@@ -191,7 +203,7 @@ export function CorpusStatusPage({
           </section>
         )}
 
-        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
           {metrics.map((metric) => (
             <MetricTile key={metric.label} metric={metric} />
           ))}
@@ -263,6 +275,17 @@ export function CorpusStatusPage({
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Discovery"
+            title="Source Discovery Backlog"
+            detail={sourceDiscovery
+              ? `${formatNumber(sourceDiscovery.raw_url_count)} external references`
+              : "Discovery report unavailable"}
+          />
+          <SourceDiscoveryPanel report={sourceDiscovery} />
         </section>
 
         <section className="mt-10">
@@ -349,6 +372,10 @@ export function CorpusStatusPage({
               <InputRow label="Artifact report" artifact={status.artifactReport} />
               <InputRow label="Validation" artifact={status.validationReport} />
               <InputRow label="Provision counts" artifact={status.provisionCounts} />
+              <InputRow
+                label="Source discovery"
+                artifact={status.sourceDiscovery}
+              />
               <InputRow label="Encoding status" artifact={status.encodingStatus} />
             </dl>
             <Link
@@ -524,6 +551,157 @@ function EncodingHealthPanel({
         </div>
       </aside>
     </div>
+  );
+}
+
+function SourceDiscoveryPanel({
+  report,
+}: {
+  report: SourceDiscoveryReport | null;
+}) {
+  if (!report) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        Source discovery status is unavailable.
+      </div>
+    );
+  }
+
+  const rows = report.domain_rows.slice(0, 20);
+
+  return (
+    <div className="mt-3 space-y-4">
+      <div className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5">
+        <dl className="grid grid-cols-2 gap-4 md:grid-cols-5 text-sm">
+          <SourceDiscoveryMetric
+            label="Deduped URLs"
+            value={report.unique_url_count}
+          />
+          <SourceDiscoveryMetric
+            label="Ready"
+            value={report.ready_for_manifest_count}
+          />
+          <SourceDiscoveryMetric
+            label="Needs review"
+            value={report.needs_review_count}
+          />
+          <SourceDiscoveryMetric
+            label="Excluded"
+            value={report.blocked_or_excluded_count}
+          />
+          <SourceDiscoveryMetric
+            label="Same release scope"
+            value={report.release_scope_present_count}
+          />
+        </dl>
+        <p className="mt-4 max-w-[880px] text-sm text-[var(--color-ink-secondary)]">
+          {report.corpus_source_policy ??
+            "External citations are discovery leads only; selected documents must be re-fetched from official sources before ingestion."}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+        <table className="w-full min-w-[1080px] text-sm">
+          <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+            <tr className="font-mono text-[10px] uppercase tracking-wider">
+              <th className="text-left font-medium px-4 py-3">Domain</th>
+              <th className="text-right font-medium px-4 py-3">URLs</th>
+              <th className="text-right font-medium px-4 py-3">Ready</th>
+              <th className="text-right font-medium px-4 py-3">Review</th>
+              <th className="text-right font-medium px-4 py-3">Excluded</th>
+              <th className="text-right font-medium px-4 py-3">
+                In release scope
+              </th>
+              <th className="text-left font-medium px-4 py-3">Status</th>
+              <th className="text-left font-medium px-4 py-3">Classes</th>
+              <th className="text-left font-medium px-4 py-3">
+                Jurisdictions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <SourceDiscoveryDomainTableRow key={row.host} row={row} />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-6 text-center text-[var(--color-ink-secondary)]"
+                >
+                  No source discovery domains returned.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SourceDiscoveryMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div>
+      <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {label}
+      </dt>
+      <dd className="mt-1 text-xl font-semibold tnum text-[var(--color-ink)]">
+        {formatNumber(value)}
+      </dd>
+    </div>
+  );
+}
+
+function SourceDiscoveryDomainTableRow({
+  row,
+}: {
+  row: SourceDiscoveryDomainRow;
+}) {
+  const [status, statusCount] = largestCount(row.source_status_counts);
+
+  return (
+    <tr className="border-t border-[var(--color-rule)]">
+      <td className="px-4 py-3">
+        <div className="max-w-[260px] truncate font-medium text-[var(--color-ink)]">
+          {row.host}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.url_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.ready_for_manifest_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.needs_review_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.excluded_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.release_scope_present_count)}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={`${statusLabel(status)} (${formatNumber(statusCount)})`}
+          tone={sourceStatusTone(status)}
+        />
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {formatCountMap(row.document_class_counts, 3)}
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {formatCountMap(row.jurisdiction_counts, 3)}
+      </td>
+    </tr>
   );
 }
 
@@ -906,6 +1084,10 @@ function stateStatusLabel(value: string): string {
   return value.replaceAll("_", " ");
 }
 
+function statusLabel(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
 function validationStatusLabel(row: CompletionRow): string {
   if (row.validation_error_count > 0) {
     return `${formatNumber(row.validation_error_count)} errors`;
@@ -929,6 +1111,7 @@ function firstSource(status: CorpusStatusData): string | null {
     status.artifactReport.source ??
     status.validationReport.source ??
     status.provisionCounts.source ??
+    status.sourceDiscovery.source ??
     status.encodingStatus.source
   );
 }
@@ -944,6 +1127,32 @@ function sourceLabel(source: string | null): string {
 function dataSourceLabel(value: string | null): string {
   if (!value) return "Unknown";
   return value.replaceAll("_", " ");
+}
+
+function largestCount(counts: Record<string, number>): [string, number] {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return entries[0] ?? ["unknown", 0];
+}
+
+function formatCountMap(counts: Record<string, number>, limit: number): string {
+  const entries = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
+  if (entries.length === 0) return "-";
+  return entries
+    .map(([label, count]) => `${statusLabel(label)} ${formatNumber(count)}`)
+    .join(", ");
+}
+
+function sourceStatusTone(
+  status: string
+): "good" | "warn" | "bad" | "neutral" {
+  if (status === "primary_official") return "good";
+  if (status === "vendor_or_paywalled") return "bad";
+  if (status === "secondary_mirror" || status === "analytical_or_report") {
+    return "neutral";
+  }
+  return "warn";
 }
 
 function statusDotClass(state: SummaryMetric["state"]): string {

@@ -74,6 +74,38 @@ const provisionCounts = {
   rows: [],
 };
 
+const sourceDiscovery = {
+  generated_at: "2026-05-11T12:00:00.000Z",
+  source_name: "policyengine-us",
+  input_paths: ["sources/policyengine-us/state_references.txt"],
+  raw_url_count: 3267,
+  invalid_url_count: 0,
+  unique_url_count: 1752,
+  release: "current",
+  release_scope_count: 55,
+  ready_for_manifest_count: 609,
+  needs_review_count: 780,
+  blocked_or_excluded_count: 363,
+  release_scope_present_count: 130,
+  source_status_counts: {
+    primary_official: 609,
+    secondary_mirror: 300,
+  },
+  disposition_counts: {
+    ready_for_manifest: 609,
+    needs_review: 780,
+  },
+  document_class_counts: {
+    form: 400,
+    statute: 100,
+  },
+  jurisdiction_counts: {
+    us: 100,
+    "us-ca": 39,
+  },
+  domain_rows: [],
+};
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -234,6 +266,10 @@ describe("corpus status helpers", () => {
       validationReport
     );
     await writeJson(
+      path.join(root, "analytics/source-discovery-current.json"),
+      sourceDiscovery
+    );
+    await writeJson(
       path.join(root, "snapshots/provision-counts-regulation-test.json"),
       provisionCounts
     );
@@ -251,6 +287,7 @@ describe("corpus status helpers", () => {
 
       expect(status.stateStatutes.source).toBe("local");
       expect(status.regulations.source).toBe("local");
+      expect(status.sourceDiscovery.value?.ready_for_manifest_count).toBe(609);
       expect(status.artifactReport.value?.local_count).toBe(2);
       expect(status.encodingStatus.value).toBeNull();
       expect(status.encodingStatus.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
@@ -296,6 +333,10 @@ describe("corpus status helpers", () => {
       validationReport
     );
     await writeJson(
+      path.join(root, "analytics/source-discovery-current.json"),
+      sourceDiscovery
+    );
+    await writeJson(
       path.join(root, "snapshots/provision-counts-regulation-test.json"),
       provisionCounts
     );
@@ -317,6 +358,7 @@ describe("corpus status helpers", () => {
 
       expect(status.stateStatutes.source).toBe("local");
       expect(status.regulations.source).toBe("local");
+      expect(status.sourceDiscovery.source).toBe("local");
       expect(status.stateStatutes.error).toBeNull();
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -337,6 +379,7 @@ describe("corpus status helpers", () => {
 
     expect(status.stateStatutes.value).toBeNull();
     expect(status.regulations.value).toBeNull();
+    expect(status.sourceDiscovery.value).toBeNull();
     expect(status.stateStatutes.error).toMatch(/AXIOM_CORPUS_LOCAL_ROOT/);
     expect(status.encodingStatus.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
   });
@@ -355,6 +398,7 @@ describe("corpus status helpers", () => {
 
     expect(status.stateStatutes.error).toMatch(/R2 returned 404/);
     expect(status.regulations.error).toMatch(/R2 returned 404/);
+    expect(status.sourceDiscovery.error).toMatch(/R2 returned 404/);
     expect(status.encodingStatus.error).toMatch(/Supabase returned 500/);
   });
 
@@ -415,6 +459,7 @@ function mockStatusFetch(input: RequestInfo | URL) {
       "/analytics/regulation-completion-current.json": regulationReport,
       "/analytics/artifact-report-current-r2.json": artifactReport,
       "/analytics/validate-release-current.json": validationReport,
+      "/analytics/source-discovery-current.json": sourceDiscovery,
       "/snapshots/provision-counts-test.json": provisionCounts,
       "/snapshots/provision-counts-regulation-test.json": provisionCounts,
     };
@@ -495,6 +540,7 @@ function mockR2Fetch(input: RequestInfo | URL) {
     "/analytics/regulation-completion-current.json": regulationReport,
     "/analytics/artifact-report-current-r2.json": artifactReport,
     "/analytics/validate-release-current.json": validationReport,
+    "/analytics/source-discovery-current.json": sourceDiscovery,
     "/snapshots/provision-counts-test.json": provisionCounts,
     "/snapshots/provision-counts-regulation-test.json": provisionCounts,
   };

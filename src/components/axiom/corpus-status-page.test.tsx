@@ -64,6 +64,64 @@ const status: CorpusStatusData = {
       ],
     },
   },
+  regulations: {
+    key: "analytics/regulation-completion-current.json",
+    source: "local",
+    error: null,
+    value: {
+      complete: false,
+      document_class: "regulation",
+      expected_jurisdiction_count: 52,
+      productionized_and_validated_count: 3,
+      unfinished_count: 49,
+      release: "current",
+      status_counts: {
+        productionized_and_validated: 3,
+        not_started: 49,
+      },
+      unfinished_jurisdictions: ["us-ak"],
+      validation_report_ok: true,
+      validation_report_path: "data/corpus/analytics/validate-release-current.json",
+      supabase_counts_path:
+        "data/corpus/snapshots/provision-counts-2026-05-11.json",
+      rows: [
+        {
+          jurisdiction: "us-ny",
+          name: "New York",
+          status: "productionized_and_validated",
+          supabase_count: 67447,
+          release_provision_count: 67447,
+          release_version: "2026-05-10",
+          best_local_provision_count: 67447,
+          best_local_version: "2026-05-10",
+          local_complete: true,
+          r2_complete: true,
+          supabase_matches_release: true,
+          next_action: "none",
+          mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+        {
+          jurisdiction: "us-ak",
+          name: "Alaska",
+          status: "not_started",
+          supabase_count: null,
+          release_provision_count: null,
+          release_version: null,
+          best_local_provision_count: null,
+          best_local_version: null,
+          local_complete: false,
+          r2_complete: null,
+          supabase_matches_release: null,
+          next_action: "find primary official source",
+          mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+      ],
+    },
+  },
   artifactReport: {
     key: "analytics/artifact-report-current-r2.json",
     source: "local",
@@ -207,6 +265,7 @@ describe("CorpusStatusPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Passing")).toBeInTheDocument();
     expect(screen.getByText("14/51")).toBeInTheDocument();
+    expect(screen.getByText("3/52")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /indexed corpus by document class/i })
     ).toBeInTheDocument();
@@ -217,6 +276,9 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /state statute productionization/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /regulation productionization/i })
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /encoding run health/i })
     ).toBeInTheDocument();
     expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
@@ -224,6 +286,8 @@ describe("CorpusStatusPage", () => {
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
     expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+    expect(screen.getByText("Alaska")).toBeInTheDocument();
     expect(screen.getByText(/empty_provision_text/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to corpus browser/i })).toHaveAttribute(
       "href",
@@ -479,6 +543,7 @@ describe("CorpusStatusPage", () => {
         status={{
           ...status,
           stateStatutes: { ...status.stateStatutes, source: null },
+          regulations: { ...status.regulations, source: null },
           artifactReport: { ...status.artifactReport, source: null },
           validationReport: { ...status.validationReport, source: null },
           provisionCounts: { ...status.provisionCounts, source: null },

@@ -6,6 +6,7 @@ import type {
   EncodingStatusRun,
   EncodingStatusSession,
   ProvisionCountRow,
+  RegulationCompletionRow,
   StateStatuteCompletionRow,
   ValidationIssue,
 } from "@/lib/corpus-status";
@@ -36,15 +37,21 @@ export function CorpusStatusPage({
   corpusHref = "/axiom",
 }: CorpusStatusPageProps) {
   const stateReport = status.stateStatutes.value;
+  const regulationReport = status.regulations.value;
   const artifactReport = status.artifactReport.value;
   const validationReport = status.validationReport.value;
   const provisionCounts = status.provisionCounts.value;
   const encodingStatus = status.encodingStatus.value;
   const source = firstSource(status);
   const stateRows = stateReport?.rows ?? [];
+  const regulationRows = regulationReport?.rows ?? [];
   const productionized = stateReport?.productionized_and_validated_count ?? 0;
   const expectedStates = stateReport?.expected_jurisdiction_count ?? 0;
   const legacyStates = stateReport?.status_counts.supabase_only_legacy ?? 0;
+  const regulationProductionized =
+    regulationReport?.productionized_and_validated_count ?? 0;
+  const expectedRegulations = regulationReport?.expected_jurisdiction_count ?? 0;
+  const unfinishedRegulations = regulationReport?.unfinished_count ?? 0;
   const documentSummaries = summarizeDocumentClasses(provisionCounts?.rows ?? []);
   const releaseRows = artifactReport?.rows ?? [];
   const totalProvisions = sumBy(provisionCounts?.rows ?? [], "provision_count");
@@ -57,6 +64,7 @@ export function CorpusStatusPage({
     null;
   const errors = [
     status.stateStatutes,
+    status.regulations,
     status.artifactReport,
     status.validationReport,
     status.provisionCounts,
@@ -115,6 +123,20 @@ export function CorpusStatusPage({
             ? "warn"
             : "neutral",
     },
+    {
+      label: "Regulations",
+      value:
+        expectedRegulations > 0
+          ? `${regulationProductionized}/${expectedRegulations}`
+          : formatNumber(regulationProductionized),
+      detail: `${unfinishedRegulations} jurisdictions to source`,
+      state:
+        regulationReport?.complete
+          ? "good"
+          : regulationProductionized > 0
+            ? "warn"
+            : "neutral",
+    },
   ];
 
   return (
@@ -169,7 +191,7 @@ export function CorpusStatusPage({
           </section>
         )}
 
-        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
           {metrics.map((metric) => (
             <MetricTile key={metric.label} metric={metric} />
           ))}
@@ -285,31 +307,22 @@ export function CorpusStatusPage({
             title="State Statute Productionization"
             detail={`${productionized} productionized, ${legacyStates} legacy-only`}
           />
-          <div className="mt-3 overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
-            <table className="w-full min-w-[1040px] text-sm">
-              <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
-                <tr className="font-mono text-[10px] uppercase tracking-wider">
-                  <th className="text-left font-medium px-4 py-3">State</th>
-                  <th className="text-left font-medium px-4 py-3">Status</th>
-                  <th className="text-right font-medium px-4 py-3">
-                    Supabase
-                  </th>
-                  <th className="text-right font-medium px-4 py-3">
-                    Release
-                  </th>
-                  <th className="text-left font-medium px-4 py-3">Version</th>
-                  <th className="text-left font-medium px-4 py-3">
-                    Next action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {stateRows.map((row) => (
-                  <StateStatuteTableRow key={row.jurisdiction} row={row} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CompletionTable
+            rows={stateRows}
+            emptyLabel="No state statute rows returned."
+          />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Regulations"
+            title="Regulation Productionization"
+            detail={`${regulationProductionized} productionized, ${unfinishedRegulations} unfinished`}
+          />
+          <CompletionTable
+            rows={regulationRows}
+            emptyLabel="No regulation completion rows returned."
+          />
         </section>
 
         <section className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -329,6 +342,10 @@ export function CorpusStatusPage({
             </h2>
             <dl className="mt-4 space-y-3 text-sm">
               <InputRow label="State completion" artifact={status.stateStatutes} />
+              <InputRow
+                label="Regulation completion"
+                artifact={status.regulations}
+              />
               <InputRow label="Artifact report" artifact={status.artifactReport} />
               <InputRow label="Validation" artifact={status.validationReport} />
               <InputRow label="Provision counts" artifact={status.provisionCounts} />
@@ -615,7 +632,52 @@ function ArtifactScopeTableRow({ row }: { row: ArtifactScopeRow }) {
   );
 }
 
-function StateStatuteTableRow({ row }: { row: StateStatuteCompletionRow }) {
+type CompletionRow = StateStatuteCompletionRow | RegulationCompletionRow;
+
+function CompletionTable({
+  rows,
+  emptyLabel,
+}: {
+  rows: CompletionRow[];
+  emptyLabel: string;
+}) {
+  return (
+    <div className="mt-3 overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+      <table className="w-full min-w-[1180px] text-sm">
+        <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+          <tr className="font-mono text-[10px] uppercase tracking-wider">
+            <th className="text-left font-medium px-4 py-3">Jurisdiction</th>
+            <th className="text-left font-medium px-4 py-3">Status</th>
+            <th className="text-right font-medium px-4 py-3">Supabase</th>
+            <th className="text-right font-medium px-4 py-3">Release</th>
+            <th className="text-left font-medium px-4 py-3">Version</th>
+            <th className="text-left font-medium px-4 py-3">R2</th>
+            <th className="text-left font-medium px-4 py-3">Validation</th>
+            <th className="text-left font-medium px-4 py-3">Next action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0 ? (
+            rows.map((row) => (
+              <CompletionTableRow key={row.jurisdiction} row={row} />
+            ))
+          ) : (
+            <tr>
+              <td
+                colSpan={8}
+                className="px-4 py-6 text-center text-[var(--color-ink-secondary)]"
+              >
+                {emptyLabel}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CompletionTableRow({ row }: { row: CompletionRow }) {
   return (
     <tr className="border-t border-[var(--color-rule)]">
       <td className="px-4 py-3">
@@ -638,6 +700,30 @@ function StateStatuteTableRow({ row }: { row: StateStatuteCompletionRow }) {
       </td>
       <td className="px-4 py-3 font-mono text-xs">
         {row.release_version ?? row.best_local_version ?? "-"}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={
+            row.r2_complete
+              ? "Synced"
+              : row.r2_complete == null
+                ? "Unknown"
+                : "Missing"
+          }
+          tone={
+            row.r2_complete
+              ? "good"
+              : row.r2_complete == null
+                ? "neutral"
+                : "bad"
+          }
+        />
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={validationStatusLabel(row)}
+          tone={validationStatusTone(row)}
+        />
       </td>
       <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
         {row.next_action}
@@ -820,9 +906,26 @@ function stateStatusLabel(value: string): string {
   return value.replaceAll("_", " ");
 }
 
+function validationStatusLabel(row: CompletionRow): string {
+  if (row.validation_error_count > 0) {
+    return `${formatNumber(row.validation_error_count)} errors`;
+  }
+  if (row.validation_warning_count > 0) {
+    return `${formatNumber(row.validation_warning_count)} warnings`;
+  }
+  return "Clear";
+}
+
+function validationStatusTone(row: CompletionRow): "good" | "warn" | "bad" {
+  if (row.validation_error_count > 0) return "bad";
+  if (row.validation_warning_count > 0) return "warn";
+  return "good";
+}
+
 function firstSource(status: CorpusStatusData): string | null {
   return (
     status.stateStatutes.source ??
+    status.regulations.source ??
     status.artifactReport.source ??
     status.validationReport.source ??
     status.provisionCounts.source ??

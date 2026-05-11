@@ -6,6 +6,8 @@ const STATUS_REVALIDATE_SECONDS = 300;
 
 export const STATE_STATUTE_COMPLETION_KEY =
   "analytics/state-statute-completion-current.json";
+export const REGULATION_COMPLETION_KEY =
+  "analytics/regulation-completion-current.json";
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
 const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
@@ -14,7 +16,7 @@ const ENCODING_LOOKBACK_DAYS = 7;
 
 export type CorpusArtifactSource = "status-url" | "r2" | "local" | "supabase";
 
-export interface StateStatuteCompletionRow {
+export interface CorpusCompletionRow {
   jurisdiction: string;
   name: string;
   status: string;
@@ -30,21 +32,35 @@ export interface StateStatuteCompletionRow {
   mismatch_reasons: string[];
   validation_error_count: number;
   validation_warning_count: number;
+  coverage_complete?: boolean;
+  local_scope_count?: number;
+  release_scope_present?: boolean;
+  validation_codes?: string[];
 }
 
-export interface StateStatuteCompletionReport {
+export interface CorpusCompletionReport {
   complete: boolean;
+  document_class?: string;
   expected_jurisdiction_count: number;
   productionized_and_validated_count: number;
   unfinished_count: number;
   release: string;
   status_counts: Record<string, number>;
-  rows: StateStatuteCompletionRow[];
+  rows: CorpusCompletionRow[];
   unfinished_jurisdictions: string[];
   validation_report_ok: boolean | null;
   validation_report_path: string | null;
   supabase_counts_path: string | null;
+  release_statute_scope_count?: number;
+  release_regulation_scope_count?: number;
+  validation_report_present?: boolean;
+  validation_report_truncated?: boolean;
 }
+
+export type StateStatuteCompletionRow = CorpusCompletionRow;
+export type RegulationCompletionRow = CorpusCompletionRow;
+export type StateStatuteCompletionReport = CorpusCompletionReport;
+export type RegulationCompletionReport = CorpusCompletionReport;
 
 export interface ArtifactScopeRow {
   jurisdiction: string;
@@ -155,6 +171,7 @@ export interface CorpusStatusArtifact<T> {
 
 export interface CorpusStatusData {
   stateStatutes: CorpusStatusArtifact<StateStatuteCompletionReport>;
+  regulations: CorpusStatusArtifact<RegulationCompletionReport>;
   artifactReport: CorpusStatusArtifact<ArtifactReport>;
   validationReport: CorpusStatusArtifact<ValidationReport>;
   provisionCounts: CorpusStatusArtifact<ProvisionCountsSnapshot>;
@@ -179,15 +196,17 @@ interface ReadAttempt<T> {
 }
 
 export async function getCorpusStatus(): Promise<CorpusStatusData> {
-  const [stateStatutes, artifactReport, validationReport] = await Promise.all([
-    readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
-    readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
-    readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
-  ]);
+  const [stateStatutes, regulations, artifactReport, validationReport] =
+    await Promise.all([
+      readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
+      readCorpusJson<RegulationCompletionReport>(REGULATION_COMPLETION_KEY),
+      readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
+      readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
+    ]);
 
   const provisionCountsKey =
     process.env.AXIOM_CORPUS_PROVISION_COUNTS_KEY ??
-    provisionCountsKeyFromStateReport(stateStatutes.value) ??
+    provisionCountsKeyFromCompletionReports(regulations.value, stateStatutes.value) ??
     DEFAULT_PROVISION_COUNTS_KEY;
 
   const [provisionCounts, encodingStatus] = await Promise.all([
@@ -197,6 +216,7 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
 
   return {
     stateStatutes,
+    regulations,
     artifactReport,
     validationReport,
     provisionCounts,
@@ -207,8 +227,18 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
 export function provisionCountsKeyFromStateReport(
   report: StateStatuteCompletionReport | null
 ): string | null {
-  if (!report?.supabase_counts_path) return null;
-  return corpusKeyFromPath(report.supabase_counts_path);
+  return provisionCountsKeyFromCompletionReports(report);
+}
+
+export function provisionCountsKeyFromCompletionReports(
+  ...reports: Array<CorpusCompletionReport | null>
+): string | null {
+  for (const report of reports) {
+    if (report?.supabase_counts_path) {
+      return corpusKeyFromPath(report.supabase_counts_path);
+    }
+  }
+  return null;
 }
 
 export function corpusKeyFromPath(value: string): string {

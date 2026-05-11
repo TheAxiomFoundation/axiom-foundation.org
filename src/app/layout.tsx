@@ -5,6 +5,7 @@ import Link from "next/link";
 import "./globals.css";
 import { NavWrapper } from "@/components/nav-wrapper";
 import { Footer, GradientSync } from "@axiom-foundation/ui";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { SITE_URL } from "@/lib/urls";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body>
+        <GoogleAnalytics />
         <PostHogProvider />
         <GradientSync />
         <NavWrapper />

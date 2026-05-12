@@ -88,9 +88,9 @@ describe('Landing sections', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the foundation coda with 501(c)(3) framing', () => {
+  it('renders the foundation coda with public-interest framing', () => {
     render(<FoundationSection />)
-    expect(screen.getByRole('heading', { name: /501\(c\)\(3\)/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /doing the public-interest work/i })).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /encode your jurisdiction/i }),
     ).toBeInTheDocument()

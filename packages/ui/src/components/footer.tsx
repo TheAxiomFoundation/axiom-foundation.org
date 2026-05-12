@@ -102,7 +102,7 @@ export function Footer({
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pt-6 border-t border-[var(--color-rule-subtle)]">
           <p className="font-mono text-[0.7rem] tracking-[0.08em] text-[var(--color-ink-muted)] m-0">
-            &copy; {year} Axiom Foundation &middot; A 501(c)(3) nonprofit
+            &copy; {year} Axiom Foundation &middot; Doing the public-interest work
           </p>
           <p className="font-mono text-[0.7rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)] m-0">
             <span className="glyph-axiom text-[var(--color-accent)]" aria-hidden="true">∀</span>{" "}

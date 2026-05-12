@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { FormatComparison } from "@/components/format/format-comparison";
+import { axiomAppHref } from "@/lib/urls";
 
 export const metadata: Metadata = {
   title: "How RuleSpec compares — Axiom Foundation",
@@ -21,7 +22,7 @@ export default function FormatPage() {
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
             <a
-              href="https://app.axiom-foundation.org"
+              href={axiomAppHref()}
               className="btn-primary"
             >
               Open Axiom

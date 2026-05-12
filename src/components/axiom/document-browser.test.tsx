@@ -126,6 +126,21 @@ describe("AxiomBrowser", () => {
   });
 
   describe("rule phase (US)", () => {
+    it("defaults the browser to full navigation", () => {
+      render(<AxiomBrowser segments={["us"]} />);
+
+      expect(useTreeNodes).toHaveBeenLastCalledWith(
+        "us",
+        [],
+        true,
+        false,
+        undefined
+      );
+      expect(
+        screen.getByRole("button", { name: /encoded only/i })
+      ).toHaveAttribute("aria-pressed", "false");
+    });
+
     it("shows loading state from useTreeNodes", () => {
       vi.mocked(useTreeNodes).mockReturnValue({
         nodes: [],

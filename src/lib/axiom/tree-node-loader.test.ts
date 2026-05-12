@@ -8,6 +8,8 @@ const mockGetNavigationIndexChildren = vi.fn();
 const mockGetNavigationIndexNode = vi.fn();
 const mockGetNavigationIndexPrefixRows = vi.fn();
 const mockGetProvisionForNavigationNode = vi.fn();
+const mockGetProvisionCoveredDocTypes = vi.fn();
+const mockGetResolvableNavigationNodeIds = vi.fn();
 const mockListEncodedFiles = vi.fn();
 const mockSynthesiseRuleFromCitationPath = vi.fn();
 const mockNavigationDocTypeToTreeNode = vi.fn((segment: string) => ({
@@ -41,6 +43,10 @@ vi.mock("./navigation-index/read", async () => {
       mockGetNavigationIndexPrefixRows(...args),
     getProvisionForNavigationNode: (...args: unknown[]) =>
       mockGetProvisionForNavigationNode(...args),
+    getProvisionCoveredDocTypes: (...args: unknown[]) =>
+      mockGetProvisionCoveredDocTypes(...args),
+    getResolvableNavigationNodeIds: (...args: unknown[]) =>
+      mockGetResolvableNavigationNodeIds(...args),
     navigationDocTypeToTreeNode: (segment: string) =>
       mockNavigationDocTypeToTreeNode(segment),
     navigationRowToTreeNode: (row: NavigationNodeRow) =>
@@ -89,6 +95,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockListEncodedFiles.mockResolvedValue([]);
   mockGetNavigationIndexPrefixRows.mockResolvedValue([]);
+  mockGetProvisionCoveredDocTypes.mockImplementation(
+    async (_jurisdiction: string, docTypes: string[]) => new Set(docTypes)
+  );
+  mockGetResolvableNavigationNodeIds.mockImplementation(
+    async (rows: NavigationNodeRow[]) => new Set(rows.map((row) => row.id))
+  );
 });
 
 describe("loadTreeNodes", () => {
@@ -144,6 +156,51 @@ describe("loadTreeNodes", () => {
       "regulation",
       "statute",
     ]);
+  });
+
+  it("uses actual RuleSpec files as the source of truth for encoded-only roots", async () => {
+    mockGetNavigationDocTypes.mockResolvedValue({
+      docTypes: ["regulation"],
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "statutes/26/3101/a.yaml",
+        citationPath: "us/statute/26/3101/a",
+        bucket: "statutes",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: [],
+      hasCitationPaths: true,
+      encodedOnly: true,
+      page: 0,
+    });
+
+    expect(mockGetNavigationDocTypes).toHaveBeenCalledWith("us", true);
+    expect(result.nodes.map((node) => node.segment)).toEqual(["statute"]);
+  });
+
+  it("filters stale root document types with no provision or RuleSpec coverage", async () => {
+    mockGetNavigationDocTypes.mockResolvedValue({
+      docTypes: ["legislation"],
+    });
+    mockGetProvisionCoveredDocTypes.mockResolvedValue(new Set());
+    mockListEncodedFiles.mockResolvedValue([]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: [],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(mockGetProvisionCoveredDocTypes).toHaveBeenCalledWith("uk", [
+      "legislation",
+    ]);
+    expect(result.nodes).toEqual([]);
   });
 
   it("builds tree branches from RuleSpec-only files when corpus navigation has no node", async () => {
@@ -248,6 +305,183 @@ describe("loadTreeNodes", () => {
     ]);
   });
 
+  it("filters encoded-only navigation rows against actual RuleSpec files", async () => {
+    mockGetNavigationIndexNode.mockResolvedValue(
+      navRow({
+        jurisdiction: "uk",
+        doc_type: "legislation",
+        path: "uk/legislation/uksi/2013/376/regulation/22/1/b",
+        segment: "b",
+        has_children: true,
+      })
+    );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [
+        navRow({
+          jurisdiction: "uk",
+          doc_type: "legislation",
+          path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+          citation_path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+          segment: "i",
+          label: "(i)",
+          has_rulespec: true,
+          has_children: false,
+        }),
+        navRow({
+          jurisdiction: "uk",
+          doc_type: "legislation",
+          path: "uk/legislation/uksi/2013/376/regulation/22/1/b/ii",
+          citation_path: "uk/legislation/uksi/2013/376/regulation/22/1/b/ii",
+          segment: "ii",
+          label: "(ii)",
+          has_rulespec: true,
+          has_children: false,
+        }),
+      ],
+      hasMore: false,
+      total: 2,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "legislation/uksi/2013/376/regulation/22/1/b/ii.yaml",
+        citationPath: "uk/legislation/uksi/2013/376/regulation/22/1/b/ii",
+        bucket: "legislation",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: ["legislation", "uksi", "2013", "376", "regulation", "22", "1", "b"],
+      hasCitationPaths: true,
+      encodedOnly: true,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "ii",
+        label: "(ii)",
+      }),
+    ]);
+  });
+
+  it("filters stale full-navigation leaf rows that do not resolve to provisions or RuleSpec files", async () => {
+    const staleLeaf = navRow({
+      id: "stale-leaf",
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      segment: "3",
+      label: "(3)",
+      has_children: false,
+      provision_id: "missing-provision",
+    });
+    const liveLeaf = navRow({
+      id: "live-leaf",
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/ukpga/2002/16/section/3ZA/4",
+      citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/4",
+      segment: "4",
+      label: "(4)",
+      has_children: false,
+      provision_id: "live-provision",
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(
+      navRow({
+        jurisdiction: "uk",
+        doc_type: "legislation",
+        path: "uk/legislation/ukpga/2002/16/section/3ZA",
+        segment: "3ZA",
+        has_children: true,
+      })
+    );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [staleLeaf, liveLeaf],
+      hasMore: false,
+      total: 2,
+    });
+    mockGetResolvableNavigationNodeIds.mockResolvedValue(
+      new Set(["live-leaf"])
+    );
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: ["legislation", "ukpga", "2002", "16", "section", "3ZA"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "4",
+        label: "(4)",
+      }),
+    ]);
+  });
+
+  it("filters stale full-navigation container rows that have no provision descendants or RuleSpec files", async () => {
+    const staleContainer = navRow({
+      id: "stale-container",
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/ukpga/2002/16/section/3ZA",
+      citation_path: "uk/legislation/ukpga/2002/16/section/3ZA",
+      segment: "3ZA",
+      label: "(3ZA)",
+      has_children: true,
+      child_count: 1,
+      encoded_descendant_count: 1,
+      provision_id: "missing-container-provision",
+    });
+    const liveContainer = navRow({
+      id: "live-container",
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/ukpga/2002/16/section/4",
+      citation_path: "uk/legislation/ukpga/2002/16/section/4",
+      segment: "4",
+      label: "Section 4",
+      has_children: true,
+      child_count: 2,
+      provision_id: "live-container-provision",
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(
+      navRow({
+        jurisdiction: "uk",
+        doc_type: "legislation",
+        path: "uk/legislation/ukpga/2002/16/section",
+        segment: "section",
+        has_children: true,
+      })
+    );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [staleContainer, liveContainer],
+      hasMore: false,
+      total: 2,
+    });
+    mockGetResolvableNavigationNodeIds.mockResolvedValue(
+      new Set(["live-container"])
+    );
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: ["legislation", "ukpga", "2002", "16", "section"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "4",
+        label: "Section 4",
+      }),
+    ]);
+  });
+
   it("surfaces RuleSpec-only descendants under an existing encoded-only corpus node", async () => {
     mockGetNavigationIndexNode
       .mockResolvedValueOnce(
@@ -295,7 +529,13 @@ describe("loadTreeNodes", () => {
       page: 0,
     });
 
-    expect(result.currentRule).toEqual(currentRule);
+    expect(result.currentRule).toEqual(
+      expect.objectContaining({
+        ...currentRule,
+        has_rulespec: false,
+        rulespec_path: null,
+      })
+    );
     expect(result.nodes).toEqual([
       expect.objectContaining({
         segment: "2017",
@@ -495,6 +735,13 @@ describe("loadTreeNodes", () => {
       hasMore: true,
       total: 101,
     });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "regulations/10-ccr-2506-1.yaml",
+        citationPath: row.path,
+        bucket: "regulations",
+      },
+    ]);
 
     const result = await loadTreeNodes({
       dbJurisdictionId: "us-co",
@@ -587,7 +834,13 @@ describe("loadTreeNodes", () => {
     expect(mockGetNavigationIndexNode).toHaveBeenCalledWith(
       "us-co/regulation/10-ccr-2506-1"
     );
-    expect(result.currentRule).toEqual(currentRule);
+    expect(result.currentRule).toEqual(
+      expect.objectContaining({
+        ...currentRule,
+        has_rulespec: false,
+        rulespec_path: null,
+      })
+    );
     expect(result.nodes.map((node) => node.segment)).toEqual(["4.401"]);
   });
 
@@ -676,11 +929,74 @@ describe("loadTreeNodes", () => {
       page: 0,
     });
 
-    expect(result.leafRule).toEqual(leafRule);
+    expect(result.leafRule).toEqual(
+      expect.objectContaining({
+        ...leafRule,
+        has_rulespec: false,
+        rulespec_path: null,
+      })
+    );
     expect(result.nodes).toEqual([]);
   });
 
-  it("returns a synthetic leaf when an encoded navigation leaf has no current provision", async () => {
+  it("does not show RuleSpec badges from stale navigation flags without a real RuleSpec file", async () => {
+    const staleChild = navRow({
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+      citation_path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+      segment: "i",
+      label: "(i)",
+      has_children: false,
+      has_rulespec: true,
+      encoded_descendant_count: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(
+      navRow({
+        jurisdiction: "uk",
+        doc_type: "legislation",
+        path: "uk/legislation/uksi/2013/376/regulation/22/1/b",
+        segment: "b",
+        has_children: true,
+      })
+    );
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [staleChild],
+      hasMore: false,
+      total: 1,
+    });
+    mockListEncodedFiles.mockResolvedValue([]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: [
+        "legislation",
+        "uksi",
+        "2013",
+        "376",
+        "regulation",
+        "22",
+        "1",
+        "b",
+      ],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([
+      expect.objectContaining({
+        segment: "i",
+        hasRuleSpec: false,
+        rule: expect.objectContaining({
+          has_rulespec: false,
+          rulespec_path: null,
+        }),
+      }),
+    ]);
+  });
+
+  it("returns a synthetic leaf when an encoded navigation leaf has no current provision but has a real RuleSpec file", async () => {
     const leaf = navRow({
       jurisdiction: "uk",
       doc_type: "regulation",
@@ -691,7 +1007,7 @@ describe("loadTreeNodes", () => {
       label: "(3)",
       has_children: false,
       child_count: 0,
-      has_rulespec: true,
+      has_rulespec: false,
     });
     mockGetNavigationIndexChildren.mockResolvedValue({
       rows: [],
@@ -700,7 +1016,12 @@ describe("loadTreeNodes", () => {
     });
     mockGetNavigationIndexNode.mockResolvedValue(leaf);
     mockGetProvisionForNavigationNode.mockResolvedValue(null);
-    mockSynthesiseRuleFromCitationPath.mockResolvedValue(null);
+    mockSynthesiseRuleFromCitationPath.mockResolvedValue({
+      id: "github:uk/legislation/ukpga/2002/16/section/3ZA/3",
+      citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
+      heading: "Encoded rule",
+      has_rulespec: true,
+    });
 
     const result = await loadTreeNodes({
       dbJurisdictionId: "uk",
@@ -727,13 +1048,57 @@ describe("loadTreeNodes", () => {
       expect.objectContaining({
         id: "github:uk/legislation/ukpga/2002/16/section/3ZA/3",
         citation_path: "uk/legislation/ukpga/2002/16/section/3ZA/3",
-        heading: "(3)",
+        heading: "Encoded rule",
         has_rulespec: true,
       })
     );
   });
 
-  it("throws a clear missing-index error when an indexed node has no provision", async () => {
+  it("does not hard-error on stale navigation has_rulespec alone", async () => {
+    const leaf = navRow({
+      jurisdiction: "uk",
+      doc_type: "legislation",
+      path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+      citation_path: "uk/legislation/uksi/2013/376/regulation/22/1/b/i",
+      parent_path: "uk/legislation/uksi/2013/376/regulation/22/1/b",
+      segment: "i",
+      label: "(i)",
+      has_children: false,
+      child_count: 0,
+      has_rulespec: true,
+    });
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(leaf);
+    mockGetProvisionForNavigationNode.mockResolvedValue(null);
+    mockSynthesiseRuleFromCitationPath.mockResolvedValue(null);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: [
+        "legislation",
+        "uksi",
+        "2013",
+        "376",
+        "regulation",
+        "22",
+        "1",
+        "b",
+        "i",
+      ],
+      hasCitationPaths: true,
+      encodedOnly: true,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.leafRule).toBeNull();
+  });
+
+  it("returns an empty result when an indexed leaf has no provision", async () => {
     const leaf = navRow({
       path: "us-co/regulation/10-ccr-2506-1/4.401",
       parent_path: "us-co/regulation/10-ccr-2506-1",
@@ -749,17 +1114,16 @@ describe("loadTreeNodes", () => {
     mockGetNavigationIndexNode.mockResolvedValue(leaf);
     mockGetProvisionForNavigationNode.mockResolvedValue(null);
 
-    await expect(
-      loadTreeNodes({
-        dbJurisdictionId: "us-co",
-        ruleSegments: ["regulation", "10-ccr-2506-1", "4.401"],
-        hasCitationPaths: true,
-        encodedOnly: false,
-        page: 0,
-      })
-    ).rejects.toThrow(
-      "Navigation node us-co/regulation/10-ccr-2506-1/4.401 does not resolve"
-    );
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us-co",
+      ruleSegments: ["regulation", "10-ccr-2506-1", "4.401"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.leafRule).toBeNull();
   });
 
   it("throws a clear missing-index error when a deep route has no node", async () => {

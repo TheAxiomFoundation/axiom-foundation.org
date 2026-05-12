@@ -16,7 +16,9 @@ import {
   getNavigationIndexChildren,
   getNavigationIndexNode,
   getNavigationIndexPrefixRows,
+  getProvisionCoveredDocTypes,
   getProvisionForNavigationNode,
+  getResolvableNavigationNodeIds,
   navigationDocTypeToTreeNode,
   navigationRowToTreeNode,
   NavigationIndexMissingError,
@@ -53,6 +55,10 @@ class QueryBuilder implements PromiseLike<QueryResult> {
 
   is(...args: unknown[]) {
     return this.call("is", args);
+  }
+
+  in(...args: unknown[]) {
+    return this.call("in", args);
   }
 
   order(...args: unknown[]) {
@@ -176,6 +182,56 @@ describe("navigation index read helpers", () => {
     await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
       docTypes: [],
     });
+  });
+
+  it("finds root document types with provision coverage", async () => {
+    const builder = enqueue({
+      data: [
+        { citation_path: "uk/legislation/ukpga/2002/16" },
+        { citation_path: "uk/legislation/uksi/2013/376" },
+      ],
+    });
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation", "guidance"])
+    ).resolves.toEqual(new Set(["legislation"]));
+
+    expect(mockFrom).toHaveBeenCalledWith("current_provisions");
+    expect(calls(builder, "eq")).toContainEqual(["jurisdiction", "uk"]);
+    expect(calls(builder, "or")[0]?.[0]).toContain(
+      "and(citation_path.gte.uk/legislation/,citation_path.lt.uk/legislation~)"
+    );
+  });
+
+  it("returns no covered document types when none are requested", async () => {
+    await expect(getProvisionCoveredDocTypes("uk", [])).resolves.toEqual(
+      new Set()
+    );
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it("ignores null citation paths while finding covered document types", async () => {
+    enqueue({ data: [{ citation_path: null }] });
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation"])
+    ).resolves.toEqual(new Set());
+  });
+
+  it("throws unavailable when provision-covered document type lookup errors", async () => {
+    enqueue({ error: { message: "statement timeout" } });
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation"])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
+  it("throws unavailable when provision-covered document type lookup rejects", async () => {
+    enqueue(Promise.reject(new Error("network")));
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation"])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
   });
 
   it("throws a missing-index error for an empty unfiltered jurisdiction", async () => {
@@ -315,6 +371,179 @@ describe("navigation index read helpers", () => {
       "citation_path",
       "us/statute/26",
     ]);
+  });
+
+  it("loads resolvable leaf navigation ids in a batch", async () => {
+    const byId = enqueue({ data: [{ id: "provision-live" }] });
+    const byCitationPath = enqueue({
+      data: [{ citation_path: "uk/legislation/uksi/2013/376/regulation/22" }],
+    });
+
+    const result = await getResolvableNavigationNodeIds([
+      navRow({
+        id: "parent",
+        has_children: true,
+        provision_id: "parent-provision",
+      }),
+      navRow({
+        id: "live-by-id",
+        has_children: false,
+        provision_id: "provision-live",
+        citation_path: "uk/legislation/uksi/2013/376/regulation/21",
+        path: "uk/legislation/uksi/2013/376/regulation/21",
+      }),
+      navRow({
+        id: "live-by-path",
+        has_children: false,
+        provision_id: null,
+        citation_path: "uk/legislation/uksi/2013/376/regulation/22",
+        path: "uk/legislation/uksi/2013/376/regulation/22",
+      }),
+      navRow({
+        id: "stale-leaf",
+        has_children: false,
+        provision_id: "missing-provision",
+        citation_path: "uk/legislation/uksi/2013/376/regulation/23",
+        path: "uk/legislation/uksi/2013/376/regulation/23",
+      }),
+    ]);
+
+    expect(result).toEqual(new Set(["live-by-id", "live-by-path"]));
+    expect(calls(byId, "in")).toContainEqual([
+      "id",
+      ["parent-provision", "provision-live", "missing-provision"],
+    ]);
+    expect(calls(byCitationPath, "or")[0]?.[0]).toContain(
+      "citation_path.eq.uk/legislation/uksi/2013/376/regulation/22"
+    );
+  });
+
+  it("returns an empty resolvable set when there are no rows", async () => {
+    await expect(getResolvableNavigationNodeIds([])).resolves.toEqual(new Set());
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it("checks resolvable leaves by citation path when no provision ids exist", async () => {
+    const byCitationPath = enqueue({
+      data: [{ citation_path: "uk/legislation/uksi/2013/376/regulation/22" }],
+    });
+
+    const result = await getResolvableNavigationNodeIds([
+      navRow({
+        id: "live-by-path",
+        has_children: false,
+        provision_id: null,
+        citation_path: "uk/legislation/uksi/2013/376/regulation/22",
+        path: "uk/legislation/uksi/2013/376/regulation/22",
+      }),
+    ]);
+
+    expect(result).toEqual(new Set(["live-by-path"]));
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(calls(byCitationPath, "or")).toContainEqual([
+      "citation_path.eq.uk/legislation/uksi/2013/376/regulation/22",
+    ]);
+  });
+
+  it("marks container rows resolvable when a descendant provision exists", async () => {
+    const byId = enqueue({ data: [] });
+    const byCitationPath = enqueue({
+      data: [
+        {
+          citation_path:
+            "uk/legislation/ukpga/2002/16/section/3ZA/3",
+        },
+      ],
+    });
+
+    const result = await getResolvableNavigationNodeIds([
+      navRow({
+        id: "container",
+        has_children: true,
+        provision_id: "missing-container",
+        citation_path: "uk/legislation/ukpga/2002/16/section/3ZA",
+        path: "uk/legislation/ukpga/2002/16/section/3ZA",
+      }),
+    ]);
+
+    expect(result).toEqual(new Set(["container"]));
+    expect(calls(byId, "in")).toContainEqual(["id", ["missing-container"]]);
+    expect(calls(byCitationPath, "or")[0]?.[0]).toContain(
+      "and(citation_path.gte.uk/legislation/ukpga/2002/16/section/3ZA/,citation_path.lt.uk/legislation/ukpga/2002/16/section/3ZA~)"
+    );
+  });
+
+  it("throws unavailable when resolvable provision id lookup errors", async () => {
+    enqueue({ error: { message: "statement timeout" } });
+
+    await expect(
+      getResolvableNavigationNodeIds([
+        navRow({
+          id: "leaf",
+          has_children: false,
+          provision_id: "provision-1",
+        }),
+      ])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
+  it("throws unavailable when resolvable citation path lookup errors", async () => {
+    enqueue({ error: { message: "statement timeout" } });
+
+    await expect(
+      getResolvableNavigationNodeIds([
+        navRow({
+          id: "leaf",
+          has_children: false,
+          provision_id: null,
+        }),
+      ])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
+  it("throws unavailable when resolvable citation path lookup rejects", async () => {
+    enqueue(Promise.reject(new Error("network")));
+
+    await expect(
+      getResolvableNavigationNodeIds([
+        navRow({
+          id: "leaf",
+          has_children: false,
+          provision_id: null,
+        }),
+      ])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
+  it("throws unavailable when resolvable provision id lookup rejects", async () => {
+    enqueue(Promise.reject(new Error("network")));
+
+    await expect(
+      getResolvableNavigationNodeIds([
+        navRow({
+          id: "leaf",
+          has_children: false,
+          provision_id: "provision-1",
+        }),
+      ])
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
+  it("ignores null matches while resolving navigation leaves", async () => {
+    enqueue({ data: [{ id: null }] });
+    enqueue({ data: [{ citation_path: null }] });
+
+    const result = await getResolvableNavigationNodeIds([
+      navRow({
+        id: "leaf",
+        has_children: false,
+        provision_id: "provision-1",
+        citation_path: null,
+        path: "uk/legislation/uksi/2013/376/regulation/22",
+      }),
+    ]);
+
+    expect(result).toEqual(new Set());
   });
 
   it("maps document types and navigation rows into tree nodes", () => {

@@ -13,7 +13,9 @@ import {
   getNavigationIndexChildren,
   getNavigationIndexNode,
   getNavigationIndexPrefixRows,
+  getProvisionCoveredDocTypes,
   getProvisionForNavigationNode,
+  getResolvableNavigationNodeIds,
   navigationDocTypeToTreeNode,
   navigationRowToTreeNode,
   NavigationIndexMissingError,
@@ -61,8 +63,14 @@ export async function loadTreeNodes({
       encodedOnly
     );
     const encodedDocTypes = await getEncodedDocTypes(dbJurisdictionId);
+    const provisionDocTypes = encodedOnly
+      ? new Set<string>()
+      : await getProvisionCoveredDocTypes(dbJurisdictionId, docTypes);
+    const navigationDocTypes = encodedOnly
+      ? []
+      : docTypes.filter((docType) => provisionDocTypes.has(docType));
     return {
-      nodes: mergeDocTypes(docTypes, encodedDocTypes).map(
+      nodes: mergeDocTypes(navigationDocTypes, encodedDocTypes).map(
         navigationDocTypeToTreeNode
       ),
       hasMore: false,
@@ -87,18 +95,37 @@ export async function loadTreeNodes({
     encodedOnly,
     page,
   });
+  let encodedFilesPromise: Promise<EncodedFile[]> | null =
+    childResult.rows.length > 0 ? listEncodedFiles(dbJurisdictionId) : null;
+  const getEncodedFiles = async () => {
+    encodedFilesPromise ??= listEncodedFiles(dbJurisdictionId);
+    return encodedFilesPromise;
+  };
+  const encodedFiles =
+    childResult.rows.length > 0 ? await getEncodedFiles() : [];
+  const navigationRows = encodedOnly
+    ? childResult.rows.filter((row) =>
+        navigationRowHasEncodedCoverage(row, encodedFiles)
+      )
+    : childResult.rows;
+  const indexRows = await filterNavigableRows(navigationRows, encodedFiles);
   const rulespecOnly =
-    page === 0 && (encodedOnly || childResult.rows.length === 0)
-      ? await loadRulespecOnlyTreeNodes(dbJurisdictionId, segs, page)
+    page === 0 && (encodedOnly || indexRows.length === 0)
+      ? await loadRulespecOnlyTreeNodes(
+          dbJurisdictionId,
+          segs,
+          page,
+          getEncodedFiles
+        )
       : null;
 
   if (segs.length === 1) {
     const nodes = mergeTreeNodes(
-      childResult.rows.map(navigationRowToTreeNode),
+      navigationRowsToTreeNodes(indexRows, encodedFiles),
       rulespecOnly?.nodes
     );
     if (nodes.length === 0) {
-      if (page > 0) {
+      if (page > 0 || childResult.rows.length > 0) {
         return {
           nodes: [],
           hasMore: false,
@@ -126,7 +153,7 @@ export async function loadTreeNodes({
   const currentPath = navigationPath(dbJurisdictionId, segs);
   const currentNode = await getNavigationIndexNode(currentPath);
 
-  if (childResult.rows.length === 0) {
+  if (indexRows.length === 0) {
     if (!currentNode) {
       const sparsePrefix = await loadSparsePrefixTreeNodes({
         jurisdiction: dbJurisdictionId,
@@ -142,17 +169,21 @@ export async function loadTreeNodes({
       );
     }
     if (rulespecOnly) {
+      const files = await getEncodedFiles();
       const rule =
         rulespecOnly.nodes.length > 0
-          ? await getOptionalProvisionForNode(currentNode)
-          : await requireProvisionForNode(currentNode);
+          ? await getOptionalProvisionForNode(currentNode, files)
+          : await requireProvisionForNode(currentNode, files);
       return {
         ...rulespecOnly,
         currentRule: rule,
       };
     }
     if (currentNode.has_children) {
-      const rule = await getOptionalProvisionForNode(currentNode);
+      const rule = await getOptionalProvisionForNode(
+        currentNode,
+        await getEncodedFiles()
+      );
       return {
         nodes: [],
         hasMore: false,
@@ -160,22 +191,25 @@ export async function loadTreeNodes({
         encodedPaths: existingEncodedPaths,
       };
     }
-    const rule = await requireProvisionForNode(currentNode);
+    const rule = await getOptionalNavigationLeaf(
+      currentNode,
+      await getEncodedFiles()
+    );
     return {
       nodes: [],
       hasMore: false,
-      leafRule: rule,
+      leafRule: rule ?? null,
       encodedPaths: existingEncodedPaths,
     };
   }
 
   const currentRule = currentNode
-    ? await getOptionalProvisionForNode(currentNode)
+    ? await getOptionalProvisionForNode(currentNode, encodedFiles)
     : null;
 
   return {
     nodes: mergeTreeNodes(
-      childResult.rows.map(navigationRowToTreeNode),
+      navigationRowsToTreeNodes(indexRows, encodedFiles),
       rulespecOnly?.nodes
     ),
     hasMore: childResult.hasMore,
@@ -189,10 +223,11 @@ function navigationPath(jurisdiction: string, ruleSegments: string[]): string {
 }
 
 async function requireProvisionForNode(
-  node: NavigationNodeRow
+  node: NavigationNodeRow,
+  encodedFiles: EncodedFile[]
 ): Promise<Rule> {
   const rule = await getProvisionForNavigationNode(node);
-  if (rule) return rule;
+  if (rule) return ruleWithActualRuleSpec(rule, encodedFiles);
 
   const encodedRule = await synthesiseEncodedNavigationLeaf(node);
   if (encodedRule) return encodedRule;
@@ -203,20 +238,29 @@ async function requireProvisionForNode(
 }
 
 async function getOptionalProvisionForNode(
-  node: NavigationNodeRow
+  node: NavigationNodeRow,
+  encodedFiles: EncodedFile[]
 ): Promise<Rule | null> {
   try {
-    return await getProvisionForNavigationNode(node);
+    const rule = await getProvisionForNavigationNode(node);
+    return rule ? ruleWithActualRuleSpec(rule, encodedFiles) : null;
   } catch {
     return null;
   }
 }
 
+async function getOptionalNavigationLeaf(
+  node: NavigationNodeRow,
+  encodedFiles: EncodedFile[]
+): Promise<Rule | null> {
+  const rule = await getProvisionForNavigationNode(node);
+  if (rule) return ruleWithActualRuleSpec(rule, encodedFiles);
+  return await synthesiseEncodedNavigationLeaf(node);
+}
+
 async function synthesiseEncodedNavigationLeaf(
   node: NavigationNodeRow
 ): Promise<Rule | null> {
-  if (!node.has_rulespec) return null;
-
   const citationPath = node.citation_path ?? node.path;
   const repoRule = await synthesiseRuleFromCitationPath(
     node.jurisdiction,
@@ -224,13 +268,105 @@ async function synthesiseEncodedNavigationLeaf(
   );
   if (repoRule) return repoRule;
 
-  return rulespecOnlyMinimalRule(
-    node.jurisdiction,
-    citationPath.split("/").slice(1),
-    citationPath,
-    undefined,
-    node.label
+  return null;
+}
+
+function navigationRowHasEncodedCoverage(
+  row: NavigationNodeRow,
+  files: EncodedFile[]
+): boolean {
+  const paths = [row.path, row.citation_path].filter(
+    (path): path is string => Boolean(path)
   );
+  for (const path of paths) {
+    if (files.some((file) => encodedFileCoversPath(file, path))) return true;
+  }
+  return false;
+}
+
+function encodedFileCoversPath(file: EncodedFile, path: string): boolean {
+  return file.citationPath === path || file.citationPath.startsWith(`${path}/`);
+}
+
+function encodedFileExactlyMatchesPath(
+  file: EncodedFile,
+  path: string
+): boolean {
+  return file.citationPath === path;
+}
+
+function navigationRowHasExactEncoding(
+  row: NavigationNodeRow,
+  files: EncodedFile[]
+): boolean {
+  const paths = [row.path, row.citation_path].filter(
+    (path): path is string => Boolean(path)
+  );
+  return paths.some((path) =>
+    files.some((file) => encodedFileExactlyMatchesPath(file, path))
+  );
+}
+
+function navigationRowsToTreeNodes(
+  rows: NavigationNodeRow[],
+  encodedFiles: EncodedFile[]
+): TreeNode[] {
+  return rows.map((row) => {
+    const node = navigationRowToTreeNode(row);
+    const hasRuleSpec = navigationRowHasEncodedCoverage(row, encodedFiles);
+    const hasExactRuleSpec = navigationRowHasExactEncoding(row, encodedFiles);
+    return {
+      ...node,
+      hasRuleSpec,
+      ...(node.rule && {
+        rule: {
+          ...node.rule,
+          has_rulespec: hasExactRuleSpec,
+          rulespec_path: hasExactRuleSpec
+            ? exactEncodedFilePathForRule(node.rule, encodedFiles)
+            : null,
+        },
+      }),
+    };
+  });
+}
+
+function ruleWithActualRuleSpec(
+  rule: Rule,
+  encodedFiles: EncodedFile[]
+): Rule {
+  const filePath = exactEncodedFilePathForRule(rule, encodedFiles);
+  return {
+    ...rule,
+    has_rulespec: Boolean(filePath),
+    rulespec_path: filePath,
+  };
+}
+
+function exactEncodedFilePathForRule(
+  rule: Pick<Rule, "citation_path">,
+  encodedFiles: EncodedFile[]
+): string | null {
+  const citationPath = rule.citation_path;
+  if (!citationPath) return null;
+  return (
+    encodedFiles.find((file) =>
+      encodedFileExactlyMatchesPath(file, citationPath)
+    )?.filePath ?? null
+  );
+}
+
+async function filterNavigableRows(
+  rows: NavigationNodeRow[],
+  encodedFiles: EncodedFile[]
+): Promise<NavigationNodeRow[]> {
+  if (rows.length === 0) return rows;
+
+  const resolvableIds = await getResolvableNavigationNodeIds(rows);
+  return rows.filter((row) => {
+    if (resolvableIds.has(row.id)) return true;
+    return navigationRowHasEncodedCoverage(row, encodedFiles);
+  });
 }
 
 async function getEncodedDocTypes(jurisdiction: string): Promise<string[]> {
@@ -345,10 +481,12 @@ function sparsePrefixChildren(
 async function loadRulespecOnlyTreeNodes(
   jurisdiction: string,
   segs: string[],
-  page: number
+  page: number,
+  getEncodedFiles: () => Promise<EncodedFile[]> = () =>
+    listEncodedFiles(jurisdiction)
 ): Promise<TreeNodeLoadResult | null> {
   if (page > 0 || segs.length === 0) return null;
-  const files = await listEncodedFiles(jurisdiction);
+  const files = await getEncodedFiles();
   if (files.length === 0) return null;
 
   const currentPath = navigationPath(jurisdiction, segs);

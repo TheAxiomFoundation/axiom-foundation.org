@@ -61,6 +61,37 @@ describe('CodeBlock', () => {
     expect(codeEl?.textContent).toContain("effective_from: '1993-01-01'")
   })
 
+  it('keeps blank lines inside formula block scalars without swallowing siblings', () => {
+    const { container } = render(
+      <CodeBlock
+        code={`rule:
+  formula: >
+    max(0, wages)
+
+  description: taxable wages`}
+        language="yaml"
+      />,
+    )
+    const codeEl = container.querySelector('code')
+    expect(codeEl?.innerHTML).toContain('token function')
+    expect(codeEl?.innerHTML).toContain('token variable')
+    expect(codeEl?.textContent).toContain('description: taxable wages')
+    expect(codeEl?.innerHTML).not.toContain('token variable">description')
+  })
+
+  it('falls back to YAML highlighting when a block scalar has no formula body', () => {
+    const { container } = render(
+      <CodeBlock
+        code={`rule:
+  formula: |
+description: missing body`}
+        language="yaml"
+      />,
+    )
+    const codeEl = container.querySelector('code')
+    expect(codeEl?.textContent).toContain('description: missing body')
+  })
+
   it('renders xml code with Prism highlighting', () => {
     const { container } = render(
       <CodeBlock code="<tag>content</tag>" language="xml" />,

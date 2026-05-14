@@ -24,6 +24,18 @@ describe("ExpandableCode inline", () => {
     render(<ExpandableCode code="short" language="yaml" />);
     expect(screen.getByText("short")).toBeInTheDocument();
   });
+
+  it("uses shared RuleSpec formula highlighting in the inline block", () => {
+    const { container } = render(
+      <ExpandableCode
+        code={"versions:\n  - formula: '0.062'\n  - formula: wages * rate"}
+        language="yaml"
+      />
+    );
+    const codeEl = container.querySelector("code.language-yaml");
+    expect(codeEl?.innerHTML).toContain("token number");
+    expect(codeEl?.innerHTML).toContain("token variable");
+  });
 });
 
 describe("ExpandableCode overlay", () => {

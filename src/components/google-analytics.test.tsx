@@ -37,6 +37,8 @@ describe("GoogleAnalytics", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    navState.pathname = "/axiom";
+    navState.searchParams = new URLSearchParams("q=snap");
     delete window.gtag;
     delete window.dataLayer;
   });
@@ -68,6 +70,22 @@ describe("GoogleAnalytics", () => {
     await waitFor(() =>
       expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
         page_path: "/axiom?q=snap",
+      }),
+    );
+  });
+
+  it("sends the pathname without a query string when search params are empty", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GA_MEASUREMENT_ID", "G-TEST123");
+    navState.searchParams = new URLSearchParams();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+    const { GoogleAnalytics } = await loadGoogleAnalytics();
+
+    render(<GoogleAnalytics />);
+
+    await waitFor(() =>
+      expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
+        page_path: "/axiom",
       }),
     );
   });

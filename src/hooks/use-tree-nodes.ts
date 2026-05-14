@@ -1,18 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { TreeNode, TreeResult } from "@/lib/tree-data";
-import {
-  getDocTypeNodes,
-  getTitleNodes,
-  getSectionNodes,
-  getActNodes,
-  getChildrenByParentId,
-  getRuleById,
-  getEncodedPaths,
-  isUUID,
-} from "@/lib/tree-data";
-import { synthesiseRuleFromCitationPath } from "@/lib/axiom/rulespec/synth-rule";
+import type { TreeNode } from "@/lib/tree-data";
+import { loadTreeNodes } from "@/lib/axiom/tree-node-loader";
 import {
   treeNodesCacheKey,
   type InitialTreeNodesState,
@@ -123,11 +113,6 @@ export function useTreeNodes(
       return;
     }
 
-    setNodes([]);
-    setHasMore(false);
-    setLeafRule(null);
-    setCurrentRule(null);
-    setStateKey(cacheKey);
     fetchNodes(ruleSegments, 0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
@@ -149,116 +134,33 @@ export function useTreeNodes(
       // setCurrentRule after the fresh fetch has already populated
       // them, which is exactly the "button lit but list unfiltered"
       // glitch users hit.
-      let result: {
-        nodes: TreeNode[];
-        hasMore: boolean;
-        currentRule?: Rule | null;
-        leafRule?: Rule | null;
-      };
-
-      if (segs.length === 0) {
-        // Root of jurisdiction: show doc types or acts
-        if (hasCitationPaths) {
-          const fetched = await getDocTypeNodes(dbJurisdictionId);
-          result = { nodes: fetched, hasMore: false };
-        } else {
-          const r: TreeResult = await getActNodes(dbJurisdictionId, pageNum);
-          result = { nodes: r.nodes, hasMore: r.hasMore };
-        }
-      } else if (hasCitationPaths) {
-        // Lazy-load (or refresh) the encoded-paths index for this
-        // jurisdiction. The ref is keyed on ``dbJurisdictionId`` so a
-        // navigation across jurisdictions doesn't leak the previous
-        // jurisdiction's encoded set into the current filter.
-        let encodedPaths: Set<string> | undefined;
-        if (encodedOnly) {
-          if (
-            !encodedPathsRef.current ||
-            encodedPathsRef.current.jurisdiction !== dbJurisdictionId
-          ) {
-            const paths = await getEncodedPaths(dbJurisdictionId);
-            encodedPathsRef.current = { jurisdiction: dbJurisdictionId, paths };
-          }
-          encodedPaths = encodedPathsRef.current.paths;
-        } else if (encodedPathsRef.current?.jurisdiction === dbJurisdictionId) {
-          // Reuse a previously loaded encoded index for badges, but do
-          // not block normal browsing on the GitHub/corpus encoded-path
-          // lookup. The index is required for the Encoded only filter,
-          // not for showing unfiltered tree content.
-          encodedPaths = encodedPathsRef.current.paths;
-        }
-
-        if (segs.length === 1) {
-          // Doc type selected, show titles.
-          const fetched = await getTitleNodes(
-            dbJurisdictionId,
-            segs[0],
-            encodedPaths,
-            encodedOnly
-          );
-          result = { nodes: fetched, hasMore: false };
-        } else {
-          // Deep navigation via citation path.
-          const pathPrefix = `${dbJurisdictionId}/${segs.join("/")}`;
-          const r: TreeResult = await getSectionNodes(
-            pathPrefix,
-            pageNum,
-            encodedPaths,
-            encodedOnly
-          );
-          if (r.leafRule) {
-            result = {
-              nodes: [],
-              hasMore: false,
-              leafRule: r.leafRule,
-            };
-          } else if (
-            r.nodes.length === 0 &&
-            !r.currentRule &&
-            segs.length >= 2
-          ) {
-            // No corpus row at this depth. The corpus is still being
-            // backfilled with deeper US citations, but the rules-*
-            // repos already carry the encodings — synth a leaf so
-            // the standard rule-detail layout can render them under
-            // the canonical /axiom/<citation> URL.
-            const synth = await synthesiseRuleFromCitationPath(
-              dbJurisdictionId,
-              pathPrefix
-            );
-            if (synth) {
-              result = { nodes: [], hasMore: false, leafRule: synth };
-            } else {
-              result = {
-                nodes: r.nodes,
-                hasMore: r.hasMore,
-                currentRule: r.currentRule ?? null,
-              };
-            }
-          } else {
-            result = {
-              nodes: r.nodes,
-              hasMore: r.hasMore,
-              currentRule: r.currentRule ?? null,
-            };
-          }
-        }
+      let result: Awaited<ReturnType<typeof loadTreeNodes>>;
+      if (shouldUseTreeApi()) {
+        result = await fetchTreeNodesFromApi({
+          dbJurisdictionId,
+          ruleSegments: segs,
+          hasCitationPaths,
+          encodedOnly,
+          page: pageNum,
+        });
       } else {
-        // Non-citation-path jurisdiction: navigate by parent_id (UUID)
-        const lastSegment = segs[segs.length - 1];
-        if (isUUID(lastSegment)) {
-          const r: TreeResult = await getChildrenByParentId(
-            lastSegment,
-            pageNum
-          );
-          if (r.nodes.length === 0) {
-            const rule = await getRuleById(lastSegment);
-            result = { nodes: [], hasMore: false, leafRule: rule };
-          } else {
-            result = { nodes: r.nodes, hasMore: r.hasMore };
-          }
-        } else {
-          result = { nodes: [], hasMore: false };
+        let encodedPaths: Set<string> | undefined;
+        if (encodedPathsRef.current?.jurisdiction === dbJurisdictionId) {
+          encodedPaths = encodedPathsRef.current.paths;
+        }
+        result = await loadTreeNodes({
+          dbJurisdictionId,
+          ruleSegments: segs,
+          hasCitationPaths,
+          encodedOnly,
+          page: pageNum,
+          encodedPaths,
+        });
+        if (result.encodedPaths) {
+          encodedPathsRef.current = {
+            jurisdiction: dbJurisdictionId,
+            paths: result.encodedPaths,
+          };
         }
       }
 
@@ -274,6 +176,7 @@ export function useTreeNodes(
       setLeafRule(result.leafRule ?? null);
       setCurrentRule(result.currentRule ?? null);
       setHasMore(result.hasMore);
+      setStateKey(cacheKey);
       pageRef.current = pageNum;
 
       if (!append) {
@@ -292,6 +195,7 @@ export function useTreeNodes(
     } catch (err) {
       if (token !== inflight.current) return;
       setError(err instanceof Error ? err.message : "Failed to fetch");
+      setStateKey(cacheKey);
     } finally {
       if (token === inflight.current) setLoading(false);
     }
@@ -308,13 +212,51 @@ export function useTreeNodes(
   const stale = stateKey !== cacheKey;
 
   return {
-    nodes: stale ? [] : nodes,
+    nodes,
     loading: loading || stale,
     error: stale ? null : error,
     hasMore: stale ? false : hasMore,
     loadMore,
-    leafRule: stale ? null : leafRule,
-    currentRule: stale ? null : currentRule,
+    leafRule,
+    currentRule,
     stale,
   };
+}
+
+function shouldUseTreeApi(): boolean {
+  return typeof window !== "undefined" && process.env.NODE_ENV !== "test";
+}
+
+async function fetchTreeNodesFromApi({
+  dbJurisdictionId,
+  ruleSegments,
+  hasCitationPaths,
+  encodedOnly,
+  page,
+}: {
+  dbJurisdictionId: string;
+  ruleSegments: string[];
+  hasCitationPaths: boolean;
+  encodedOnly: boolean;
+  page: number;
+}): Promise<Awaited<ReturnType<typeof loadTreeNodes>>> {
+  const params = new URLSearchParams({
+    jurisdiction: dbJurisdictionId,
+    segments: ruleSegments.map(encodeURIComponent).join("/"),
+    hasCitationPaths: hasCitationPaths ? "1" : "0",
+    encodedOnly: encodedOnly ? "1" : "0",
+    page: String(page),
+  });
+  const res = await fetch(`/api/axiom/tree?${params.toString()}`);
+  const body = (await res.json()) as
+    | Awaited<ReturnType<typeof loadTreeNodes>>
+    | { error?: string };
+  if (!res.ok) {
+    throw new Error(
+      "error" in body && body.error
+        ? body.error
+        : "Navigation data is temporarily unavailable."
+    );
+  }
+  return body as Awaited<ReturnType<typeof loadTreeNodes>>;
 }

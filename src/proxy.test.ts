@@ -17,20 +17,20 @@ describe("proxy", () => {
     );
   });
 
-  it("passes through site /axiom paths", () => {
+  it("rejects site /axiom paths", () => {
     const response = proxy(
       request("https://axiom-foundation.org/axiom/us/statute/7", "axiom-foundation.org")
     );
 
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(404);
   });
 
-  it("passes through explicit app host /axiom paths without double-prefixing", () => {
+  it("rejects explicit app host /axiom paths", () => {
     const response = proxy(
       request("https://app.axiom-foundation.org/axiom/us/statute/7", "app.axiom-foundation.org")
     );
 
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(404);
   });
 
   it("bypasses framework and API paths on the app host", () => {

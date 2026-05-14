@@ -17,17 +17,9 @@ export function FoundationSection() {
             A 501(c)(3) doing the public-interest work
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[680px] mx-auto">
-            Axiom Foundation is a nonprofit fiscally sponsored by{" "}
-            <a
-              href="https://psl-foundation.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link-quiet text-[var(--color-ink)]"
-            >
-              PSL Foundation
-            </a>
-            . Open code, open data, open governance. The infrastructure is
-            meant to outlast any single project that builds on it.
+            Axiom Foundation is a nonprofit. Open code, open data, open
+            governance. The infrastructure is meant to outlast any single
+            project that builds on it.
           </p>
         </div>
 
@@ -38,7 +30,7 @@ export function FoundationSection() {
               title: "Encode your jurisdiction",
               body:
                 "Start with a single statute. The encoder pipeline does the heavy lifting; reviewers stand in for a stable bar.",
-              href: "https://github.com/TheAxiomFoundation/rules-us",
+              href: "https://github.com/TheAxiomFoundation/rulespec-us",
               cta: "Open the contributor guide",
               icon: <CodeIcon className="w-5 h-5" />,
             },
@@ -47,7 +39,7 @@ export function FoundationSection() {
               title: "Validate our work",
               body:
                 "Every encoding is open and cross-checked. Find a discrepancy and we’ll explain why — or fix it.",
-              href: "https://github.com/TheAxiomFoundation/axiom-rules/issues",
+              href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/issues",
               cta: "Browse open issues",
               icon: <GitHubIcon className="w-5 h-5" />,
             },

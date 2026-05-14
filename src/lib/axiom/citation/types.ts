@@ -3,7 +3,7 @@
  *
  * The parser's job is to turn an input string — typed by a user into a
  * command palette or a search box — into a canonical
- * ``citation_path`` that can be looked up in ``corpus.provisions``. The
+ * ``citation_path`` that can be looked up in current corpus provisions. The
  * citation_path is the *only* address format Axiom uses internally;
  * every URL, every ``.yaml`` file, every encoding record keys off it.
  *

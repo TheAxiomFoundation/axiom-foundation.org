@@ -69,11 +69,11 @@ const repoMap = [
     owns: "Encoder prompts, harness validation, proof validation, oracles, eval suites, and methods notes.",
   },
   {
-    repo: "axiom-rules",
+    repo: "axiom-rules-engine",
     owns: "RuleSpec language, compiler, runtime, test runner, and executable semantics.",
   },
   {
-    repo: "rules-*",
+    repo: "rulespec-*",
     owns: "Jurisdiction RuleSpec corpora: checked-in `.yaml` rules and companion `.test.yaml` cases.",
   },
   {

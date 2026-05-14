@@ -432,10 +432,10 @@ describe('supabase lib', () => {
 
   describe('getRuleEncoding', () => {
     it('returns encoding data when rule has citation_path and encoding exists', async () => {
-      // getRuleEncoding calls supabaseCorpus.from('provisions') then supabaseEncodings.from('encoding_runs')
+      // getRuleEncoding calls supabaseCorpus.from('current_provisions') then supabaseEncodings.from('encoding_runs')
       // Both clients use the same mockFrom since createClient is mocked once
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -483,7 +483,7 @@ describe('supabase lib', () => {
 
     it('picks the most specific path when multiple matches exist', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -497,7 +497,7 @@ describe('supabase lib', () => {
         }
         // Return both a parent and child match — should pick child (more specific).
         // Paths are stored under the plural ``statutes/`` bucket because that
-        // is the canonical layout in the rules-* repos; candidatePaths
+        // is the canonical layout in the rulespec-* repos; candidatePaths
         // translates the citation_path doc-type segment to match.
         return mockEncodingRunsChain({
           data: [
@@ -515,7 +515,7 @@ describe('supabase lib', () => {
 
     it('checks duplicated terminal section file paths for US section roots', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -547,7 +547,7 @@ describe('supabase lib', () => {
 
     it('returns encoding-run metadata fields from encoding_runs', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -595,7 +595,7 @@ describe('supabase lib', () => {
 
     it('uses rulespec_path when citation_path is null', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -657,12 +657,12 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('returns null when neither encoding_runs nor the rules-* repo has the path', async () => {
+    it('returns null when neither encoding_runs nor the rulespec-* repo has the path', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => '' })
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -679,7 +679,7 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-no-encoding')
       expect(result).toBeNull()
-      // Falls through to the rules-* fallback regardless of has_rulespec —
+      // Falls through to the rulespec-* fallback regardless of has_rulespec —
       // the corpus flag is unreliable during the rolling migration.
       expect(fetchMock).toHaveBeenCalled()
       vi.unstubAllGlobals()
@@ -687,7 +687,7 @@ describe('supabase lib', () => {
 
     it('returns null when encoding_runs query errors', async () => {
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -706,7 +706,7 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
-    it('falls back to rules-us-co GitHub paths for Colorado rules', async () => {
+    it('falls back to rulespec-us-co GitHub paths for Colorado rules', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         text: async () => 'colorado rule',
@@ -714,7 +714,7 @@ describe('supabase lib', () => {
       vi.stubGlobal('fetch', fetchMock)
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           return {
             select: () => ({
               eq: () => ({
@@ -732,13 +732,13 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('rule-us-co')
       expect(result?.encoding_run_id).toBe('github:statutes/crs/26-2-703/2.5.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us-co/main/statutes/crs/26-2-703/2.5.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us-co/main/statutes/crs/26-2-703/2.5.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()
     })
 
-    it('skips the corpus lookup for a synthesised github: id and fetches from rules-* directly', async () => {
+    it('skips the corpus lookup for a synthesised github: id and fetches from rulespec-* directly', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         text: async () => 'format: rulespec/v1\n',
@@ -748,7 +748,7 @@ describe('supabase lib', () => {
       // The corpus shouldn't be queried at all for synth ids — fail
       // hard if it is so the regression is loud.
       mockFrom.mockImplementation((table: string) => {
-        if (table === 'provisions') {
+        if (table === 'current_provisions') {
           throw new Error('synthesised id should not query corpus')
         }
         return mockEncodingRunsChain({ data: [], error: null })
@@ -757,7 +757,7 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('github:us/statute/26/3101/a')
       expect(result?.file_path).toBe('statutes/26/3101/a.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rules-us/main/statutes/26/3101/a.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/statutes/26/3101/a.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()
@@ -975,6 +975,13 @@ describe('supabase lib', () => {
   })
 
   describe('getAxiomStats', () => {
+    function mockNavigationCount(count = 0) {
+      const eq = vi.fn().mockResolvedValue({ count, error: null })
+      const select = vi.fn().mockReturnValue({ eq })
+      mockFrom.mockReturnValue({ select })
+      return { eq, select }
+    }
+
     it('calls the get_corpus_stats RPC and returns its payload', async () => {
       const stats = {
         provisions_count: 658899,
@@ -986,9 +993,39 @@ describe('supabase lib', () => {
         ],
       }
       mockRpc.mockResolvedValue({ data: stats, error: null })
+      mockNavigationCount(0)
       const result = await getAxiomStats()
       expect(mockRpc).toHaveBeenCalledWith('get_corpus_stats')
       expect(result).toEqual(stats)
+    })
+
+    it('fills missing landing jurisdiction counts from navigation_nodes', async () => {
+      const stats = {
+        provisions_count: 658899,
+        references_count: 148604,
+        jurisdictions_count: 1,
+        jurisdictions: [{ jurisdiction: 'us', count: 467993 }],
+      }
+      mockRpc.mockResolvedValue({ data: stats, error: null })
+      const eq = vi.fn((_column: string, jurisdiction: string) =>
+        Promise.resolve({
+          count: jurisdiction === 'canada' ? 22275 : 0,
+          error: null,
+        })
+      )
+      const select = vi.fn().mockReturnValue({ eq })
+      mockFrom.mockReturnValue({ select })
+
+      const result = await getAxiomStats()
+
+      expect(mockFrom).toHaveBeenCalledWith('navigation_nodes')
+      expect(result?.jurisdictions).toEqual(
+        expect.arrayContaining([
+          { jurisdiction: 'us', count: 467993 },
+          { jurisdiction: 'canada', count: 22275 },
+        ])
+      )
+      expect(result?.jurisdictions_count).toBeGreaterThanOrEqual(2)
     })
 
     it('returns null on RPC error', async () => {

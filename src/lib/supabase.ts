@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getLandingJurisdictions } from '@/lib/axiom/landing-jurisdictions'
 import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 
@@ -316,7 +317,7 @@ function duplicateTerminalSectionPath(basePath: string): string | null {
 }
 
 // citation_path uses singular doc-type buckets ("statute", "regulation",
-// "policy"); the rules-* repos store files under plural buckets
+// "policy"); the rulespec-* repos store files under plural buckets
 // ("statutes/", "regulations/", "policies/"). Translate at the repo
 // boundary so the rest of the path machinery can keep speaking the
 // citation_path dialect.
@@ -359,7 +360,7 @@ export function candidatePaths(
   return candidates
 }
 
-// Fetch RuleSpec content from GitHub rules-us repo (fallback for hand-written encodings)
+// Fetch RuleSpec content from GitHub rulespec-us repo (fallback for hand-written encodings)
 /* v8 ignore start -- network fetch to GitHub, tested via integration */
 async function fetchRuleSpecFromGitHub(
   candidates: string[],
@@ -397,7 +398,7 @@ async function fetchRuleSpecFromGitHub(
 // Fetch encoding data for a source provision by its ID
 export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData | null> {
   // Synthesised IDs ("github:<citation_path>") are minted client-side
-  // for citation paths that have a YAML in the rules-* repo but no
+  // for citation paths that have a YAML in the rulespec-* repo but no
   // corpus row backing them. Skip the corpus lookup and resolve the
   // path directly so the standard rule-detail rail can render the
   // encoding without waiting on the DB backfill.
@@ -420,7 +421,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   } else {
     const { data, error } = await supabaseCorpus
-      .from('provisions')
+      .from('current_provisions')
       .select('citation_path, jurisdiction, rulespec_path, has_rulespec')
       .eq('id', ruleId)
       .single()
@@ -433,7 +434,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
   let basePath = rule.citation_path
     ? rule.citation_path.replace(rule.jurisdiction + '/', '')
     : null
-  // The rules-us repo prefixes federal-regulation titles with "-cfr"
+  // The rulespec-us repo prefixes federal-regulation titles with "-cfr"
   // (``regulations/7-cfr/...``) while corpus drops it. Add the suffix
   // back when assembling repo candidates so the GitHub fetch hits the
   // right file.
@@ -483,7 +484,7 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     }
   }
 
-  // Fallback: fetch from the jurisdiction's rules-* repo. We used to
+  // Fallback: fetch from the jurisdiction's rulespec-* repo. We used to
   // gate this on ``has_rulespec`` or an explicit ``rulespec_path``,
   // but the corpus flag is far behind the actual repo state during
   // the rolling migration — most YAMLs that exist on GitHub don't
@@ -514,7 +515,7 @@ export interface SearchOptions {
 }
 
 /**
- * Search corpus.provisions via the server-side `search_provisions` RPC.
+ * Search current corpus provisions via the server-side `search_provisions` RPC.
  *
  * The RPC accepts websearch-style queries (quoted phrases, `OR`, `-`).
  * It returns hits ordered by ts_rank_cd with a <mark>-tagged body
@@ -568,7 +569,7 @@ async function searchRulesFallback(
   if (terms.length === 0) return []
 
   let builder = supabaseCorpus
-    .from('provisions')
+    .from('current_provisions')
     .select(
       'id, jurisdiction, doc_type, citation_path, heading, body, has_rulespec'
     )
@@ -636,7 +637,7 @@ export interface RuleReference {
   other_citation_path: string
   other_provision_id: string | null
   other_heading: string | null
-  /** Outgoing only — whether the target is ingested in corpus.provisions. */
+  /** Outgoing only — whether the target is ingested in current corpus provisions. */
   target_resolved: boolean
 }
 
@@ -688,5 +689,82 @@ export async function getAxiomStats(): Promise<AxiomStats | null> {
     console.error('get_corpus_stats RPC failed:', error)
     return null
   }
-  return (data || null) as AxiomStats | null
+  const stats = (data || null) as AxiomStats | null
+  if (!stats) return null
+  return enrichAxiomStatsWithNavigationCounts(stats)
+}
+
+async function enrichAxiomStatsWithNavigationCounts(
+  stats: AxiomStats
+): Promise<AxiomStats> {
+  const existingJurisdictions = stats.jurisdictions ?? []
+  const existingSlugs = new Set(
+    existingJurisdictions.map((j) => j.jurisdiction)
+  )
+  const missingSlugs = getLandingJurisdictions()
+    .map((j) => j.slug)
+    .filter((slug) => !existingSlugs.has(slug))
+
+  if (missingSlugs.length === 0) return stats
+
+  const navigationCounts = await withStatsTimeout(
+    getNavigationJurisdictionCounts(missingSlugs),
+    NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS,
+    []
+  )
+
+  if (navigationCounts.length === 0) return stats
+
+  const jurisdictions = [...existingJurisdictions, ...navigationCounts].sort(
+    (a, b) => b.count - a.count
+  )
+
+  return {
+    ...stats,
+    jurisdictions,
+    jurisdictions_count: Math.max(
+      stats.jurisdictions_count,
+      new Set(jurisdictions.map((j) => j.jurisdiction)).size
+    ),
+  }
+}
+
+async function getNavigationJurisdictionCounts(
+  jurisdictions: string[]
+): Promise<AxiomJurisdictionCount[]> {
+  const rows = await Promise.all(
+    jurisdictions.map(async (jurisdiction) => {
+      const { count, error } = await supabaseCorpus
+        .from('navigation_nodes')
+        .select('id', { count: 'exact', head: true })
+        .eq('jurisdiction', jurisdiction)
+
+      if (error || !count) return null
+      return { jurisdiction, count }
+    })
+  )
+
+  return rows.filter((row): row is AxiomJurisdictionCount => row !== null)
+}
+
+const NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS = 1200
+
+function withStatsTimeout<T, F = T>(
+  work: PromiseLike<T> | T,
+  ms: number,
+  fallback: F
+): Promise<T | F> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms)
+    Promise.resolve(work).then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(fallback)
+      }
+    )
+  })
 }

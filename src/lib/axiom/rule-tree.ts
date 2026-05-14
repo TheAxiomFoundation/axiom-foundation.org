@@ -2,7 +2,7 @@ import { supabaseCorpus, type Rule } from "@/lib/supabase";
 
 /**
  * Tree node for the recursive container-rule renderer. Mirrors the
- * atomic hierarchy of ``corpus.provisions`` under a single root — a section
+ * atomic hierarchy of ``corpus.current_provisions`` under a single root — a section
  * with all its subsections / paragraphs / subparagraphs flattened out
  * into a traversable structure.
  */
@@ -33,7 +33,7 @@ export async function getRuleDescendants(
   for (let depth = 0; depth < maxDepth; depth++) {
     if (frontier.length === 0) break;
     const { data, error } = await supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .in("parent_id", frontier)
       .order("ordinal", { ascending: true, nullsFirst: false });

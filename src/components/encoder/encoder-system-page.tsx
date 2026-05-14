@@ -311,7 +311,7 @@ const recentProofPoints: ProofPoint[] = [
     id: "wave20",
     label: "55-case UK bulk wave promoted",
     summary:
-      "Wave 20 cleared the real scale gate, then landed 55 new Pension Credit regulation 15 leaves in rules-uk.",
+      "Wave 20 cleared the real scale gate, then landed 55 new Pension Credit regulation 15 leaves in rulespec-uk.",
   },
   {
     id: "corpus",
@@ -338,7 +338,7 @@ const guardrails: Guardrail[] = [
     catches: [
       "numeric occurrence coverage",
       "named scalar occurrence extraction",
-      "repo baseline audit in rules-uk and rules-us",
+      "repo baseline audit in rulespec-uk and rulespec-us",
     ],
     recentExample: "UC taper rate and repeated UK benefit thresholds",
   },
@@ -516,7 +516,7 @@ cases:
     language: "plain",
     code: `{
   "wave": "2026-04-08-wave18",
-  "repo": "rules-uk",
+  "repo": "rulespec-uk",
   "provenance_tier": "benchmarked_promotion",
   "file_count": 55,
   "runner": "codex-gpt-5.4",

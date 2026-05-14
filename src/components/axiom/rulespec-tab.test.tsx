@@ -354,12 +354,12 @@ rules:
     // labelled as an encoding path, not as a source-tree subsection.
     expect(screen.getByText("us/statute/26/3101/a").closest("a")).toHaveAttribute(
       "href",
-      "/axiom/us/statute/26/3101/a"
+      "/us/statute/26/3101/a"
     );
     expect(screen.getByText("statutes/26/3101/a.yaml")).toBeInTheDocument();
     expect(screen.getByText("us/statute/26/3101/b/1").closest("a")).toHaveAttribute(
       "href",
-      "/axiom/us/statute/26/3101/b/1"
+      "/us/statute/26/3101/b/1"
     );
     expect(screen.queryByText("(a)")).not.toBeInTheDocument();
   });

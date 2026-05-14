@@ -7,6 +7,7 @@ import {
   type AxiomJurisdictionCount,
   type AxiomStats,
 } from "@/lib/supabase";
+import { getLandingJurisdictions } from "@/lib/axiom/landing-jurisdictions";
 import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
 
 /**
@@ -25,12 +26,15 @@ import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
  */
 export function AxiomStats({
   onNavigateHref,
+  initialStats = null,
 }: {
   onNavigateHref?: (href: string) => void;
+  initialStats?: AxiomStats | null;
 }) {
-  const [stats, setStats] = useState<AxiomStats | null>(null);
+  const [stats, setStats] = useState<AxiomStats | null>(initialStats);
 
   useEffect(() => {
+    if (initialStats) return;
     let cancelled = false;
     getAxiomStats().then((s) => {
       if (!cancelled) setStats(s);
@@ -38,22 +42,21 @@ export function AxiomStats({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialStats]);
 
-  const jurisdictions =
-    stats?.jurisdictions && stats.jurisdictions.length > 0
-      ? stats.jurisdictions
-      : fallbackJurisdictions();
+  const jurisdictions = mergeJurisdictionCounts(stats?.jurisdictions ?? []);
+  const jurisdictionStatCount = Math.max(
+    stats?.jurisdictions_count ?? 0,
+    jurisdictions.length
+  );
 
   return (
     <div data-testid="axiom-stats" className="mb-8">
-      {stats && (
-        <div className="flex justify-center gap-12">
-          <Stat value={stats.provisions_count} label="provisions indexed" />
-          <Stat value={stats.references_count} label="citations extracted" />
-          <Stat value={stats.jurisdictions_count} label="jurisdictions" />
-        </div>
-      )}
+      <div className="flex justify-center gap-12">
+        <Stat value={stats?.provisions_count ?? null} label="provisions indexed" />
+        <Stat value={stats?.references_count ?? null} label="citations extracted" />
+        <Stat value={stats ? jurisdictionStatCount : null} label="jurisdictions" />
+      </div>
       <JurisdictionPills
         jurisdictions={jurisdictions}
         onNavigateHref={onNavigateHref}
@@ -140,16 +143,19 @@ function JurisdictionPills({
           <div className="flex items-baseline justify-between mb-3 px-2">
             <span className="eyebrow">{group.title}</span>
             <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              {group.items.length}
-              {group.items.some((i) => i.count !== null) && (
-                <>
-                  {" · "}
-                  {formatCompact(
-                    group.items.reduce((sum, i) => sum + (i.count ?? 0), 0)
-                  )}{" "}
-                  rules
-                </>
-              )}
+              <span
+                aria-hidden={!group.items.some((i) => i.count !== null)}
+                className={`inline-block min-w-[8ch] text-right transition-opacity duration-200 ${
+                  group.items.some((i) => i.count !== null)
+                    ? "opacity-100"
+                    : "opacity-0"
+                }`}
+              >
+                {formatCompact(
+                  group.items.reduce((sum, i) => sum + (i.count ?? 0), 0)
+                )}{" "}
+                rules
+              </span>
             </span>
           </div>
           <ul className="flex flex-wrap justify-center gap-2 m-0 p-0 list-none">
@@ -199,18 +205,40 @@ function JurisdictionPill({
       <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
         {label}
       </span>
-      <span className="font-mono text-xs text-[var(--color-ink-muted)] tabular-nums">
+      <span
+        aria-hidden={count === null}
+        className={`inline-block min-w-[2.75ch] text-right font-mono text-xs text-[var(--color-ink-muted)] tabular-nums transition-opacity duration-200 ${
+          count === null ? "opacity-0" : "opacity-100"
+        }`}
+      >
         {count === null ? "" : formatCompact(count)}
       </span>
     </Link>
   );
 }
 
-function fallbackJurisdictions(): JurisdictionNavCount[] {
-  return JURISDICTIONS.map((jurisdiction) => ({
-    jurisdiction: jurisdiction.slug,
-    count: null,
-  }));
+function mergeJurisdictionCounts(
+  counts: AxiomJurisdictionCount[]
+): JurisdictionNavCount[] {
+  const seededSlugs = new Set(JURISDICTIONS.map((j) => j.slug));
+  const countBySlug = new Map(counts.map((j) => [j.jurisdiction, j.count]));
+
+  const seeded = getLandingJurisdictions(countedSlugs(counts)).map(
+    (jurisdiction) => ({
+      jurisdiction: jurisdiction.slug,
+      count: countBySlug.get(jurisdiction.slug) ?? null,
+    })
+  );
+
+  const unseeded = counts
+    .filter((j) => !seededSlugs.has(j.jurisdiction))
+    .map((j) => ({ jurisdiction: j.jurisdiction, count: j.count }));
+
+  return [...seeded, ...unseeded];
+}
+
+function countedSlugs(counts: AxiomJurisdictionCount[]): Set<string> {
+  return new Set(counts.map((j) => j.jurisdiction));
 }
 
 /**
@@ -252,14 +280,17 @@ export function humanizeIdentifier(value: string): string {
     .join(" ");
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label }: { value: number | null; label: string }) {
   return (
     <div className="text-center">
       <div
-        className="font-heading text-3xl text-[var(--color-accent)] tabular-nums"
-        title={value.toLocaleString()}
+        className={`min-h-[1.2em] min-w-[5ch] font-heading text-3xl text-[var(--color-accent)] tabular-nums transition-opacity duration-200 ${
+          value === null ? "opacity-0" : "opacity-100"
+        }`}
+        title={value === null ? undefined : value.toLocaleString()}
+        aria-hidden={value === null}
       >
-        {formatCompact(value)}
+        {value === null ? "" : formatCompact(value)}
       </div>
       <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mt-1">
         {label}

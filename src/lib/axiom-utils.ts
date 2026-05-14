@@ -1,6 +1,6 @@
 import type { Rule, RuleEncodingData } from "@/lib/supabase";
 
-/** True when the encoding was fetched from a GitHub rules-* repo (not from the encoding DB). */
+/** True when the encoding was fetched from a GitHub rulespec-* repo (not from the encoding DB). */
 export function isGitHubEncoding(encoding: RuleEncodingData | null): boolean {
   return !!encoding?.encoding_run_id.startsWith("github:");
 }
@@ -16,6 +16,7 @@ export interface ViewerDocument {
   subsections: Array<{ id: string; text: string }>;
   hasRuleSpec: boolean;
   jurisdiction: string;
+  citationPath?: string;
   sourcePath: string | null;
   isRepealed?: boolean;
   contextText?: string;
@@ -159,6 +160,7 @@ export function transformRuleToViewerDoc(
     subsections,
     hasRuleSpec: rule.has_rulespec,
     jurisdiction: rule.jurisdiction,
+    ...(rule.citation_path && { citationPath: rule.citation_path }),
     sourcePath: rule.source_path,
     ...(isRuleRepealed(rule) && { isRepealed: true }),
     ...(options?.contextText && { contextText: options.contextText }),

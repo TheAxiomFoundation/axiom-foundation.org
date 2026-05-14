@@ -34,28 +34,28 @@ const formatLabels: Record<FormatTab, string> = {
 const getFilename = (example: ExampleType, format: FormatTab): string => {
   const filenames: Record<ExampleType, Record<FormatTab, string>> = {
     niit: {
-      rulespec: "rules-us/statutes/26/1411/a.yaml",
+      rulespec: "rulespec-us/statutes/26/1411/a.yaml",
       dmn: "niit.dmn",
       openfisca:
         "variables/gov/irs/tax/federal_income/net_investment_income_tax.py",
       catala: "niit.catala_en",
     },
     "aca-ptc": {
-      rulespec: "rules-us/statutes/26/36B/b/3/A.yaml",
+      rulespec: "rulespec-us/statutes/26/36B/b/3/A.yaml",
       dmn: "aca_ptc.dmn",
       openfisca:
         "variables/gov/aca/ptc/aca_required_contribution_percentage.py",
       catala: "aca_ptc.catala_en",
     },
     "std-ded": {
-      rulespec: "rules-us/statutes/26/63/c/5.yaml",
+      rulespec: "rulespec-us/statutes/26/63/c/5.yaml",
       dmn: "standard_deduction.dmn",
       openfisca:
         "variables/gov/irs/income/taxable_income/deductions/standard_deduction/basic_standard_deduction.py",
       catala: "standard_deduction.catala_en",
     },
     "ny-eitc": {
-      rulespec: "rules-us-ny/statutes/tax/606/d.yaml",
+      rulespec: "rulespec-us-ny/statutes/tax/606/d.yaml",
       dmn: "ny_eitc.dmn",
       openfisca: "variables/gov/states/ny/tax/income/credits/ny_eitc.py",
       catala: "ny_eitc.catala_en",
@@ -533,7 +533,7 @@ export function FormatComparison() {
                 <>
                   Filepath mirrors statute citation.{" "}
                   <code className="font-mono text-[0.8rem] px-1.5 py-0.5 bg-[var(--color-accent-light)] rounded text-[var(--color-accent)]">
-                    rules-us/statutes/26/24/d/1/B.yaml
+                    rulespec-us/statutes/26/24/d/1/B.yaml
                   </code>{" "}
                   encodes 26 USC &sect; 24(d)(1)(B).
                 </>

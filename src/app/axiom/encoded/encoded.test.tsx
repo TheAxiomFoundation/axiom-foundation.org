@@ -86,22 +86,22 @@ describe("EncodedRulesIndexPage", () => {
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
     expect(headings).toEqual(["US Federal", "United Kingdom"]);
-    // Each row links to /axiom/encoded/<citation_path>.
+    // Each row links to /encoded/<citation_path>.
     expect(
       screen.getByText("us/statute/26/3101/a").closest("a")
-    ).toHaveAttribute("href", "/axiom/encoded/us/statute/26/3101/a");
+    ).toHaveAttribute("href", "/encoded/us/statute/26/3101/a");
   });
 });
 
 describe("EncodedRuleViewerPage", () => {
-  it("redirects to the canonical /axiom/<citation> URL", async () => {
+  it("redirects to the canonical /<citation> URL", async () => {
     await expect(
       EncodedRuleViewerPage({
         params: Promise.resolve({
           path: ["us", "statute", "26", "3101", "a"],
         }),
       })
-    ).rejects.toThrow("NEXT_REDIRECT:/axiom/us/statute/26/3101/a");
-    expect(mockRedirect).toHaveBeenCalledWith("/axiom/us/statute/26/3101/a");
+    ).rejects.toThrow("NEXT_REDIRECT:/us/statute/26/3101/a");
+    expect(mockRedirect).toHaveBeenCalledWith("/us/statute/26/3101/a");
   });
 });

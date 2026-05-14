@@ -120,7 +120,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   }
   const parentResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("id", rule.parent_id)
       .single(),
@@ -133,7 +133,7 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
   }
   const siblingsResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("parent_id", rule.parent_id)
       .order("ordinal"),
@@ -258,7 +258,7 @@ async function fetchDirectRootChildrenByCitationPrefix(
   while (rows.length < PREFIX_SCAN_MAX_ROWS) {
     const result = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .gte("citation_path", cursor)
         .lt("citation_path", upperBound)
@@ -325,7 +325,7 @@ export async function getJurisdictionCounts(
     dbIds.map(async (id) => {
       const result = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*", { count: "exact", head: true })
           .eq("jurisdiction", id),
         TREE_QUERY_TIMEOUT_MS,
@@ -350,14 +350,14 @@ export async function getDocTypeNodes(
       KNOWN_DOC_TYPES.map(async (segment) => {
         const rootPath = `${jurisdiction}/${segment}`;
         const { data: rootData } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("id")
           .eq("citation_path", rootPath)
           .limit(1);
         if (rootData && rootData.length > 0) return segment;
 
         const { data } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("citation_path")
           .eq("jurisdiction", jurisdiction)
           .eq("doc_type", segment)
@@ -385,7 +385,7 @@ export async function getDocTypeNodes(
     for (let offset = 0; offset < ROOT_SCAN_MAX_ROWS; offset += ROOT_SCAN_PAGE_SIZE) {
       const result = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("doc_type")
           .eq("jurisdiction", jurisdiction)
           .is("parent_id", null)
@@ -428,6 +428,7 @@ function fallbackDocTypeNodes(jurisdiction: string): TreeNode[] {
 async function fetchChildEntriesByCitationPrefix(
   pathPrefix: string
 ): Promise<Array<{ segment: string; rule?: Rule }>> {
+  const [jurisdiction, docType] = pathPrefix.split("/");
   const childPrefix = `${pathPrefix}/`;
   const expectedDepth = citationDepth(pathPrefix) + 1;
   const upperBound = citationPrefixUpperBound(pathPrefix);
@@ -438,8 +439,10 @@ async function fetchChildEntriesByCitationPrefix(
   while (entries.length < PREFIX_SCAN_MAX_ROWS && cursor < upperBound) {
     const result = await withTimeoutStatus(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", docType)
         .gte("citation_path", cursor)
         .lt("citation_path", upperBound)
         .order("citation_path")
@@ -494,7 +497,7 @@ async function fetchRootLevelEntries(
   for (const level of browseRootLevels(jurisdiction, docType)) {
     const result = await withTimeoutStatus(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .eq("jurisdiction", jurisdiction)
         .eq("doc_type", docType)
@@ -504,12 +507,10 @@ async function fetchRootLevelEntries(
       TREE_QUERY_TIMEOUT_MS
     );
 
-    if (result.status !== "ok") {
-      throw new TreeDataUnavailableError();
-    }
+    if (result.status !== "ok") continue;
 
     const { data, error } = result.value;
-    if (error) throw new TreeDataUnavailableError();
+    if (error) continue;
 
     const entries = titleEntriesFromRootRows((data ?? []) as Rule[]);
     if (entries.length > 0) return entries;
@@ -637,7 +638,7 @@ async function fetchDottedSubsectionSiblings(rule: Rule): Promise<Rule[]> {
     lower.slice(0, -1) + String.fromCharCode(lower.charCodeAt(lower.length - 1) + 1);
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .gte("citation_path", lower)
       .lt("citation_path", upper)
@@ -688,7 +689,7 @@ async function fetchColoradoPolicyAgencyNodes(
   for (let offset = 0; offset < PREFIX_SCAN_MAX_ROWS; offset += PREFIX_SCAN_PAGE_SIZE) {
     const result = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*")
         .gte("citation_path", canonicalPrefix)
         .lt("citation_path", canonicalUpperBound)
@@ -754,7 +755,7 @@ export async function getSectionNodes(
 ): Promise<TreeResult> {
   const parentResult = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .eq("citation_path", pathPrefix)
       .maybeSingle(),
@@ -767,7 +768,7 @@ export async function getSectionNodes(
     // Encoded-only short-circuit: pull the encoded descendants
     // directly by their citation_path instead of walking the
     // corpus's parent_id tree. The corpus parents 7 CFR 273.3 under
-    // ``subpart-B`` and the rules-us repo files it as bare
+    // ``subpart-B`` and the rulespec-us repo files it as bare
     // ``273/3.yaml``, so a path-prefix descendant check on the
     // subpart node never matches. Picking up the encoded paths
     // straight from the set produces the right list regardless.
@@ -794,7 +795,7 @@ export async function getSectionNodes(
       );
       const encodedRowsResult = await withTimeout(
         supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*")
           .in("citation_path", wantedPaths)
           .order("citation_path"),
@@ -816,7 +817,7 @@ export async function getSectionNodes(
     const to = from + PAGE_SIZE - 1;
     const childrenResult = await withTimeout(
       supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select("*", { count: "exact" })
         .eq("parent_id", parentRule.id)
         .order("ordinal")
@@ -919,7 +920,7 @@ export async function getSectionNodes(
  * filter narrows the tree to branches whose paths show up in this
  * set.
  *
- * The canonical source is the jurisdiction's ``rules-*`` GitHub repo
+ * The canonical source is the jurisdiction's ``rulespec-*`` GitHub repo
  * — that's the file-system of truth about what's been checked in,
  * regardless of whether ``has_rulespec`` has been backfilled in the
  * corpus DB. We layer in any corpus rows that already carry the flag
@@ -931,7 +932,7 @@ export async function getEncodedPaths(
 ): Promise<Set<string>> {
   const paths = new Set<string>();
 
-  // Source 1: rules-* GitHub tree
+  // Source 1: rulespec-* GitHub tree
   try {
     const files = await withTimeout(
       import("@/lib/axiom/rulespec/repo-listing").then(({ listEncodedFiles }) =>
@@ -952,7 +953,7 @@ export async function getEncodedPaths(
   // Source 2: corpus.has_rulespec
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("citation_path")
       .eq("jurisdiction", jurisdiction)
       .eq("has_rulespec", true),
@@ -1045,7 +1046,7 @@ export async function getActNodes(
 
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*", { count: "exact" })
       .eq("jurisdiction", jurisdiction)
       .is("parent_id", null)
@@ -1082,7 +1083,7 @@ export async function getChildrenByParentId(
 
   const result = await withTimeout(
     supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*", { count: "exact" })
       .eq("parent_id", parentId)
       .order("ordinal")
@@ -1111,7 +1112,7 @@ export async function getChildrenByParentId(
 
 export async function getRuleById(id: string): Promise<Rule | null> {
   const result = await withTimeout(
-    supabaseCorpus.from("provisions").select("*").eq("id", id).single(),
+    supabaseCorpus.from("current_provisions").select("*").eq("id", id).single(),
     TREE_QUERY_TIMEOUT_MS,
     null
   );
@@ -1163,6 +1164,19 @@ export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
 }
 
 function formatGenericSegmentLabel(segment: string): string {
+  const acronyms = new Set([
+    "cfr",
+    "cola",
+    "fns",
+    "irs",
+    "snap",
+    "uk",
+    "ukpga",
+    "uksi",
+    "us",
+    "usc",
+    "usda",
+  ]);
   switch (segment) {
     case "legislation":
       return "Legislation";
@@ -1181,7 +1195,15 @@ function formatGenericSegmentLabel(segment: string): string {
     default:
       return segment
         .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (m) => m.toUpperCase());
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => {
+          const lower = part.toLowerCase();
+          if (acronyms.has(lower)) return lower.toUpperCase();
+          if (/^fy\d+$/i.test(part)) return part.toUpperCase();
+          return part.charAt(0).toUpperCase() + part.slice(1);
+        })
+        .join(" ");
   }
 }
 
@@ -1240,13 +1262,22 @@ function formatRuleSegmentLabel(
   // Default path (us federal and similar): handle statute and regulation lanes
   const isRegulationLane =
     Array.isArray(allSegments) && allSegments[1] === "regulation";
+  const isStatuteLane =
+    Array.isArray(allSegments) && allSegments[1] === "statute";
+  const isSourceDocumentLane =
+    Array.isArray(allSegments) &&
+    !["statute", "regulation"].includes(allSegments[1] ?? "");
   const isSubpart =
     typeof segment === "string" && segment.startsWith("subpart-");
 
   if (ruleIndex === 0) {
     if (segment === "statute") return "Statutes";
     if (segment === "regulation") return "Regulations";
-    return segment;
+    return formatGenericSegmentLabel(segment);
+  }
+
+  if (isSourceDocumentLane) {
+    return formatGenericSegmentLabel(segment);
   }
 
   if (ruleIndex === 1) {
@@ -1271,12 +1302,11 @@ function formatRuleSegmentLabel(
     return `(${segment})`;
   }
 
-  // Statute lane
-  if (ruleIndex === 2) {
+  if (isStatuteLane && ruleIndex === 2) {
     return `§ ${segment}`;
   }
 
-  if (ruleIndex > 2) {
+  if (isStatuteLane && ruleIndex > 2) {
     return `(${segment})`;
   }
 

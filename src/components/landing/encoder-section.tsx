@@ -138,7 +138,7 @@ const LINES: TerminalLine[] = [
           {" "}14 RuleSpec files written to{" "}
         </span>
         <span className="text-[var(--color-ink)] font-medium">
-          rules-us/statutes/26/32/*.yaml
+          rulespec-us/statutes/26/32/*.yaml
         </span>
       </>
     ),

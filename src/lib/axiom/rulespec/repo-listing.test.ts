@@ -108,7 +108,7 @@ describe("listEncodedFiles", () => {
   });
 
   it("returns an empty list for a jurisdiction without a published repo", async () => {
-    expect(await listEncodedFiles("us-ny")).toEqual([]);
+    expect(await listEncodedFiles("us-oh")).toEqual([]);
   });
 
   it("returns an empty list when the GitHub API responds non-2xx", async () => {

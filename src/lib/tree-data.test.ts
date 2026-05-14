@@ -209,6 +209,27 @@ describe("buildBreadcrumbs", () => {
     ]);
   });
 
+  it("formats federal guidance breadcrumbs as source-document path segments", () => {
+    const crumbs = buildBreadcrumbs([
+      "us",
+      "guidance",
+      "usda",
+      "fns",
+      "snap-fy2026-cola",
+    ]);
+    expect(crumbs).toEqual([
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
+      { label: "Guidance", href: "/us/guidance" },
+      { label: "USDA", href: "/us/guidance/usda" },
+      { label: "FNS", href: "/us/guidance/usda/fns" },
+      {
+        label: "SNAP FY2026 COLA",
+        href: "/us/guidance/usda/fns/snap-fy2026-cola",
+      },
+    ]);
+  });
+
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
@@ -464,6 +485,52 @@ describe("getTitleNodes — root navigation", () => {
     const nodes = await getTitleNodes("us-ca", "statute");
 
     expect(nodes.map((n) => n.segment)).toEqual(["bpc", "ccp"]);
+  });
+
+  it("walks citation-path children when root-level navigation queries fail", async () => {
+    const failingRootQuery = queryMock({
+      data: null,
+      error: { message: "root query timed out" },
+    });
+    const failingAlternateRootQuery = queryMock({
+      data: null,
+      error: { message: "alternate root query timed out" },
+    });
+    const pages = [
+      [
+        {
+          id: "crs",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs",
+          heading: "Colorado Revised Statutes",
+        },
+        {
+          id: "crs-26",
+          jurisdiction: "us-co",
+          doc_type: "statute",
+          citation_path: "us-co/statute/crs/26-2-703",
+          heading: "26-2-703.",
+        },
+      ],
+      [],
+    ];
+    const prefixQuery = queryMock(
+      { data: [], error: null },
+      "limit"
+    ) as unknown as Record<string, unknown>;
+    prefixQuery.limit = vi.fn(() =>
+      Promise.resolve({ data: pages.shift(), error: null })
+    );
+    vi.mocked(supabaseCorpus.from)
+      .mockReturnValueOnce(failingRootQuery)
+      .mockReturnValueOnce(failingAlternateRootQuery)
+      .mockReturnValue(prefixQuery as never);
+
+    const nodes = await getTitleNodes("us-co", "statute");
+
+    expect(nodes.map((n) => n.segment)).toEqual(["crs"]);
+    expect(nodes[0].label).toBe("Colorado Revised Statutes");
   });
 
   it("derives synthetic title buckets from deeper rows when title roots are absent", async () => {
@@ -723,7 +790,7 @@ describe("getTitleNodes — encoded-only at /us/regulation", () => {
     vi.mocked(supabaseCorpus.from).mockReturnValue(builder);
 
     // After ``parseTreeEntries`` strips the ``-cfr`` suffix on US
-    // regulation titles, the three encoded ``rules-us`` files surface
+    // regulation titles, the three encoded ``rulespec-us`` files surface
     // in the encoded-paths set as ``regulation/7/273/{3,4,5}``.
     const encodedPaths = new Set<string>([
       "regulation/7/273/3",
@@ -784,7 +851,7 @@ describe("getSectionNodes — encoded-only short-circuit", () => {
 
   it("pulls encoded sections directly when the parent_id tree puts them under intermediate subparts", async () => {
     // Corpus parents 7 CFR 273.3 under ``subpart-B`` while the
-    // rules-us repo files it as bare ``273/3.yaml``. The encoded-only
+    // rulespec-us repo files it as bare ``273/3.yaml``. The encoded-only
     // branch should resolve that mismatch by querying the encoded
     // citation paths directly.
     const partRow = {

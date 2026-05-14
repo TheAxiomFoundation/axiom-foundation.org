@@ -10,6 +10,7 @@ const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
     { slug: "us-co", label: "Colorado", hasCitationPaths: true },
     { slug: "us-dc", label: "District of Columbia", hasCitationPaths: true },
     { slug: "us-ny", label: "New York", hasCitationPaths: true },
+    { slug: "us-pr", label: "Puerto Rico", hasCitationPaths: true },
   ],
 }));
 
@@ -21,6 +22,13 @@ vi.mock("@/lib/tree-data", () => ({
   JURISDICTIONS: TEST_JURISDICTIONS,
   getJurisdictionBySlug: (slug: string) =>
     TEST_JURISDICTIONS.find((j) => j.slug === slug),
+}));
+
+vi.mock("@/lib/axiom/landing-jurisdictions", () => ({
+  getLandingJurisdictions: (countedSlugs = new Set<string>()) =>
+    TEST_JURISDICTIONS.filter(
+      (j) => j.slug !== "us-pr" || countedSlugs.has(j.slug)
+    ),
 }));
 
 // The pill nav uses next/link; use a plain anchor so hrefs land in
@@ -116,7 +124,8 @@ describe("AxiomStats", () => {
     expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
     expect(screen.getByText("US Federal")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.queryByText("provisions indexed")).not.toBeInTheDocument();
+    expect(screen.getByText("provisions indexed")).toBeInTheDocument();
+    expect(screen.queryByText("659K")).not.toBeInTheDocument();
   });
 
   it("keeps jurisdiction links when the RPC resolves null", async () => {
@@ -137,6 +146,16 @@ describe("AxiomStats", () => {
     expect(onNavigateHref).toHaveBeenCalledWith("/us-co");
   });
 
+  it("leaves jurisdiction links as normal anchors without a client navigator", () => {
+    mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
+    render(<AxiomStats />);
+
+    const colorado = screen.getByText("Colorado").closest("a");
+    expect(colorado).toHaveAttribute("href", "/us-co");
+    colorado?.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(colorado!);
+  });
+
   it("renders the three stats with compact formatting", async () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
@@ -148,6 +167,83 @@ describe("AxiomStats", () => {
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
     expect(screen.getByText("citations extracted")).toBeInTheDocument();
     expect(screen.getByText("jurisdictions")).toBeInTheDocument();
+    expect(screen.queryByText(/4 · .* rules/)).not.toBeInTheDocument();
+    expect(screen.getByText(/473K\s+rules/)).toBeInTheDocument();
+  });
+
+  it("shows Canada once generated navigation roots are available", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions_count: 18,
+      jurisdictions: [
+        ...fullPayload.jurisdictions,
+        { jurisdiction: "canada", count: 2_000 },
+      ],
+    });
+    render(<AxiomStats />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Canada")).toBeInTheDocument()
+    );
+
+    expect(screen.getByText("18")).toBeInTheDocument();
+  });
+
+  it("keeps the stable jurisdiction seed when stats return a partial jurisdiction list", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions_count: 2,
+      jurisdictions: [
+        { jurisdiction: "us", count: 467993 },
+        { jurisdiction: "us-dc", count: 130617 },
+      ],
+    });
+    render(<AxiomStats />);
+
+    await waitFor(() =>
+      expect(screen.getByText("US Federal")).toBeInTheDocument()
+    );
+
+    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
+    expect(screen.getByText("Canada")).toBeInTheDocument();
+    expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
+  });
+
+  it("does not create uncounted territory links from the static seed", async () => {
+    mockGetAxiomStats.mockResolvedValue(fullPayload);
+    render(<AxiomStats />);
+
+    await waitFor(() =>
+      expect(screen.getByText("US Federal")).toBeInTheDocument()
+    );
+
+    expect(screen.queryByText("Puerto Rico")).not.toBeInTheDocument();
+  });
+
+  it("keeps territories visible when the stats payload confirms they exist", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions: [
+        ...fullPayload.jurisdictions,
+        { jurisdiction: "us-pr", count: 321 },
+      ],
+    });
+    render(<AxiomStats />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Puerto Rico")).toBeInTheDocument()
+    );
+  });
+
+  it("renders server-provided stats immediately without the client RPC tick", () => {
+    render(<AxiomStats initialStats={fullPayload} />);
+
+    expect(screen.getByText("659K")).toBeInTheDocument();
+    expect(screen.getByText("149K")).toBeInTheDocument();
+    expect(screen.getByText("17")).toBeInTheDocument();
+    expect(mockGetAxiomStats).not.toHaveBeenCalled();
   });
 
   it("puts the full count in the title attribute for tooltip", async () => {
@@ -236,5 +332,6 @@ describe("AxiomStats", () => {
     expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
     expect(screen.getByText("US Federal")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.getByText("Canada")).toBeInTheDocument();
   });
 });

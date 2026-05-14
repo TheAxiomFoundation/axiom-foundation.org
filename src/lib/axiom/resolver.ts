@@ -1,8 +1,9 @@
 import { supabaseCorpus, type Rule } from "@/lib/supabase";
 import { naturalCompare } from "@/lib/natural-sort";
+import { normalizeCitationPathInput } from "@/lib/axiom/citation-path";
 
 /**
- * Outcome of resolving a citation_path against ``corpus.provisions``.
+ * Outcome of resolving a citation_path against ``corpus.current_provisions``.
  *
  * - ``exact``: the full path exists as an atomic rule.
  * - ``ancestor``: the full path does not exist, but some prefix does;
@@ -51,10 +52,6 @@ export function citationPathPrefixes(path: string): string[] {
   return out;
 }
 
-function normalise(path: string): string {
-  return path.replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();
-}
-
 /**
  * Resolve a citation_path against the ingested axiom. Single DB query
  * fetches every possible ancestor; we pick the deepest match.
@@ -66,7 +63,7 @@ function normalise(path: string): string {
 export async function resolveCitationPath(
   input: string
 ): Promise<ResolveResult> {
-  const citationPath = normalise(input);
+  const citationPath = normalizeCitationPathInput(input);
   if (!citationPath) {
     return {
       match: "none",
@@ -82,7 +79,7 @@ export async function resolveCitationPath(
   }
 
   const { data, error } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("*")
     .in("citation_path", prefixes);
 
@@ -131,7 +128,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
     if (!parentPath) return [rule];
 
     const { data } = await supabaseCorpus
-      .from("provisions")
+      .from("current_provisions")
       .select("*")
       .gte("citation_path", `${parentPath}/`)
       .lt("citation_path", `${parentPath}~`)
@@ -141,7 +138,7 @@ export async function getSiblings(rule: Rule): Promise<Rule[]> {
     return sortSiblings((data as Rule[] | null) ?? []);
   }
   const { data } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("*")
     .eq("parent_id", rule.parent_id)
     .order("ordinal", { ascending: true, nullsFirst: false });

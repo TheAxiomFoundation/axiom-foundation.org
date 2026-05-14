@@ -51,7 +51,7 @@ export function useRules(options: {
       const results = await Promise.all(
         jurisdictions.map(async (jur) => {
           const { count } = await supabaseCorpus
-            .from("provisions")
+            .from("current_provisions")
             .select("*", { count: "exact", head: true })
             .eq("jurisdiction", jur);
           return { jurisdiction: jur, count: count || 0 };
@@ -70,7 +70,7 @@ export function useRules(options: {
 
       try {
         let query = supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("id,jurisdiction,doc_type,parent_id,level,ordinal,heading,effective_date,repeal_date,source_url,source_path,citation_path,rulespec_path,has_rulespec,created_at,updated_at", { count: "estimated" })
           .is("parent_id", null);
 
@@ -146,7 +146,7 @@ export function useRule(id: string | null) {
 
       try {
         const { data: ruleData, error: ruleError } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*")
           .eq("id", id)
           .single();
@@ -155,7 +155,7 @@ export function useRule(id: string | null) {
         setRule(ruleData);
 
         const { data: childrenData, error: childrenError } = await supabaseCorpus
-          .from("provisions")
+          .from("current_provisions")
           .select("*")
           .eq("parent_id", id)
           .order("ordinal");
@@ -175,7 +175,7 @@ export function useRule(id: string | null) {
           const upper = bumpLastChar(lower);
           if (upper) {
             const { data: siblingsData } = await supabaseCorpus
-              .from("provisions")
+              .from("current_provisions")
               .select("*")
               .gte("citation_path", lower)
               .lt("citation_path", upper)

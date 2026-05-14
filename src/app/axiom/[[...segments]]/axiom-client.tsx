@@ -3,6 +3,7 @@
 import { AxiomBrowser } from "@/components/axiom/document-browser";
 import { CommandPaletteProvider } from "@/components/axiom/command-palette-provider";
 import type { InitialTreeNodesState } from "@/lib/axiom/tree-cache";
+import type { AxiomStats } from "@/lib/supabase";
 
 /**
  * Thin client subtree for the Axiom route. The server component in
@@ -13,9 +14,13 @@ import type { InitialTreeNodesState } from "@/lib/axiom/tree-cache";
 export function AxiomClient({
   segments,
   initialTreeState,
+  initialStats,
+  initialEncodedOnly,
 }: {
   segments: string[];
   initialTreeState?: InitialTreeNodesState | null;
+  initialStats?: AxiomStats | null;
+  initialEncodedOnly?: boolean;
 }) {
   return (
     <CommandPaletteProvider>
@@ -23,6 +28,8 @@ export function AxiomClient({
         <AxiomBrowser
           segments={segments}
           initialTreeState={initialTreeState}
+          initialStats={initialStats}
+          initialEncodedOnly={initialEncodedOnly}
         />
       </div>
     </CommandPaletteProvider>

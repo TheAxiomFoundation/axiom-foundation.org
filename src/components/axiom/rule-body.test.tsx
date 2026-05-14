@@ -227,6 +227,111 @@ describe("RuleBody", () => {
     expect(pane.className).toMatch(/whitespace-pre-wrap/);
   });
 
+  it("renders newline-delimited source paragraphs with vertical spacing", () => {
+    const { container } = render(
+      <RuleBody
+        body={"(3) Repealed.\n(4) For purposes of this article."}
+        refs={[]}
+      />
+    );
+    const paragraphs = container.querySelectorAll("p");
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]).toHaveTextContent("(3) Repealed.");
+    expect(paragraphs[1]).toHaveTextContent(
+      "(4) For purposes of this article."
+    );
+    expect(paragraphs[1].className).toMatch(/mt-5/);
+  });
+
+  it("treats hard-wrapped prose lines as one paragraph", () => {
+    const { container } = render(
+      <RuleBody
+        body={
+          "Colorado's SNAP rule manual allows the total dollar amount a household is\n" +
+          "responsible to pay for dependent care expenses when the care is necessary\n" +
+          "for employment, seeking employment, or training."
+        }
+        refs={[]}
+      />
+    );
+    const paragraphs = container.querySelectorAll("p");
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0]).toHaveTextContent(
+      "Colorado's SNAP rule manual allows the total dollar amount a household is responsible to pay for dependent care expenses when the care is necessary for employment, seeking employment, or training."
+    );
+  });
+
+  it("bolds and separates source labels inside the source text", () => {
+    const { container } = render(
+      <RuleBody
+        body={"(4) For purposes of this article.\nSource: L. 87: Entire part R&RE, p. 1436."}
+        refs={[]}
+      />
+    );
+    const paragraphs = container.querySelectorAll("p");
+    expect(paragraphs[1].className).toMatch(/mt-7/);
+    expect(screen.getByText("Source:").closest("strong")).not.toBeNull();
+  });
+
+  it("bolds source labels at the start of source text", () => {
+    render(
+      <RuleBody
+        body={"Source: L. 87: Entire part R&RE, p. 1436."}
+        refs={[]}
+      />
+    );
+    expect(screen.getByText("Source:").closest("strong")).not.toBeNull();
+  });
+
+  it("infers relative Colorado statute section links from citation context", () => {
+    render(
+      <RuleBody
+        body="The rate prescribed by section 39-22-104 applies."
+        refs={[]}
+        citationPath="us-co/statute/crs/39-22-105"
+      />
+    );
+    const link = screen.getByRole("link", { name: "section 39-22-104" });
+    expect(link).toHaveAttribute("href", "/us-co/statute/crs/39-22-104");
+    expect(link).toHaveAttribute(
+      "title",
+      "Inferred link to us-co/statute/crs/39-22-104"
+    );
+  });
+
+  it("infers relative CFR section links from citation context", () => {
+    render(
+      <RuleBody
+        body="Residents shall be handled in accordance with § 273.11(g)."
+        refs={[]}
+        citationPath="us/regulation/7/273/3"
+      />
+    );
+    const link = screen.getByRole("link", { name: "§ 273.11(g)" });
+    expect(link).toHaveAttribute("href", "/us/regulation/7/273/11/g");
+  });
+
+  it("does not duplicate corpus-provided reference links with inferred links", () => {
+    const body = "See section 39-22-104 for the rate.";
+    const start = body.indexOf("section 39-22-104");
+    render(
+      <RuleBody
+        body={body}
+        citationPath="us-co/statute/crs/39-22-105"
+        refs={[
+          ref({
+            start_offset: start,
+            end_offset: start + "section 39-22-104".length,
+            other_citation_path: "us-co/statute/crs/39-22-104",
+          }),
+        ]}
+      />
+    );
+    expect(
+      screen.getAllByRole("link", { name: "section 39-22-104" })
+    ).toHaveLength(1);
+  });
+
   it("renders markdown table blocks as accessible tables", () => {
     const body = [
       "(1) Percentages",

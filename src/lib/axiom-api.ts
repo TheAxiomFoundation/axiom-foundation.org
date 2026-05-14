@@ -414,7 +414,7 @@ function sortRowsByOrdinalThenCitation(rows: Rule[]): Rule[] {
 async function resolveParentId(parentCitationPath: string): Promise<string> {
   const normalized = normalizeCitationPath(parentCitationPath);
   const { data, error } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select("id")
     .eq("citation_path", normalized)
     .single();
@@ -435,7 +435,7 @@ export async function listAxiomDocuments(
     ? await resolveParentId(options.parentCitationPath)
     : options.parentId;
   let query: any = supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select(selectColumns(options.includeBody));
 
   if (options.id) query = query.eq("id", options.id);
@@ -517,7 +517,7 @@ export async function listAxiomDocuments(
   ) {
     for (const level of browseRootLevels(options.jurisdiction, options.docType)) {
       const { data, error } = await supabaseCorpus
-        .from("provisions")
+        .from("current_provisions")
         .select(selectColumns(options.includeBody))
         .eq("jurisdiction", options.jurisdiction)
         .eq("doc_type", options.docType)
@@ -675,7 +675,7 @@ async function hydrateDocumentTree(
   if (options.depth <= 0) return document;
 
   const { data, error, count } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select(selectColumns(options.includeBody), { count: "exact" })
     .eq("parent_id", rule.id)
     .order("ordinal")
@@ -707,7 +707,7 @@ export async function getAxiomDocumentByCitationPath(
   }
 
   const { data, error } = await supabaseCorpus
-    .from("provisions")
+    .from("current_provisions")
     .select(selectColumns(options.includeBody))
     .eq("citation_path", normalized)
     .single();

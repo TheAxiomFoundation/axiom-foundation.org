@@ -5,6 +5,10 @@ import type { MutableRefObject, ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { RuleReference } from "@/lib/supabase";
+import {
+  buildInlineReferences,
+  type InlineReference,
+} from "@/lib/axiom/inline-references";
 
 /**
  * Render a rule's body text with outgoing citations spliced in as
@@ -12,7 +16,7 @@ import type { RuleReference } from "@/lib/supabase";
  *
  * The server-side extractor gives us ``(start_offset, end_offset)``
  * spans computed against the same body string stored in
- * ``corpus.provisions.body``, so splicing is a single pass: emit the
+ * corpus provision body text, so splicing is a single pass: emit the
  * plain-text chunks between refs, wrap each ref's text in an anchor.
  *
  * Refs whose offsets fall outside the body (stale or mismatched),
@@ -30,6 +34,8 @@ import type { RuleReference } from "@/lib/supabase";
 interface RuleBodyProps {
   body: string;
   refs: RuleReference[];
+  citationPath?: string;
+  testId?: string | null;
 }
 
 interface Range {
@@ -41,7 +47,7 @@ interface Segment {
   offset: number;
   text: string;
   kind: "plain" | "ref";
-  ref?: RuleReference;
+  ref?: InlineReference;
 }
 
 interface TableCell {
@@ -54,7 +60,7 @@ type BodyBlock =
   | { type: "text"; text: string; start: number; end: number }
   | { type: "table"; headers: TableCell[]; rows: TableCell[][] };
 
-function spliceRefs(body: string, refs: RuleReference[]): Segment[] {
+function spliceRefs(body: string, refs: InlineReference[]): Segment[] {
   const out: Segment[] = [];
   let cursor = 0;
   const sorted = [...refs].sort((a, b) => a.start_offset - b.start_offset);
@@ -309,7 +315,7 @@ function parseBodyBlocks(body: string): BodyBlock[] {
   return blocks;
 }
 
-function Citation({ ref, text }: { ref: RuleReference; text: string }) {
+function Citation({ ref, text }: { ref: InlineReference; text: string }) {
   // Incoming refs carry offsets into the citing (target) body; pass them
   // through as a ``mark`` query so the target page lands on the exact
   // passage.
@@ -318,9 +324,11 @@ function Citation({ ref, text }: { ref: RuleReference; text: string }) {
       ? `?mark=${ref.start_offset}-${ref.end_offset}`
       : "";
   const href = `/${ref.other_citation_path}${markQuery}`;
-  const title = ref.target_resolved
-    ? `${ref.other_citation_path}${ref.other_heading ? ` — ${ref.other_heading}` : ""}`
-    : `${ref.other_citation_path} — not yet ingested`;
+  const title = ref.inferred
+    ? `Inferred link to ${ref.other_citation_path}`
+    : ref.target_resolved
+      ? `${ref.other_citation_path}${ref.other_heading ? ` — ${ref.other_heading}` : ""}`
+      : `${ref.other_citation_path} — not yet ingested`;
   const classes = ref.target_resolved
     ? "text-[var(--color-accent)] underline decoration-[var(--color-rule)] underline-offset-2 hover:decoration-[var(--color-accent)] transition-colors"
     : "text-[var(--color-ink-secondary)] underline decoration-dotted decoration-[var(--color-rule)] underline-offset-2";
@@ -328,6 +336,154 @@ function Citation({ ref, text }: { ref: RuleReference; text: string }) {
     <Link href={href} className={classes} title={title}>
       {text}
     </Link>
+  );
+}
+
+function SourceLead({
+  line,
+  segments,
+  firstMarkOffset,
+  firstMarkRef,
+}: {
+  line: TextLine;
+  segments: Array<Segment & { marked: boolean }>;
+  firstMarkOffset: number | null;
+  firstMarkRef: MutableRefObject<HTMLElement | null>;
+}) {
+  const match = line.text.match(/^(\s*)(Sources?:)(\s*)/i);
+  if (!match) {
+    return (
+      <>
+        {renderInlineSegments({
+          segments,
+          start: line.start,
+          end: line.end,
+          firstMarkOffset,
+          firstMarkRef,
+        })}
+      </>
+    );
+  }
+  const leadStart = line.start + match[1].length;
+  const leadEnd = leadStart + match[2].length;
+  const restStart = leadEnd + match[3].length;
+  return (
+    <>
+      {match[1]}
+      <strong className="font-semibold text-[var(--color-ink)]">
+        {renderInlineSegments({
+          segments,
+          start: leadStart,
+          end: leadEnd,
+          firstMarkOffset,
+          firstMarkRef,
+        })}
+      </strong>
+      {match[3]}
+      {renderInlineSegments({
+        segments,
+        start: restStart,
+        end: line.end,
+        firstMarkOffset,
+        firstMarkRef,
+      })}
+    </>
+  );
+}
+
+interface TextLine {
+  text: string;
+  start: number;
+  end: number;
+}
+
+interface TextParagraph {
+  lines: TextLine[];
+  startsWithSource: boolean;
+}
+
+function isStructuralLine(text: string): boolean {
+  return /^\s*(?:\([^)]+\)|Sources?:)/i.test(text);
+}
+
+function pushParagraph(
+  paragraphs: TextParagraph[],
+  lines: TextLine[]
+): TextLine[] {
+  if (lines.length === 0) return lines;
+  paragraphs.push({
+    lines,
+    startsWithSource: /^\s*Sources?:/i.test(lines[0].text),
+  });
+  return [];
+}
+
+function splitTextParagraphs(block: Extract<BodyBlock, { type: "text" }>): TextParagraph[] {
+  const paragraphs: TextParagraph[] = [];
+  let current: TextLine[] = [];
+  let cursor = 0;
+
+  for (const rawLine of block.text.split("\n")) {
+    const start = block.start + cursor;
+    const end = start + rawLine.length;
+    cursor += rawLine.length + 1;
+
+    if (!rawLine.trim()) {
+      current = pushParagraph(paragraphs, current);
+      continue;
+    }
+
+    const line = { text: rawLine, start, end };
+    if (current.length > 0 && isStructuralLine(rawLine)) {
+      current = pushParagraph(paragraphs, current);
+    }
+    current.push(line);
+  }
+
+  pushParagraph(paragraphs, current);
+  return paragraphs;
+}
+
+function renderTextBlock({
+  block,
+  segments,
+  firstMarkOffset,
+  firstMarkRef,
+}: {
+  block: Extract<BodyBlock, { type: "text" }>;
+  segments: Array<Segment & { marked: boolean }>;
+  firstMarkOffset: number | null;
+  firstMarkRef: MutableRefObject<HTMLElement | null>;
+}): ReactNode {
+  const paragraphs = splitTextParagraphs(block);
+
+  if (paragraphs.length === 0) return null;
+
+  return (
+    <div key={`text-${block.start}`}>
+      {paragraphs.map((paragraph, index) => {
+        return (
+          <p
+            key={`${paragraph.lines[0].start}-${paragraph.lines.at(-1)?.end}`}
+            className={`m-0 whitespace-pre-wrap ${
+              index === 0 ? "" : paragraph.startsWithSource ? "mt-7" : "mt-5"
+            }`}
+          >
+            {paragraph.lines.map((line, lineIndex) => (
+              <span key={`${line.start}-${line.end}`}>
+                {lineIndex > 0 ? " " : null}
+                <SourceLead
+                  line={line}
+                  segments={segments}
+                  firstMarkOffset={firstMarkOffset}
+                  firstMarkRef={firstMarkRef}
+                />
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
@@ -379,7 +535,12 @@ function renderInlineSegments({
   return nodes;
 }
 
-export function RuleBody({ body, refs }: RuleBodyProps) {
+export function RuleBody({
+  body,
+  refs,
+  citationPath,
+  testId = "rule-body-inline",
+}: RuleBodyProps) {
   const searchParams = useSearchParams();
   const markString = searchParams?.get("mark") ?? null;
   const markRange = parseMark(markString);
@@ -410,8 +571,9 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
 
   if (!body) return null;
 
+  const inlineRefs = buildInlineReferences(body, citationPath, refs);
   const segments = applyMark(
-    spliceRefs(body, refs),
+    spliceRefs(body, inlineRefs),
     markRange && markRange.end <= body.length ? markRange : null
   );
 
@@ -425,23 +587,18 @@ export function RuleBody({ body, refs }: RuleBodyProps) {
 
   return (
     <div
-      data-testid="rule-body-inline"
+      {...(testId && { "data-testid": testId })}
       className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-[1.8] whitespace-pre-wrap"
       style={{ fontFamily: "var(--f-serif)" }}
     >
       {blocks.map((block, blockIndex) => {
         if (block.type === "text") {
-          return (
-            <span key={`text-${block.start}`}>
-              {renderInlineSegments({
-                segments,
-                start: block.start,
-                end: block.end,
-                firstMarkOffset,
-                firstMarkRef,
-              })}
-            </span>
-          );
+          return renderTextBlock({
+            block,
+            segments,
+            firstMarkOffset,
+            firstMarkRef,
+          });
         }
         return (
           <div

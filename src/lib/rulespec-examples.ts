@@ -125,7 +125,7 @@ export const specContent = `# RuleSpec file specification
 
 RuleSpec is the executable legal computation layer for Axiom. It is YAML with
 structured provenance, durable legal IDs, typed rules, effective dates, and
-formula strings that compile into the Axiom Rules runtime.
+formula strings that compile into the Axiom rules engine runtime.
 
 ## File Structure
 
@@ -248,7 +248,7 @@ Bare friendly keys are invalid at public boundaries. Input slots use
 
 ## Formula syntax
 
-Formula strings are Python-like expressions parsed by the Axiom Rules runtime:
+Formula strings are Python-like expressions parsed by the Axiom rules engine runtime:
 
 - Conditionals: \`if cond: expr else: expr\`
 - Pattern matching: \`match expr: pattern => result\`
@@ -265,8 +265,8 @@ actually states them.
 Filepath = legal or policy authority:
 
 \`\`\`text
-rules-us/statutes/7/2017/a.yaml
-rules-us/statutes/26/63/c/5.yaml
-rules-us/policies/usda/snap/fy-2026-cola/maximum-allotments.yaml
-rules-us-co/regulations/10-ccr-2506-1/4.403.2.yaml
+rulespec-us/statutes/7/2017/a.yaml
+rulespec-us/statutes/26/63/c/5.yaml
+rulespec-us/policies/usda/snap/fy-2026-cola/maximum-allotments.yaml
+rulespec-us-co/regulations/10-ccr-2506-1/4.403.2.yaml
 \`\`\``

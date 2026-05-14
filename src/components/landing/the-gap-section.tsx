@@ -16,23 +16,21 @@ export function TheGapSection() {
           <p>
             Every benefit calculator, tax program, and policy assistant has to
             translate the law from human prose into something a machine can run.
-            Most do it from scratch. Most do it differently. Most do it{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              wrongly, in ways that are hard to find
-            </span>{" "}
-            and harder to fix.
+            Most do it from scratch. Most do it differently. Most do it
+            out of public view, making it hard to verify and harder to fix.
           </p>
           <p>
             There is no shared layer to point at. No canonical source for what
             the Earned Income Tax Credit actually computes, or how the SNAP
             standard medical deduction should treat a 2024 medical expense in
-            Tennessee. The text exists. The interpretation does too. The
+            Tennessee. The text exists. The closed interpretation does too. The
             connection between them does not.
           </p>
           <p>
-            <span className="text-[var(--color-ink)]">Axiom Foundation</span>{" "}
+            <span className="font-bold text-[var(--color-ink)]">Axiom Foundation</span>{" "}
             publishes that layer &mdash; statute by statute, citation by
-            citation &mdash; in the open, free for anyone to use.
+            citation as rules as code &mdash; in the open, free for anyone to
+            use.
           </p>
         </div>
 

@@ -70,6 +70,24 @@ describe("TreeNodeList", () => {
     expect(screen.getByText("United Kingdom")).toBeInTheDocument();
   });
 
+  it("keeps existing rows visible behind the non-layout updating state", () => {
+    const onNavigate = vi.fn();
+    render(
+      <TreeNodeList
+        nodes={[makeNode({ segment: "statute", label: "Statutes" })]}
+        onNavigate={onNavigate}
+        loading={true}
+        error={null}
+        updating
+      />
+    );
+
+    expect(screen.getByText("Statutes")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading...");
+    fireEvent.click(screen.getByText("Statutes"));
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it("renders child count for nodes with childCount", () => {
     const nodes = [makeNode({ childCount: 1558 })];
     render(

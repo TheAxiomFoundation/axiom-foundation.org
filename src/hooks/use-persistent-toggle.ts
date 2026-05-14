@@ -4,30 +4,28 @@ import { useCallback, useState } from "react";
 
 /**
  * A boolean toggle that survives navigation and page reloads by
- * writing its value to ``localStorage``.
+ * writing its value to ``localStorage`` and, optionally, a cookie.
  *
  * Used for Axiom viewer preferences (e.g. the "Encoded only" filter)
  * where the user picks a setting and expects it to stick across
  * folders — but we don't want the state living in the URL because
  * it's a personal filter, not something to share.
  *
- * The value is read **synchronously** on the first client render via
- * a lazy useState initializer so downstream data fetches see the
- * correct filter state on their first pass. This avoids the
- * previous flash-of-unfiltered-data where a post-mount useEffect
- * would flip the toggle on after a fetch had already started with
- * the default.
- *
- * SSR returns ``false`` (no window); client hydration runs the lazy
- * initializer and gets the stored value. That can produce a brief
- * hydration mismatch on the button's visible state — callers mask
- * it with ``suppressHydrationWarning`` on the presentational
- * attributes they care about.
+ * Callers that SSR content affected by the toggle can pass an
+ * initialValue derived from a cookie. In that mode the first client
+ * render deliberately uses the server value so hydration stays
+ * identical; updates write both localStorage and the optional cookie.
  */
 export function usePersistentToggle(
-  storageKey: string
+  storageKey: string,
+  options: {
+    initialValue?: boolean;
+    cookieName?: string;
+  } = {}
 ): [boolean, (next?: boolean) => void] {
+  const { initialValue, cookieName } = options;
   const [enabled, setEnabled] = useState<boolean>(() => {
+    if (typeof initialValue === "boolean") return initialValue;
     if (typeof window === "undefined") return false;
     try {
       return window.localStorage.getItem(storageKey) === "1";
@@ -45,10 +43,19 @@ export function usePersistentToggle(
         } catch {
           // privacy mode / disabled storage — fall back to in-memory.
         }
+        try {
+          if (cookieName) {
+            document.cookie = `${encodeURIComponent(cookieName)}=${
+              resolved ? "1" : "0"
+            }; path=/; max-age=31536000; SameSite=Lax`;
+          }
+        } catch {
+          // disabled cookies — fall back to in-memory/localStorage.
+        }
         return resolved;
       });
     },
-    [storageKey]
+    [cookieName, storageKey]
   );
 
   return [enabled, set];

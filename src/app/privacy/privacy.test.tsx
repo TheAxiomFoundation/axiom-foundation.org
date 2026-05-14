@@ -16,7 +16,7 @@ describe('PrivacyPage', () => {
   it('renders information we collect section', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /information we collect/i })).toBeInTheDocument()
-    expect(screen.getByText(/PostHog for anonymous usage analytics/)).toBeInTheDocument()
+    expect(screen.getByText(/PostHog and Google Analytics for usage analytics/)).toBeInTheDocument()
   })
 
   it('renders how we use information section', () => {
@@ -27,6 +27,7 @@ describe('PrivacyPage', () => {
   it('renders third-party services section', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /third-party services/i })).toBeInTheDocument()
+    expect(screen.getByText(/PostHog and Google Analytics \(usage analytics\)/)).toBeInTheDocument()
   })
 
   it('renders open source section with GitHub link', () => {

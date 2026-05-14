@@ -19,7 +19,8 @@ const status: CorpusStatusData = {
       release: "current",
       status_counts: {
         productionized_and_validated: 14,
-        supabase_only_legacy: 37,
+        source_access_blocked: 4,
+        supabase_only_legacy: 33,
       },
       unfinished_jurisdictions: ["us-al"],
       validation_report_ok: true,
@@ -47,7 +48,7 @@ const status: CorpusStatusData = {
         {
           jurisdiction: "us-al",
           name: "Alabama",
-          status: "supabase_only_legacy",
+          status: "source_access_blocked",
           supabase_count: 110,
           release_provision_count: null,
           release_version: null,
@@ -56,7 +57,68 @@ const status: CorpusStatusData = {
           local_complete: false,
           r2_complete: null,
           supabase_matches_release: null,
-          next_action: "rerun from primary official sources into source-first artifacts",
+          next_action:
+            "wait for official bulk/source export, permission/license path, or cleared official-site access",
+          mismatch_reasons: [],
+          source_access_status: "blocked_primary_source",
+          source_access_note: "Official source access requires permission.",
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+      ],
+    },
+  },
+  regulations: {
+    key: "analytics/regulation-completion-current.json",
+    source: "local",
+    error: null,
+    value: {
+      complete: false,
+      document_class: "regulation",
+      expected_jurisdiction_count: 52,
+      productionized_and_validated_count: 3,
+      unfinished_count: 49,
+      release: "current",
+      status_counts: {
+        productionized_and_validated: 3,
+        not_started: 49,
+      },
+      unfinished_jurisdictions: ["us-ak"],
+      validation_report_ok: true,
+      validation_report_path: "data/corpus/analytics/validate-release-current.json",
+      supabase_counts_path:
+        "data/corpus/snapshots/provision-counts-2026-05-11.json",
+      rows: [
+        {
+          jurisdiction: "us-ny",
+          name: "New York",
+          status: "productionized_and_validated",
+          supabase_count: 67447,
+          release_provision_count: 67447,
+          release_version: "2026-05-10",
+          best_local_provision_count: 67447,
+          best_local_version: "2026-05-10",
+          local_complete: true,
+          r2_complete: true,
+          supabase_matches_release: true,
+          next_action: "none",
+          mismatch_reasons: [],
+          validation_error_count: 0,
+          validation_warning_count: 0,
+        },
+        {
+          jurisdiction: "us-ak",
+          name: "Alaska",
+          status: "not_started",
+          supabase_count: null,
+          release_provision_count: null,
+          release_version: null,
+          best_local_provision_count: null,
+          best_local_version: null,
+          local_complete: false,
+          r2_complete: null,
+          supabase_matches_release: null,
+          next_action: "find primary official source",
           mismatch_reasons: [],
           validation_error_count: 0,
           validation_warning_count: 0,
@@ -148,6 +210,94 @@ const status: CorpusStatusData = {
       ],
     },
   },
+  sourceDiscovery: {
+    key: "analytics/source-discovery-current.json",
+    source: "local",
+    error: null,
+    value: {
+      generated_at: "2026-05-11T12:00:00.000Z",
+      source_name: "policyengine-us",
+      input_paths: ["sources/policyengine-us/state_references.txt"],
+      raw_url_count: 3267,
+      invalid_url_count: 0,
+      unique_url_count: 1752,
+      release: "current",
+      release_scope_count: 55,
+      ready_for_manifest_count: 609,
+      needs_review_count: 780,
+      blocked_or_excluded_count: 363,
+      release_scope_present_count: 130,
+      source_status_counts: {
+        primary_official: 609,
+        secondary_mirror: 260,
+        vendor_or_paywalled: 24,
+      },
+      disposition_counts: {
+        ready_for_manifest: 609,
+        needs_review: 780,
+        excluded_secondary: 339,
+        blocked_vendor_only: 24,
+      },
+      document_class_counts: {
+        form: 400,
+        statute: 120,
+        regulation: 60,
+      },
+      jurisdiction_counts: {
+        us: 100,
+        "us-ca": 39,
+        unknown: 20,
+      },
+      corpus_source_policy:
+        "External citations are discovery leads only; selected documents must be re-fetched from primary official sources into corpus artifacts.",
+      domain_rows: [
+        {
+          host: "ftb.ca.gov",
+          url_count: 39,
+          ready_for_manifest_count: 35,
+          needs_review_count: 4,
+          excluded_count: 0,
+          release_scope_present_count: 12,
+          source_status_counts: {
+            primary_official: 39,
+          },
+          disposition_counts: {
+            ready_for_manifest: 35,
+            needs_review: 4,
+          },
+          document_class_counts: {
+            form: 35,
+            other: 4,
+          },
+          jurisdiction_counts: {
+            "us-ca": 39,
+          },
+          sample_urls: ["https://ftb.ca.gov/forms/misc/1001.pdf"],
+        },
+        {
+          host: "law.cornell.edu",
+          url_count: 260,
+          ready_for_manifest_count: 0,
+          needs_review_count: 0,
+          excluded_count: 260,
+          release_scope_present_count: 0,
+          source_status_counts: {
+            secondary_mirror: 260,
+          },
+          disposition_counts: {
+            excluded_secondary: 260,
+          },
+          document_class_counts: {
+            regulation: 260,
+          },
+          jurisdiction_counts: {
+            unknown: 260,
+          },
+          sample_urls: ["https://law.cornell.edu/cfr/text/26/1.402(g)-1"],
+        },
+      ],
+    },
+  },
   encodingStatus: {
     key: "supabase://encodings.encoding_runs",
     source: "supabase",
@@ -207,6 +357,8 @@ describe("CorpusStatusPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Passing")).toBeInTheDocument();
     expect(screen.getByText("14/51")).toBeInTheDocument();
+    expect(screen.getByText(/4 source-access blocked/i)).toBeInTheDocument();
+    expect(screen.getByText("3/52")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /indexed corpus by document class/i })
     ).toBeInTheDocument();
@@ -217,13 +369,23 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /state statute productionization/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /regulation productionization/i })
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /encoding run health/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /source discovery backlog/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("ftb.ca.gov")).toBeInTheDocument();
+    expect(screen.getByText("law.cornell.edu")).toBeInTheDocument();
     expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
     expect(screen.getAllByText("reviewer agent").length).toBeGreaterThan(0);
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();
     expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+    expect(screen.getByText("Alaska")).toBeInTheDocument();
     expect(screen.getByText(/empty_provision_text/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to corpus browser/i })).toHaveAttribute(
       "href",
@@ -479,9 +641,11 @@ describe("CorpusStatusPage", () => {
         status={{
           ...status,
           stateStatutes: { ...status.stateStatutes, source: null },
+          regulations: { ...status.regulations, source: null },
           artifactReport: { ...status.artifactReport, source: null },
           validationReport: { ...status.validationReport, source: null },
           provisionCounts: { ...status.provisionCounts, source: null },
+          sourceDiscovery: { ...status.sourceDiscovery, source: null },
         }}
       />
     );

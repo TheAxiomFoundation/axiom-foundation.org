@@ -16,6 +16,11 @@ function cleanHost(request: NextRequest): string {
   return (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
 }
 
+function stripAxiomPrefix(pathname: string): string {
+  if (pathname === "/axiom") return "/";
+  return pathname.startsWith("/axiom/") ? pathname.slice("/axiom".length) : pathname;
+}
+
 // Top-level dirs/files in ``public/`` that ship to the deploy
 // verbatim. Without an explicit bypass the app-subdomain rewrite
 // turns e.g. ``/logos/foo.svg`` into ``/axiom/logos/foo.svg``, which
@@ -54,7 +59,9 @@ export function proxy(request: NextRequest) {
     }
 
     if (isInternalAxiomPath(pathname)) {
-      return new NextResponse(null, { status: 404 });
+      const target = request.nextUrl.clone();
+      target.pathname = stripAxiomPrefix(pathname);
+      return NextResponse.redirect(target, 308);
     }
 
     const target = request.nextUrl.clone();
@@ -63,7 +70,10 @@ export function proxy(request: NextRequest) {
   }
 
   if (host === SITE_HOST && isInternalAxiomPath(pathname)) {
-    return new NextResponse(null, { status: 404 });
+    const target = request.nextUrl.clone();
+    target.hostname = APP_HOST;
+    target.pathname = stripAxiomPrefix(pathname);
+    return NextResponse.redirect(target, 308);
   }
 
   // Local-dev convenience: the breadcrumb hrefs are subdomain-clean
@@ -71,9 +81,6 @@ export function proxy(request: NextRequest) {
   // APP_HOST branch above). On localhost we don't get that rewrite
   // for free, so rewrite jurisdiction-rooted paths here too.
   if (isLocalDevHost(host) && APP_ROOT_PREFIX_RE.test(pathname)) {
-    if (isBypassPath(pathname)) {
-      return NextResponse.next();
-    }
     const target = request.nextUrl.clone();
     target.pathname = `/axiom${pathname}`;
     return NextResponse.rewrite(target);

@@ -66,6 +66,41 @@ export async function getNavigationDocTypes(
   return { docTypes };
 }
 
+export async function getProvisionCoveredDocTypes(
+  jurisdiction: string,
+  docTypes: string[]
+): Promise<Set<string>> {
+  if (docTypes.length === 0) return new Set();
+
+  const filters = docTypes.flatMap((docType) => {
+    const path = `${jurisdiction}/${docType}`;
+    return [
+      `citation_path.eq.${path}`,
+      `and(citation_path.gte.${path}/,citation_path.lt.${path}~)`,
+    ];
+  });
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("current_provisions")
+      .select("citation_path")
+      .eq("jurisdiction", jurisdiction)
+      .or(filters.join(","))
+      .limit(DOC_TYPE_DISCOVERY_LIMIT),
+    NAVIGATION_QUERY_TIMEOUT_MS
+  );
+  if (!result) throw new NavigationIndexUnavailableError();
+  if (result.error) throw new NavigationIndexUnavailableError();
+
+  const covered = new Set<string>();
+  for (const row of (result.data ?? []) as Array<{
+    citation_path: string | null;
+  }>) {
+    const root = row.citation_path?.split("/")[1];
+    if (root) covered.add(root);
+  }
+  return covered;
+}
+
 export async function getNavigationIndexChildren({
   jurisdiction,
   docType,
@@ -164,6 +199,85 @@ export async function getProvisionForNavigationNode(
   if (!result) throw new NavigationIndexUnavailableError();
   if (result.error) throw new NavigationIndexUnavailableError();
   return (result.data as Rule | null) ?? null;
+}
+
+export async function getResolvableNavigationNodeIds(
+  rows: NavigationNodeRow[]
+): Promise<Set<string>> {
+  if (rows.length === 0) return new Set();
+
+  const provisionIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.provision_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+  const citationPaths = Array.from(
+    new Set(
+      rows
+        .map((row) => row.citation_path ?? row.path)
+        .filter((path): path is string => Boolean(path))
+    )
+  );
+  const matchedProvisionIds = new Set<string>();
+  const matchedCitationPaths = new Set<string>();
+
+  if (provisionIds.length > 0) {
+    const result = await withTimeout(
+      supabaseCorpus
+        .from("current_provisions")
+        .select("id")
+        .in("id", provisionIds),
+      NAVIGATION_QUERY_TIMEOUT_MS
+    );
+    if (!result) throw new NavigationIndexUnavailableError();
+    if (result.error) throw new NavigationIndexUnavailableError();
+    for (const row of (result.data ?? []) as Array<{ id: string | null }>) {
+      if (row.id) matchedProvisionIds.add(row.id);
+    }
+  }
+
+  if (citationPaths.length > 0) {
+    const citationFilters = [
+      ...citationPaths.map((path) => `citation_path.eq.${path}`),
+      ...rows
+        .filter((row) => row.has_children)
+        .map((row) => {
+          const path = row.citation_path ?? row.path;
+          return `and(citation_path.gte.${path}/,citation_path.lt.${path}~)`;
+        }),
+    ].join(",");
+    const result = await withTimeout(
+      supabaseCorpus
+        .from("current_provisions")
+        .select("citation_path")
+        .or(citationFilters),
+      NAVIGATION_QUERY_TIMEOUT_MS
+    );
+    if (!result) throw new NavigationIndexUnavailableError();
+    if (result.error) throw new NavigationIndexUnavailableError();
+    for (const row of (result.data ?? []) as Array<{
+      citation_path: string | null;
+    }>) {
+      if (row.citation_path) matchedCitationPaths.add(row.citation_path);
+    }
+  }
+
+  const resolvable = new Set<string>();
+  for (const row of rows) {
+    const citationPath = row.citation_path ?? row.path;
+    if (
+      (row.provision_id && matchedProvisionIds.has(row.provision_id)) ||
+      matchedCitationPaths.has(citationPath) ||
+      Array.from(matchedCitationPaths).some((path) =>
+        path.startsWith(`${citationPath}/`)
+      )
+    ) {
+      resolvable.add(row.id);
+    }
+  }
+  return resolvable;
 }
 
 export function navigationDocTypeToTreeNode(segment: string): TreeNode {

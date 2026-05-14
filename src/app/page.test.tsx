@@ -26,6 +26,6 @@ describe('Home page', () => {
     // Applications
     expect(screen.getByRole('heading', { name: /one encoding\. many places/i })).toBeInTheDocument()
     // Foundation
-    expect(screen.getByRole('heading', { name: /501\(c\)\(3\)/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /doing the public-interest work/i })).toBeInTheDocument()
   })
 })

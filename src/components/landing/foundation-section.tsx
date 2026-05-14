@@ -14,7 +14,7 @@ export function FoundationSection() {
             Coda &middot; The foundation
           </span>
           <h2 className="heading-section mb-6 mt-2">
-            A 501(c)(3) doing the public-interest work
+            Doing the public-interest work
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[680px] mx-auto">
             Axiom Foundation is a nonprofit. Open code, open data, open

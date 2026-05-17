@@ -185,22 +185,33 @@ describe("navigation index read helpers", () => {
   });
 
   it("finds root document types with provision coverage", async () => {
-    const builder = enqueue({
+    const legislation = enqueue({
       data: [
         { citation_path: "uk/legislation/ukpga/2002/16" },
-        { citation_path: "uk/legislation/uksi/2013/376" },
       ],
+    });
+    const guidance = enqueue({ data: [] });
+    const rulemaking = enqueue({
+      data: [{ citation_path: "uk/rulemaking/federal-register/2026-09719" }],
     });
 
     await expect(
-      getProvisionCoveredDocTypes("uk", ["legislation", "guidance"])
-    ).resolves.toEqual(new Set(["legislation"]));
+      getProvisionCoveredDocTypes("uk", [
+        "legislation",
+        "guidance",
+        "rulemaking",
+      ])
+    ).resolves.toEqual(new Set(["legislation", "rulemaking"]));
 
-    expect(mockFrom).toHaveBeenCalledWith("current_provisions");
-    expect(calls(builder, "eq")).toContainEqual(["jurisdiction", "uk"]);
-    expect(calls(builder, "or")[0]?.[0]).toContain(
+    expect(mockFrom).toHaveBeenCalledTimes(3);
+    expect(calls(legislation, "eq")).toContainEqual(["jurisdiction", "uk"]);
+    expect(calls(legislation, "or")[0]?.[0]).toContain(
       "and(citation_path.gte.uk/legislation/,citation_path.lt.uk/legislation~)"
     );
+    expect(calls(guidance, "or")[0]?.[0]).toContain(
+      "and(citation_path.gte.uk/guidance/,citation_path.lt.uk/guidance~)"
+    );
+    expect(calls(rulemaking, "limit")).toContainEqual([1]);
   });
 
   it("returns no covered document types when none are requested", async () => {

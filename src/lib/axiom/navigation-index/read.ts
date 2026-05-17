@@ -72,31 +72,36 @@ export async function getProvisionCoveredDocTypes(
 ): Promise<Set<string>> {
   if (docTypes.length === 0) return new Set();
 
-  const filters = docTypes.flatMap((docType) => {
-    const path = `${jurisdiction}/${docType}`;
-    return [
-      `citation_path.eq.${path}`,
-      `and(citation_path.gte.${path}/,citation_path.lt.${path}~)`,
-    ];
-  });
-  const result = await withTimeout(
-    supabaseCorpus
-      .from("current_provisions")
-      .select("citation_path")
-      .eq("jurisdiction", jurisdiction)
-      .or(filters.join(","))
-      .limit(DOC_TYPE_DISCOVERY_LIMIT),
-    NAVIGATION_QUERY_TIMEOUT_MS
-  );
-  if (!result) throw new NavigationIndexUnavailableError();
-  if (result.error) throw new NavigationIndexUnavailableError();
-
   const covered = new Set<string>();
-  for (const row of (result.data ?? []) as Array<{
-    citation_path: string | null;
-  }>) {
-    const root = row.citation_path?.split("/")[1];
-    if (root) covered.add(root);
+
+  const checks = await Promise.all(
+    docTypes.map(async (docType) => {
+      const path = `${jurisdiction}/${docType}`;
+      const result = await withTimeout(
+        supabaseCorpus
+          .from("current_provisions")
+          .select("citation_path")
+          .eq("jurisdiction", jurisdiction)
+          .or(
+            `citation_path.eq.${path},and(citation_path.gte.${path}/,citation_path.lt.${path}~)`
+          )
+          .limit(1),
+        NAVIGATION_QUERY_TIMEOUT_MS
+      );
+      if (!result) throw new NavigationIndexUnavailableError();
+      if (result.error) throw new NavigationIndexUnavailableError();
+
+      const rows = (result.data ?? []) as Array<{
+        citation_path: string | null;
+      }>;
+      return rows.some((row) => row.citation_path?.split("/")[1] === docType)
+        ? docType
+        : null;
+    })
+  );
+
+  for (const docType of checks) {
+    if (docType) covered.add(docType);
   }
   return covered;
 }

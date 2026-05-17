@@ -111,10 +111,16 @@ describe("SiblingStrip", () => {
     await waitFor(() =>
       expect(screen.getByRole("navigation")).toBeInTheDocument()
     );
-    fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/33")
+      expect(screen.getByLabelText("Next sibling")).toHaveAttribute(
+        "href",
+        "/us/statute/26/33"
+      )
     );
+    await waitFor(() => {
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/33");
+    });
   });
 
   it("navigates to the previous sibling on ArrowLeft", async () => {
@@ -124,10 +130,16 @@ describe("SiblingStrip", () => {
     await waitFor(() =>
       expect(screen.getByRole("navigation")).toBeInTheDocument()
     );
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
     await waitFor(() =>
-      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32")
+      expect(screen.getByLabelText("Previous sibling")).toHaveAttribute(
+        "href",
+        "/us/statute/26/32"
+      )
     );
+    await waitFor(() => {
+      fireEvent.keyDown(window, { key: "ArrowLeft" });
+      expect(mockPush).toHaveBeenCalledWith("/us/statute/26/32");
+    });
   });
 
   it("uses the provided navigation handler for clicks and arrow keys", async () => {

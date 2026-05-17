@@ -129,6 +129,25 @@ export async function getProvisionCoveredDocTypes(
 
   const checks = await Promise.all(
     docTypes.map(async (docType) => {
+      const docTypeResult = await withTimeout(
+        supabaseCorpus
+          .from("current_provisions")
+          .select("doc_type")
+          .eq("jurisdiction", jurisdiction)
+          .eq("doc_type", docType)
+          .limit(1),
+        NAVIGATION_QUERY_TIMEOUT_MS
+      );
+      if (!docTypeResult) throw new NavigationIndexUnavailableError();
+      if (docTypeResult.error) throw new NavigationIndexUnavailableError();
+
+      const docTypeRows = (docTypeResult.data ?? []) as Array<{
+        doc_type: string | null;
+      }>;
+      if (docTypeRows.some((row) => row.doc_type === docType)) {
+        return docType;
+      }
+
       const path = `${jurisdiction}/${docType}`;
       const result = await withTimeout(
         supabaseCorpus

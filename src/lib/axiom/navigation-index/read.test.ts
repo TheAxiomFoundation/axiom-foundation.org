@@ -260,15 +260,17 @@ describe("navigation index read helpers", () => {
   });
 
   it("finds root document types with provision coverage", async () => {
-    const legislation = enqueue({
+    const legislationByDocType = enqueue({ data: [] });
+    const guidanceByDocType = enqueue({ data: [] });
+    const rulemakingByDocType = enqueue({
+      data: [{ doc_type: "rulemaking" }],
+    });
+    const legislationByPath = enqueue({
       data: [
         { citation_path: "uk/legislation/ukpga/2002/16" },
       ],
     });
-    const guidance = enqueue({ data: [] });
-    const rulemaking = enqueue({
-      data: [{ citation_path: "uk/rulemaking/federal-register/2026-09719" }],
-    });
+    const guidanceByPath = enqueue({ data: [] });
 
     await expect(
       getProvisionCoveredDocTypes("uk", [
@@ -278,15 +280,26 @@ describe("navigation index read helpers", () => {
       ])
     ).resolves.toEqual(new Set(["legislation", "rulemaking"]));
 
-    expect(mockFrom).toHaveBeenCalledTimes(3);
-    expect(calls(legislation, "eq")).toContainEqual(["jurisdiction", "uk"]);
-    expect(calls(legislation, "or")[0]?.[0]).toContain(
+    expect(mockFrom).toHaveBeenCalledTimes(5);
+    expect(calls(legislationByDocType, "eq")).toContainEqual([
+      "doc_type",
+      "legislation",
+    ]);
+    expect(calls(rulemakingByDocType, "eq")).toContainEqual([
+      "doc_type",
+      "rulemaking",
+    ]);
+    expect(calls(legislationByPath, "eq")).toContainEqual([
+      "jurisdiction",
+      "uk",
+    ]);
+    expect(calls(legislationByPath, "or")[0]?.[0]).toContain(
       "and(citation_path.gte.uk/legislation/,citation_path.lt.uk/legislation~)"
     );
-    expect(calls(guidance, "or")[0]?.[0]).toContain(
+    expect(calls(guidanceByPath, "or")[0]?.[0]).toContain(
       "and(citation_path.gte.uk/guidance/,citation_path.lt.uk/guidance~)"
     );
-    expect(calls(rulemaking, "limit")).toContainEqual([1]);
+    expect(calls(guidanceByDocType, "limit")).toContainEqual([1]);
   });
 
   it("returns no covered document types when none are requested", async () => {
@@ -297,6 +310,7 @@ describe("navigation index read helpers", () => {
   });
 
   it("ignores null citation paths while finding covered document types", async () => {
+    enqueue({ data: [] });
     enqueue({ data: [{ citation_path: null }] });
 
     await expect(

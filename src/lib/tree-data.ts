@@ -159,7 +159,13 @@ const PREFIX_SCAN_MAX_ROWS = 10000;
 const ROOT_SCAN_PAGE_SIZE = 1000;
 const ROOT_SCAN_MAX_ROWS = 10000;
 const AXIOM_ROOT_NODE_LIMIT = 500;
-const KNOWN_DOC_TYPES = ["statute", "regulation", "policy", "legislation"];
+const KNOWN_DOC_TYPES = [
+  "statute",
+  "regulation",
+  "rulemaking",
+  "policy",
+  "legislation",
+];
 
 // ---- Query functions ----
 
@@ -415,7 +421,9 @@ function fallbackDocTypeNodes(jurisdiction: string): TreeNode[] {
   if (jurisdiction === "uk") return [docTypeNode("legislation")];
   if (jurisdiction === "canada") return [docTypeNode("statute")];
   if (jurisdiction === "us") {
-    return ["regulation", "statute"].map((segment) => docTypeNode(segment));
+    return ["regulation", "rulemaking", "statute"].map((segment) =>
+      docTypeNode(segment)
+    );
   }
   if (jurisdiction.startsWith("us-")) {
     return ["policy", "regulation", "statute"].map((segment) =>
@@ -558,6 +566,8 @@ function docTypeNode(segment: string): TreeNode {
         ? "Statutes"
         : segment === "regulation"
           ? "Regulations"
+          : segment === "rulemaking"
+            ? "Rulemaking"
           : formatGenericSegmentLabel(segment),
     hasChildren: true,
     nodeType: "doc_type" as const,
@@ -1273,6 +1283,7 @@ function formatRuleSegmentLabel(
   if (ruleIndex === 0) {
     if (segment === "statute") return "Statutes";
     if (segment === "regulation") return "Regulations";
+    if (segment === "rulemaking") return "Rulemaking";
     return formatGenericSegmentLabel(segment);
   }
 

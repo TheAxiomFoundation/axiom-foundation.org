@@ -50,7 +50,9 @@ describe("AxiomSearch", () => {
     render(<AxiomSearch />);
     const input = screen.getByRole("searchbox") as HTMLInputElement;
     expect(input).toBeInTheDocument();
-    expect(input.placeholder).toContain("Search statutes and regulations");
+    expect(input.placeholder).toContain(
+      "Search statutes, regulations, and rulemaking"
+    );
   });
 
   it("does not call the RPC for queries below the minimum length", async () => {
@@ -129,6 +131,33 @@ describe("AxiomSearch", () => {
     });
     expect(
       screen.getByRole("button", { name: "Statutes" })
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("applies the rulemaking filter when clicked", async () => {
+    mockSearchRules.mockResolvedValue([]);
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "comment deadline" },
+    });
+    flush(250);
+    await waitFor(() => expect(mockSearchRules).toHaveBeenCalled());
+
+    mockSearchRules.mockClear();
+    mockSearchRules.mockResolvedValue([]);
+    fireEvent.click(screen.getByRole("button", { name: "Rulemaking" }));
+    flush(250);
+
+    await waitFor(() => {
+      expect(mockSearchRules).toHaveBeenCalledWith("comment deadline", {
+        jurisdiction: undefined,
+        docType: "rulemaking",
+        limit: 30,
+      });
+    });
+    expect(
+      screen.getByRole("button", { name: "Rulemaking" })
     ).toHaveAttribute("aria-pressed", "true");
   });
 

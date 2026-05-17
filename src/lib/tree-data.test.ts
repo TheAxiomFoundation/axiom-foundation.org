@@ -230,6 +230,26 @@ describe("buildBreadcrumbs", () => {
     ]);
   });
 
+  it("builds breadcrumb for Federal Register rulemaking", () => {
+    const crumbs = buildBreadcrumbs([
+      "us",
+      "rulemaking",
+      "federal-register",
+      "2026-05-15",
+    ]);
+
+    expect(crumbs).toEqual([
+      { label: "Axiom", href: "/" },
+      { label: "US Federal", href: "/us" },
+      { label: "Rulemaking", href: "/us/rulemaking" },
+      { label: "Federal Register", href: "/us/rulemaking/federal-register" },
+      {
+        label: "2026 05 15",
+        href: "/us/rulemaking/federal-register/2026-05-15",
+      },
+    ]);
+  });
+
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
@@ -343,7 +363,7 @@ describe("getDocTypeNodes", () => {
         order: orderSpy,
         limit: () =>
           Promise.resolve({
-            data: ["statute", "regulation"].includes(docType)
+            data: ["statute", "regulation", "rulemaking"].includes(docType)
               ? [{ id: `${docType}-root` }]
               : [],
             error: null,
@@ -355,7 +375,11 @@ describe("getDocTypeNodes", () => {
     const nodes = await getDocTypeNodes("us-co");
 
     expect(orderSpy).not.toHaveBeenCalled();
-    expect(nodes.map((n) => n.segment)).toEqual(["regulation", "statute"]);
+    expect(nodes.map((n) => n.segment)).toEqual([
+      "regulation",
+      "rulemaking",
+      "statute",
+    ]);
   });
 
   it("falls back to an unsorted scan for unexpected doc-type buckets", async () => {

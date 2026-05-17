@@ -5,7 +5,7 @@ import Link from "next/link";
 import { searchRules, type SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
 
-type DocTypeFilter = "all" | "statute" | "regulation";
+type DocTypeFilter = "all" | "statute" | "regulation" | "rulemaking";
 
 const DEBOUNCE_MS = 200;
 const MIN_QUERY_LEN = 2;
@@ -148,14 +148,14 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
         className="mb-4"
       >
         <label className="sr-only" htmlFor="axiom-search-input">
-          Search statutes and regulations
+          Search statutes, regulations, and rulemaking
         </label>
         <input
           id="axiom-search-input"
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder='Search statutes and regulations (e.g. "SNAP standard deduction")'
+          placeholder='Search statutes, regulations, and rulemaking (e.g. "SNAP standard deduction")'
           className="w-full px-4 py-3 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule-strong)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-2 focus:outline-[var(--color-focus-ring)] focus:outline-offset-2 focus:border-[var(--color-accent)] transition-colors"
           aria-describedby="axiom-search-help"
         />
@@ -165,7 +165,7 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
         >
           <span>
             Quoted phrases, OR, and −exclude are supported. Ranked by relevance
-            across statutes and regulations.
+            across statutes, regulations, and rulemaking.
           </span>
           {loading && (
             <span
@@ -184,6 +184,7 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
             { key: "all", label: "All" },
             { key: "statute", label: "Statutes" },
             { key: "regulation", label: "Regulations" },
+            { key: "rulemaking", label: "Rulemaking" },
           ] as const
         ).map(({ key, label }) => (
           <button

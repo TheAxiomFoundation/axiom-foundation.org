@@ -210,8 +210,49 @@ describe("navigation index read helpers", () => {
     expect(calls(statute, "limit")).toContainEqual([1]);
   });
 
+  it("applies encoded filtering while probing capped root document types", async () => {
+    enqueue({
+      data: Array.from({ length: 1000 }, (_, index) => ({
+        doc_type: "regulation",
+        path: `us/regulation/${index}`,
+      })),
+    });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    const rulemaking = enqueue({
+      data: [
+        { doc_type: "rulemaking", path: "us/rulemaking/federal-register" },
+      ],
+    });
+    enqueue({ data: [] });
+
+    await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
+      docTypes: ["regulation", "rulemaking"],
+    });
+
+    expect(calls(rulemaking, "or")).toContainEqual([
+      "has_rulespec.eq.true,encoded_descendant_count.gt.0",
+    ]);
+  });
+
   it("allows an empty encoded-only root without treating the index as missing", async () => {
     enqueue({ data: [] });
+
+    await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
+      docTypes: [],
+    });
+  });
+
+  it("ignores malformed encoded-only root rows while discovering document types", async () => {
+    enqueue({
+      data: [
+        { doc_type: null, path: null },
+        { doc_type: "", path: "us/" },
+      ],
+    });
 
     await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
       docTypes: [],

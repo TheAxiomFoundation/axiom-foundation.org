@@ -11,6 +11,16 @@ import type {
 const NAVIGATION_PAGE_SIZE = 100;
 const NAVIGATION_QUERY_TIMEOUT_MS = 1500;
 const DOC_TYPE_DISCOVERY_LIMIT = 5000;
+const SUPABASE_REST_MAX_ROWS = 1000;
+const DOC_TYPE_DISCOVERY_CANDIDATES = [
+  "form",
+  "guidance",
+  "legislation",
+  "policy",
+  "regulation",
+  "rulemaking",
+  "statute",
+];
 
 export class NavigationIndexUnavailableError extends Error {
   constructor(message = "Navigation index is temporarily unavailable.") {
@@ -46,16 +56,26 @@ export async function getNavigationDocTypes(
   if (!result) throw new NavigationIndexUnavailableError();
   if (result.error) throw new NavigationIndexUnavailableError();
 
-  const docTypes = Array.from(
-    new Set(
-      ((result.data ?? []) as Array<{
-        doc_type?: string | null;
-        path?: string | null;
-      }>)
-        .map((row) => navigationRootSegment(row.path, row.doc_type))
-        .filter((docType): docType is string => Boolean(docType))
-    )
-  ).sort();
+  const rows = (result.data ?? []) as Array<{
+    doc_type?: string | null;
+    path?: string | null;
+  }>;
+  const docTypeSet = new Set(
+    rows
+      .map((row) => navigationRootSegment(row.path, row.doc_type))
+      .filter((docType): docType is string => Boolean(docType))
+  );
+
+  if (rows.length >= SUPABASE_REST_MAX_ROWS) {
+    for (const docType of await probeNavigationDocTypes(
+      jurisdiction,
+      encodedOnly
+    )) {
+      docTypeSet.add(docType);
+    }
+  }
+
+  const docTypes = Array.from(docTypeSet).sort();
 
   if (docTypes.length === 0 && !encodedOnly) {
     throw new NavigationIndexMissingError(
@@ -64,6 +84,39 @@ export async function getNavigationDocTypes(
   }
 
   return { docTypes };
+}
+
+async function probeNavigationDocTypes(
+  jurisdiction: string,
+  encodedOnly: boolean
+): Promise<string[]> {
+  return (
+    await Promise.all(
+      DOC_TYPE_DISCOVERY_CANDIDATES.map(async (docType) => {
+        let query = supabaseCorpus
+          .from("navigation_nodes")
+          .select("doc_type,path,has_rulespec,encoded_descendant_count")
+          .eq("jurisdiction", jurisdiction)
+          .eq("doc_type", docType)
+          .is("parent_path", null)
+          .limit(1);
+
+        if (encodedOnly) {
+          query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
+        }
+
+        const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
+        if (!result) throw new NavigationIndexUnavailableError();
+        if (result.error) throw new NavigationIndexUnavailableError();
+
+        const [row] = (result.data ?? []) as Array<{
+          doc_type?: string | null;
+          path?: string | null;
+        }>;
+        return row ? navigationRootSegment(row.path, row.doc_type) : null;
+      })
+    )
+  ).filter((docType): docType is string => Boolean(docType));
 }
 
 export async function getProvisionCoveredDocTypes(

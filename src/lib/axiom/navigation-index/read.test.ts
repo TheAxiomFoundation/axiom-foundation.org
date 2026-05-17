@@ -176,6 +176,40 @@ describe("navigation index read helpers", () => {
     ]);
   });
 
+  it("probes known root document types when the first discovery page is capped", async () => {
+    const rootPage = enqueue({
+      data: Array.from({ length: 1000 }, (_, index) => ({
+        doc_type: "regulation",
+        path: `us/regulation/${index}`,
+      })),
+    });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    enqueue({ data: [] });
+    const regulation = enqueue({
+      data: [{ doc_type: "regulation", path: "us/regulation/1-cfr" }],
+    });
+    const rulemaking = enqueue({
+      data: [
+        { doc_type: "rulemaking", path: "us/rulemaking/federal-register" },
+      ],
+    });
+    const statute = enqueue({
+      data: [{ doc_type: "statute", path: "us/statute/26" }],
+    });
+
+    await expect(getNavigationDocTypes("us", false)).resolves.toEqual({
+      docTypes: ["regulation", "rulemaking", "statute"],
+    });
+
+    expect(mockFrom).toHaveBeenCalledTimes(8);
+    expect(calls(rootPage, "limit")).toContainEqual([5000]);
+    expect(calls(regulation, "eq")).toContainEqual(["doc_type", "regulation"]);
+    expect(calls(rulemaking, "eq")).toContainEqual(["doc_type", "rulemaking"]);
+    expect(calls(statute, "limit")).toContainEqual([1]);
+  });
+
   it("allows an empty encoded-only root without treating the index as missing", async () => {
     enqueue({ data: [] });
 

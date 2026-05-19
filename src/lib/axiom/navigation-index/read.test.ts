@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockFrom, builders } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
@@ -140,6 +140,10 @@ beforeEach(() => {
   builders.length = 0;
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("navigation index read helpers", () => {
   it("loads distinct root document segments and maps explicit roots", async () => {
     const builder = enqueue({
@@ -174,6 +178,31 @@ describe("navigation index read helpers", () => {
     expect(calls(builder, "or")).toContainEqual([
       "has_rulespec.eq.true,encoded_descendant_count.gt.0",
     ]);
+  });
+
+  it("allows mildly slow root document lookups without marking the index unavailable", async () => {
+    vi.useFakeTimers();
+    enqueue(
+      new Promise<QueryResult>((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              data: [
+                {
+                  doc_type: "policy",
+                  path: "us-co/policy/co-cdhs-snap-page",
+                },
+              ],
+            }),
+          1600
+        );
+      })
+    );
+
+    const result = getNavigationDocTypes("us-co", false);
+    await vi.advanceTimersByTimeAsync(1600);
+
+    await expect(result).resolves.toEqual({ docTypes: ["policy"] });
   });
 
   it("probes known root document types when the first discovery page is capped", async () => {

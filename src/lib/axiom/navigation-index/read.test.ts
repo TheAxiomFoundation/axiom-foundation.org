@@ -339,20 +339,29 @@ describe("navigation index read helpers", () => {
     ).resolves.toEqual(new Set());
   });
 
-  it("throws unavailable when provision-covered document type lookup errors", async () => {
+  it("assumes coverage when the provision-covered doc_type lookup errors", async () => {
     enqueue({ error: { message: "statement timeout" } });
 
     await expect(
       getProvisionCoveredDocTypes("uk", ["legislation"])
-    ).rejects.toThrow(NavigationIndexUnavailableError);
+    ).resolves.toEqual(new Set(["legislation"]));
   });
 
-  it("throws unavailable when provision-covered document type lookup rejects", async () => {
+  it("assumes coverage when the provision-covered doc_type lookup rejects", async () => {
     enqueue(Promise.reject(new Error("network")));
 
     await expect(
       getProvisionCoveredDocTypes("uk", ["legislation"])
-    ).rejects.toThrow(NavigationIndexUnavailableError);
+    ).resolves.toEqual(new Set(["legislation"]));
+  });
+
+  it("assumes coverage when the citation_path fallback lookup errors", async () => {
+    enqueue({ data: [] });
+    enqueue({ error: { message: "statement timeout" } });
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation"])
+    ).resolves.toEqual(new Set(["legislation"]));
   });
 
   it("throws a missing-index error for an empty unfiltered jurisdiction", async () => {
@@ -363,20 +372,33 @@ describe("navigation index read helpers", () => {
     );
   });
 
-  it("throws an unavailable error when a probe query errors", async () => {
-    // Probes run before the scan, in candidate order: form first.
+  it("treats a single failing probe as missing rather than unavailable when others succeed", async () => {
+    // The form probe errors but the statute probe matches, so we still
+    // surface the statute root instead of failing the whole response.
     enqueue({ error: { message: "statement timeout" } });
-    // Pad the remaining 7 probes + scan so unrelated calls do not crash.
-    for (let i = 0; i < 8; i++) enqueue({ data: [] });
+    for (let i = 0; i < 6; i++) enqueue({ data: [] });
+    enqueue({ data: [{ doc_type: "statute", path: "us/statute/26" }] });
+    enqueue({ data: [] });
+
+    await expect(getNavigationDocTypes("us", false)).resolves.toEqual({
+      docTypes: ["statute"],
+    });
+  });
+
+  it("throws an unavailable error when every probe and the scan fail", async () => {
+    for (let i = 0; i < 8; i++) {
+      enqueue({ error: { message: "statement timeout" } });
+    }
+    enqueue({ error: { message: "statement timeout" } });
 
     await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
       NavigationIndexUnavailableError
     );
   });
 
-  it("throws an unavailable error when a probe query rejects", async () => {
+  it("throws an unavailable error when every probe rejects and the scan fails", async () => {
+    for (let i = 0; i < 8; i++) enqueue(Promise.reject(new Error("network")));
     enqueue(Promise.reject(new Error("network")));
-    for (let i = 0; i < 8; i++) enqueue({ data: [] });
 
     await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
       NavigationIndexUnavailableError

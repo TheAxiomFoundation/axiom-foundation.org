@@ -182,6 +182,71 @@ describe("loadTreeNodes", () => {
     expect(result.nodes.map((node) => node.segment)).toEqual(["statute"]);
   });
 
+  it("renders an empty root when the index is missing and no RuleSpec files exist", async () => {
+    mockGetNavigationDocTypes.mockRejectedValue(
+      new NavigationIndexMissingError(
+        "Navigation index has no document types for uk."
+      )
+    );
+    mockListEncodedFiles.mockResolvedValue([]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "uk",
+      ruleSegments: [],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(mockGetProvisionCoveredDocTypes).not.toHaveBeenCalled();
+  });
+
+  it("falls back to RuleSpec-only roots when the navigation index is missing", async () => {
+    mockGetNavigationDocTypes.mockRejectedValue(
+      new NavigationIndexMissingError(
+        "Navigation index has no document types for us-ar."
+      )
+    );
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "statutes/26/3101/a.yaml",
+        citationPath: "us-ar/statute/26/3101/a",
+        bucket: "statutes",
+      },
+    ]);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us-ar",
+      ruleSegments: [],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes.map((node) => node.segment)).toEqual(["statute"]);
+  });
+
+  it("propagates index-unavailable errors at the root", async () => {
+    const { NavigationIndexUnavailableError } = await import(
+      "./navigation-index/read"
+    );
+    mockGetNavigationDocTypes.mockRejectedValue(
+      new NavigationIndexUnavailableError()
+    );
+    mockListEncodedFiles.mockResolvedValue([]);
+
+    await expect(
+      loadTreeNodes({
+        dbJurisdictionId: "us",
+        ruleSegments: [],
+        hasCitationPaths: true,
+        encodedOnly: false,
+        page: 0,
+      })
+    ).rejects.toThrow(NavigationIndexUnavailableError);
+  });
+
   it("filters stale root document types with no provision or RuleSpec coverage", async () => {
     mockGetNavigationDocTypes.mockResolvedValue({
       docTypes: ["legislation"],

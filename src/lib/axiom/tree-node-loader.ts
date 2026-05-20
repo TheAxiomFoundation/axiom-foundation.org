@@ -58,14 +58,22 @@ export async function loadTreeNodes({
   encodedPaths: existingEncodedPaths,
 }: TreeNodeLoadParams): Promise<TreeNodeLoadResult> {
   if (segs.length === 0) {
-    const { docTypes } = await getNavigationDocTypes(
-      dbJurisdictionId,
-      encodedOnly
-    );
+    // Treat a missing navigation index as "no doc types yet" rather than a
+    // hard error: jurisdictions seeded for the picker (uk, canada, us-ar,
+    // us-ms, …) may have zero corpus rows before ingestion lands. The
+    // rulespec fallback still surfaces any checked-in encodings; if both
+    // are empty the UI renders an empty state instead of a 404.
+    const docTypes = await getNavigationDocTypes(dbJurisdictionId, encodedOnly)
+      .then((result) => result.docTypes)
+      .catch((error) => {
+        if (error instanceof NavigationIndexMissingError) return [] as string[];
+        throw error;
+      });
     const encodedDocTypes = await getEncodedDocTypes(dbJurisdictionId);
-    const provisionDocTypes = encodedOnly
-      ? new Set<string>()
-      : await getProvisionCoveredDocTypes(dbJurisdictionId, docTypes);
+    const provisionDocTypes =
+      encodedOnly || docTypes.length === 0
+        ? new Set<string>()
+        : await getProvisionCoveredDocTypes(dbJurisdictionId, docTypes);
     const navigationDocTypes = encodedOnly
       ? []
       : docTypes.filter((docType) => provisionDocTypes.has(docType));

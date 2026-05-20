@@ -103,6 +103,44 @@ function enqueue(result: QueryResult | Promise<QueryResult>): QueryBuilder {
   return builder;
 }
 
+const DOC_TYPE_CANDIDATES = [
+  "form",
+  "guidance",
+  "legislation",
+  "manual",
+  "policy",
+  "regulation",
+  "rulemaking",
+  "statute",
+] as const;
+
+/**
+ * Enqueue the 8 candidate probe queries plus the trailing best-effort scan
+ * query that `getNavigationDocTypes` issues. `probes` maps a candidate to a
+ * path that should be returned for it (omit to return an empty probe);
+ * `scan` overrides the scan response (defaults to an empty success).
+ */
+function enqueueDocTypeQueries(opts: {
+  probes?: Partial<Record<(typeof DOC_TYPE_CANDIDATES)[number], string>>;
+  scan?: QueryResult | Promise<QueryResult>;
+}): {
+  probes: Record<(typeof DOC_TYPE_CANDIDATES)[number], QueryBuilder>;
+  scan: QueryBuilder;
+} {
+  const probeBuilders = {} as Record<
+    (typeof DOC_TYPE_CANDIDATES)[number],
+    QueryBuilder
+  >;
+  for (const candidate of DOC_TYPE_CANDIDATES) {
+    const path = opts.probes?.[candidate];
+    probeBuilders[candidate] = enqueue({
+      data: path ? [{ doc_type: candidate, path }] : [],
+    });
+  }
+  const scan = enqueue(opts.scan ?? { data: [] });
+  return { probes: probeBuilders, scan };
+}
+
 function navRow(
   overrides: Partial<NavigationNodeRow> = {}
 ): NavigationNodeRow {
@@ -145,13 +183,15 @@ afterEach(() => {
 });
 
 describe("navigation index read helpers", () => {
-  it("loads distinct root document segments and maps explicit roots", async () => {
-    const builder = enqueue({
-      data: [
-        { doc_type: "regulation", path: "uk/legislation" },
-        { doc_type: "regulation", path: "uk/legislation" },
-        { doc_type: "statute", path: "us/statute/26" },
-      ],
+  it("returns the union of probed candidates and the best-effort scan", async () => {
+    const { probes, scan } = enqueueDocTypeQueries({
+      probes: { legislation: "uk/legislation" },
+      scan: {
+        data: [
+          { doc_type: "statute", path: "uk/statute/some-act" },
+          { doc_type: "statute", path: "uk/statute/some-act" },
+        ],
+      },
     });
 
     await expect(getNavigationDocTypes("uk", false)).resolves.toEqual({
@@ -159,128 +199,80 @@ describe("navigation index read helpers", () => {
     });
 
     expect(mockFrom).toHaveBeenCalledWith("navigation_nodes");
-    expect(calls(builder, "select")[0]).toEqual([
-      "doc_type,path,has_rulespec,encoded_descendant_count",
+    expect(calls(probes.legislation, "eq")).toContainEqual([
+      "jurisdiction",
+      "uk",
     ]);
-    expect(calls(builder, "eq")).toContainEqual(["jurisdiction", "uk"]);
-    expect(calls(builder, "is")).toContainEqual(["parent_path", null]);
+    expect(calls(probes.legislation, "eq")).toContainEqual([
+      "doc_type",
+      "legislation",
+    ]);
+    expect(calls(probes.legislation, "is")).toContainEqual([
+      "parent_path",
+      null,
+    ]);
+    expect(calls(probes.legislation, "limit")).toContainEqual([1]);
+    expect(calls(scan, "is")).toContainEqual(["parent_path", null]);
   });
 
-  it("filters root document segments for encoded descendants", async () => {
-    const builder = enqueue({
-      data: [{ doc_type: "regulation", path: "us/regulation" }],
+  it("returns probed candidates without the scan when the scan times out", async () => {
+    vi.useFakeTimers();
+    enqueueDocTypeQueries({
+      probes: { statute: "us/statute/26" },
+      scan: new Promise<QueryResult>(() => {
+        /* never resolves */
+      }),
+    });
+
+    const promise = getNavigationDocTypes("us", false);
+    await vi.advanceTimersByTimeAsync(1600);
+
+    await expect(promise).resolves.toEqual({ docTypes: ["statute"] });
+  });
+
+  it("filters root document segments for encoded descendants on every query", async () => {
+    const { probes, scan } = enqueueDocTypeQueries({
+      probes: { regulation: "us/regulation" },
     });
 
     await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
       docTypes: ["regulation"],
     });
 
-    expect(calls(builder, "or")).toContainEqual([
+    expect(calls(probes.regulation, "or")).toContainEqual([
+      "has_rulespec.eq.true,encoded_descendant_count.gt.0",
+    ]);
+    expect(calls(scan, "or")).toContainEqual([
       "has_rulespec.eq.true,encoded_descendant_count.gt.0",
     ]);
   });
 
-  it("allows mildly slow root document lookups without marking the index unavailable", async () => {
-    vi.useFakeTimers();
-    enqueue(
-      new Promise<QueryResult>((resolve) => {
-        setTimeout(
-          () =>
-            resolve({
-              data: [
-                {
-                  doc_type: "policy",
-                  path: "us-co/policy/co-cdhs-snap-page",
-                },
-              ],
-            }),
-          1600
-        );
-      })
-    );
-
-    const result = getNavigationDocTypes("us-co", false);
-    await vi.advanceTimersByTimeAsync(1600);
-
-    await expect(result).resolves.toEqual({ docTypes: ["policy"] });
-  });
-
-  it("probes known root document types when the first discovery page is capped", async () => {
-    const rootPage = enqueue({
-      data: Array.from({ length: 1000 }, (_, index) => ({
-        doc_type: "regulation",
-        path: `us/regulation/${index}`,
-      })),
-    });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    const regulation = enqueue({
-      data: [{ doc_type: "regulation", path: "us/regulation/1-cfr" }],
-    });
-    const rulemaking = enqueue({
-      data: [
-        { doc_type: "rulemaking", path: "us/rulemaking/federal-register" },
-      ],
-    });
-    const statute = enqueue({
-      data: [{ doc_type: "statute", path: "us/statute/26" }],
+  it("returns the manual candidate when only the manual probe matches", async () => {
+    enqueueDocTypeQueries({
+      probes: { manual: "us-tx/manual/income-eligibility" },
     });
 
-    await expect(getNavigationDocTypes("us", false)).resolves.toEqual({
-      docTypes: ["regulation", "rulemaking", "statute"],
+    await expect(getNavigationDocTypes("us-tx", false)).resolves.toEqual({
+      docTypes: ["manual"],
     });
-
-    expect(mockFrom).toHaveBeenCalledTimes(8);
-    expect(calls(rootPage, "limit")).toContainEqual([5000]);
-    expect(calls(regulation, "eq")).toContainEqual(["doc_type", "regulation"]);
-    expect(calls(rulemaking, "eq")).toContainEqual(["doc_type", "rulemaking"]);
-    expect(calls(statute, "limit")).toContainEqual([1]);
-  });
-
-  it("applies encoded filtering while probing capped root document types", async () => {
-    enqueue({
-      data: Array.from({ length: 1000 }, (_, index) => ({
-        doc_type: "regulation",
-        path: `us/regulation/${index}`,
-      })),
-    });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    enqueue({ data: [] });
-    const rulemaking = enqueue({
-      data: [
-        { doc_type: "rulemaking", path: "us/rulemaking/federal-register" },
-      ],
-    });
-    enqueue({ data: [] });
-
-    await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
-      docTypes: ["regulation", "rulemaking"],
-    });
-
-    expect(calls(rulemaking, "or")).toContainEqual([
-      "has_rulespec.eq.true,encoded_descendant_count.gt.0",
-    ]);
   });
 
   it("allows an empty encoded-only root without treating the index as missing", async () => {
-    enqueue({ data: [] });
+    enqueueDocTypeQueries({});
 
     await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
       docTypes: [],
     });
   });
 
-  it("ignores malformed encoded-only root rows while discovering document types", async () => {
-    enqueue({
-      data: [
-        { doc_type: null, path: null },
-        { doc_type: "", path: "us/" },
-      ],
+  it("ignores malformed scan rows while discovering document types", async () => {
+    enqueueDocTypeQueries({
+      scan: {
+        data: [
+          { doc_type: null, path: null },
+          { doc_type: "", path: "us/" },
+        ],
+      },
     });
 
     await expect(getNavigationDocTypes("us", true)).resolves.toEqual({
@@ -347,31 +339,56 @@ describe("navigation index read helpers", () => {
     ).resolves.toEqual(new Set());
   });
 
-  it("throws unavailable when provision-covered document type lookup errors", async () => {
+  it("assumes coverage when the provision-covered doc_type lookup errors", async () => {
     enqueue({ error: { message: "statement timeout" } });
 
     await expect(
       getProvisionCoveredDocTypes("uk", ["legislation"])
-    ).rejects.toThrow(NavigationIndexUnavailableError);
+    ).resolves.toEqual(new Set(["legislation"]));
   });
 
-  it("throws unavailable when provision-covered document type lookup rejects", async () => {
+  it("assumes coverage when the provision-covered doc_type lookup rejects", async () => {
     enqueue(Promise.reject(new Error("network")));
 
     await expect(
       getProvisionCoveredDocTypes("uk", ["legislation"])
-    ).rejects.toThrow(NavigationIndexUnavailableError);
+    ).resolves.toEqual(new Set(["legislation"]));
+  });
+
+  it("assumes coverage when the citation_path fallback lookup errors", async () => {
+    enqueue({ data: [] });
+    enqueue({ error: { message: "statement timeout" } });
+
+    await expect(
+      getProvisionCoveredDocTypes("uk", ["legislation"])
+    ).resolves.toEqual(new Set(["legislation"]));
   });
 
   it("throws a missing-index error for an empty unfiltered jurisdiction", async () => {
-    enqueue({ data: [] });
+    enqueueDocTypeQueries({});
 
     await expect(getNavigationDocTypes("canada", false)).rejects.toThrow(
       NavigationIndexMissingError
     );
   });
 
-  it("throws an unavailable error when the index query errors", async () => {
+  it("treats a single failing probe as missing rather than unavailable when others succeed", async () => {
+    // The form probe errors but the statute probe matches, so we still
+    // surface the statute root instead of failing the whole response.
+    enqueue({ error: { message: "statement timeout" } });
+    for (let i = 0; i < 6; i++) enqueue({ data: [] });
+    enqueue({ data: [{ doc_type: "statute", path: "us/statute/26" }] });
+    enqueue({ data: [] });
+
+    await expect(getNavigationDocTypes("us", false)).resolves.toEqual({
+      docTypes: ["statute"],
+    });
+  });
+
+  it("throws an unavailable error when every probe and the scan fail", async () => {
+    for (let i = 0; i < 8; i++) {
+      enqueue({ error: { message: "statement timeout" } });
+    }
     enqueue({ error: { message: "statement timeout" } });
 
     await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
@@ -379,12 +396,24 @@ describe("navigation index read helpers", () => {
     );
   });
 
-  it("throws an unavailable error when the index query rejects", async () => {
+  it("throws an unavailable error when every probe rejects and the scan fails", async () => {
+    for (let i = 0; i < 8; i++) enqueue(Promise.reject(new Error("network")));
     enqueue(Promise.reject(new Error("network")));
 
     await expect(getNavigationDocTypes("us", false)).rejects.toThrow(
       NavigationIndexUnavailableError
     );
+  });
+
+  it("ignores a failing scan as long as the probes succeed", async () => {
+    enqueueDocTypeQueries({
+      probes: { statute: "us/statute/26" },
+      scan: { error: { message: "statement timeout" } },
+    });
+
+    await expect(getNavigationDocTypes("us", false)).resolves.toEqual({
+      docTypes: ["statute"],
+    });
   });
 
   it("loads paged child rows and computes hasMore from the exact count", async () => {

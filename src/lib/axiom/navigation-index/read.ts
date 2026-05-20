@@ -11,11 +11,17 @@ import type {
 const NAVIGATION_PAGE_SIZE = 100;
 const NAVIGATION_QUERY_TIMEOUT_MS = 5000;
 const DOC_TYPE_DISCOVERY_LIMIT = 5000;
-const SUPABASE_REST_MAX_ROWS = 1000;
+const DOC_TYPE_SCAN_LIMIT = 200;
+const DOC_TYPE_SCAN_TIMEOUT_MS = 1500;
+// Canonical doc_type slugs the corpus uses as root nodes. Probed in parallel
+// to avoid a heavy `parent_path IS NULL` scan on large jurisdictions (us,
+// us-ca) where the scan times out. A best-effort small scan still runs to
+// catch novel doc_types; add new ones here once they appear.
 const DOC_TYPE_DISCOVERY_CANDIDATES = [
   "form",
   "guidance",
   "legislation",
+  "manual",
   "policy",
   "regulation",
   "rulemaking",
@@ -40,83 +46,109 @@ export async function getNavigationDocTypes(
   jurisdiction: string,
   encodedOnly: boolean
 ): Promise<NavigationDocTypeResult> {
+  // Run the candidate probes and a small best-effort scan in parallel. The
+  // probes are tiny indexed (jurisdiction, doc_type) lookups that usually
+  // complete quickly; the scan catches novel doc_types not in the candidate
+  // list. Both tolerate individual failures so one slow query cannot
+  // poison the whole response, but if *every* probe and the scan failed we
+  // surface unavailable rather than pretending the jurisdiction is empty.
+  const [probed, scanned] = await Promise.all([
+    probeNavigationDocTypes(jurisdiction, encodedOnly),
+    scanNavigationDocTypes(jurisdiction, encodedOnly),
+  ]);
+
+  const docTypeSet = new Set<string>(probed.docTypes);
+  if (scanned) for (const docType of scanned) docTypeSet.add(docType);
+  const docTypes = Array.from(docTypeSet).sort();
+
+  if (docTypes.length === 0) {
+    if (probed.allFailed && scanned === null) {
+      throw new NavigationIndexUnavailableError();
+    }
+    if (!encodedOnly) {
+      throw new NavigationIndexMissingError(
+        `Navigation index has no document types for ${jurisdiction}.`
+      );
+    }
+  }
+
+  return { docTypes };
+}
+
+async function scanNavigationDocTypes(
+  jurisdiction: string,
+  encodedOnly: boolean
+): Promise<string[] | null> {
   let query = supabaseCorpus
     .from("navigation_nodes")
     .select("doc_type,path,has_rulespec,encoded_descendant_count")
     .eq("jurisdiction", jurisdiction)
     .is("parent_path", null)
     .order("doc_type")
-    .limit(DOC_TYPE_DISCOVERY_LIMIT);
+    .limit(DOC_TYPE_SCAN_LIMIT);
 
   if (encodedOnly) {
     query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
   }
 
-  const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
-  if (!result) throw new NavigationIndexUnavailableError();
-  if (result.error) throw new NavigationIndexUnavailableError();
+  const result = await withTimeout(query, DOC_TYPE_SCAN_TIMEOUT_MS);
+  if (!result || result.error) return null;
 
   const rows = (result.data ?? []) as Array<{
     doc_type?: string | null;
     path?: string | null;
   }>;
-  const docTypeSet = new Set(
-    rows
-      .map((row) => navigationRootSegment(row.path, row.doc_type))
-      .filter((docType): docType is string => Boolean(docType))
-  );
-
-  if (rows.length >= SUPABASE_REST_MAX_ROWS) {
-    for (const docType of await probeNavigationDocTypes(
-      jurisdiction,
-      encodedOnly
-    )) {
-      docTypeSet.add(docType);
-    }
-  }
-
-  const docTypes = Array.from(docTypeSet).sort();
-
-  if (docTypes.length === 0 && !encodedOnly) {
-    throw new NavigationIndexMissingError(
-      `Navigation index has no document types for ${jurisdiction}.`
-    );
-  }
-
-  return { docTypes };
+  return rows
+    .map((row) => navigationRootSegment(row.path, row.doc_type))
+    .filter((docType): docType is string => Boolean(docType));
 }
 
 async function probeNavigationDocTypes(
   jurisdiction: string,
   encodedOnly: boolean
-): Promise<string[]> {
-  return (
-    await Promise.all(
-      DOC_TYPE_DISCOVERY_CANDIDATES.map(async (docType) => {
-        let query = supabaseCorpus
-          .from("navigation_nodes")
-          .select("doc_type,path,has_rulespec,encoded_descendant_count")
-          .eq("jurisdiction", jurisdiction)
-          .eq("doc_type", docType)
-          .is("parent_path", null)
-          .limit(1);
+): Promise<{ docTypes: string[]; allFailed: boolean }> {
+  // Each probe is best-effort: a slow or failing probe contributes no
+  // candidate rather than failing the whole request. Large jurisdictions
+  // (us, us-ca) can otherwise have one slow indexed lookup poison the
+  // entire root navigation response. The caller still needs to tell
+  // "everything failed" apart from "everything returned empty", so we
+  // report both pieces.
+  const outcomes = await Promise.all(
+    DOC_TYPE_DISCOVERY_CANDIDATES.map(async (docType) => {
+      let query = supabaseCorpus
+        .from("navigation_nodes")
+        .select("doc_type,path,has_rulespec,encoded_descendant_count")
+        .eq("jurisdiction", jurisdiction)
+        .eq("doc_type", docType)
+        .is("parent_path", null)
+        .limit(1);
 
-        if (encodedOnly) {
-          query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
-        }
+      if (encodedOnly) {
+        query = query.or("has_rulespec.eq.true,encoded_descendant_count.gt.0");
+      }
 
-        const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
-        if (!result) throw new NavigationIndexUnavailableError();
-        if (result.error) throw new NavigationIndexUnavailableError();
+      const result = await withTimeout(query, NAVIGATION_QUERY_TIMEOUT_MS);
+      if (!result || result.error) {
+        return { docType: null, failed: true };
+      }
 
-        const [row] = (result.data ?? []) as Array<{
-          doc_type?: string | null;
-          path?: string | null;
-        }>;
-        return row ? navigationRootSegment(row.path, row.doc_type) : null;
-      })
-    )
-  ).filter((docType): docType is string => Boolean(docType));
+      const [row] = (result.data ?? []) as Array<{
+        doc_type?: string | null;
+        path?: string | null;
+      }>;
+      return {
+        docType: row ? navigationRootSegment(row.path, row.doc_type) : null,
+        failed: false,
+      };
+    })
+  );
+
+  const docTypes = outcomes
+    .map((outcome) => outcome.docType)
+    .filter((docType): docType is string => Boolean(docType));
+  const allFailed =
+    outcomes.length > 0 && outcomes.every((outcome) => outcome.failed);
+  return { docTypes, allFailed };
 }
 
 export async function getProvisionCoveredDocTypes(
@@ -127,6 +159,11 @@ export async function getProvisionCoveredDocTypes(
 
   const covered = new Set<string>();
 
+  // Per-docType coverage checks are best-effort: a slow or failing check
+  // is treated as "assume covered" so that one slow query cannot strip an
+  // otherwise valid doc_type from the root navigation. The navigation
+  // index already vouches for the doc_type's existence; this lookup just
+  // filters orphaned entries that have no matching provisions.
   const checks = await Promise.all(
     docTypes.map(async (docType) => {
       const docTypeResult = await withTimeout(
@@ -138,8 +175,7 @@ export async function getProvisionCoveredDocTypes(
           .limit(1),
         NAVIGATION_QUERY_TIMEOUT_MS
       );
-      if (!docTypeResult) throw new NavigationIndexUnavailableError();
-      if (docTypeResult.error) throw new NavigationIndexUnavailableError();
+      if (!docTypeResult || docTypeResult.error) return docType;
 
       const docTypeRows = (docTypeResult.data ?? []) as Array<{
         doc_type: string | null;
@@ -160,8 +196,7 @@ export async function getProvisionCoveredDocTypes(
           .limit(1),
         NAVIGATION_QUERY_TIMEOUT_MS
       );
-      if (!result) throw new NavigationIndexUnavailableError();
-      if (result.error) throw new NavigationIndexUnavailableError();
+      if (!result || result.error) return docType;
 
       const rows = (result.data ?? []) as Array<{
         citation_path: string | null;

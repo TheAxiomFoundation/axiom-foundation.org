@@ -115,6 +115,62 @@ describe("EncodingRunLogPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /event timeline/i }));
     expect(screen.getByText("Encode 26 USC 63(f)")).toBeInTheDocument();
   });
+
+  it("renders missing run metadata without session telemetry", () => {
+    render(
+      <EncodingRunLogPage
+        run={makeRun({
+          id: "run-no-session",
+          citation: null,
+          session_id: null,
+          file_path: null,
+          timestamp: "not-a-date",
+          total_duration_ms: 900,
+          agent_model: null,
+          data_source: null,
+          has_issues: null,
+          note: null,
+          encoder_version: null,
+        })}
+        session={null}
+        events={[]}
+        transcripts={[]}
+      />
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "run-no-session" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("No file path recorded")).toBeInTheDocument();
+    expect(screen.getByText("not-a-date")).toBeInTheDocument();
+    expect(screen.getAllByText("900ms").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "SDK session" })).toBeNull();
+  });
+
+  it("formats short and running SDK session durations", () => {
+    const { rerender } = render(
+      <EncodingRunLogPage
+        run={makeRun({ total_duration_ms: 9500 })}
+        session={makeSession({ ended_at: null, estimated_cost_usd: Number.NaN })}
+        events={[]}
+        transcripts={[]}
+      />
+    );
+
+    expect(screen.getByText("9.5s")).toBeInTheDocument();
+    expect(screen.getByText("Running")).toBeInTheDocument();
+
+    rerender(
+      <EncodingRunLogPage
+        run={makeRun({ id: "run-short", total_duration_ms: 15000 })}
+        session={makeSession({ id: "encode-run-short" })}
+        events={[]}
+        transcripts={[]}
+      />
+    );
+
+    expect(screen.getAllByText("15s").length).toBeGreaterThan(0);
+  });
 });
 
 describe("SDKSessionLogPage", () => {
@@ -155,5 +211,37 @@ describe("SDKSessionLogPage", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /event timeline/i }));
     expect(screen.getByText("Encode 26 USC 63(f)")).toBeInTheDocument();
+  });
+
+  it("renders running sessions and run fallback values", () => {
+    render(
+      <SDKSessionLogPage
+        session={makeSession({
+          ended_at: null,
+          model: "",
+          event_count: Number.NaN,
+          input_tokens: Number.POSITIVE_INFINITY,
+          output_tokens: 0,
+          cache_read_tokens: Number.NaN,
+          estimated_cost_usd: Number.NaN,
+          encoder_version: null,
+          cwd: null,
+        })}
+        runs={[
+          makeRun({ id: "run-with-issues", citation: null, has_issues: true }),
+          makeRun({ id: "run-unknown", citation: null, has_issues: null }),
+        ]}
+        events={[]}
+        transcripts={[]}
+      />
+    );
+
+    expect(screen.getByText("Running")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "run-with-issues" })).toHaveAttribute(
+      "href",
+      "/ops/runs/run-with-issues"
+    );
+    expect(screen.getByText("Check")).toBeInTheDocument();
+    expect(screen.getAllByText("run-unknown").length).toBeGreaterThan(0);
   });
 });

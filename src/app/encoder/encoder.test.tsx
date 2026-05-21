@@ -16,7 +16,7 @@ describe('EncoderPage', () => {
     expect(screen.getByRole('heading', { name: /pipeline explorer/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /failure pattern browser/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /run ledger and provenance files/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /inspect encoding records in axiom/i })).toHaveAttribute('href', '/axiom')
+    expect(screen.getByRole('link', { name: /inspect encoding records in axiom/i })).toHaveAttribute('href', '/axiom/ops')
     expect(screen.getByRole('link', { name: /view broader technical stack/i })).toHaveAttribute('href', '/stack')
     expect(screen.getByText(/accepted autoresearch mutation/i)).toBeInTheDocument()
     expect(screen.getByText(/55-case uk bulk wave promoted/i)).toBeInTheDocument()

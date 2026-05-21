@@ -18,8 +18,11 @@ vi.mock('@supabase/supabase-js', () => ({
 // Now import the functions (they'll use the mocked supabase client)
 import {
   getEncodingRuns,
+  getEncodingRunById,
+  getEncodingRunsBySession,
   getAgentTranscripts,
   getTranscriptsBySession,
+  getSDKSession,
   getSDKSessions,
   getSDKSessionEvents,
   getSDKSessionMeta,
@@ -98,6 +101,61 @@ describe('supabase lib', () => {
         limit_count: 100,
         offset_count: 0,
       })
+    })
+  })
+
+  describe('getEncodingRunById', () => {
+    it('returns a single encoding run', async () => {
+      const mockData = { id: 'run-1', citation: '26 USC 63(f)' }
+      const maybeSingleFn = vi.fn().mockResolvedValue({ data: mockData, error: null })
+      const eqFn = vi.fn().mockReturnValue({ maybeSingle: maybeSingleFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getEncodingRunById('run-1')
+      expect(result).toEqual(mockData)
+      expect(mockFrom).toHaveBeenCalledWith('encoding_runs')
+      expect(eqFn).toHaveBeenCalledWith('id', 'run-1')
+    })
+
+    it('returns null on error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const maybeSingleFn = vi.fn().mockResolvedValue({ data: null, error: { message: 'err' } })
+      const eqFn = vi.fn().mockReturnValue({ maybeSingle: maybeSingleFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getEncodingRunById('missing')
+      expect(result).toBeNull()
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('getEncodingRunsBySession', () => {
+    it('returns linked encoding runs newest first', async () => {
+      const mockData = [{ id: 'run-1', session_id: 'encode-run-1' }]
+      const orderFn = vi.fn().mockResolvedValue({ data: mockData, error: null })
+      const eqFn = vi.fn().mockReturnValue({ order: orderFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getEncodingRunsBySession('encode-run-1')
+      expect(result).toEqual(mockData)
+      expect(mockFrom).toHaveBeenCalledWith('encoding_runs')
+      expect(eqFn).toHaveBeenCalledWith('session_id', 'encode-run-1')
+      expect(orderFn).toHaveBeenCalledWith('timestamp', { ascending: false })
+    })
+
+    it('returns empty array on error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const orderFn = vi.fn().mockResolvedValue({ data: null, error: { message: 'err' } })
+      const eqFn = vi.fn().mockReturnValue({ order: orderFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getEncodingRunsBySession('encode-run-1')
+      expect(result).toEqual([])
+      consoleSpy.mockRestore()
     })
   })
 
@@ -221,6 +279,33 @@ describe('supabase lib', () => {
 
       const result = await getSDKSessions()
       expect(result).toEqual([])
+    })
+  })
+
+  describe('getSDKSession', () => {
+    it('returns a single SDK session', async () => {
+      const mockData = { id: 'sdk-1', encoder_version: undefined }
+      const maybeSingleFn = vi.fn().mockResolvedValue({ data: mockData, error: null })
+      const eqFn = vi.fn().mockReturnValue({ maybeSingle: maybeSingleFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getSDKSession('sdk-1')
+      expect(result).toEqual({ id: 'sdk-1', encoder_version: null })
+      expect(mockFrom).toHaveBeenCalledWith('sdk_sessions')
+      expect(eqFn).toHaveBeenCalledWith('id', 'sdk-1')
+    })
+
+    it('returns null on missing session or error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const maybeSingleFn = vi.fn().mockResolvedValue({ data: null, error: { message: 'err' } })
+      const eqFn = vi.fn().mockReturnValue({ maybeSingle: maybeSingleFn })
+      const selectFn = vi.fn().mockReturnValue({ eq: eqFn })
+      mockFrom.mockReturnValue({ select: selectFn })
+
+      const result = await getSDKSession('missing')
+      expect(result).toBeNull()
+      consoleSpy.mockRestore()
     })
   })
 

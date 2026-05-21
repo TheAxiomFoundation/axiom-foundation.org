@@ -568,7 +568,7 @@ export function EncoderSystemPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <a href={axiomAppHref()} className="btn-primary">
+              <a href={axiomAppHref("ops")} className="btn-primary">
                 Inspect encoding records in Axiom
                 <ArrowRightIcon className="w-5 h-5" />
               </a>
@@ -899,7 +899,7 @@ export function EncoderSystemPage() {
                 belong in Axiom.
               </p>
             </div>
-            <a href={axiomAppHref()} className="btn-outline">
+            <a href={axiomAppHref("ops")} className="btn-outline">
               Open Axiom encoding views
             </a>
           </div>

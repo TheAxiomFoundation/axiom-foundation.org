@@ -72,6 +72,47 @@ export interface EncodingRun {
   session_id: string | null
 }
 
+export interface EncodingRunDetail {
+  id: string
+  timestamp: string | null
+  citation: string | null
+  session_id: string | null
+  file_path: string | null
+  rulespec_content: string | null
+  final_scores: EncodingRunScores | null
+  iterations: EncodingRunIteration[] | null
+  total_duration_ms: number | null
+  agent_type: string | null
+  agent_model: string | null
+  data_source: DataSource | null
+  has_issues: boolean | null
+  note: string | null
+  encoder_version: string | null
+}
+
+const ENCODING_RUN_DETAIL_SELECT =
+  'id, citation, session_id, file_path, rulespec_content, final_scores, iterations, total_duration_ms, agent_type, agent_model, data_source, has_issues, note, timestamp, encoder_version'
+
+export function encodingRunToRuleEncodingData(run: EncodingRunDetail): RuleEncodingData {
+  return {
+    encoding_run_id: run.id,
+    citation: run.citation ?? run.id,
+    session_id: run.session_id,
+    file_path: run.file_path ?? '',
+    rulespec_content: run.rulespec_content,
+    final_scores: run.final_scores,
+    iterations: run.iterations,
+    total_duration_ms: run.total_duration_ms,
+    agent_type: run.agent_type,
+    agent_model: run.agent_model,
+    data_source: run.data_source,
+    has_issues: run.has_issues,
+    note: run.note,
+    timestamp: run.timestamp,
+    encoder_version: run.encoder_version,
+  }
+}
+
 // Fetch encoding runs from Supabase
 export async function getEncodingRuns(limit = 100, offset = 0): Promise<EncodingRun[]> {
   const { data, error } = await supabaseEncodings
@@ -83,6 +124,36 @@ export async function getEncodingRuns(limit = 100, offset = 0): Promise<Encoding
   }
 
   return (data || []) as EncodingRun[]
+}
+
+export async function getEncodingRunById(id: string): Promise<EncodingRunDetail | null> {
+  const { data, error } = await supabaseEncodings
+    .from('encoding_runs')
+    .select(ENCODING_RUN_DETAIL_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching encoding run:', error)
+    return null
+  }
+
+  return (data as EncodingRunDetail | null) ?? null
+}
+
+export async function getEncodingRunsBySession(sessionId: string): Promise<EncodingRunDetail[]> {
+  const { data, error } = await supabaseEncodings
+    .from('encoding_runs')
+    .select(ENCODING_RUN_DETAIL_SELECT)
+    .eq('session_id', sessionId)
+    .order('timestamp', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching encoding runs by session:', error)
+    return []
+  }
+
+  return (data || []) as EncodingRunDetail[]
 }
 
 // Types for agent transcripts from Encoder runs
@@ -187,6 +258,25 @@ export async function getSDKSessions(limit = 50): Promise<SDKSession[]> {
     ...row,
     encoder_version: row.encoder_version ?? null,
   }))
+}
+
+export async function getSDKSession(sessionId: string): Promise<SDKSession | null> {
+  const { data, error } = await supabaseTelemetry
+    .from('sdk_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching SDK session:', error)
+    return null
+  }
+
+  if (!data) return null
+  return {
+    ...(data as SDKSession),
+    encoder_version: (data as SDKSession).encoder_version ?? null,
+  }
 }
 
 // Fetch session metadata

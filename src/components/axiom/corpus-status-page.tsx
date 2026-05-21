@@ -711,12 +711,16 @@ function SourceDiscoveryDomainTableRow({
 }
 
 function EncodingRunTableRow({ run }: { run: EncodingStatusRun }) {
+  const runHref = `/ops/runs/${encodeURIComponent(run.id)}`;
   return (
     <tr className="border-t border-[var(--color-rule)]">
       <td className="px-4 py-3">
-        <div className="max-w-[360px] truncate font-medium text-[var(--color-ink)]">
+        <Link
+          href={runHref}
+          className="block max-w-[360px] truncate font-medium text-[var(--color-accent)] no-underline hover:underline"
+        >
           {run.citation ?? run.id}
-        </div>
+        </Link>
         {run.encoder_version && (
           <div className="mt-1 font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
             encoder {run.encoder_version}
@@ -739,7 +743,12 @@ function EncodingRunTableRow({ run }: { run: EncodingStatusRun }) {
         />
       </td>
       <td className="px-4 py-3 font-mono text-xs text-[var(--color-ink-muted)]">
-        {formatShortDate(run.timestamp)}
+        <Link
+          href={runHref}
+          className="text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] hover:underline"
+        >
+          {formatShortDate(run.timestamp)}
+        </Link>
       </td>
     </tr>
   );
@@ -747,13 +756,17 @@ function EncodingRunTableRow({ run }: { run: EncodingStatusRun }) {
 
 function EncodingSessionRow({ session }: { session: EncodingStatusSession }) {
   const running = session.ended_at == null;
+  const sessionHref = `/ops/sessions/${encodeURIComponent(session.id)}`;
   return (
     <div className="py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate font-mono text-xs text-[var(--color-ink)]">
+          <Link
+            href={sessionHref}
+            className="block truncate font-mono text-xs text-[var(--color-accent)] no-underline hover:underline"
+          >
             {session.id}
-          </div>
+          </Link>
           <div className="mt-1 text-xs text-[var(--color-ink-secondary)]">
             {session.model ?? "Unknown model"} / {formatShortDate(session.started_at)}
           </div>

@@ -380,6 +380,13 @@ describe("CorpusStatusPage", () => {
     expect(screen.getByText("ftb.ca.gov")).toBeInTheDocument();
     expect(screen.getByText("law.cornell.edu")).toBeInTheDocument();
     expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "C.R.S. 26-2-703" })
+    ).toHaveAttribute("href", "/ops/runs/enc-1");
+    expect(screen.getByRole("link", { name: "sdk-1" })).toHaveAttribute(
+      "href",
+      "/ops/sessions/sdk-1"
+    );
     expect(screen.getAllByText("reviewer agent").length).toBeGreaterThan(0);
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Colorado")).toBeInTheDocument();

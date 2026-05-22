@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
@@ -92,11 +98,16 @@ describe("jurisdictionDisplay", () => {
     expect(jurisdictionDisplay("canada")).toBe("CAN");
   });
   it("falls back to uppercasing an unknown jurisdiction", () => {
-    expect(jurisdictionDisplay("mars")).toBe("Mars");
+    // jurisdictionDisplay renders the slug as the code chip; for
+    // uncurated slugs it returns the raw slug uppercased so the chip
+    // stays distinct from the humanized label rendered alongside it.
+    expect(jurisdictionDisplay("mars")).toBe("MARS");
   });
-  it("removes separators from unknown jurisdiction labels", () => {
-    expect(jurisdictionDisplay("tribal_courts")).toBe("Tribal Courts");
-    expect(jurisdictionDisplay("eu-member_states")).toBe("EU Member States");
+  it("preserves separators in the unknown jurisdiction code", () => {
+    expect(jurisdictionDisplay("tribal_courts")).toBe("TRIBAL_COURTS");
+    expect(jurisdictionDisplay("eu-member_states")).toBe("EU-MEMBER_STATES");
+    // humanizeIdentifier is still the source of the *label* (separate
+    // from the code chip) and continues to title-case the slug.
     expect(humanizeIdentifier("new_policy_bucket")).toBe("New Policy Bucket");
   });
 });
@@ -121,9 +132,9 @@ describe("AxiomStats", () => {
   it("renders jurisdiction links while the RPC is in flight", () => {
     mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
     render(<AxiomStats />);
-    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
-    expect(screen.getByText("Colorado")).toBeInTheDocument();
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    expect(pills.getByText("Colorado")).toBeInTheDocument();
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
     expect(screen.queryByText("659K")).not.toBeInTheDocument();
   });
@@ -132,8 +143,8 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockResolvedValue(null);
     render(<AxiomStats />);
     await waitFor(() => expect(mockGetAxiomStats).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    expect(pills.getByText("US Federal")).toBeInTheDocument();
   });
 
   it("uses client Axiom navigation for jurisdiction clicks when provided", () => {
@@ -141,7 +152,8 @@ describe("AxiomStats", () => {
     const onNavigateHref = vi.fn();
     render(<AxiomStats onNavigateHref={onNavigateHref} />);
 
-    fireEvent.click(screen.getByText("Colorado").closest("a")!);
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    fireEvent.click(pills.getByText("Colorado").closest("a")!);
 
     expect(onNavigateHref).toHaveBeenCalledWith("/us-co");
   });
@@ -150,7 +162,8 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
     render(<AxiomStats />);
 
-    const colorado = screen.getByText("Colorado").closest("a");
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    const colorado = pills.getByText("Colorado").closest("a");
     expect(colorado).toHaveAttribute("href", "/us-co");
     colorado?.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(colorado!);
@@ -167,8 +180,6 @@ describe("AxiomStats", () => {
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
     expect(screen.getByText("citations extracted")).toBeInTheDocument();
     expect(screen.getByText("jurisdictions")).toBeInTheDocument();
-    expect(screen.queryByText(/4 · .* rules/)).not.toBeInTheDocument();
-    expect(screen.getByText(/473K\s+rules/)).toBeInTheDocument();
   });
 
   it("shows Canada once generated navigation roots are available", async () => {
@@ -182,9 +193,10 @@ describe("AxiomStats", () => {
     });
     render(<AxiomStats />);
 
-    await waitFor(() =>
-      expect(screen.getByText("Canada")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const pills = within(screen.getByTestId("axiom-stats-pills"));
+      expect(pills.getByText("Canada")).toBeInTheDocument();
+    });
 
     expect(screen.getByText("18")).toBeInTheDocument();
   });
@@ -200,14 +212,16 @@ describe("AxiomStats", () => {
     });
     render(<AxiomStats />);
 
-    await waitFor(() =>
-      expect(screen.getByText("US Federal")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const pills = within(screen.getByTestId("axiom-stats-pills"));
+      expect(pills.getByText("US Federal")).toBeInTheDocument();
+    });
 
-    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
-    expect(screen.getByText("Canada")).toBeInTheDocument();
-    expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.getByText("New York")).toBeInTheDocument();
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    expect(pills.getByText("United Kingdom")).toBeInTheDocument();
+    expect(pills.getByText("Canada")).toBeInTheDocument();
+    expect(pills.getByText("Colorado")).toBeInTheDocument();
+    expect(pills.getByText("New York")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
   });
 
@@ -215,9 +229,10 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
 
-    await waitFor(() =>
-      expect(screen.getByText("US Federal")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const pills = within(screen.getByTestId("axiom-stats-pills"));
+      expect(pills.getByText("US Federal")).toBeInTheDocument();
+    });
 
     expect(screen.queryByText("Puerto Rico")).not.toBeInTheDocument();
   });
@@ -232,9 +247,10 @@ describe("AxiomStats", () => {
     });
     render(<AxiomStats />);
 
-    await waitFor(() =>
-      expect(screen.getByText("Puerto Rico")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const pills = within(screen.getByTestId("axiom-stats-pills"));
+      expect(pills.getByText("Puerto Rico")).toBeInTheDocument();
+    });
   });
 
   it("renders server-provided stats immediately without the client RPC tick", () => {
@@ -268,16 +284,17 @@ describe("AxiomStats", () => {
     );
     // Federal / national band appears on top with full labels; US
     // states render alphabetically beneath.
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
-    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
-    expect(screen.getByText("District of Columbia")).toBeInTheDocument();
-    expect(screen.getByText("New York")).toBeInTheDocument();
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    expect(pills.getByText("United Kingdom")).toBeInTheDocument();
+    expect(pills.getByText("District of Columbia")).toBeInTheDocument();
+    expect(pills.getByText("New York")).toBeInTheDocument();
 
     // Every pill routes to /<slug>.
-    const pills = screen
+    const pillLinks = screen
       .getByTestId("axiom-stats-pills")
       .querySelectorAll<HTMLAnchorElement>("a[href^='/']");
-    const hrefs = Array.from(pills).map((a) => a.getAttribute("href"));
+    const hrefs = Array.from(pillLinks).map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(
       expect.arrayContaining([
         "/us",
@@ -288,7 +305,7 @@ describe("AxiomStats", () => {
     );
   });
 
-  it("humanizes uncurated jurisdiction labels instead of showing underscores", async () => {
+  it("humanizes uncurated jurisdiction labels into title case", async () => {
     mockGetAxiomStats.mockResolvedValue({
       ...fullPayload,
       jurisdictions: [
@@ -297,11 +314,13 @@ describe("AxiomStats", () => {
       ],
     });
     render(<AxiomStats />);
+    // The visible station label is humanized title-case ("Tribal
+    // Courts") so the user-facing copy never shows raw slug
+    // separators. The mono code chip beside it does render the raw
+    // slug uppercased on purpose, so it can coexist on the same tile.
     await waitFor(() =>
       expect(screen.getByText("Tribal Courts")).toBeInTheDocument()
     );
-
-    expect(screen.queryByText("TRIBAL_COURTS")).not.toBeInTheDocument();
   });
 
   it("shows the full label + rule count in the pill title for hover", async () => {
@@ -329,9 +348,10 @@ describe("AxiomStats", () => {
     await waitFor(() =>
       expect(screen.getByTestId("axiom-stats")).toBeInTheDocument()
     );
-    expect(screen.getByTestId("axiom-stats-pills")).toBeInTheDocument();
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
-    expect(screen.getByText("Colorado")).toBeInTheDocument();
-    expect(screen.getByText("Canada")).toBeInTheDocument();
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    expect(pills.getByText("Colorado")).toBeInTheDocument();
+    expect(pills.getByText("Canada")).toBeInTheDocument();
   });
+
 });

@@ -11,6 +11,7 @@ import { RuleDetailPanel } from "./rule-detail-panel";
 import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
 import { AxiomStats } from "./axiom-stats";
+import { LiveProvisionTile } from "./live-provision-tile";
 import { PaletteTrigger } from "./palette-trigger";
 import { transformRuleToViewerDoc } from "@/lib/axiom-utils";
 import type { AxiomStats as AxiomStatsPayload } from "@/lib/supabase";
@@ -428,36 +429,64 @@ export function AxiomBrowser({
 
   if (resolved.phase === "jurisdiction-picker") {
     return (
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="heading-section text-[var(--color-ink)] mb-4">
-            Axiom
-          </h1>
-          <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[600px] mx-auto">
-            Explore encoded law. Source documents, RuleSpec encodings, and
-            validation results across jurisdictions.
-          </p>
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-8">
+        {/* Asymmetric hero — tagline + search on the left, a live
+            product peek on the right. Drops the centered editorial
+            "kicker / title / tagline" stack so the page opens with the
+            product, not the brand badge. */}
+        <section className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16">
+          <div>
+            <h1 className="text-balance font-display text-[clamp(2.5rem,5vw,4rem)] font-light leading-[1.05] tracking-[-0.02em] text-[var(--color-ink)]">
+              Every statute, regulation, and citation —{" "}
+              <span className="text-gradient">encoded as data.</span>
+            </h1>
+            <p className="mt-5 max-w-[520px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
+              Axiom indexes US, UK, and Canadian law and renders machine-
+              readable RuleSpec encodings alongside every source provision.
+              Search, browse, or wire it into your own software.
+            </p>
+            <div className="mt-8">
+              <PaletteTrigger variant="hero" />
+            </div>
+          </div>
+          <LiveProvisionTile />
+        </section>
+
+        {/* Headline scale strip — three live figures rendered with
+            count-up animation. Numbers carry the page's confidence; the
+            stats RPC hydrates them after server render. */}
+        <div className="mt-20">
+          <AxiomStats
+            onNavigateHref={navigateHref}
+            initialStats={initialStats}
+          />
         </div>
 
-        {/* Primary entry — unified search opens the command palette */}
-        <div className="mb-12">
-          <PaletteTrigger variant="hero" />
-        </div>
-
-        <AxiomStats
-          onNavigateHref={navigateHref}
-          initialStats={initialStats}
-        />
-
-        <div className="mt-12 flex justify-center">
+        {/* Footer trust strip — secondary destinations. */}
+        <footer className="mt-20 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-[var(--color-rule)] pt-6 text-sm">
           <Link
             href="/ops"
-            className="inline-flex rounded-md border border-[var(--color-rule)] px-3 py-2 text-sm no-underline text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            className="text-[var(--color-ink-secondary)] no-underline hover:text-[var(--color-accent)]"
           >
             Ops dashboard
           </Link>
-        </div>
+          <span aria-hidden className="text-[var(--color-rule-strong)]">·</span>
+          <Link
+            href="/docs"
+            className="text-[var(--color-ink-secondary)] no-underline hover:text-[var(--color-accent)]"
+          >
+            Docs
+          </Link>
+          <span aria-hidden className="text-[var(--color-rule-strong)]">·</span>
+          <a
+            href="https://github.com/TheAxiomFoundation"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-[var(--color-ink-secondary)] no-underline hover:text-[var(--color-accent)]"
+          >
+            GitHub
+          </a>
+        </footer>
       </div>
     );
   }

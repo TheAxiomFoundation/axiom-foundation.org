@@ -101,12 +101,20 @@ describe("AxiomBrowser", () => {
   });
 
   describe("jurisdiction-picker phase (empty segments)", () => {
-    it("renders Axiom heading and description", () => {
+    it("renders the landing hero and footer trust links", () => {
       render(<AxiomBrowser segments={[]} />);
+      // Landing hero leads with a single H1 tagline that ends in the
+      // gradient phrase "encoded as data."; the live-corpus chip is
+      // a stable indicator that the SaaS-style hero rendered.
       expect(
-        screen.getByRole("heading", { name: "Axiom" })
+        screen.getByRole("heading", {
+          level: 1,
+          name: /encoded as data\.?/i,
+        })
       ).toBeInTheDocument();
-      expect(screen.getByText(/Explore encoded law/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Axiom indexes US, UK, and Canadian law/i)
+      ).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /ops dashboard/i })).toHaveAttribute(
         "href",
         "/ops"

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getAxiomStats,
   type AxiomJurisdictionCount,
@@ -9,20 +8,21 @@ import {
 } from "@/lib/supabase";
 import { getLandingJurisdictions } from "@/lib/axiom/landing-jurisdictions";
 import { JURISDICTIONS, getJurisdictionBySlug } from "@/lib/tree-data";
+import { HeroChips } from "./jurisdiction-layouts";
 
 /**
- * Landing-page stat block + primary jurisdiction navigation.
+ * Landing-page stat strip + jurisdiction stations grid.
  *
- * The three big numbers establish scale (corpus, citation graph,
- * jurisdictions). The pills beneath are the main jurisdiction
- * picker — every ingested jurisdiction is a real clickable link
- * into its axiom tree, grouped as federal/national pills on top
- * and US states / territories in an alphabetical grid below.
+ *  - **Stats strip** — three accent-coloured headline figures with
+ *    count-up animation when the RPC resolves.
+ *  - **Stations grid** — every ingested jurisdiction is a compact tile
+ *    (code + name + count + status dot). Replaces the old phone-book
+ *    directory so the page reads as a product surface, not as a
+ *    legislative index.
  *
- * The jurisdiction navigation renders immediately from the static
- * jurisdiction seed. When the stats RPC resolves, counts are layered
- * onto the same links. If the RPC is unavailable in production, the
- * main rule entry points still remain visible.
+ * Counts hydrate after the stats RPC resolves; the static seed paints
+ * the tiles immediately so the page is useful before any server-
+ * rendered data arrives.
  */
 export function AxiomStats({
   onNavigateHref,
@@ -44,20 +44,23 @@ export function AxiomStats({
     };
   }, [initialStats]);
 
-  const jurisdictions = mergeJurisdictionCounts(stats?.jurisdictions ?? []);
+  const jurisdictions = useMemo(
+    () => mergeJurisdictionCounts(stats?.jurisdictions ?? []),
+    [stats]
+  );
   const jurisdictionStatCount = Math.max(
     stats?.jurisdictions_count ?? 0,
     jurisdictions.length
   );
 
   return (
-    <div data-testid="axiom-stats" className="mb-8">
-      <div className="flex justify-center gap-12">
-        <Stat value={stats?.provisions_count ?? null} label="provisions indexed" />
-        <Stat value={stats?.references_count ?? null} label="citations extracted" />
-        <Stat value={stats ? jurisdictionStatCount : null} label="jurisdictions" />
-      </div>
-      <JurisdictionPills
+    <div data-testid="axiom-stats" className="space-y-14">
+      <StatsStrip
+        provisionsCount={stats?.provisions_count ?? null}
+        referencesCount={stats?.references_count ?? null}
+        jurisdictionsCount={stats ? jurisdictionStatCount : null}
+      />
+      <Stations
         jurisdictions={jurisdictions}
         onNavigateHref={onNavigateHref}
       />
@@ -66,36 +69,100 @@ export function AxiomStats({
 }
 
 /**
- * Groupings the pill nav uses so federal-scope jurisdictions read
- * as a primary band and state-scope pills fall into an alphabetical
- * grid beneath. "Other" catches any uncurated slug so nothing gets
- * dropped from the page.
+ * Headline stats row. Three large figures with their long-form labels
+ * beneath; the values animate on resolve so the page reads as live
+ * rather than static-loaded.
  */
-interface JurisdictionGroup {
-  title: string;
-  items: Array<{
-    slug: string;
-    label: string;
-    count: number | null;
-  }>;
+function StatsStrip({
+  provisionsCount,
+  referencesCount,
+  jurisdictionsCount,
+}: {
+  provisionsCount: number | null;
+  referencesCount: number | null;
+  jurisdictionsCount: number | null;
+}) {
+  return (
+    <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 sm:gap-x-16">
+      <Stat value={provisionsCount} label="provisions indexed" />
+      <Stat value={referencesCount} label="citations extracted" />
+      <Stat value={jurisdictionsCount} label="jurisdictions" />
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: number | null; label: string }) {
+  const animated = useCountUp(value);
+  return (
+    <div className="text-center">
+      <div
+        className={`min-h-[1.2em] min-w-[5ch] font-display text-[clamp(2rem,3.5vw,2.5rem)] font-light tabular-nums text-[var(--color-accent)] transition-opacity duration-300 ${
+          value === null ? "opacity-0" : "opacity-100"
+        }`}
+        title={value === null ? undefined : value.toLocaleString()}
+        aria-hidden={value === null}
+      >
+        {value === null ? "" : formatCompact(animated)}
+      </div>
+      <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Stations grid — compact tile per jurisdiction with code, name, count,
+ * and an indexed/pending status dot. Federal slugs lead, then states
+ * alphabetically. Pending (count 0) tiles are visible but non-clickable
+ * so users understand the corpus's full footprint without being able
+ * to navigate into an empty page.
+ */
+function Stations({
+  jurisdictions,
+  onNavigateHref,
+}: {
+  jurisdictions: JurisdictionNavCount[];
+  onNavigateHref?: (href: string) => void;
+}) {
+  const ordered = useMemo(
+    () => orderForStations(jurisdictions),
+    [jurisdictions]
+  );
+
+  return (
+    <section aria-label="Choose a jurisdiction" data-testid="axiom-stats-pills">
+      <HeroChips items={ordered} onNavigateHref={onNavigateHref} />
+    </section>
+  );
 }
 
 type JurisdictionNavCount =
   | AxiomJurisdictionCount
   | { jurisdiction: string; count: null };
 
-function groupJurisdictions(
+/**
+ * Order the stations grid: federal/national first (US, UK, Canada),
+ * then US states + territories sorted by descending rule count so the
+ * biggest corpora surface near the top. Pending tiles fall to the
+ * bottom of the states block so the grid leads with what's actually
+ * available.
+ */
+function orderForStations(
   jurisdictions: JurisdictionNavCount[]
-): JurisdictionGroup[] {
-  type Item = JurisdictionGroup["items"][number];
+): Array<{ slug: string; label: string; count: number | null }> {
+  type Item = { slug: string; label: string; count: number | null };
   const federal: Item[] = [];
   const states: Item[] = [];
   const other: Item[] = [];
 
   for (const j of jurisdictions) {
     const config = getJurisdictionBySlug(j.jurisdiction);
-    const label = config?.label ?? humanizeIdentifier(j.jurisdiction);
-    const item: Item = { slug: j.jurisdiction, label, count: j.count };
+    const item: Item = {
+      slug: j.jurisdiction,
+      label: config?.label ?? humanizeIdentifier(j.jurisdiction),
+      count: j.count,
+    };
     if (
       j.jurisdiction === "us" ||
       j.jurisdiction === "uk" ||
@@ -109,112 +176,17 @@ function groupJurisdictions(
     }
   }
 
-  // Federal ordered by count desc when counts exist so the biggest
-  // corpus surfaces first; states by label alphabetical so people can
-  // find theirs.
-  federal.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  states.sort((a, b) => a.label.localeCompare(b.label));
-  other.sort((a, b) => a.label.localeCompare(b.label));
+  const byCountDesc = (a: Item, b: Item) => {
+    const aEmpty = a.count === null || a.count === 0;
+    const bEmpty = b.count === null || b.count === 0;
+    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+    return (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label);
+  };
+  federal.sort(byCountDesc);
+  states.sort(byCountDesc);
+  other.sort(byCountDesc);
 
-  const groups: JurisdictionGroup[] = [];
-  if (federal.length > 0) groups.push({ title: "Federal & national", items: federal });
-  if (states.length > 0) groups.push({ title: "US states & territories", items: states });
-  if (other.length > 0) groups.push({ title: "Other", items: other });
-  return groups;
-}
-
-function JurisdictionPills({
-  jurisdictions,
-  onNavigateHref,
-}: {
-  jurisdictions: JurisdictionNavCount[];
-  onNavigateHref?: (href: string) => void;
-}) {
-  const groups = groupJurisdictions(jurisdictions);
-
-  return (
-    <nav
-      aria-label="Choose a jurisdiction"
-      data-testid="axiom-stats-pills"
-      className="mt-10 space-y-6 max-w-[1100px] mx-auto"
-    >
-      {groups.map((group) => (
-        <section key={group.title}>
-          <div className="flex items-baseline justify-between mb-3 px-2">
-            <span className="eyebrow">{group.title}</span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              <span
-                aria-hidden={!group.items.some((i) => i.count !== null)}
-                className={`inline-block min-w-[8ch] text-right transition-opacity duration-200 ${
-                  group.items.some((i) => i.count !== null)
-                    ? "opacity-100"
-                    : "opacity-0"
-                }`}
-              >
-                {formatCompact(
-                  group.items.reduce((sum, i) => sum + (i.count ?? 0), 0)
-                )}{" "}
-                rules
-              </span>
-            </span>
-          </div>
-          <ul className="flex flex-wrap justify-center gap-2 m-0 p-0 list-none">
-            {group.items.map((item) => (
-              <li key={item.slug}>
-                <JurisdictionPill
-                  {...item}
-                  onNavigateHref={onNavigateHref}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </nav>
-  );
-}
-
-function JurisdictionPill({
-  slug,
-  label,
-  count,
-  onNavigateHref,
-}: {
-  slug: string;
-  label: string;
-  count: number | null;
-  onNavigateHref?: (href: string) => void;
-}) {
-  const title =
-    count === null
-      ? `Open ${label}`
-      : `${label} — ${count.toLocaleString()} rules`;
-  const href = `/${slug}`;
-
-  return (
-    <Link
-      href={href}
-      title={title}
-      onClick={(event) => {
-        if (!onNavigateHref) return;
-        event.preventDefault();
-        onNavigateHref(href);
-      }}
-      className="group inline-flex items-baseline gap-2 px-4 py-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-sm text-[var(--color-ink-secondary)] !no-underline hover:!no-underline focus-visible:!no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2"
-    >
-      <span className="font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
-        {label}
-      </span>
-      <span
-        aria-hidden={count === null}
-        className={`inline-block min-w-[2.75ch] text-right font-mono text-xs text-[var(--color-ink-muted)] tabular-nums transition-opacity duration-200 ${
-          count === null ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        {count === null ? "" : formatCompact(count)}
-      </span>
-    </Link>
-  );
+  return [...federal, ...states, ...other];
 }
 
 function mergeJurisdictionCounts(
@@ -222,11 +194,20 @@ function mergeJurisdictionCounts(
 ): JurisdictionNavCount[] {
   const seededSlugs = new Set(JURISDICTIONS.map((j) => j.slug));
   const countBySlug = new Map(counts.map((j) => [j.jurisdiction, j.count]));
+  // An empty `counts` array means the stats RPC hasn't returned yet,
+  // so seeded slugs render as "loading" (null) tiles. Once the RPC
+  // has produced *any* row we know the corpus's full ledger of
+  // non-empty jurisdictions, so seeded slugs missing from the payload
+  // are confirmed-empty (count: 0) — shown as dimmed pending tiles
+  // that are not clickable.
+  const statsResolved = counts.length > 0;
 
   const seeded = getLandingJurisdictions(countedSlugs(counts)).map(
     (jurisdiction) => ({
       jurisdiction: jurisdiction.slug,
-      count: countBySlug.get(jurisdiction.slug) ?? null,
+      count:
+        countBySlug.get(jurisdiction.slug) ??
+        (statsResolved ? 0 : null),
     })
   );
 
@@ -242,6 +223,46 @@ function countedSlugs(counts: AxiomJurisdictionCount[]): Set<string> {
 }
 
 /**
+ * Animate a number from 0 (or the previous value) to a target on
+ * mount/change. Uses `requestAnimationFrame` for a smooth ease-out.
+ * Users who prefer reduced motion get the target value directly on
+ * the same render — no transient zero state — so screen readers and
+ * tests observe the final value immediately.
+ */
+function useCountUp(target: number | null, durationMs = 900): number {
+  const reduced =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [animated, setAnimated] = useState(0);
+  const previousRef = useRef(0);
+
+  useEffect(() => {
+    if (target === null || reduced) return;
+    const start = performance.now();
+    const from = previousRef.current;
+    const to = target;
+    let raf = 0;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = Math.round(from + (to - from) * eased);
+      setAnimated(next);
+      if (t < 1) {
+        raf = requestAnimationFrame(step);
+      } else {
+        previousRef.current = to;
+      }
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, durationMs, reduced]);
+
+  if (target === null) return 0;
+  if (reduced) return target;
+  return animated;
+}
+
+/**
  * Render a jurisdiction code as its short display label.
  *
  *   'us'     → 'USC+CFR'    (federal statutes + regulations)
@@ -249,9 +270,6 @@ function countedSlugs(counts: AxiomJurisdictionCount[]): Set<string> {
  *   'us-dc'  → 'DC'
  *   'uk'     → 'UK'
  *   'canada' → 'CAN'
- *
- * Kept as the single source of truth for the short-code form even
- * though the primary pill nav now shows full labels.
  */
 export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction === "us") return "USC+CFR";
@@ -260,7 +278,10 @@ export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction.startsWith("us-")) {
     return jurisdiction.slice(3).toUpperCase();
   }
-  return humanizeIdentifier(jurisdiction);
+  // Uncurated slugs render as the raw slug uppercased (preserving
+  // separators) so the station's code chip stays distinct from its
+  // humanized full label.
+  return jurisdiction.toUpperCase();
 }
 
 export function humanizeIdentifier(value: string): string {
@@ -278,25 +299,6 @@ export function humanizeIdentifier(value: string): string {
       return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
     })
     .join(" ");
-}
-
-function Stat({ value, label }: { value: number | null; label: string }) {
-  return (
-    <div className="text-center">
-      <div
-        className={`min-h-[1.2em] min-w-[5ch] font-heading text-3xl text-[var(--color-accent)] tabular-nums transition-opacity duration-200 ${
-          value === null ? "opacity-0" : "opacity-100"
-        }`}
-        title={value === null ? undefined : value.toLocaleString()}
-        aria-hidden={value === null}
-      >
-        {value === null ? "" : formatCompact(value)}
-      </div>
-      <div className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)] mt-1">
-        {label}
-      </div>
-    </div>
-  );
 }
 
 /**

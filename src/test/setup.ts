@@ -28,3 +28,23 @@ class MockIntersectionObserver implements IntersectionObserver {
 }
 
 global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
+
+// jsdom does not implement window.matchMedia. Components that gate
+// animations on prefers-reduced-motion need a stub that returns the
+// reduced-motion branch so the test snapshot is the final state, not
+// the mid-animation frame.
+if (typeof window !== "undefined" && typeof window.matchMedia === "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+}

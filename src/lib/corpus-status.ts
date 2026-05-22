@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const STATUS_REVALIDATE_SECONDS = 300;
+const BUNDLED_STATUS_ROOT = "public/ops-status";
 
 export const STATE_STATUTE_COMPLETION_KEY =
   "analytics/state-statute-completion-current.json";
@@ -16,7 +17,12 @@ const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json
 const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
 const ENCODING_LOOKBACK_DAYS = 7;
 
-export type CorpusArtifactSource = "status-url" | "r2" | "local" | "supabase";
+export type CorpusArtifactSource =
+  | "status-url"
+  | "r2"
+  | "local"
+  | "bundled"
+  | "supabase";
 
 export interface CorpusCompletionRow {
   jurisdiction: string;
@@ -328,14 +334,31 @@ async function readCorpusJson<T>(key: string): Promise<CorpusStatusArtifact<T>> 
     }
   }
 
-  try {
-    return {
-      key,
-      ...(await readFromLocal<T>(key)),
-      error: null,
-    };
-  } catch (error) {
-    errors.push(errorMessage(error));
+  const localRoot = cleanEnvValue(process.env.AXIOM_CORPUS_LOCAL_ROOT);
+  if (localRoot) {
+    try {
+      return {
+        key,
+        ...(await readFromLocal<T>(localRoot, key)),
+        error: null,
+      };
+    } catch (error) {
+      errors.push(errorMessage(error));
+    }
+  } else if (!shouldReadBundledStatus()) {
+    errors.push("AXIOM_CORPUS_LOCAL_ROOT is not configured");
+  }
+
+  if (shouldReadBundledStatus()) {
+    try {
+      return {
+        key,
+        ...(await readFromBundled<T>(key)),
+        error: null,
+      };
+    } catch (error) {
+      errors.push(errorMessage(error));
+    }
   }
 
   return {
@@ -526,14 +549,31 @@ async function readFromR2<T>(
   return { source: "r2", value: (await response.json()) as T };
 }
 
-async function readFromLocal<T>(key: string): Promise<ReadAttempt<T>> {
-  const localRoot = process.env.AXIOM_CORPUS_LOCAL_ROOT;
-  if (!localRoot) {
-    throw new Error("AXIOM_CORPUS_LOCAL_ROOT is not configured");
-  }
+async function readFromLocal<T>(
+  localRoot: string,
+  key: string
+): Promise<ReadAttempt<T>> {
   const filePath = path.join(localRoot, corpusKeyFromPath(key));
   const text = await readFile(filePath, "utf8");
   return { source: "local", value: JSON.parse(text) as T };
+}
+
+async function readFromBundled<T>(key: string): Promise<ReadAttempt<T>> {
+  const filePath = path.join(
+    process.cwd(),
+    BUNDLED_STATUS_ROOT,
+    corpusKeyFromPath(key)
+  );
+  const text = await readFile(filePath, "utf8");
+  return { source: "bundled", value: JSON.parse(text) as T };
+}
+
+function shouldReadBundledStatus(): boolean {
+  const configured = cleanEnvValue(process.env.AXIOM_CORPUS_BUNDLED_STATUS);
+  if (configured) {
+    return configured !== "0" && configured.toLowerCase() !== "false";
+  }
+  return process.env.VERCEL === "1" || process.env.VERCEL === "true";
 }
 
 function getR2Config(): R2Config | null {

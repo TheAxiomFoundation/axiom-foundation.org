@@ -632,14 +632,14 @@ describe("CorpusStatusPage", () => {
           },
           provisionCounts: {
             ...status.provisionCounts,
-            source: "r2",
+            source: "bundled",
           },
         }}
       />
     );
 
     expect(screen.getAllByText("Status URL").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Bundled snapshot").length).toBeGreaterThan(0);
   });
 
   it("uses encoding status as the page data source when corpus sources are absent", () => {

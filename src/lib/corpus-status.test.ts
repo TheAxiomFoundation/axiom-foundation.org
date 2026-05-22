@@ -314,6 +314,30 @@ describe("corpus status helpers", () => {
     expect(status.provisionCounts.source).toBe("r2");
   });
 
+  it("loads bundled corpus artifacts on Vercel when remote sources are not configured", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("AXIOM_CORPUS_STATUS_BASE_URL", "");
+    vi.stubEnv("AXIOM_CORPUS_LOCAL_ROOT", "");
+    vi.stubEnv("AXIOM_CORPUS_R2_ENDPOINT", "");
+    vi.stubEnv("AXIOM_CORPUS_R2_BUCKET", "");
+    vi.stubEnv("AXIOM_CORPUS_R2_ACCESS_KEY_ID", "");
+    vi.stubEnv("AXIOM_CORPUS_R2_SECRET_ACCESS_KEY", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+
+    const status = await getCorpusStatus();
+
+    expect(status.stateStatutes.source).toBe("bundled");
+    expect(status.regulations.source).toBe("bundled");
+    expect(status.artifactReport.source).toBe("bundled");
+    expect(status.validationReport.source).toBe("bundled");
+    expect(status.sourceDiscovery.source).toBe("bundled");
+    expect(status.provisionCounts.source).toBe("bundled");
+    expect(status.stateStatutes.error).toBeNull();
+    expect(status.provisionCounts.key).toBe("snapshots/provision-counts-current.json");
+    expect(status.encodingStatus.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
+  });
+
   it("falls through to local artifacts when a status URL read fails", async () => {
     const root = path.join(tmpdir(), `axiom-corpus-status-${crypto.randomUUID()}`);
     await writeJson(

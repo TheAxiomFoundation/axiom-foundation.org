@@ -1138,6 +1138,7 @@ function sourceLabel(source: string | null): string {
   if (source === "status-url") return "Status URL";
   if (source === "r2") return "R2";
   if (source === "local") return "Local artifacts";
+  if (source === "bundled") return "Bundled snapshot";
   if (source === "supabase") return "Supabase";
   return "Unavailable";
 }

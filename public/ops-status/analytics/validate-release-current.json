@@ -1,0 +1,550 @@
+{
+  "error_count": 0,
+  "issue_count": 67,
+  "issues": [
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01-snap-fy2026-cola"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-02-irs-rev-proc-2025-32"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-02-snap-fy2026-income-eligibility-standards"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-hhs-poverty-guidelines"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "form",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-12-medicaid-chip-bhp-eligibility-levels"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "policy",
+      "jurisdiction": "us-co",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-30"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-al",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ak",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-az",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ca",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us-ca",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-cdss-acl-2024"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "form",
+      "jurisdiction": "us-ca",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-ftb-2024-tax-instructions"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-ca",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-12-capi-cvcb-regulations"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-co",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-co",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ct",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-dc",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "manual",
+      "jurisdiction": "us-dc",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-child-care-subsidy-manual"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-de",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-06"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-fl",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ga",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-hi",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-il",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-04"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-in",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-05"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-id",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-id",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-12-idapa-35-01-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ia",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us-ia",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-iowa-tax-guidance"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ks",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "guidance",
+      "jurisdiction": "us-ks",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-revenue-notices-2024"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ky",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-la",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-me",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-md",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ma",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-mi",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-mn",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-mt",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-05"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ne",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-04"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-ne",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-12-ne-revenue-chapter-22"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-nv",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-05"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-nj",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-nm",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-09"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ny",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-06"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-ny",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-nc",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-nd",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-oh",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ok",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-sd",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-or",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-06"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-pa",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-08"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ri",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-06"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-sc",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-08"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-tn",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-tx",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-01"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "manual",
+      "jurisdiction": "us-tx",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-11-texas-works-a-2410"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-ut",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-va",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-vt",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-wa",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-04"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "regulation",
+      "jurisdiction": "us-wa",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-12"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-wi",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-10"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-wv",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-05-08"
+    },
+    {
+      "code": "remote_only_scope_not_deep_validated",
+      "document_class": "statute",
+      "jurisdiction": "us-wy",
+      "message": "release scope is complete in R2 but local cache artifacts are absent, so deep record validation was skipped",
+      "severity": "warning",
+      "version": "2026-04-29"
+    }
+  ],
+  "issues_returned": 67,
+  "issues_truncated": false,
+  "ok": true,
+  "release": "current",
+  "release_path": "manifests/releases/current.json",
+  "scope_count": 75,
+  "strict_warnings": false,
+  "warning_count": 67
+}

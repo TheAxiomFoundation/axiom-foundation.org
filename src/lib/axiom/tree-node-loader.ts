@@ -13,6 +13,7 @@ import {
   getNavigationIndexChildren,
   getNavigationIndexNode,
   getNavigationIndexPrefixRows,
+  getProvisionByCitationPath,
   getProvisionCoveredDocTypes,
   getProvisionForNavigationNode,
   getResolvableNavigationNodeIds,
@@ -172,6 +173,20 @@ export async function loadTreeNodes({
       });
       if (sparsePrefix) return sparsePrefix;
       if (rulespecOnly) return rulespecOnly;
+      if (!encodedOnly) {
+        const nearestProvision = await getNearestProvisionForMissingNode(
+          currentPath,
+          await getEncodedFiles()
+        );
+        if (nearestProvision) {
+          return {
+            nodes: [],
+            hasMore: false,
+            currentRule: nearestProvision,
+            encodedPaths: existingEncodedPaths,
+          };
+        }
+      }
       throw new NavigationIndexMissingError(
         `Navigation index has no node for ${currentPath}.`
       );
@@ -264,6 +279,34 @@ async function getOptionalNavigationLeaf(
   const rule = await getProvisionForNavigationNode(node);
   if (rule) return ruleWithActualRuleSpec(rule, encodedFiles);
   return await synthesiseEncodedNavigationLeaf(node);
+}
+
+async function getNearestProvisionForMissingNode(
+  currentPath: string,
+  encodedFiles: EncodedFile[]
+): Promise<Rule | null> {
+  for (const { path, exact } of provisionFallbackPaths(currentPath)) {
+    const rule = await getProvisionByCitationPath(path);
+    if (!rule) continue;
+    if (exact || (rule.body && rule.body.trim().length > 0)) {
+      return ruleWithActualRuleSpec(rule, encodedFiles);
+    }
+  }
+  return null;
+}
+
+function provisionFallbackPaths(
+  currentPath: string
+): Array<{ path: string; exact: boolean }> {
+  const parts = currentPath.split("/").filter(Boolean);
+  const paths: Array<{ path: string; exact: boolean }> = [];
+  for (let end = parts.length; end >= 3; end--) {
+    paths.push({
+      path: parts.slice(0, end).join("/"),
+      exact: end === parts.length,
+    });
+  }
+  return paths;
 }
 
 async function synthesiseEncodedNavigationLeaf(

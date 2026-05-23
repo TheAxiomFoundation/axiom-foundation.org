@@ -7,6 +7,7 @@ const mockGetNavigationDocTypes = vi.fn();
 const mockGetNavigationIndexChildren = vi.fn();
 const mockGetNavigationIndexNode = vi.fn();
 const mockGetNavigationIndexPrefixRows = vi.fn();
+const mockGetProvisionByCitationPath = vi.fn();
 const mockGetProvisionForNavigationNode = vi.fn();
 const mockGetProvisionCoveredDocTypes = vi.fn();
 const mockGetResolvableNavigationNodeIds = vi.fn();
@@ -41,6 +42,8 @@ vi.mock("./navigation-index/read", async () => {
       mockGetNavigationIndexNode(...args),
     getNavigationIndexPrefixRows: (...args: unknown[]) =>
       mockGetNavigationIndexPrefixRows(...args),
+    getProvisionByCitationPath: (...args: unknown[]) =>
+      mockGetProvisionByCitationPath(...args),
     getProvisionForNavigationNode: (...args: unknown[]) =>
       mockGetProvisionForNavigationNode(...args),
     getProvisionCoveredDocTypes: (...args: unknown[]) =>
@@ -95,6 +98,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockListEncodedFiles.mockResolvedValue([]);
   mockGetNavigationIndexPrefixRows.mockResolvedValue([]);
+  mockGetProvisionByCitationPath.mockResolvedValue(null);
   mockGetProvisionCoveredDocTypes.mockImplementation(
     async (_jurisdiction: string, docTypes: string[]) => new Set(docTypes)
   );
@@ -1208,5 +1212,78 @@ describe("loadTreeNodes", () => {
         page: 0,
       })
     ).rejects.toThrow(NavigationIndexMissingError);
+  });
+
+  it("falls back to the nearest body-bearing provision when a subsection is missing from the navigation index", async () => {
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+    mockGetProvisionByCitationPath.mockImplementation(async (path: string) => {
+      if (path === "us/statute/26/3241/b") return null;
+      if (path === "us/statute/26/3241") {
+        return {
+          id: "section-3241",
+          jurisdiction: "us",
+          doc_type: "statute",
+          parent_id: null,
+          level: 3,
+          ordinal: null,
+          heading:
+            "Determination of tier 2 tax rate based on average account benefits ratio",
+          body: "(b) Tax rate schedule | Average account benefits ratio | Applicable percentage",
+          effective_date: null,
+          repeal_date: null,
+          source_url: null,
+          source_path: null,
+          citation_path: "us/statute/26/3241",
+          rulespec_path: null,
+          has_rulespec: false,
+          created_at: "",
+          updated_at: "",
+        };
+      }
+      return null;
+    });
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "us",
+      ruleSegments: ["statute", "26", "3241", "b"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.currentRule?.citation_path).toBe("us/statute/26/3241");
+    expect(mockGetProvisionByCitationPath).toHaveBeenCalledWith(
+      "us/statute/26/3241/b"
+    );
+    expect(mockGetProvisionByCitationPath).toHaveBeenCalledWith(
+      "us/statute/26/3241"
+    );
+  });
+
+  it("does not use corpus provision fallback in encoded-only navigation", async () => {
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockGetNavigationIndexNode.mockResolvedValue(null);
+
+    await expect(
+      loadTreeNodes({
+        dbJurisdictionId: "us",
+        ruleSegments: ["statute", "26", "3241", "b"],
+        hasCitationPaths: true,
+        encodedOnly: true,
+        page: 0,
+      })
+    ).rejects.toThrow(NavigationIndexMissingError);
+
+    expect(mockGetProvisionByCitationPath).not.toHaveBeenCalled();
   });
 });

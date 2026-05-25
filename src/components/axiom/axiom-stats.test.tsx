@@ -133,7 +133,12 @@ describe("AxiomStats", () => {
     mockGetAxiomStats.mockReturnValue(new Promise(() => {}));
     render(<AxiomStats />);
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    // "US Federal" appears twice — as a federal tab and as the panel
+    // heading for the active selection. Scope to the tablist for the
+    // tab assertion and let the state chip carry the panel check.
+    expect(
+      pills.getByRole("tab", { name: /United States/i })
+    ).toBeInTheDocument();
     expect(pills.getByText("Colorado")).toBeInTheDocument();
     expect(screen.getByText("provisions indexed")).toBeInTheDocument();
     expect(screen.queryByText("659K")).not.toBeInTheDocument();
@@ -144,7 +149,9 @@ describe("AxiomStats", () => {
     render(<AxiomStats />);
     await waitFor(() => expect(mockGetAxiomStats).toHaveBeenCalledTimes(1));
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /United States/i })
+    ).toBeInTheDocument();
   });
 
   it("uses client Axiom navigation for jurisdiction clicks when provided", () => {
@@ -214,12 +221,20 @@ describe("AxiomStats", () => {
 
     await waitFor(() => {
       const pills = within(screen.getByTestId("axiom-stats-pills"));
-      expect(pills.getByText("US Federal")).toBeInTheDocument();
+      expect(
+        pills.getByRole("tab", { name: /United States/i })
+      ).toBeInTheDocument();
     });
 
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    expect(pills.getByText("United Kingdom")).toBeInTheDocument();
-    expect(pills.getByText("Canada")).toBeInTheDocument();
+    // Federal tabs surface UK and Canada even when the stats payload
+    // omits them; state chips render inside the active US panel.
+    expect(
+      pills.getByRole("tab", { name: /United Kingdom/i })
+    ).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /Canada/i })
+    ).toBeInTheDocument();
     expect(pills.getByText("Colorado")).toBeInTheDocument();
     expect(pills.getByText("New York")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
@@ -231,7 +246,9 @@ describe("AxiomStats", () => {
 
     await waitFor(() => {
       const pills = within(screen.getByTestId("axiom-stats-pills"));
-      expect(pills.getByText("US Federal")).toBeInTheDocument();
+      expect(
+        pills.getByRole("tab", { name: /United States/i })
+      ).toBeInTheDocument();
     });
 
     expect(screen.queryByText("Puerto Rico")).not.toBeInTheDocument();
@@ -272,7 +289,7 @@ describe("AxiomStats", () => {
     expect(rulesNumber).toHaveAttribute("title", "658,899");
   });
 
-  it("renders one pill per jurisdiction as a clickable link", async () => {
+  it("renders state chips and a federal open-link under the active tab", async () => {
     mockGetAxiomStats.mockResolvedValue(fullPayload);
     render(<AxiomStats />);
     await waitFor(() =>
@@ -282,27 +299,35 @@ describe("AxiomStats", () => {
           .querySelector("a[title='District of Columbia — 130,617 rules']")
       ).not.toBeNull()
     );
-    // Federal / national band appears on top with full labels; US
-    // states render alphabetically beneath.
+    // Federal trio renders as tab buttons; the active selection's
+    // panel renders state chips beneath plus an "Open US Federal →"
+    // link so users can navigate straight to the federal corpus.
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    expect(pills.getByText("US Federal")).toBeInTheDocument();
-    expect(pills.getByText("United Kingdom")).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /United States/i })
+    ).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /United Kingdom/i })
+    ).toBeInTheDocument();
     expect(pills.getByText("District of Columbia")).toBeInTheDocument();
     expect(pills.getByText("New York")).toBeInTheDocument();
 
-    // Every pill routes to /<slug>.
-    const pillLinks = screen
-      .getByTestId("axiom-stats-pills")
-      .querySelectorAll<HTMLAnchorElement>("a[href^='/']");
-    const hrefs = Array.from(pillLinks).map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(
-      expect.arrayContaining([
-        "/us",
-        "/uk",
-        "/us-dc",
-        "/us-ny",
-      ])
+    // State chip anchors route to /<state-slug>.
+    const stateAnchorHrefs = Array.from(
+      screen
+        .getByTestId("axiom-stats-pills")
+        .querySelectorAll<HTMLAnchorElement>("a[href^='/us-']")
+    ).map((a) => a.getAttribute("href"));
+    expect(stateAnchorHrefs).toEqual(
+      expect.arrayContaining(["/us-dc", "/us-ny"])
     );
+    // The federal corpus card on the left of the chip wall is an
+    // anchor routing to /us — the federal tab carries the same title
+    // text on its button, so scope the lookup to anchors only.
+    const federalCard = pills
+      .getAllByTitle("US Federal — 467,993 rules")
+      .find((el) => el.tagName === "A");
+    expect(federalCard).toHaveAttribute("href", "/us");
   });
 
   it("humanizes uncurated jurisdiction labels into title case", async () => {
@@ -349,9 +374,13 @@ describe("AxiomStats", () => {
       expect(screen.getByTestId("axiom-stats")).toBeInTheDocument()
     );
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    expect(pills.getByText("US Federal")).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /United States/i })
+    ).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /Canada/i })
+    ).toBeInTheDocument();
     expect(pills.getByText("Colorado")).toBeInTheDocument();
-    expect(pills.getByText("Canada")).toBeInTheDocument();
   });
 
 });

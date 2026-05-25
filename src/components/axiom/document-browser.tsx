@@ -437,8 +437,8 @@ export function AxiomBrowser({
         <section className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <h1 className="text-balance font-display text-[clamp(2.5rem,5vw,4rem)] font-light leading-[1.05] tracking-[-0.02em] text-[var(--color-ink)]">
-              Every statute, regulation, and citation —{" "}
-              <span className="text-gradient">encoded as data.</span>
+              Every statute, regulation, and policy —{" "}
+              <span className="text-gradient">executable.</span>
             </h1>
             <p className="mt-5 max-w-[520px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
               Axiom indexes US, UK, and Canadian law and renders machine-

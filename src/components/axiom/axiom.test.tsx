@@ -67,7 +67,7 @@ describe("AxiomBrowser integration", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: /encoded as data\.?/i,
+        name: /executable\.?/i,
       })
     ).toBeInTheDocument();
     expect(

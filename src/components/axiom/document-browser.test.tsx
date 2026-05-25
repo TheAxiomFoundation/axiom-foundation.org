@@ -104,12 +104,12 @@ describe("AxiomBrowser", () => {
     it("renders the landing hero and footer trust links", () => {
       render(<AxiomBrowser segments={[]} />);
       // Landing hero leads with a single H1 tagline that ends in the
-      // gradient phrase "encoded as data."; the live-corpus chip is
-      // a stable indicator that the SaaS-style hero rendered.
+      // gradient phrase "executable."; matching the gradient word
+      // gives a stable hook even if the surrounding clause shifts.
       expect(
         screen.getByRole("heading", {
           level: 1,
-          name: /encoded as data\.?/i,
+          name: /executable\.?/i,
         })
       ).toBeInTheDocument();
       expect(

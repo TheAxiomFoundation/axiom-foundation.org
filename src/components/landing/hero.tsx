@@ -143,19 +143,23 @@ export function Hero() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <section className="relative z-1 min-h-screen flex items-center justify-center py-24 px-8">
+    <section className="relative z-1 min-h-screen flex flex-col items-center justify-center py-24 px-8">
       <div
-        className={`max-w-[1100px] w-full transition-all duration-800 ${
+        className={`mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-12 transition-all duration-800 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-16 ${
           mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
         }`}
         style={{ transitionTimingFunction: "var(--ease-out)" }}
       >
-        <div className="text-center mb-14">
-          <h1 className="heading-page mb-6">
-            Computable law for all
+        {/* Left column — copy + CTAs. The bigger display headline
+            gives the section a clear product-page anchor; the right
+            column carries the demo. */}
+        <div>
+          <h1 className="text-balance font-display text-[clamp(2.5rem,5.6vw,4.5rem)] font-light leading-[1.02] tracking-[-0.02em] text-[var(--color-ink)]">
+            Computable law{" "}
+            <span className="text-gradient">for all.</span>
           </h1>
 
-          <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
+          <p className="mt-6 max-w-[540px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
             Statutes, regulations, and policy rules turned into machine-readable
             encodings &mdash;{" "}
             <span className="serif-italic text-[var(--color-ink)]">
@@ -163,30 +167,38 @@ export function Hero() {
             </span>{" "}
             &mdash; so anyone can run, audit, or reform them.
           </p>
+
+          <div className="mt-9 flex flex-wrap items-center gap-4">
+            <a href={axiomAppHref()} className="btn-primary">
+              Open Axiom
+              <ArrowRightIcon className="w-5 h-5" />
+            </a>
+            <a href="#gap" className="btn-outline">
+              Why this exists
+            </a>
+          </div>
         </div>
 
-        <HeroDemo />
-
-        <div className="flex gap-4 justify-center items-center mt-14 flex-wrap">
-          <a href={axiomAppHref()} className="btn-primary">
-            Open Axiom
-            <ArrowRightIcon className="w-5 h-5" />
-          </a>
-          <a href="#gap" className="btn-outline">
-            Why this exists
-          </a>
+        {/* Right column — cycling product demo, vertically centred
+            against the left column so the two read as a single
+            composition rather than two stacked moments. */}
+        <div className="lg:pl-4">
+          <HeroDemo />
         </div>
+      </div>
 
-        <div className="flex justify-center mt-20">
-          <a
-            href="#gap"
-            className="scroll-cue"
-            aria-label="Scroll to next section"
-          >
-            <span>Read on</span>
-            <span className="scroll-cue-line" aria-hidden="true" />
-          </a>
-        </div>
+      {/* Centered scroll cue, anchored to the bottom of the hero
+          section rather than the left column so it reads as a
+          page-level affordance. */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex justify-center">
+        <a
+          href="#gap"
+          className="scroll-cue"
+          aria-label="Scroll to next section"
+        >
+          <span>Read on</span>
+          <span className="scroll-cue-line" aria-hidden="true" />
+        </a>
       </div>
     </section>
   );

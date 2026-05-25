@@ -72,6 +72,48 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Animated gradient mesh — two warm amber radial washes anchored at
+   top-right and bottom-left of the viewport, slowly drifting their
+   centres on a long 32s cycle so the page reads as "live light"
+   rather than a static banner. Fixed-position so the mesh stays put
+   while content scrolls. */
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(
+      ellipse 70% 65% at 88% 8%,
+      rgba(146, 64, 14, 0.38),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 65% 60% at 12% 92%,
+      rgba(146, 64, 14, 0.28),
+      transparent 70%
+    );
+  animation: axiom-mesh-drift 32s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes axiom-mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-2.5vw, 1.8vh, 0) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html::before {
+    animation: none;
+  }
+}
+
 body {
   font-family: var(--f-body);
   font-feature-settings: "kern", "liga", "calt", "ss01";
@@ -81,34 +123,36 @@ body {
   position: relative;
 }
 
-/* Subtle paper grain — fixed, behind content. Gives the cream stock its texture
-   without ever moving on scroll. */
+/* Paper grain — fixed, behind content. Gives the cream stock a
+   visibly tactile texture. The SVG noise's alpha is held a touch
+   higher than before (0.085 vs 0.045) so the texture reads on
+   modern displays without dominating. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.5;
+  opacity: 0.85;
   mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.10  0 0 0 0 0.09  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.10  0 0 0 0 0.09  0 0 0 0.085 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
-/* Hairline vintage rules that frame the content column — only visible on wide
-   screens so they read as marginalia rather than chrome. */
+/* Subtle vignette — radial gradient that holds the centre paper
+   colour out to ~55% then softly darkens the corners by ~5%. Reads
+   as classic editorial framing: the eye naturally settles on the
+   middle column without the frame ever feeling heavy. */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    linear-gradient(to right, transparent calc(50% - 720px), var(--color-rule-subtle) calc(50% - 720px), var(--color-rule-subtle) calc(50% - 719px), transparent calc(50% - 719px)),
-    linear-gradient(to right, transparent calc(50% + 719px), var(--color-rule-subtle) calc(50% + 719px), var(--color-rule-subtle) calc(50% + 720px), transparent calc(50% + 720px));
-}
-
-@media (max-width: 1500px) {
-  body::after { display: none; }
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(28, 25, 23, 0.06) 100%
+  );
 }
 
 ::selection {

@@ -1,8 +1,13 @@
+import { Reveal, RevealGroup, RevealItem } from "./reveal";
+
 export function TheGapSection() {
   return (
-    <section id="gap" className="relative z-1 py-32 px-8">
+    <section
+      id="gap"
+      className="section-mark relative z-1 py-32 px-8"
+    >
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-16">
+        <Reveal className="text-center mb-16">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             I &middot; The gap
@@ -10,9 +15,12 @@ export function TheGapSection() {
           <h2 className="heading-section mb-6 mt-2">
             The laws that govern everyday life are not online
           </h2>
-        </div>
+        </Reveal>
 
-        <div className="max-w-[720px] mx-auto font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed space-y-6">
+        <Reveal
+          delay={0.05}
+          className="max-w-[720px] mx-auto font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed space-y-6"
+        >
           <p>
             Every benefit calculator, tax program, and policy assistant has to
             translate the law from human prose into something a machine can run.
@@ -32,68 +40,70 @@ export function TheGapSection() {
             citation as rules as code &mdash; in the open, free for anyone to
             use.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="mt-20 max-w-[860px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--color-rule)] border border-[var(--color-rule)] rounded-md overflow-hidden">
-            {[
-              {
-                label: "Today",
-                lines: [
-                  "Each system reimplements the law",
-                  "Numbers without citations",
-                  "No shared way to verify",
-                ],
-              },
-              {
-                label: "Encoded",
-                lines: [
-                  "One source of truth",
-                  "Every value cites a statute",
-                  "Anyone can run, audit, or reform",
-                ],
-                highlight: true,
-              },
-              {
-                label: "Why now",
-                lines: [
-                  "AI needs ground truth",
-                  "Models are answering policy questions",
-                  "There has to be an answer key",
-                ],
-              },
-            ].map((col) => (
+        <RevealGroup
+          className="mt-20 max-w-[860px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--color-rule)] border border-[var(--color-rule)] rounded-md overflow-hidden"
+          staggerChildren={0.12}
+          amount={0.3}
+        >
+          {[
+            {
+              label: "Today",
+              lines: [
+                "Each system reimplements the law",
+                "Numbers without citations",
+                "No shared way to verify",
+              ],
+            },
+            {
+              label: "Encoded",
+              lines: [
+                "One source of truth",
+                "Every value cites a statute",
+                "Anyone can run, audit, or reform",
+              ],
+              highlight: true,
+            },
+            {
+              label: "Why now",
+              lines: [
+                "AI needs ground truth",
+                "Models are answering policy questions",
+                "There has to be an answer key",
+              ],
+            },
+          ].map((col) => (
+            <RevealItem
+              key={col.label}
+              className={`p-6 ${
+                col.highlight
+                  ? "bg-[var(--color-accent-light)]"
+                  : "bg-[var(--color-paper-elevated)]"
+              }`}
+            >
               <div
-                key={col.label}
-                className={`p-6 ${
+                className={`font-mono text-[0.65rem] tracking-[0.2em] uppercase mb-4 ${
                   col.highlight
-                    ? "bg-[var(--color-accent-light)]"
-                    : "bg-[var(--color-paper-elevated)]"
+                    ? "text-[var(--color-accent)]"
+                    : "text-[var(--color-ink-muted)]"
                 }`}
               >
-                <div
-                  className={`font-mono text-[0.65rem] tracking-[0.2em] uppercase mb-4 ${
-                    col.highlight
-                      ? "text-[var(--color-accent)]"
-                      : "text-[var(--color-ink-muted)]"
-                  }`}
-                >
-                  {col.label}
-                </div>
-                <ul className="space-y-2 m-0 p-0 list-none">
-                  {col.lines.map((l) => (
-                    <li
-                      key={l}
-                      className="font-body text-[0.9rem] text-[var(--color-ink-secondary)] leading-snug"
-                    >
-                      {l}
-                    </li>
-                  ))}
-                </ul>
+                {col.label}
               </div>
-            ))}
-          </div>
-        </div>
+              <ul className="space-y-2 m-0 p-0 list-none">
+                {col.lines.map((l) => (
+                  <li
+                    key={l}
+                    className="font-body text-[0.9rem] text-[var(--color-ink-secondary)] leading-snug"
+                  >
+                    {l}
+                  </li>
+                ))}
+              </ul>
+            </RevealItem>
+          ))}
+        </RevealGroup>
       </div>
     </section>
   );

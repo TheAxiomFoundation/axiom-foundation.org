@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 interface TerminalLine {
   content: React.ReactNode;
@@ -196,9 +197,12 @@ function Terminal() {
 
 export function EncoderSection() {
   return (
-    <section id="encoder" className="relative z-1 py-32 px-8">
+    <section
+      id="encoder"
+      className="section-tint-cream section-mark section-mark-left relative z-1 py-32 px-8"
+    >
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-16">
+        <Reveal className="text-center mb-16">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             III &middot; The encoder
@@ -214,11 +218,14 @@ export function EncoderSection() {
             </span>{" "}
             before any human signs off.
           </p>
-        </div>
+        </Reveal>
 
         <Terminal />
 
-        <div className="mt-20 grid gap-6 md:grid-cols-3 max-w-[960px] mx-auto">
+        <RevealGroup
+          className="mt-20 grid gap-6 md:grid-cols-3 max-w-[960px] mx-auto"
+          staggerChildren={0.1}
+        >
           {[
             {
               n: "01",
@@ -239,7 +246,10 @@ export function EncoderSection() {
                 "CI checks, oracle comparison against PolicyEngine and TAXSIM, reviewer agents that explain any discrepancy.",
             },
           ].map((step) => (
-            <div key={step.n} className="card-edition p-6">
+            <RevealItem
+              key={step.n}
+              className="card-edition p-6 transition-transform duration-300 hover:-translate-y-1"
+            >
               <div className="flex items-baseline justify-between mb-4">
                 <span className="serial">Step {step.n}</span>
                 <span className="serif-italic text-[1rem] text-[var(--color-ink-muted)]">
@@ -252,16 +262,19 @@ export function EncoderSection() {
               <p className="font-body text-[0.88rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
                 {step.body}
               </p>
-            </div>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
 
-        <p className="mt-14 text-center font-body text-[0.95rem] text-[var(--color-ink-muted)] max-w-[640px] mx-auto leading-relaxed">
+        <Reveal
+          as="p"
+          className="mt-14 text-center font-body text-[0.95rem] text-[var(--color-ink-muted)] max-w-[640px] mx-auto leading-relaxed"
+        >
           Every encoding decision is logged.{" "}
           <span className="serif-italic text-[var(--color-ink-secondary)]">
             Disagreements get explained, not erased.
           </span>
-        </p>
+        </Reveal>
       </div>
     </section>
   );

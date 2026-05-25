@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { axiomAppHref } from "@/lib/urls";
+import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 const LAYERS = [
   {
@@ -57,9 +58,12 @@ const PTC_TIMELINE = [
 
 export function EncodedLawSection() {
   return (
-    <section id="encoded" className="relative z-1 py-32 px-8">
+    <section
+      id="encoded"
+      className="section-dark relative z-1 py-32 px-8"
+    >
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-20">
+        <Reveal className="text-center mb-20">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             II &middot; What we publish
@@ -75,11 +79,14 @@ export function EncodedLawSection() {
             </span>
             .
           </p>
-        </div>
+        </Reveal>
 
-        <div className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto mb-28">
+        <RevealGroup
+          className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto mb-28"
+          staggerChildren={0.12}
+        >
           {LAYERS.map((layer) => (
-            <article key={layer.n} className="card-edition p-8 flex flex-col">
+            <RevealItem key={layer.n} as="div" className="card-edition p-8 flex flex-col transition-transform duration-300 hover:-translate-y-1">
               <div className="flex items-baseline justify-between mb-5">
                 <span className="font-mono text-[0.65rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)]">
                   {layer.kicker}
@@ -113,12 +120,12 @@ export function EncodedLawSection() {
                   <ArrowRightIcon className="w-4 h-4" />
                 </Link>
               )}
-            </article>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
 
         {/* Worked example */}
-        <div className="max-w-[920px] mx-auto">
+        <Reveal className="max-w-[920px] mx-auto" amount={0.15}>
           <div className="text-center mb-10">
             <span className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)]">
               An encoding, in detail
@@ -195,7 +202,7 @@ export function EncodedLawSection() {
               Spec on GitHub
             </a>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

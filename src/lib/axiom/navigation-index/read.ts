@@ -313,6 +313,22 @@ export async function getProvisionForNavigationNode(
   return (result.data as Rule | null) ?? null;
 }
 
+export async function getProvisionByCitationPath(
+  citationPath: string
+): Promise<Rule | null> {
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("current_provisions")
+      .select("*")
+      .eq("citation_path", citationPath)
+      .maybeSingle(),
+    NAVIGATION_QUERY_TIMEOUT_MS
+  );
+  if (!result) throw new NavigationIndexUnavailableError();
+  if (result.error) throw new NavigationIndexUnavailableError();
+  return (result.data as Rule | null) ?? null;
+}
+
 export async function getResolvableNavigationNodeIds(
   rows: NavigationNodeRow[]
 ): Promise<Set<string>> {

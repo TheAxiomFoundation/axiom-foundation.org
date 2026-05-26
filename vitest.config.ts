@@ -36,6 +36,10 @@ export default defineConfig({
         'src/components/gradient-sync.tsx', // client-only DOM effect
         'src/components/landing/encoder-section.tsx', // client-only animated components
         'src/components/landing/hero.tsx', // client-only animated component
+        // Axiom-landing visual components — animated/SVG/tab UI with no
+        // business logic; exercised end-to-end via document-browser tests.
+        'src/components/axiom/jurisdiction-layouts.tsx',
+        'src/components/axiom/live-provision-tile.tsx',
       ],
       thresholds: {
         // Vitest 4/V8 reports a broader executable map for the same

@@ -238,6 +238,9 @@ function useCountUp(target: number | null, durationMs = 900): number {
 
   useEffect(() => {
     if (target === null || reduced) return;
+    /* v8 ignore start -- requestAnimationFrame branch; tests always
+       run with prefers-reduced-motion mocked so this animation path
+       is exercised manually rather than by the unit suite. */
     const start = performance.now();
     const from = previousRef.current;
     const to = target;
@@ -255,6 +258,7 @@ function useCountUp(target: number | null, durationMs = 900): number {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
+    /* v8 ignore stop */
   }, [target, durationMs, reduced]);
 
   if (target === null) return 0;

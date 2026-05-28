@@ -72,48 +72,6 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Animated gradient mesh — two warm amber radial washes anchored at
-   top-right and bottom-left of the viewport, slowly drifting their
-   centres on a long 32s cycle so the page reads as "live light"
-   rather than a static banner. Fixed-position so the mesh stays put
-   while content scrolls. */
-html::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  background:
-    radial-gradient(
-      ellipse 70% 65% at 88% 8%,
-      rgba(146, 64, 14, 0.38),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 65% 60% at 12% 92%,
-      rgba(146, 64, 14, 0.28),
-      transparent 70%
-    );
-  animation: axiom-mesh-drift 32s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes axiom-mesh-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-2.5vw, 1.8vh, 0) scale(1.05);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html::before {
-    animation: none;
-  }
-}
-
 body {
   font-family: var(--f-body);
   font-feature-settings: "kern", "liga", "calt", "ss01";

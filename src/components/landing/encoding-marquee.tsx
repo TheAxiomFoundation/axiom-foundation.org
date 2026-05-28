@@ -35,7 +35,7 @@ export function EncodingMarquee() {
   return (
     <section
       aria-label="Recently encoded citations"
-      className="relative z-1 border-y border-[var(--color-rule)] py-3 overflow-hidden"
+      className="relative z-1 border-y border-[var(--color-rule)] bg-[var(--color-paper)] py-3 overflow-hidden"
     >
       <div className="group relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[var(--color-paper)] to-transparent z-10" />

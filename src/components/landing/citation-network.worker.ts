@@ -278,7 +278,7 @@ function buildWaypoints(nodes: Node3[], clusters: Cluster[]): Waypoint[] {
     },
     { scroll: 0.42, camPos: { x: 5, y: -1.5, z: 6 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
     { scroll: 0.65, camPos: { x: -5, y: 1.5, z: 6 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
-    { scroll: 0.82, camPos: { x: 0, y: 1, z: 16 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
+    { scroll: 0.90, camPos: { x: 0, y: 1, z: 16 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
     { scroll: 1.00, camPos: { x: 0, y: 0, z: 60 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
   ];
 }
@@ -523,7 +523,7 @@ function drawFrame() {
 
   const fadeRaw = (smoothScroll - 0.06) / 0.08;
   const fade = Math.max(0, Math.min(1, fadeRaw));
-  const disappearRaw = (smoothScroll - 0.78) / 0.10;
+  const disappearRaw = (smoothScroll - 0.86) / 0.10;
   const disappear = Math.max(0, Math.min(1, disappearRaw));
   const graphOpacity = (1 - fade * 0.55) * (1 - disappear);
   if (graphOpacity < 0.005) return;

@@ -1,0 +1,723 @@
+/* Citation network 3D — render worker.
+ *
+ * Runs the whole animation loop off the main thread via OffscreenCanvas.
+ * Main thread only forwards scroll position, mouse position, resize,
+ * and prefers-reduced-motion changes; everything else (universe
+ * generation, camera math, drawing, firings, adaptive quality) happens
+ * here.
+ *
+ * Adaptive quality: after a short measurement window we sort the device
+ * into one of four tiers and downgrade accordingly.
+ *
+ *   Tier 0  ≤19ms / ≥52fps  — full quality (DPR cap 2, all effects)
+ *   Tier 1  ≤25ms / ≥40fps  — internal DPR dropped to 1
+ *   Tier 2  ≤35ms / ≥28fps  — DPR 1, no comet/firing animations
+ *   Tier 3  >35ms / <28fps  — render one frame and stop
+ *
+ * The animation is time-based (uses `performance.now()` deltas), so
+ * even at lower frame rates the camera reaches the same waypoint at
+ * the same scroll position as on a fast machine — only the apparent
+ * smoothness differs.
+ */
+
+/* ─────────────────────────── Types ─────────────────────────── */
+
+type Vec3 = { x: number; y: number; z: number };
+type Node3 = Vec3 & { label: string; cluster: number };
+type Edge = { a: number; b: number };
+type Cluster = { id: number; center: Vec3; startIdx: number; endIdx: number };
+type Waypoint = {
+  scroll: number;
+  camPos: Vec3;
+  lookAt: Vec3;
+  focusCluster: number;
+  cxFrac: number;
+};
+
+/* ─────────────────────────── Labels ─────────────────────────── */
+
+const CITATION_LABELS = [
+  "26 USC § 24",
+  "26 USC § 32",
+  "26 USC § 36B",
+  "26 USC § 152",
+  "26 USC § 162",
+  "26 USC § 219",
+  "26 USC § 401(k)",
+  "26 USC § 408",
+  "26 USC § 6428",
+  "26 USC § 7702",
+  "26 USC § 117",
+  "26 USC § 25A",
+  "26 USC § 121",
+  "26 USC § 951A",
+  "20 USC § 1087",
+  "42 USC § 601",
+  "42 USC § 1396a",
+  "42 USC § 1397",
+  "5 USC § 552",
+  "Pub. L. 117-2",
+  "Pub. L. 116-260",
+  "Pub. L. 115-97",
+  "Pub. L. 119-21",
+  "Pub. L. 111-148",
+  "Reg. § 1.151-3",
+  "Reg. § 1.401(k)-1",
+  "Reg. § 1.32-2",
+  "29 CFR § 825",
+  "7 CFR § 273",
+  "ITA 2007 s.118",
+  "ITEPA 2003 s.4",
+  "TCGA 1992 s.222",
+  "FA 2024 s.27",
+  "ITA s.118",
+  "ITA s.122.6",
+  "EI Act s.7",
+  "OAS Act s.3",
+];
+
+function labelForDepth(_depth: number, _maxDepth: number, i: number): string {
+  return CITATION_LABELS[i % CITATION_LABELS.length];
+}
+
+/* ─────────────────────────── Universe ─────────────────────────── */
+
+function makeRng(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+function buildDecisionTree(
+  nodes: Node3[],
+  edges: Edge[],
+  clusterId: number,
+  rng: () => number,
+  center: Vec3,
+  opts: {
+    maxDepth: number;
+    branchFactor: number;
+    height: number;
+    initialSpread: number;
+    spreadShrink: number;
+    rotation?: number;
+    earlyTerminationProb?: number;
+    earlyTerminationMinDepth?: number;
+  }
+): { startIdx: number; endIdx: number } {
+  const startIdx = nodes.length;
+  const stepY = opts.height / Math.max(1, opts.maxDepth - 1);
+  const earlyProb = opts.earlyTerminationProb ?? 0;
+  const earlyMinDepth = opts.earlyTerminationMinDepth ?? 2;
+
+  const rootIdx = nodes.length;
+  nodes.push({
+    x: center.x,
+    y: center.y + opts.height / 2,
+    z: center.z,
+    label: labelForDepth(0, opts.maxDepth, 0),
+    cluster: clusterId,
+  });
+
+  type Pending = { idx: number; depth: number; spread: number; parentAngle: number };
+  const stack: Pending[] = [
+    { idx: rootIdx, depth: 0, spread: opts.initialSpread, parentAngle: opts.rotation ?? 0 },
+  ];
+  let leafCount = 0;
+
+  while (stack.length) {
+    const cur = stack.pop()!;
+    if (cur.depth >= opts.maxDepth - 1) continue;
+    if (
+      cur.depth >= earlyMinDepth &&
+      cur.depth < opts.maxDepth - 1 &&
+      rng() < earlyProb
+    ) {
+      continue;
+    }
+    const parent = nodes[cur.idx];
+    for (let b = 0; b < opts.branchFactor; b++) {
+      const baseAngle =
+        (b / opts.branchFactor) * Math.PI * 2 +
+        cur.parentAngle * 0.3 +
+        (rng() - 0.5) * 0.55;
+      const radius = cur.spread * (0.9 + rng() * 0.2);
+      const child: Node3 = {
+        x: parent.x + Math.cos(baseAngle) * radius,
+        y: parent.y - stepY * (0.9 + rng() * 0.25),
+        z: parent.z + Math.sin(baseAngle) * radius,
+        label: "",
+        cluster: clusterId,
+      };
+      const childIdx = nodes.length;
+      const isLeaf = cur.depth + 1 >= opts.maxDepth - 1;
+      child.label = labelForDepth(
+        cur.depth + 1,
+        opts.maxDepth,
+        isLeaf ? leafCount++ : childIdx
+      );
+      nodes.push(child);
+      edges.push({ a: cur.idx, b: childIdx });
+      stack.push({
+        idx: childIdx,
+        depth: cur.depth + 1,
+        spread: cur.spread * opts.spreadShrink,
+        parentAngle: baseAngle,
+      });
+    }
+  }
+
+  return { startIdx, endIdx: nodes.length };
+}
+
+function makeUniverse(): { nodes: Node3[]; edges: Edge[]; clusters: Cluster[] } {
+  const nodes: Node3[] = [];
+  const edges: Edge[] = [];
+  const clusters: Cluster[] = [];
+  const rng = makeRng(20260527);
+
+  {
+    const center = { x: 0, y: 0, z: 0 };
+    const { startIdx, endIdx } = buildDecisionTree(nodes, edges, 0, rng, center, {
+      maxDepth: 5,
+      branchFactor: 3,
+      height: 5.2,
+      initialSpread: 2.6,
+      spreadShrink: 0.55,
+      earlyTerminationProb: 0.5,
+      earlyTerminationMinDepth: 2,
+    });
+    clusters.push({ id: 0, center, startIdx, endIdx });
+  }
+
+  {
+    const main = clusters[0];
+    let added = 0;
+    let safety = 0;
+    while (added < 20 && safety < 2000) {
+      safety++;
+      const x = (rng() - 0.5) * 50;
+      const y = (rng() - 0.5) * 26;
+      const z = (rng() - 0.5) * 50 - 4;
+      if (Math.hypot(x - main.center.x, y - main.center.y, z - main.center.z) < 10) {
+        continue;
+      }
+      nodes.push({ x, y, z, label: "", cluster: -1 });
+      added++;
+    }
+  }
+
+  return { nodes, edges, clusters };
+}
+
+function pickFocusNode(nodes: Node3[], clusters: Cluster[]): Vec3 {
+  const main = clusters[0];
+  const target = nodes[main.startIdx + 3] ?? nodes[main.startIdx + 1] ?? nodes[main.startIdx];
+  return { x: target.x, y: target.y, z: target.z };
+}
+
+function buildWaypoints(nodes: Node3[], clusters: Cluster[]): Waypoint[] {
+  const focus = pickFocusNode(nodes, clusters);
+  return [
+    { scroll: 0.00, camPos: { x: 0, y: 0, z: 10 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.72 },
+    {
+      scroll: 0.18,
+      camPos: { x: focus.x * 0.4, y: focus.y * 0.6, z: focus.z + 5 },
+      lookAt: focus,
+      focusCluster: 0,
+      cxFrac: 0.5,
+    },
+    { scroll: 0.42, camPos: { x: 5, y: -1.5, z: 6 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
+    { scroll: 0.65, camPos: { x: -5, y: 1.5, z: 6 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
+    { scroll: 0.82, camPos: { x: 0, y: 1, z: 16 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
+    { scroll: 1.00, camPos: { x: 0, y: 0, z: 60 }, lookAt: { x: 0, y: 0, z: 0 }, focusCluster: 0, cxFrac: 0.5 },
+  ];
+}
+
+/* ─────────────────────────── Math ─────────────────────────── */
+
+function smoothstep(t: number) {
+  return t * t * (3 - 2 * t);
+}
+
+function interpolateCamera(waypoints: Waypoint[], scroll: number) {
+  let i = 0;
+  while (i < waypoints.length - 1 && scroll >= waypoints[i + 1].scroll) i++;
+  const a = waypoints[i];
+  const b = waypoints[Math.min(i + 1, waypoints.length - 1)];
+  const span = b.scroll - a.scroll;
+  const tRaw = span > 0 ? (scroll - a.scroll) / span : 1;
+  const t = smoothstep(Math.max(0, Math.min(1, tRaw)));
+  return {
+    camPos: {
+      x: a.camPos.x + (b.camPos.x - a.camPos.x) * t,
+      y: a.camPos.y + (b.camPos.y - a.camPos.y) * t,
+      z: a.camPos.z + (b.camPos.z - a.camPos.z) * t,
+    },
+    lookAt: {
+      x: a.lookAt.x + (b.lookAt.x - a.lookAt.x) * t,
+      y: a.lookAt.y + (b.lookAt.y - a.lookAt.y) * t,
+      z: a.lookAt.z + (b.lookAt.z - a.lookAt.z) * t,
+    },
+    focusCluster: t > 0.5 ? b.focusCluster : a.focusCluster,
+    cxFrac: a.cxFrac + (b.cxFrac - a.cxFrac) * t,
+  };
+}
+
+function computeViewBasis(camPos: Vec3, lookAt: Vec3) {
+  let fx = lookAt.x - camPos.x;
+  let fy = lookAt.y - camPos.y;
+  let fz = lookAt.z - camPos.z;
+  const fLen = Math.hypot(fx, fy, fz) || 1;
+  fx /= fLen; fy /= fLen; fz /= fLen;
+  let rx = fy * 0 - fz * 1;
+  let ry = fz * 0 - fx * 0;
+  let rz = fx * 1 - fy * 0;
+  const rLen = Math.hypot(rx, ry, rz) || 1;
+  rx /= rLen; ry /= rLen; rz /= rLen;
+  const ux = ry * fz - rz * fy;
+  const uy = rz * fx - rx * fz;
+  const uz = rx * fy - ry * fx;
+  return { fx, fy, fz, rx, ry, rz, ux, uy, uz };
+}
+
+/* ─────────────────────────── Worker state ─────────────────────────── */
+
+const { nodes, edges, clusters } = makeUniverse();
+const waypoints = buildWaypoints(nodes, clusters);
+
+const parents: number[] = new Array(nodes.length).fill(-1);
+for (const e of edges) {
+  if (nodes[e.a].cluster < 0 || nodes[e.b].cluster < 0) continue;
+  parents[e.b] = e.a;
+}
+const spawnable: number[] = [];
+for (let i = 0; i < parents.length; i++) {
+  if (parents[i] >= 0) spawnable.push(i);
+}
+
+let canvas: OffscreenCanvas | null = null;
+let ctx: OffscreenCanvasRenderingContext2D | null = null;
+
+let cssW = 0;
+let cssH = 0;
+let requestedDpr = 1;
+let effectiveDpr = 1;
+let reducedMotion = false;
+let targetScroll = 0;
+let mouse: { x: number; y: number } | null = null;
+let timerId: ReturnType<typeof setTimeout> | null = null;
+let stopped = false;
+
+// Adaptive quality
+let qualityTier = 0; // 0..3
+let qualityDecided = false;
+const FRAME_SAMPLES_TARGET = 90; // ~1.5s
+const frameSamples: number[] = [];
+
+const startT = performance.now();
+let lastT = startT;
+let smoothScroll = 0;
+
+type Firing = {
+  path: number[];
+  idx: number;
+  progress: number;
+  pauseMs: number;
+  fadeOutMs: number;
+};
+const firings: Firing[] = [];
+let nextSpawnMs = 800;
+
+const PAUSE_AT_NODE_MS = 180;
+const SEGMENTS_PER_SEC = 0.65;
+const FADE_OUT_MS = 1300; // longer "absorption" at the root
+const TAIL_LENGTH = 0.7;
+
+const projected: { sx: number; sy: number; z: number; nodeIdx: number }[] = new Array(nodes.length);
+
+function applyEffectiveDpr() {
+  if (!canvas || !ctx) return;
+  canvas.width = Math.max(1, Math.round(cssW * effectiveDpr));
+  canvas.height = Math.max(1, Math.round(cssH * effectiveDpr));
+  ctx.setTransform(effectiveDpr, 0, 0, effectiveDpr, 0, 0);
+}
+
+function decideQuality() {
+  if (qualityDecided) return;
+  if (frameSamples.length < FRAME_SAMPLES_TARGET) return;
+  const avg = frameSamples.reduce((a, b) => a + b, 0) / frameSamples.length;
+  if (avg <= 19) qualityTier = 0;
+  else if (avg <= 25) qualityTier = 1;
+  else if (avg <= 35) qualityTier = 2;
+  else qualityTier = 3;
+  qualityDecided = true;
+
+  if (qualityTier >= 1 && effectiveDpr > 1) {
+    effectiveDpr = 1;
+    applyEffectiveDpr();
+  }
+
+  postMessage({ type: "quality-tier", tier: qualityTier, avgFrameMs: avg });
+
+  if (qualityTier >= 3) {
+    // Render one final frame and stop
+    drawFrame();
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
+    stopped = true;
+  }
+}
+
+function tick() {
+  if (stopped) return;
+  if (!canvas || !ctx) {
+    scheduleNext(16);
+    return;
+  }
+
+  const now = performance.now();
+  const dt = Math.min(64, now - lastT);
+  lastT = now;
+
+  if (!qualityDecided && frameSamples.length < FRAME_SAMPLES_TARGET) {
+    // Skip first frame measurement — it's always inflated by init
+    if (frameSamples.length === 0 && dt > 50) {
+      frameSamples.push(0);
+    } else {
+      frameSamples.push(dt);
+    }
+    if (frameSamples.length >= FRAME_SAMPLES_TARGET) decideQuality();
+  }
+
+  smoothScroll += (targetScroll - smoothScroll) * (1 - Math.exp(-dt * 0.008));
+
+  drawFrame();
+
+  // Aim for ~60fps; if frame took longer, schedule next ASAP
+  const frameDuration = performance.now() - now;
+  const delay = Math.max(0, 16 - frameDuration);
+  scheduleNext(delay);
+}
+
+function scheduleNext(ms: number) {
+  if (stopped) return;
+  timerId = setTimeout(tick, ms);
+}
+
+function drawFrame() {
+  if (!canvas || !ctx) return;
+
+  const now = performance.now();
+  const t = reducedMotion ? 0 : (now - startT) / 1000;
+
+  const { camPos, lookAt, focusCluster, cxFrac } = interpolateCamera(waypoints, smoothScroll);
+  const basis = computeViewBasis(camPos, lookAt);
+
+  const w = cssW;
+  const h = cssH;
+  const FOCAL = Math.min(w, h) * 0.9;
+  const cx = w * (w < 900 ? 0.5 : cxFrac);
+  const cy = h / 2;
+
+  const rotY = t * 0.04;
+  const cosRY = Math.cos(rotY);
+  const sinRY = Math.sin(rotY);
+
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const cluster = clusters[n.cluster] ?? null;
+    const centre = cluster ? cluster.center : { x: 0, y: 0, z: 0 };
+    const lx = n.x - centre.x;
+    const lz = n.z - centre.z;
+    const rx = lx * cosRY + lz * sinRY + centre.x;
+    const rz = -lx * sinRY + lz * cosRY + centre.z;
+    const ry = n.y;
+    const dx = rx - camPos.x;
+    const dy = ry - camPos.y;
+    const dz = rz - camPos.z;
+    const viewZ = dx * basis.fx + dy * basis.fy + dz * basis.fz;
+    if (viewZ <= 0.05) {
+      projected[i] = { sx: -9999, sy: -9999, z: viewZ, nodeIdx: i };
+      continue;
+    }
+    const viewX = dx * basis.rx + dy * basis.ry + dz * basis.rz;
+    const viewY = dx * basis.ux + dy * basis.uy + dz * basis.uz;
+    projected[i] = {
+      sx: cx + (viewX * FOCAL) / viewZ,
+      sy: cy - (viewY * FOCAL) / viewZ,
+      z: viewZ,
+      nodeIdx: i,
+    };
+  }
+
+  // Hover hit-test (cheap)
+  let hoveredLocal: number | null = null;
+  if (mouse) {
+    let bestDist = 24;
+    for (let i = 0; i < nodes.length; i++) {
+      const p = projected[i];
+      if (p.z <= 0) continue;
+      if (nodes[i].cluster < 0) continue;
+      const d = Math.hypot(p.sx - mouse.x, p.sy - mouse.y);
+      if (d < bestDist) {
+        bestDist = d;
+        hoveredLocal = i;
+      }
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, w, h);
+
+  const fadeRaw = (smoothScroll - 0.06) / 0.08;
+  const fade = Math.max(0, Math.min(1, fadeRaw));
+  const disappearRaw = (smoothScroll - 0.78) / 0.10;
+  const disappear = Math.max(0, Math.min(1, disappearRaw));
+  const graphOpacity = (1 - fade * 0.55) * (1 - disappear);
+  if (graphOpacity < 0.005) return;
+  ctx.globalAlpha = graphOpacity;
+
+  // Edges back to front
+  const edgeOrder = edges
+    .map((e, idx) => {
+      const a = projected[e.a];
+      const b = projected[e.b];
+      return { idx, avgZ: (a.z + b.z) / 2 };
+    })
+    .sort((x, y) => y.avgZ - x.avgZ);
+
+  for (const eo of edgeOrder) {
+    const e = edges[eo.idx];
+    const pa = projected[e.a];
+    const pb = projected[e.b];
+    if (pa.z <= 0 || pb.z <= 0) continue;
+    const depthFactor = 1 / Math.max(1, eo.avgZ * 0.4);
+    const alpha = Math.max(0.04, Math.min(0.55, depthFactor * 0.5));
+    ctx.strokeStyle = `rgba(146,64,14,${alpha})`;
+    ctx.lineWidth = Math.max(0.3, depthFactor * 1.2);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(pa.sx, pa.sy);
+    ctx.lineTo(pb.sx, pb.sy);
+    ctx.stroke();
+  }
+
+  // Nodes back to front
+  const nodeOrder = projected
+    .map((p, i) => ({ i, z: p.z }))
+    .sort((x, y) => y.z - x.z);
+
+  for (const no of nodeOrder) {
+    const p = projected[no.i];
+    if (p.z <= 0) continue;
+    const node = nodes[no.i];
+    const isBg = node.cluster < 0;
+    const isHover = hoveredLocal === no.i;
+    const sizeFactor = 1 / Math.max(1, p.z * 0.22);
+    const baseR = isBg ? Math.max(0.8, sizeFactor * 1.8) : Math.max(2.2, sizeFactor * 5.5);
+    const r = isHover ? baseR * 1.7 : baseR;
+    const alpha = Math.min(1, Math.max(0.2, sizeFactor * (isBg ? 0.9 : 1.2)));
+
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, r * 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = isBg
+      ? `rgba(146,64,14,${alpha * 0.06})`
+      : `rgba(146,64,14,${alpha * 0.15})`;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = isBg
+      ? `rgba(146,64,14,${alpha * 0.55})`
+      : `rgba(146,64,14,${Math.min(1, alpha * 0.95 + (isHover ? 0.2 : 0))})`;
+    ctx.fill();
+
+    if (isHover) {
+      const pulse = 1 + 0.7 * Math.sin(t * 4);
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, r * 2.4 * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(146,64,14,${0.18 * (1 - (pulse - 1) / 0.7)})`;
+      ctx.fill();
+    }
+  }
+
+  /* Labels fade in based on how close a node is to the camera —
+   * "foreground" nodes get their label revealed naturally as the camera
+   * approaches. Hovered nodes always get a fully-opaque label even if
+   * they're farther back, so visitors can probe individual citations. */
+  ctx.font = '500 10px ui-monospace, monospace';
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  // Anything past LABEL_FAR is invisible; anything closer than LABEL_NEAR is full
+  const LABEL_NEAR = 5;
+  const LABEL_FAR = 9;
+  for (const no of nodeOrder) {
+    const p = projected[no.i];
+    if (p.z <= 0) continue;
+    const node = nodes[no.i];
+    if (node.cluster < 0) continue;
+    const isHover = hoveredLocal === no.i;
+    const depthOpacity = 1 - Math.max(0, Math.min(1, (p.z - LABEL_NEAR) / (LABEL_FAR - LABEL_NEAR)));
+    const opacity = isHover ? 0.95 : depthOpacity * 0.82;
+    if (opacity < 0.04) continue;
+    const sizeFactor = 1 / Math.max(1, p.z * 0.4);
+    const r = Math.max(1.4, sizeFactor * 3.5);
+    ctx.fillStyle = isHover
+      ? `rgba(146,64,14,${opacity})`
+      : `rgba(28,25,23,${opacity * 0.8})`;
+    ctx.fillText(node.label, p.sx + r + 6, p.sy + 0.5);
+  }
+
+  // Comet "firing" animations — skipped on quality tier 2+
+  if (qualityTier < 2) {
+    const sinceStartMs = now - startT;
+    if (sinceStartMs >= nextSpawnMs && spawnable.length > 0) {
+      const seed = spawnable[Math.floor(Math.random() * spawnable.length)];
+      const path: number[] = [seed];
+      let cur = seed;
+      while (parents[cur] >= 0) {
+        cur = parents[cur];
+        path.push(cur);
+      }
+      if (path.length >= 2) {
+        firings.push({ path, idx: 0, progress: 0, pauseMs: 0, fadeOutMs: 0 });
+      }
+      nextSpawnMs = sinceStartMs + 1500 + Math.random() * 2000;
+    }
+
+    const dtSec = Math.min(64, performance.now() - lastT + 16) / 1000;
+    for (let fi = firings.length - 1; fi >= 0; fi--) {
+      const fire = firings[fi];
+      if (fire.fadeOutMs > 0) {
+        fire.fadeOutMs -= 16;
+        if (fire.fadeOutMs <= 0) firings.splice(fi, 1);
+        continue;
+      }
+      if (fire.pauseMs > 0) {
+        fire.pauseMs -= 16;
+        continue;
+      }
+      fire.progress += dtSec * SEGMENTS_PER_SEC;
+      if (fire.progress >= 1) {
+        fire.idx++;
+        if (fire.idx >= fire.path.length - 1) {
+          fire.progress = 1;
+          fire.fadeOutMs = FADE_OUT_MS;
+          continue;
+        }
+        fire.progress = 0;
+        fire.pauseMs = PAUSE_AT_NODE_MS;
+      }
+    }
+
+    ctx.lineCap = "round";
+    for (const fire of firings) {
+      const isAbsorbing = fire.fadeOutMs > 0;
+      const fadeRatio = isAbsorbing ? Math.max(0, fire.fadeOutMs / FADE_OUT_MS) : 1;
+      /* While absorbing, the tail catches up to the head (which is
+       * parked on the root). Easing makes the collapse slow at first
+       * then accelerate — reads as "drawn into" the node. */
+      const easeIn = (x: number) => x * x;
+      const effectiveTail = isAbsorbing ? TAIL_LENGTH * easeIn(fadeRatio) : TAIL_LENGTH;
+      const headPath = fire.idx + fire.progress;
+      const tailPath = Math.max(0, headPath - effectiveTail);
+      const totalLen = headPath - tailPath;
+
+      if (totalLen > 0.001) {
+        for (let s = 0; s < fire.path.length - 1; s++) {
+          const segOverlapStart = Math.max(s, tailPath);
+          const segOverlapEnd = Math.min(s + 1, headPath);
+          if (segOverlapStart >= segOverlapEnd) continue;
+          const pa = projected[fire.path[s]];
+          const pb = projected[fire.path[s + 1]];
+          if (!pa || !pb || pa.z <= 0 || pb.z <= 0) continue;
+          const fStart = segOverlapStart - s;
+          const fEnd = segOverlapEnd - s;
+          const sx = pa.sx + (pb.sx - pa.sx) * fStart;
+          const sy = pa.sy + (pb.sy - pa.sy) * fStart;
+          const ex = pa.sx + (pb.sx - pa.sx) * fEnd;
+          const ey = pa.sy + (pb.sy - pa.sy) * fEnd;
+          const aStart = (segOverlapStart - tailPath) / totalLen;
+          const aEnd = (segOverlapEnd - tailPath) / totalLen;
+          const stroke = (color: string, m1: number, m2: number, width: number) => {
+            const g = ctx!.createLinearGradient(sx, sy, ex, ey);
+            g.addColorStop(0, color.replace("ALPHA", String(m1)));
+            g.addColorStop(1, color.replace("ALPHA", String(m2)));
+            ctx!.strokeStyle = g;
+            ctx!.lineWidth = width;
+            ctx!.beginPath();
+            ctx!.moveTo(sx, sy);
+            ctx!.lineTo(ex, ey);
+            ctx!.stroke();
+          };
+          stroke("rgba(217,119,6,ALPHA)", aStart * 0.10, aEnd * 0.10, 6);
+          stroke("rgba(217,119,6,ALPHA)", aStart * 0.28, aEnd * 0.28, 2.2);
+          stroke("rgba(254,243,199,ALPHA)", aStart * 0.55, aEnd * 0.55, 1.0);
+        }
+      }
+
+    }
+  }
+}
+
+/* ─────────────────────────── Message handler ─────────────────────────── */
+
+type Msg =
+  | { type: "init"; canvas: OffscreenCanvas; w: number; h: number; dpr: number; reduced: boolean }
+  | { type: "scroll"; value: number }
+  | { type: "mouse"; value: { x: number; y: number } | null }
+  | { type: "resize"; w: number; h: number; dpr: number }
+  | { type: "reduce-motion"; value: boolean }
+  | { type: "stop" };
+
+self.onmessage = (ev: MessageEvent<Msg>) => {
+  const msg = ev.data;
+  switch (msg.type) {
+    case "init": {
+      canvas = msg.canvas;
+      ctx = canvas.getContext("2d");
+      cssW = msg.w;
+      cssH = msg.h;
+      requestedDpr = msg.dpr;
+      effectiveDpr = Math.min(2, requestedDpr);
+      reducedMotion = msg.reduced;
+      applyEffectiveDpr();
+      lastT = performance.now();
+      scheduleNext(0);
+      break;
+    }
+    case "scroll":
+      targetScroll = msg.value;
+      break;
+    case "mouse":
+      mouse = msg.value;
+      break;
+    case "resize": {
+      cssW = msg.w;
+      cssH = msg.h;
+      requestedDpr = msg.dpr;
+      effectiveDpr = qualityTier >= 1 ? 1 : Math.min(2, requestedDpr);
+      applyEffectiveDpr();
+      if (stopped) {
+        // Quality tier 3 — re-render the single static frame at the new size
+        drawFrame();
+      }
+      break;
+    }
+    case "reduce-motion":
+      reducedMotion = msg.value;
+      break;
+    case "stop":
+      stopped = true;
+      if (timerId !== null) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      break;
+  }
+};

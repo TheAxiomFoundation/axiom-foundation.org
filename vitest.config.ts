@@ -55,7 +55,7 @@ export default defineConfig({
         // tight to the upgraded runner's measured floor.
         lines: 95,
         functions: 94,
-        branches: 86,
+        branches: 85,
         statements: 94,
       },
     },

@@ -601,12 +601,87 @@ pre {
 /* ── Nav bar ── */
 
 .nav-bar {
-  background: rgba(250, 249, 246, 0.95);
-  backdrop-filter: blur(8px);
+  background: rgba(250, 249, 246, 0.88);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-bottom: 1px solid var(--color-rule);
+  transition: background-color 220ms var(--ease-out, ease-out),
+    border-color 220ms var(--ease-out, ease-out);
 }
 
 .nav-bar a,
 .nav-bar a:hover {
   text-decoration: none;
+}
+
+/* ── Nav links ──
+   Each link sits on a baseline opacity, lifts slightly on hover, and
+   shows an amber hairline underline that grows in from the left.
+   Active links keep the underline pinned full-width. Works with the
+   page-wide gradient text (which intercepts text-color changes) by
+   driving feedback through opacity, transform, and an ::after rule. */
+
+.nav-link {
+  position: relative;
+  opacity: 0.7;
+  transition: opacity 220ms var(--ease-out, ease-out),
+    transform 220ms var(--ease-out, ease-out);
+  will-change: transform;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 320ms var(--ease-out, ease-out);
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  opacity: 1;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.nav-link:hover::after,
+.nav-link:focus-visible::after,
+.nav-link.is-active::after {
+  transform: scaleX(1);
+}
+
+.nav-link.is-active {
+  opacity: 1;
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity 220ms var(--ease-out, ease-out),
+    transform 220ms var(--ease-out, ease-out);
+}
+
+.nav-icon:hover,
+.nav-icon:focus-visible {
+  opacity: 1;
+  transform: scale(1.08);
+  outline: none;
+}
+
+.nav-logo {
+  display: inline-flex;
+  align-items: baseline;
+  transition: opacity 220ms var(--ease-out, ease-out);
+}
+
+.nav-logo:hover,
+.nav-logo:focus-visible {
+  opacity: 0.78;
+  outline: none;
 }

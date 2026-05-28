@@ -23,7 +23,15 @@
 /* ─────────────────────────── Types ─────────────────────────── */
 
 type Vec3 = { x: number; y: number; z: number };
-type Node3 = Vec3 & { label: string; cluster: number };
+type Node3 = Vec3 & {
+  /** Short subsection citation, shown next to the dot. Empty for
+   *  composition variables that don't trace back to one subsection. */
+  label: string;
+  /** Human-readable variable title — always set, used as the hover
+   *  fallback for nodes whose `label` is empty. */
+  title: string;
+  cluster: number;
+};
 type Edge = { a: number; b: number };
 type Cluster = { id: number; center: Vec3; startIdx: number; endIdx: number };
 type Waypoint = {
@@ -34,50 +42,85 @@ type Waypoint = {
   cxFrac: number;
 };
 
-/* ─────────────────────────── Labels ─────────────────────────── */
+/* ─────────────────────────── Labels by source type ───────────────────────
+ * Each node's dot is labelled with a real citation, drawn from one of
+ * three curated pools by where it sits in the tree:
+ *
+ *   - Root + level 1: statutes (USC, ITA, ITEPA, TCGA, FA) — the
+ *     foundational legal authority a rule traces back to.
+ *   - Mid-tree: regulations (CFR, state CCR, Treasury Reg.) — how the
+ *     statute is operationalised by an agency.
+ *   - Leaves: a mix of regulations and agency policy manuals
+ *     (USDA / IRS / CDHS bulletins, SSA POMS) — the last-mile
+ *     guidance that drives the actual computation.
+ *
+ * The hierarchy is honest: statutes pass down to regulations pass down
+ * to policy manuals, which is how the corpus is actually structured. */
 
-const CITATION_LABELS = [
+const STATUTE_LABELS = [
   "26 USC § 24",
   "26 USC § 32",
   "26 USC § 36B",
-  "26 USC § 152",
   "26 USC § 162",
-  "26 USC § 219",
   "26 USC § 401(k)",
-  "26 USC § 408",
   "26 USC § 6428",
-  "26 USC § 7702",
-  "26 USC § 117",
-  "26 USC § 25A",
-  "26 USC § 121",
-  "26 USC § 951A",
+  "26 USC § 1(h)",
+  "7 USC § 2014",
+  "7 USC § 2017(a)",
   "20 USC § 1087",
   "42 USC § 601",
   "42 USC § 1396a",
   "42 USC § 1397",
   "5 USC § 552",
-  "Pub. L. 117-2",
-  "Pub. L. 116-260",
-  "Pub. L. 115-97",
-  "Pub. L. 119-21",
-  "Pub. L. 111-148",
-  "Reg. § 1.151-3",
-  "Reg. § 1.401(k)-1",
-  "Reg. § 1.32-2",
-  "29 CFR § 825",
-  "7 CFR § 273",
-  "ITA 2007 s.118",
-  "ITEPA 2003 s.4",
-  "TCGA 1992 s.222",
-  "FA 2024 s.27",
-  "ITA s.118",
-  "ITA s.122.6",
-  "EI Act s.7",
-  "OAS Act s.3",
+  "ITA s. 122.6",
+  "ITA 2007 s. 118",
+  "ITEPA 2003 s. 4",
+  "TCGA 1992 s. 222",
+  "FA 2024 s. 27",
 ];
 
-function labelForDepth(_depth: number, _maxDepth: number, i: number): string {
-  return CITATION_LABELS[i % CITATION_LABELS.length];
+const REGULATION_LABELS = [
+  "7 CFR § 273.8(a)",
+  "7 CFR § 273.5(a)",
+  "7 CFR § 273.10",
+  "7 CFR § 273.4(b)",
+  "29 CFR § 825.100",
+  "29 CFR § 1602",
+  "20 CFR § 416.1110",
+  "26 CFR § 1.151-3",
+  "26 CFR § 1.401(k)-1",
+  "26 CFR § 1.32-2",
+  "10 CCR § 4.401(A)",
+  "10 CCR § 4.403",
+  "10 CCR § 4.408(B)",
+  "Reg. § 1.151-3",
+  "Reg. § 1.6428-1",
+];
+
+const POLICY_LABELS = [
+  "USDA FY26 § max-allotments",
+  "USDA FY26 § income-elig",
+  "USDA FY26 § deductions",
+  "Rev. Proc. 2025-32 § brackets",
+  "Rev. Proc. 2025-32 § capital-gains",
+  "CO CDHS FY26 § benefit-calc",
+  "SSA POMS § SI 00810.420",
+  "SSA POMS § DI 24503",
+  "IRS Notice 2024-67 § II",
+  "CMS SHO 23-002 § A",
+];
+
+function labelForDepth(depth: number, maxDepth: number, i: number): string {
+  // Root and immediate children — statutes (legal foundation)
+  if (depth <= 1) return STATUTE_LABELS[i % STATUTE_LABELS.length];
+  // Leaves — mix of regs and policy manuals (operational detail)
+  if (depth === maxDepth - 1) {
+    return i % 3 === 0
+      ? POLICY_LABELS[i % POLICY_LABELS.length]
+      : REGULATION_LABELS[i % REGULATION_LABELS.length];
+  }
+  // Mid-tree — regulations (statute implementation)
+  return REGULATION_LABELS[i % REGULATION_LABELS.length];
 }
 
 /* ─────────────────────────── Universe ─────────────────────────── */
@@ -102,7 +145,6 @@ function buildDecisionTree(
     height: number;
     initialSpread: number;
     spreadShrink: number;
-    rotation?: number;
     earlyTerminationProb?: number;
     earlyTerminationMinDepth?: number;
   }
@@ -118,12 +160,13 @@ function buildDecisionTree(
     y: center.y + opts.height / 2,
     z: center.z,
     label: labelForDepth(0, opts.maxDepth, 0),
+    title: "",
     cluster: clusterId,
   });
 
-  type Pending = { idx: number; depth: number; spread: number; parentAngle: number };
+  type Pending = { idx: number; depth: number; spread: number };
   const stack: Pending[] = [
-    { idx: rootIdx, depth: 0, spread: opts.initialSpread, parentAngle: opts.rotation ?? 0 },
+    { idx: rootIdx, depth: 0, spread: opts.initialSpread },
   ];
   let leafCount = 0;
 
@@ -138,33 +181,34 @@ function buildDecisionTree(
       continue;
     }
     const parent = nodes[cur.idx];
+    // Per-fan angular budget + small rotational offset, no parent
+    // inheritance — keeps the tree from drifting to one side as depth
+    // grows. (Same approach as the CO SNAP extractor's layout.)
+    const angleBudget = (1.3 + rng() * 0.6) * Math.PI * 2;
+    const angleOffset = (rng() - 0.5) * 0.6;
     for (let b = 0; b < opts.branchFactor; b++) {
-      const baseAngle =
-        (b / opts.branchFactor) * Math.PI * 2 +
-        cur.parentAngle * 0.3 +
-        (rng() - 0.5) * 0.55;
-      const radius = cur.spread * (0.9 + rng() * 0.2);
+      const fraction = b / Math.max(1, opts.branchFactor);
+      const baseAngle = angleOffset + fraction * angleBudget + (rng() - 0.5) * 0.6;
+      const radius = cur.spread * (0.7 + rng() * 0.65);
+      const yStep = stepY * (0.75 + rng() * 0.55);
+      const childDepth = cur.depth + 1;
+      const isLeaf = childDepth >= opts.maxDepth - 1;
+      const labelIdx = isLeaf ? leafCount++ : nodes.length;
       const child: Node3 = {
         x: parent.x + Math.cos(baseAngle) * radius,
-        y: parent.y - stepY * (0.9 + rng() * 0.25),
+        y: parent.y - yStep,
         z: parent.z + Math.sin(baseAngle) * radius,
-        label: "",
+        label: labelForDepth(childDepth, opts.maxDepth, labelIdx),
+        title: "",
         cluster: clusterId,
       };
       const childIdx = nodes.length;
-      const isLeaf = cur.depth + 1 >= opts.maxDepth - 1;
-      child.label = labelForDepth(
-        cur.depth + 1,
-        opts.maxDepth,
-        isLeaf ? leafCount++ : childIdx
-      );
       nodes.push(child);
       edges.push({ a: cur.idx, b: childIdx });
       stack.push({
         idx: childIdx,
-        depth: cur.depth + 1,
+        depth: childDepth,
         spread: cur.spread * opts.spreadShrink,
-        parentAngle: baseAngle,
       });
     }
   }
@@ -176,37 +220,40 @@ function makeUniverse(): { nodes: Node3[]; edges: Edge[]; clusters: Cluster[] } 
   const nodes: Node3[] = [];
   const edges: Edge[] = [];
   const clusters: Cluster[] = [];
-  const rng = makeRng(20260527);
+  const rng = makeRng(20260528);
 
-  {
-    const center = { x: 0, y: 0, z: 0 };
-    const { startIdx, endIdx } = buildDecisionTree(nodes, edges, 0, rng, center, {
-      maxDepth: 5,
-      branchFactor: 3,
-      height: 5.2,
-      initialSpread: 2.6,
-      spreadShrink: 0.55,
-      earlyTerminationProb: 0.5,
-      earlyTerminationMinDepth: 2,
-    });
-    clusters.push({ id: 0, center, startIdx, endIdx });
-  }
+  /* One synthetic decision tree — depth 5, ternary branching, with
+   * ~50% early termination from depth 2 on so leaves sit at mixed
+   * depths instead of forming a flat bottom row. Labels are real
+   * citations selected by depth (statutes near root → regulations →
+   * policy manuals). */
+  const center = { x: 0, y: 0, z: 0 };
+  const { startIdx, endIdx } = buildDecisionTree(nodes, edges, 0, rng, center, {
+    maxDepth: 5,
+    branchFactor: 3,
+    height: 5.2,
+    initialSpread: 2.6,
+    spreadShrink: 0.55,
+    earlyTerminationProb: 0.5,
+    earlyTerminationMinDepth: 2,
+  });
+  clusters.push({ id: 0, center, startIdx, endIdx });
 
-  {
-    const main = clusters[0];
-    let added = 0;
-    let safety = 0;
-    while (added < 20 && safety < 2000) {
-      safety++;
-      const x = (rng() - 0.5) * 50;
-      const y = (rng() - 0.5) * 26;
-      const z = (rng() - 0.5) * 50 - 4;
-      if (Math.hypot(x - main.center.x, y - main.center.y, z - main.center.z) < 10) {
-        continue;
-      }
-      nodes.push({ x, y, z, label: "", cluster: -1 });
-      added++;
+  /* Sparse background stars for depth — kept off the main tree's
+   * volume so they don't crowd the zoomed-in views. */
+  const main = clusters[0];
+  let added = 0;
+  let safety = 0;
+  while (added < 20 && safety < 2000) {
+    safety++;
+    const x = (rng() - 0.5) * 50;
+    const y = (rng() - 0.5) * 26;
+    const z = (rng() - 0.5) * 50 - 4;
+    if (Math.hypot(x - main.center.x, y - main.center.y, z - main.center.z) < 10) {
+      continue;
     }
+    nodes.push({ x, y, z, label: "", title: "", cluster: -1 });
+    added++;
   }
 
   return { nodes, edges, clusters };
@@ -562,6 +609,11 @@ function drawFrame() {
     const node = nodes[no.i];
     if (node.cluster < 0) continue;
     const isHover = hoveredLocal === no.i;
+    /* Default render: subsection citation only — dots without one stay
+     * unlabeled. On hover: always show something — fall back to the
+     * variable title so every rule the user inspects gets identified. */
+    const text = isHover ? (node.label || node.title) : node.label;
+    if (!text) continue;
     const depthOpacity = 1 - Math.max(0, Math.min(1, (p.z - LABEL_NEAR) / (LABEL_FAR - LABEL_NEAR)));
     const opacity = isHover ? 0.95 : depthOpacity * 0.82;
     if (opacity < 0.04) continue;
@@ -570,7 +622,7 @@ function drawFrame() {
     ctx.fillStyle = isHover
       ? `rgba(146,64,14,${opacity})`
       : `rgba(28,25,23,${opacity * 0.8})`;
-    ctx.fillText(node.label, p.sx + r + 6, p.sy + 0.5);
+    ctx.fillText(text, p.sx + r + 6, p.sy + 0.5);
   }
 
   // Comet "firing" animations — skipped on quality tier 2+

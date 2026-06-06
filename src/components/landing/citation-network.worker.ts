@@ -383,6 +383,12 @@ const SEGMENTS_PER_SEC = 0.65;
 const FADE_OUT_MS = 1300; // longer "absorption" at the root
 const TAIL_LENGTH = 0.7;
 
+/* Master opacity for the whole background network. It's decorative and
+ * sits behind the content, so it's deliberately held back from full
+ * strength — scaling every edge, node, label, and firing here in one
+ * place keeps it present but quiet rather than competing with the copy. */
+const GRAPH_BASE_OPACITY = 0.6;
+
 const projected: { sx: number; sy: number; z: number; nodeIdx: number }[] = new Array(nodes.length);
 
 function applyEffectiveDpr() {
@@ -525,7 +531,7 @@ function drawFrame() {
   const fade = Math.max(0, Math.min(1, fadeRaw));
   const disappearRaw = (smoothScroll - 0.86) / 0.10;
   const disappear = Math.max(0, Math.min(1, disappearRaw));
-  const graphOpacity = (1 - fade * 0.55) * (1 - disappear);
+  const graphOpacity = GRAPH_BASE_OPACITY * (1 - fade * 0.55) * (1 - disappear);
   if (graphOpacity < 0.005) return;
   ctx.globalAlpha = graphOpacity;
 

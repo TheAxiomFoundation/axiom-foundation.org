@@ -6,6 +6,7 @@ import {
   formatScalar,
   ownerRuleFor,
   groupTestsByRule,
+  softUnwrap,
 } from "./rulespec-tab";
 import type { RuleEncodingData } from "@/lib/supabase";
 import type { RuleSpecTestCase } from "@/lib/axiom/rulespec/doc";
@@ -49,6 +50,18 @@ function makeTest(
   };
 }
 
+/** Rule blocks are always open; the raw YAML sits behind a small
+ *  toggle. Open every YAML toggle so assertions can see the dump. */
+function expandAllRuleCards(container: ParentNode = document) {
+  container
+    .querySelectorAll<HTMLButtonElement>(
+      'article[id^="rule-"] button[aria-expanded="false"]'
+    )
+    .forEach((btn) => {
+      if (btn.textContent?.includes("YAML")) fireEvent.click(btn);
+    });
+}
+
 const TWO_RULES_DOC = `format: rulespec/v1
 rules:
   - name: rate
@@ -81,6 +94,19 @@ describe("formatScalar", () => {
   it("falls back to JSON for objects and arrays", () => {
     expect(formatScalar({ a: 1 })).toBe('{"a":1}');
     expect(formatScalar([1, 2])).toBe("[1,2]");
+  });
+});
+
+describe("softUnwrap", () => {
+  it("joins hard-wrapped lines into flowing prose", () => {
+    expect(softUnwrap("a weekly amount\nfor a child under 16.")).toBe(
+      "a weekly amount for a child under 16."
+    );
+  });
+  it("preserves blank-line paragraph breaks", () => {
+    expect(softUnwrap("first para\nstill first.\n\nsecond para.")).toBe(
+      "first para still first.\n\nsecond para."
+    );
   });
 });
 
@@ -127,6 +153,7 @@ describe("RuleSpecTab — rendering edge cases", () => {
         jurisdiction="us"
       />
     );
+    expandAllRuleCards(container);
     // Both effective dates show up in the dumped YAML — Prism
     // splits text into spans so we look at concatenated text.
     expect(container.textContent).toContain("2020-01-01");
@@ -145,6 +172,7 @@ describe("RuleSpecTab — rendering edge cases", () => {
         jurisdiction="us"
       />
     );
+    expandAllRuleCards(container);
     const html = Array.from(container.querySelectorAll("code.language-yaml"))
       .map((el) => el.innerHTML)
       .join("\n");
@@ -182,6 +210,7 @@ describe("RuleSpecTab — rendering edge cases", () => {
         jurisdiction="us"
       />
     );
+    expandAllRuleCards();
     // The fetch resolves async — wait for the (1) test count next to
     // the disclosure to appear before clicking it open.
     await waitFor(() =>
@@ -259,10 +288,13 @@ rules:
         jurisdiction="us-co"
       />
     );
+    expandAllRuleCards();
     expect(
       screen.getByText("Restates snap_standard_deduction")
     ).toBeInTheDocument();
-    expect(screen.getByText("#restates_standard_deduction")).toBeInTheDocument();
+    expect(
+      document.getElementById("rule-restates_standard_deduction")
+    ).not.toBeNull();
     expect(screen.getAllByText(/us:policies\/usda\/snap/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/no `versions`/i)).toBeNull();
   });
@@ -288,6 +320,7 @@ rules:
         jurisdiction="us-co"
       />
     );
+    expandAllRuleCards();
     expect(screen.getByText("Sets 9")).toBeInTheDocument();
     expect(screen.getByText("table A")).toBeInTheDocument();
     expect(screen.getAllByText(/heating_cooling_sua/).length).toBeGreaterThan(0);
@@ -309,6 +342,7 @@ rules:
         jurisdiction="us"
       />
     );
+    expandAllRuleCards();
     expect(
       screen.getByText("Data relation relation.member_of_household")
     ).toBeInTheDocument();
@@ -447,6 +481,7 @@ rules:
         jurisdiction="us"
       />
     );
+    expandAllRuleCards();
     await waitFor(() =>
       expect(screen.getByText(/^\(1\)$/)).toBeInTheDocument()
     );

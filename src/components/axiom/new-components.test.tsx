@@ -184,7 +184,7 @@ describe('RuleSpecTab', () => {
     // The fixture's rulespec_content is not valid RuleSpec, so the raw
     // block renders instead of structured cards.
     expect(screen.getByText('RuleSpec encoding')).toBeInTheDocument()
-    expect(screen.getByText('Shown source')).toBeInTheDocument()
+    expect(screen.getByText(/Encoded in/)).toBeInTheDocument()
   })
 
   it('renders module summary plus one card per rule with the YAML and source link', () => {
@@ -218,6 +218,14 @@ rules:
         jurisdiction="us"
       />
     )
+    // The per-rule raw YAML sits behind a small toggle — open them.
+    container
+      .querySelectorAll<HTMLButtonElement>(
+        'article[id^="rule-"] button[aria-expanded="false"]'
+      )
+      .forEach((btn) => {
+        if (btn.textContent?.includes('YAML')) fireEvent.click(btn)
+      })
     expect(
       screen.getByText(/imposes a payroll tax/i)
     ).toBeInTheDocument()
@@ -246,8 +254,7 @@ rules:
         jurisdiction="us"
       />
     )
-    expect(screen.getByText(/canonical repository encoding/i)).toBeInTheDocument()
-    expect(screen.getByText('View on GitHub')).toBeInTheDocument()
+    expect(screen.getByText('view on GitHub')).toBeInTheDocument()
     expect(screen.queryByText('90')).not.toBeInTheDocument()
   })
 
@@ -276,7 +283,7 @@ rules:
         jurisdiction="uk"
       />
     )
-    const link = screen.getByText('View canonical repo file').closest('a')
+    const link = screen.getByText('view canonical repo file').closest('a')
     expect(link).toHaveAttribute(
       'href',
       'https://github.com/TheAxiomFoundation/rulespec-uk/blob/main/legislation/uksi/2013/376/regulation/36/3/single-under-25.yaml'

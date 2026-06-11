@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   RuleSpecTab,
   formatScalar,
+  formatFormulaForDisplay,
   ownerRuleFor,
   groupTestsByRule,
   softUnwrap,
@@ -110,6 +111,22 @@ describe("softUnwrap", () => {
   });
 });
 
+describe("formatFormulaForDisplay", () => {
+  it("keeps short and already-multiline formulas unchanged", () => {
+    expect(formatFormulaForDisplay("rate * wages")).toBe("rate * wages");
+    expect(formatFormulaForDisplay("if x then 1\nelse 2")).toBe(
+      "if x then 1\nelse 2"
+    );
+  });
+  it("breaks long single-line conditionals before each else", () => {
+    const long =
+      "if age >= 65 then pension_rate else if age >= 18 then adult_rate else child_rate";
+    expect(formatFormulaForDisplay(long)).toBe(
+      "if age >= 65 then pension_rate\nelse if age >= 18 then adult_rate\nelse child_rate"
+    );
+  });
+});
+
 describe("ownerRuleFor", () => {
   it("returns the first output key that names a local rule", () => {
     expect(
@@ -162,6 +179,31 @@ describe("RuleSpecTab — rendering edge cases", () => {
     expect(container.textContent).toContain("rate * wages");
     expect(container.querySelector("code.language-yaml")).not.toBeNull();
     expect(container.textContent).not.toContain("Formulas");
+  });
+
+  it("labels undated versions 'all dates' and bolds formula keywords", () => {
+    const doc = `format: rulespec/v1
+rules:
+  - name: cap
+    kind: parameter
+    versions:
+      - formula: 'if eligible then 100 else 0'
+      - effective_from: '2024-01-01'
+        formula: '200'
+`;
+    const { container } = render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: doc })}
+        loading={false}
+        jurisdiction="us"
+      />
+    );
+    expect(screen.getByText("all dates")).toBeInTheDocument();
+    const keywords = Array.from(
+      container.querySelectorAll("pre span.font-semibold")
+    ).map((el) => el.textContent);
+    expect(keywords).toContain("if");
+    expect(keywords).toContain("else");
   });
 
   it("applies shared formula highlighting inside per-rule YAML cards", () => {

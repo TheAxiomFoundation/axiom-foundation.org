@@ -21,6 +21,7 @@ vi.mock('@/hooks/use-encoding', () => ({
 // in isolation.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('@/lib/axiom/resolver', () => ({
@@ -519,6 +520,36 @@ describe('RuleDetailPanel', () => {
       />
     )
     expect(screen.getByText('NY')).toBeInTheDocument()
+  })
+
+  it('humanises slug citations and suppresses the redundant subtitle', () => {
+    const path = 'uk/policy/govuk/disability-living-allowance'
+    render(
+      <RuleDetailPanel
+        document={makeDoc({
+          citation: path,
+          citationPath: path,
+          jurisdiction: 'uk',
+          title: 'Disability living allowance for children…',
+          body: 'Disability living allowance for children as described by GOV.UK guidance.',
+          subsections: [],
+        })}
+        rule={makeRule({
+          jurisdiction: 'uk',
+          doc_type: 'policy',
+          citation_path: path,
+          body: 'Disability living allowance for children as described by GOV.UK guidance.',
+        })}
+      />
+    )
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Disability living allowance'
+    )
+    expect(screen.getByText(path)).toBeInTheDocument()
+    expect(screen.getByText('Policy')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Disability living allowance for children…')
+    ).not.toBeInTheDocument()
   })
 
   it('shows source and encoding side by side', () => {

@@ -16,3 +16,126 @@
 .axiom-mark-flash {
   animation: axiom-mark-flash 1.4s ease-out;
 }
+
+/* ── Section background variants for the marketing landing ──
+   Each variant overrides only the surface tokens it needs to so the
+   existing component markup (which reads token variables instead of
+   hard-coded colours) inverts automatically.
+*/
+
+/* Transparent "tinted" section — was previously a paper-elevated
+   off-white, but that opaque fill was covering the warm amber
+   gradient mesh on `html`. Leaving the surface transparent lets the
+   page-wide wash carry through every section uniformly. The class
+   stays for backwards compat in case we want to layer a small
+   accent later. */
+.section-tint-cream {
+  background: transparent;
+}
+
+/* Dark editorial section — warm near-black background, paper-coloured
+   text, hairline rules amber-tinted. Used for the code-themed Encoded
+   Law section so the page reads with a clear dark/light/dark cadence
+   instead of unbroken cream. The accent stays the amber brand colour,
+   which has enough contrast against this background for AA text. */
+.section-dark {
+  background:
+    radial-gradient(
+      circle at 80% 0%,
+      rgba(251, 191, 36, 0.06),
+      transparent 50%
+    ),
+    var(--color-code-bg);
+  --color-paper: #1c1917;
+  --color-paper-elevated: #2a2622;
+  --color-ink: #fafaf9;
+  --color-ink-secondary: #d6d3d1;
+  --color-ink-muted: #a8a29e;
+  --color-rule: #44403c;
+  --color-rule-subtle: #292524;
+  --color-rule-strong: #78716c;
+  --color-accent-light: rgba(217, 119, 6, 0.12);
+  /* Lift the accent only as much as needed to clear AA against the
+     near-black surface (#d97706 ≈ 5:1) — staying with a darker
+     warm amber instead of the neon yellow that the lighter palette
+     drifted into. */
+  --color-accent: #d97706;
+  --color-accent-hover: #b45309;
+  color: var(--color-ink);
+}
+
+/* The default ``.btn-primary`` gradient runs from accent → ink. On
+   the dark theme `--color-ink` is near-white, which makes the button
+   bleed into a yellow-to-white wash. Override to a solid warm amber
+   so the CTA reads as a button, not a gradient swatch. */
+.section-dark .btn-primary {
+  /* Brand-aligned two-tone amber gradient so the dark-section CTA
+     reads as the same family as the light-section button (which uses
+     the gradient-sync amber→ink), instead of a flat neon swatch.
+     Both stops are warm amber; the deeper right-hand stop gives the
+     button enough form against the near-black backdrop. */
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    #b45309 100%
+  );
+  background-size: auto;
+  background-position: 0 0;
+  color: #fafaf9;
+  transition:
+    background-color 280ms var(--ease-out, ease-out),
+    box-shadow 280ms var(--ease-out, ease-out),
+    transform 280ms var(--ease-out, ease-out),
+    filter 280ms var(--ease-out, ease-out);
+}
+.section-dark .btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-hover) 0%,
+    #92400e 100%
+  );
+  background-size: auto;
+  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.22);
+  filter: none;
+}
+.section-dark .btn-outline {
+  border-color: var(--color-rule);
+  color: var(--color-ink-secondary);
+}
+.section-dark .btn-outline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Faint editorial glyph anchored to a section corner — reads as
+   paper marginalia rather than chrome. The glyph is configurable via
+   `--mark-glyph` so different sections can carry a different
+   typographic anchor (§ for legal, ¶ for prose, etc.). */
+.section-mark {
+  --mark-glyph: "§";
+  position: relative;
+  isolation: isolate;
+}
+.section-mark::after {
+  content: var(--mark-glyph);
+  position: absolute;
+  bottom: -2rem;
+  right: -1rem;
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: clamp(12rem, 24vw, 22rem);
+  line-height: 0.8;
+  color: var(--color-ink);
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: -1;
+  user-select: none;
+}
+.section-mark.section-mark-left::after {
+  right: auto;
+  left: -1rem;
+}
+.section-mark-pilcrow { --mark-glyph: "¶"; }
+.section-mark-ampersand { --mark-glyph: "&"; }
+.section-mark-asterism { --mark-glyph: "⁂"; }
+

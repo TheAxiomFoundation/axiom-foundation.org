@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { ArrowRightIcon, CodeIcon, GitHubIcon } from "@/components/icons";
+import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 export function FoundationSection() {
   return (
     <section
       id="foundation"
-      className="relative z-1 py-32 px-8 border-t border-[var(--color-rule-subtle)]"
+      className="section-tint-cream section-mark relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-14">
+        <Reveal className="text-center mb-14">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             Coda &middot; The foundation
@@ -21,9 +22,12 @@ export function FoundationSection() {
             governance. The infrastructure is meant to outlast any single
             project that builds on it.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="grid gap-px bg-[var(--color-rule)] border border-[var(--color-rule)] rounded-md overflow-hidden max-w-[1080px] mx-auto mb-14 md:grid-cols-3">
+        <RevealGroup
+          className="grid gap-px bg-[var(--color-rule)] border border-[var(--color-rule)] rounded-md overflow-hidden max-w-[1080px] mx-auto mb-14 md:grid-cols-3"
+          staggerChildren={0.1}
+        >
           {[
             {
               kicker: "Contribute",
@@ -53,7 +57,7 @@ export function FoundationSection() {
               icon: null,
             },
           ].map((card) => (
-            <div
+            <RevealItem
               key={card.kicker}
               className="bg-[var(--color-paper-elevated)] p-8 flex flex-col"
             >
@@ -79,9 +83,9 @@ export function FoundationSection() {
                 {card.cta}
                 <ArrowRightIcon className="w-4 h-4" />
               </a>
-            </div>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
 
         <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap pt-8 border-t border-[var(--color-rule-subtle)]">
           {[

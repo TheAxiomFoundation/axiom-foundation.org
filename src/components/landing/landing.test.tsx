@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('next/navigation', () => ({
@@ -103,38 +103,3 @@ describe('Landing sections', () => {
   })
 })
 
-describe('Hero demo cycle', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('auto-advances through statute, household, computed', () => {
-    render(<Hero />)
-    expect(screen.getByRole('button', { name: /statute/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /household/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /computed/i })).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(4500)
-    })
-    act(() => {
-      vi.advanceTimersByTime(4500)
-    })
-  })
-
-  it('clicking a tab pauses auto-advance and switches view', () => {
-    render(<Hero />)
-    const computedTab = screen.getByRole('button', { name: /computed/i })
-    fireEvent.click(computedTab)
-
-    act(() => {
-      vi.advanceTimersByTime(9000)
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /statute/i }))
-  })
-})

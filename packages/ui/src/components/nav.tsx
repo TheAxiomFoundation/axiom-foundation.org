@@ -5,10 +5,10 @@ import { GitHubIcon } from "./icons";
 import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 const NAV_LINK =
-  "text-gradient text-[0.9rem] font-light no-underline transition-opacity duration-150 flex items-center";
+  "nav-link text-gradient text-[0.9rem] font-light no-underline flex items-center";
 
 const MOBILE_LINK =
-  "text-gradient text-[1.1rem] font-light no-underline block py-2";
+  "nav-link text-gradient text-[1.1rem] font-light no-underline block py-2";
 
 export interface NavLink {
   href: string;
@@ -67,7 +67,6 @@ export function Nav({
   function renderNavLink({ href, label }: NavLink, mobile = false) {
     const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
     const base = mobile ? MOBILE_LINK : NAV_LINK;
-    const opacity = isActive ? "opacity-100" : "opacity-70 hover:opacity-100";
 
     const isExternal = /^https?:\/\//.test(href) || href.startsWith("mailto:");
     const isHashLink = href.startsWith("/#");
@@ -77,8 +76,9 @@ export function Nav({
     const finalHref = isHomepageHash
       ? href.replace("/", "")
       : resolveHref(href, baseUrl);
-    const finalOpacity = isHashLink ? "opacity-70 hover:opacity-100" : opacity;
-    const className = `${base} ${finalOpacity}`;
+    // Persistent underline only on routes (active state); hash links and
+    // unmatched routes get the standard hover-grow underline from .nav-link.
+    const className = `${base}${isActive && !isHashLink ? " is-active" : ""}`;
 
     if (useNativeAnchor) {
       return (
@@ -103,21 +103,19 @@ export function Nav({
       className="h-9 w-auto shrink-0"
     />
   );
+  const isDocsActive = pathname?.startsWith("/docs") ?? false;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
         {LinkComponent && !baseUrl ? (
-          <LinkComponent
-            href="/"
-            className="flex items-baseline no-underline"
-          >
+          <LinkComponent href="/" className="nav-logo no-underline">
             {logo}
           </LinkComponent>
         ) : (
           <a
             href={homeHref}
-            className="flex items-baseline no-underline"
+            className="nav-logo no-underline"
             aria-label="Axiom Foundation"
           >
             {logo}
@@ -129,13 +127,13 @@ export function Nav({
           {navLinks.map((link) => renderNavLink(link))}
           <a
             href={resolveHref("/docs", baseUrl)}
-            className={`${NAV_LINK} opacity-70 hover:opacity-100`}
+            className={`${NAV_LINK}${isDocsActive ? " is-active" : ""}`}
           >
             Docs
           </a>
           <a
             href="https://github.com/TheAxiomFoundation"
-            className="gradient-icon transition-opacity duration-150 flex items-center opacity-70 hover:opacity-100"
+            className="nav-icon gradient-icon"
             style={{ color: "var(--gc, #1c1917)" }}
             target="_blank"
             rel="noopener noreferrer"
@@ -176,7 +174,7 @@ export function Nav({
           {navLinks.map((link) => renderNavLink(link, true))}
           <a
             href={resolveHref("/docs", baseUrl)}
-            className={`${MOBILE_LINK} opacity-70 hover:opacity-100`}
+            className={`${MOBILE_LINK}${isDocsActive ? " is-active" : ""}`}
             onClick={close}
           >
             Docs

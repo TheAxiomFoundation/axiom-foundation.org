@@ -54,8 +54,8 @@ describe("Nav", () => {
   it("highlights active link based on pathname", () => {
     render(<Nav pathname="/about" />);
     const browseLinks = screen.getAllByText("About");
-    // Desktop link should have opacity-100 (active)
-    expect(browseLinks[0].className).toContain("opacity-100");
+    // Desktop link should have the persistent-underline active class
+    expect(browseLinks[0].className).toContain("is-active");
   });
 
   it("toggles mobile menu on hamburger click", () => {

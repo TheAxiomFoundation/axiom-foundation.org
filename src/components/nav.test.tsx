@@ -89,7 +89,7 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavClient />)
     const aboutLink = screen.getByText('About')
-    expect(aboutLink.closest('a')).toHaveClass('opacity-100')
+    expect(aboutLink.closest('a')).toHaveClass('is-active')
   })
 
   it('renders GitHub icon link', () => {

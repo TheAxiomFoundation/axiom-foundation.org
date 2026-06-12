@@ -1,3 +1,5 @@
+import { Reveal, RevealGroup, RevealItem } from "./reveal";
+
 const APPLICATIONS = [
   {
     n: "01",
@@ -31,9 +33,12 @@ const APPLICATIONS = [
 
 export function ApplicationsSection() {
   return (
-    <section id="applications" className="relative z-1 py-32 px-8">
+    <section
+      id="applications"
+      className="section-mark section-mark-pilcrow section-mark-left relative z-1 py-32 px-8"
+    >
       <div className="max-w-[1280px] mx-auto">
-        <div className="text-center mb-20">
+        <Reveal className="text-center mb-20">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             IV &middot; What it powers
@@ -49,14 +54,23 @@ export function ApplicationsSection() {
             </span>
             .
           </p>
-        </div>
+        </Reveal>
 
-        <div className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto">
+        <RevealGroup
+          className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto"
+          staggerChildren={0.1}
+        >
           {APPLICATIONS.map((app) => (
-            <div key={app.n} className="card-edition p-8 flex flex-col">
+            <RevealItem
+              key={app.n}
+              className="card-edition p-8 flex flex-col transition-transform duration-300 hover:-translate-y-1"
+            >
               <div className="flex items-baseline justify-between mb-5">
                 <span className="serif-italic text-[0.95rem] text-[var(--color-ink-muted)]">
                   {app.actor}
+                </span>
+                <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)]">
+                  {app.n}
                 </span>
               </div>
               <h3 className="font-body text-[1.15rem] font-medium text-[var(--color-ink)] mb-3 leading-snug">
@@ -65,9 +79,9 @@ export function ApplicationsSection() {
               <p className="font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
                 {app.body}
               </p>
-            </div>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
       </div>
     </section>
   );

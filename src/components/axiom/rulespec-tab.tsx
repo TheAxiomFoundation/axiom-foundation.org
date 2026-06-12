@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { isGitHubEncoding } from "@/lib/axiom-utils";
+import {
+  encodingAncestorCitationPath,
+  isGitHubEncoding,
+} from "@/lib/axiom-utils";
 import type { EncodingRunScores, RuleEncodingData } from "@/lib/supabase";
 import { ruleSpecBlobUrl, ruleSpecRawFileUrl } from "@/lib/axiom/repo-map";
 import {
@@ -97,6 +100,10 @@ export function RuleSpecTab({
   const sourceDescription = isGitHub
     ? "Displaying the canonical repository encoding."
     : "Displaying the latest stored encoding run. It may differ from the repository file.";
+  const ancestorPath = encodingAncestorCitationPath(
+    encoding.file_path,
+    citationPath
+  );
   const scores = encoding.final_scores;
 
   const localNames = new Set(
@@ -114,6 +121,7 @@ export function RuleSpecTab({
         description={sourceDescription}
         gitHubUrl={gitHubUrl}
         isGitHub={isGitHub}
+        ancestorPath={ancestorPath}
       />
 
       {scores && !isGitHub && <ScoresBlock scores={scores} />}
@@ -169,11 +177,13 @@ function SourceHeader({
   description,
   gitHubUrl,
   isGitHub,
+  ancestorPath,
 }: {
   filePath: string;
   description: string;
   gitHubUrl: string | null;
   isGitHub: boolean;
+  ancestorPath?: string | null;
 }) {
   return (
     <div>
@@ -184,6 +194,21 @@ function SourceHeader({
       <p className="mt-2 text-xs text-[var(--color-ink-muted)] leading-relaxed">
         {description}
       </p>
+      {ancestorPath && (
+        <p
+          data-testid="encoding-ancestor-note"
+          className="mt-2 text-xs text-[var(--color-ink-muted)] leading-relaxed"
+        >
+          This encoding covers the parent provision{" "}
+          <a
+            href={`/${ancestorPath}`}
+            className="font-mono text-[var(--color-accent)] no-underline hover:underline"
+          >
+            {ancestorPath}
+          </a>
+          ; no dedicated encoding exists for this exact provision yet.
+        </p>
+      )}
       {gitHubUrl && (
         <a
           href={gitHubUrl}

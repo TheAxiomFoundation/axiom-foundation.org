@@ -36,9 +36,19 @@ const ref = (overrides: {
   other_citation_path: string;
   target_resolved?: boolean;
   other_heading?: string | null;
+  /** The body the offsets index into. Sets ``citation_text`` to the
+   *  exact slice — the contract real extractor rows follow — so the
+   *  ref survives re-anchoring. Omit to model a stale ref whose text
+   *  no longer appears in the body. */
+  body?: string;
+  citation_text?: string;
 }): RuleReference => ({
   direction: "outgoing",
-  citation_text: "placeholder",
+  citation_text:
+    overrides.citation_text ??
+    (overrides.body
+      ? overrides.body.slice(overrides.start_offset, overrides.end_offset)
+      : "placeholder"),
   pattern_kind: "usc",
   confidence: 1,
   start_offset: overrides.start_offset,
@@ -75,6 +85,7 @@ describe("RuleBody", () => {
             start_offset: start,
             end_offset: end,
             other_citation_path: "us/statute/42/9902/2",
+            body,
           }),
         ]}
       />
@@ -95,6 +106,7 @@ describe("RuleBody", () => {
             start_offset: start,
             end_offset: end,
             other_citation_path: "us/statute/42/9902",
+            body,
           }),
         ]}
       />
@@ -117,12 +129,14 @@ describe("RuleBody", () => {
             end_offset: ref1Start + "26 USC 32".length,
             other_citation_path: "us/statute/26/32",
             target_resolved: true,
+            body,
           }),
           ref({
             start_offset: ref2Start,
             end_offset: ref2Start + "99 USC 9999".length,
             other_citation_path: "us/statute/99/9999",
             target_resolved: false,
+            body,
           }),
         ]}
       />
@@ -150,6 +164,7 @@ describe("RuleBody", () => {
             other_citation_path: "us/statute/26/32",
             target_resolved: true,
             other_heading: "Earned income",
+            body,
           }),
         ]}
       />
@@ -187,11 +202,13 @@ describe("RuleBody", () => {
             start_offset: 0,
             end_offset: 14,
             other_citation_path: "us/statute/42/9902",
+            body,
           }),
           ref({
             start_offset: 5,
             end_offset: 14,
             other_citation_path: "us/statute/42/9902",
+            body,
           }),
         ]}
       />
@@ -323,6 +340,7 @@ describe("RuleBody", () => {
             start_offset: start,
             end_offset: start + "section 39-22-104".length,
             other_citation_path: "us-co/statute/crs/39-22-104",
+            body,
           }),
         ]}
       />
@@ -402,6 +420,7 @@ describe("RuleBody", () => {
             start_offset: start,
             end_offset: start + "26 USC 32".length,
             other_citation_path: "us/statute/26/32",
+            body,
           }),
         ]}
       />
@@ -427,11 +446,13 @@ describe("RuleBody", () => {
             start_offset: r2s,
             end_offset: r2s + "42 USC 9902".length,
             other_citation_path: "us/statute/42/9902",
+            body,
           }),
           ref({
             start_offset: r1s,
             end_offset: r1s + "26 USC 32".length,
             other_citation_path: "us/statute/26/32",
+            body,
           }),
         ]}
       />
@@ -455,11 +476,13 @@ describe("RuleBody", () => {
             start_offset: r1s,
             end_offset: r1s + "26 USC 32".length,
             other_citation_path: "us/statute/26/32",
+            body,
           }),
           ref({
             start_offset: r2s,
             end_offset: r2s + "42 USC 9902".length,
             other_citation_path: "us/statute/42/9902",
+            body,
           }),
         ]}
       />
@@ -469,6 +492,113 @@ describe("RuleBody", () => {
       "26 USC 32",
       "42 USC 9902",
     ]);
+  });
+
+  describe("stale stored offsets", () => {
+    it("re-anchors refs whose offsets point at the wrong words", () => {
+      // Production extractor rows frequently carry offsets computed
+      // against an older body revision — the span lands mid-word.
+      const body = "Compare with 42 U.S.C. 601 for assistance programs.";
+      render(
+        <RuleBody
+          body={body}
+          refs={[
+            ref({
+              start_offset: 0,
+              end_offset: 13,
+              other_citation_path: "us/statute/42/601",
+              citation_text: "42 U.S.C. 601",
+            }),
+          ]}
+        />
+      );
+      const link = screen.getByRole("link", { name: "42 U.S.C. 601" });
+      expect(link).toHaveAttribute("href", "/us/statute/42/601");
+    });
+
+    it("re-anchors refs whose offsets exceed the body length", () => {
+      const body = "Refer to 26 U.S.C. 32 here.";
+      render(
+        <RuleBody
+          body={body}
+          refs={[
+            ref({
+              start_offset: 70000,
+              end_offset: 70013,
+              other_citation_path: "us/statute/26/32",
+              citation_text: "26 U.S.C. 32",
+            }),
+          ]}
+        />
+      );
+      expect(
+        screen.getByRole("link", { name: "26 U.S.C. 32" })
+      ).toHaveAttribute("href", "/us/statute/26/32");
+    });
+
+    it("drops the inline link when the citation text is absent from the body", () => {
+      render(
+        <RuleBody
+          body="This body never mentions the citation."
+          refs={[
+            ref({
+              start_offset: 3,
+              end_offset: 16,
+              other_citation_path: "us/statute/42/601",
+              citation_text: "42 U.S.C. 601",
+            }),
+          ]}
+        />
+      );
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("This body never mentions the citation.")
+      ).toBeInTheDocument();
+    });
+
+    it("assigns repeated citation texts to successive occurrences", () => {
+      const body = "See section 1931 first and section 1931 again.";
+      const refFor = (path: string) =>
+        ref({
+          start_offset: 90000,
+          end_offset: 90012,
+          other_citation_path: path,
+          citation_text: "section 1931",
+        });
+      render(
+        <RuleBody
+          body={body}
+          refs={[refFor("us/statute/42/1396u-1"), refFor("us/statute/42/1396u-1")]}
+        />
+      );
+      const links = screen.getAllByRole("link", { name: "section 1931" });
+      expect(links).toHaveLength(2);
+    });
+  });
+
+  describe("inferred reference guards", () => {
+    it("does not extend inferred links into prose parentheticals", () => {
+      render(
+        <RuleBody
+          body="See section 911 (relating to citizens or residents living abroad) for details."
+          refs={[]}
+          citationPath="us/statute/26/32"
+        />
+      );
+      const link = screen.getByRole("link", { name: "section 911" });
+      expect(link).toHaveAttribute("href", "/us/statute/26/911");
+    });
+
+    it("does not link sections of a different named Act into the current title", () => {
+      render(
+        <RuleBody
+          body="As defined in section 205(c)(2)(B)(i) of the Social Security Act."
+          refs={[]}
+          citationPath="us/statute/26/32"
+        />
+      );
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
   });
 
   describe("?mark= highlighting", () => {
@@ -506,12 +636,50 @@ describe("RuleBody", () => {
               start_offset: refStart,
               end_offset: refEnd,
               other_citation_path: "us/statute/42/9902",
+              body,
             }),
           ]}
         />
       );
       const link = screen.getByRole("link", { name: "42 U.S.C. 9902" });
       expect(link.closest("mark")).not.toBeNull();
+      searchParamsRef.current = new URLSearchParams();
+    });
+
+    it("keeps the mark at its offsets when they match the mt text", () => {
+      const body = "This rule refers to earned income credit somewhere.";
+      const start = body.indexOf("earned income credit");
+      const end = start + "earned income credit".length;
+      searchParamsRef.current = new URLSearchParams(
+        `mark=${start}-${end}&mt=${encodeURIComponent("earned income credit")}`
+      );
+      const { container } = render(<RuleBody body={body} refs={[]} />);
+      expect(container.querySelector("mark")?.textContent).toBe(
+        "earned income credit"
+      );
+      searchParamsRef.current = new URLSearchParams();
+    });
+
+    it("re-anchors the mark using the mt text when offsets are stale", () => {
+      const body = "Intro text. The cited passage mentions 26 U.S.C. 3101 here.";
+      // Offsets index a longer, older revision of the body.
+      searchParamsRef.current = new URLSearchParams(
+        `mark=2553-2567&mt=${encodeURIComponent("26 U.S.C. 3101")}`
+      );
+      const { container } = render(<RuleBody body={body} refs={[]} />);
+      expect(container.querySelector("mark")?.textContent).toBe(
+        "26 U.S.C. 3101"
+      );
+      searchParamsRef.current = new URLSearchParams();
+    });
+
+    it("drops the highlight when the mt text is absent instead of marking unrelated words", () => {
+      const body = "Short body without the citation.";
+      searchParamsRef.current = new URLSearchParams(
+        `mark=0-5&mt=${encodeURIComponent("26 U.S.C. 3101")}`
+      );
+      const { container } = render(<RuleBody body={body} refs={[]} />);
+      expect(container.querySelector("mark")).toBeNull();
       searchParamsRef.current = new URLSearchParams();
     });
   });

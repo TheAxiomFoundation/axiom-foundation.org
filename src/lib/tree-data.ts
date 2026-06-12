@@ -1217,6 +1217,23 @@ function formatGenericSegmentLabel(segment: string): string {
   }
 }
 
+/** "26", "7", "25A" — the shapes USC/CFR title and part numbers take. */
+function isNumericDesignator(segment: string): boolean {
+  return /^\d+[A-Za-z]?$/.test(segment);
+}
+
+/**
+ * Identifier-style segments ("Rule 35", "He-W 734.01") are shown
+ * verbatim — the generic formatter would mangle their hyphens and
+ * casing. Plain lowercase slugs ("tax", "he-w-700") still go through
+ * the generic title-casing.
+ */
+function formatIdentifierSegmentLabel(segment: string): string {
+  return /^[a-z0-9-]+$/.test(segment)
+    ? formatGenericSegmentLabel(segment)
+    : segment;
+}
+
 function formatRuleSegmentLabel(
   segment: string,
   ruleIndex: number,
@@ -1292,11 +1309,19 @@ function formatRuleSegmentLabel(
   }
 
   if (ruleIndex === 1) {
-    return `Title ${segment}`;
+    // Only numeric titles get the "Title N" prefix; identifier-style
+    // segments ("Rule 35", "he-w-700", "tax") already read as labels.
+    return isNumericDesignator(segment)
+      ? `Title ${segment}`
+      : formatIdentifierSegmentLabel(segment);
   }
 
   if (isRegulationLane) {
-    if (ruleIndex === 2) return `Part ${segment}`;
+    if (ruleIndex === 2) {
+      return isNumericDesignator(segment)
+        ? `Part ${segment}`
+        : formatIdentifierSegmentLabel(segment);
+    }
     if (isSubpart) {
       return `Subpart ${segment.replace(/^subpart-/, "").toUpperCase()}`;
     }

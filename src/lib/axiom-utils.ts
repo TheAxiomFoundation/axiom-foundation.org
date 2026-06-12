@@ -10,6 +10,57 @@ export function isEncodingRun(encoding: RuleEncodingData | null): boolean {
   return !!encoding && !encoding.encoding_run_id.startsWith("github:");
 }
 
+const REPO_BUCKET_SINGULARS: Readonly<Record<string, string>> = Object.freeze({
+  statutes: "statute",
+  regulations: "regulation",
+  policies: "policy",
+});
+
+/**
+ * The encoding lookup walks ancestor paths, so a subsection page can
+ * end up displaying the encoding of its parent section. Detect that
+ * case: translate the repo file path back into citation-path dialect
+ * (plural buckets → singular, ``7-cfr`` → ``7``, duplicated terminal
+ * section dropped) and compare against the rule's citation path.
+ * Returns the ancestor's citation path when the encoding belongs to a
+ * strict ancestor, or null when it covers this exact provision (or
+ * can't be related at all).
+ */
+export function encodingAncestorCitationPath(
+  filePath: string,
+  citationPath: string | null | undefined
+): string | null {
+  if (!citationPath) return null;
+  const [jurisdiction, ...tailParts] = citationPath.split("/").filter(Boolean);
+  if (!jurisdiction || tailParts.length === 0) return null;
+
+  const encParts = filePath
+    .replace(/\.yaml$/, "")
+    .split("/")
+    .filter(Boolean);
+  if (encParts.length === 0) return null;
+  encParts[0] = REPO_BUCKET_SINGULARS[encParts[0]] ?? encParts[0];
+  if (encParts[0] === "regulation" && encParts[1]?.endsWith("-cfr")) {
+    encParts[1] = encParts[1].slice(0, -"-cfr".length);
+  }
+  // The repo duplicates terminal sections ("statute/26/32/32.yaml").
+  if (
+    encParts.length === 4 &&
+    encParts[0] === "statute" &&
+    encParts[3] === encParts[2]
+  ) {
+    encParts.pop();
+  }
+
+  const tail = tailParts.join("/");
+  const encodingPath = encParts.join("/");
+  if (encodingPath === tail) return null;
+  if (tail.startsWith(`${encodingPath}/`)) {
+    return `${jurisdiction}/${encodingPath}`;
+  }
+  return null;
+}
+
 export interface ViewerDocument {
   citation: string;
   title: string;
@@ -83,6 +134,30 @@ function formatCitationPath(
     return `${instrument.replace("-CCR-", " CCR ")} § ${section}${suffix}`;
   }
 
+  if (jurisdiction === "us" && docType === "regulation") {
+    const [, , title, part, first, ...subsections] = parts;
+    if (!title || !part || !first) {
+      return null;
+    }
+    if (first.startsWith("subpart-")) {
+      return `${title} CFR ${part} Subpart ${first
+        .slice("subpart-".length)
+        .toUpperCase()}`;
+    }
+    const suffix = formatSubsectionSuffix(subsections);
+    return `${title} CFR § ${part}.${first}${suffix}`;
+  }
+
+  if (jurisdiction.startsWith("us-") && docType === "regulation") {
+    // State regulation section identifiers (``He-W 734.01``) are
+    // already self-contained citations.
+    const [, , , section, ...subsections] = parts;
+    if (!section) {
+      return null;
+    }
+    return `${section}${formatSubsectionSuffix(subsections)}`;
+  }
+
   if (jurisdiction === "us-co" && docType === "statute") {
     const [, , collection, section, ...subsections] = parts;
     if (collection !== "crs" || !section) {
@@ -110,6 +185,23 @@ function formatCitationPath(
   return null;
 }
 
+/**
+ * Last-resort citation label from the canonical path. Strips the
+ * jurisdiction and doc-type buckets and keeps the identifying tail —
+ * ``us-mt/statute/Rule 35`` → "Rule 35", ``us-nh/regulation/
+ * he-w-700/He-W 734.01`` → "He-W 734.01". Anything is better than the
+ * raw ingestion file path (``sources/us-mt/.../0250-0200-0050.HTML``)
+ * the heading used to fall back to.
+ */
+function citationFromPathTail(citationPath: string): string | null {
+  const parts = citationPath.split("/").filter(Boolean);
+  if (parts.length < 3) return null;
+  const tail = parts[parts.length - 1];
+  // Bare ordinals ("9") make meaningless headings — only use the tail
+  // when it reads as an identifier on its own.
+  return /[A-Za-z. -]/.test(tail) ? tail : null;
+}
+
 function getRuleCitation(rule: Rule): string {
   const sourcePath = rule.source_path?.trim();
   if (sourcePath && isHumanReadableCitation(sourcePath)) {
@@ -125,9 +217,13 @@ function getRuleCitation(rule: Rule): string {
     if (formatted) {
       return formatted;
     }
+    const tail = citationFromPathTail(rule.citation_path);
+    if (tail) {
+      return tail;
+    }
   }
 
-  return sourcePath || rule.citation_path || rule.id;
+  return rule.citation_path || sourcePath || rule.id;
 }
 
 export function isRuleRepealed(rule: Rule): boolean {

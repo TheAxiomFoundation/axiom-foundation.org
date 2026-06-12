@@ -31,14 +31,23 @@ export function formatCitationLabel(path: string): string {
     }
   }
   if (parts.length >= 4 && parts[1] === "regulation") {
-    const [, , title, part, ...rest] = parts;
-    if (!rest.length) return `${title} CFR Part ${part}`;
-    const first = rest[0];
-    if (first.startsWith("subpart-")) {
-      return `${title} CFR ${part} Subpart ${first.slice("subpart-".length).toUpperCase()}`;
+    const [jurisdiction, , title, part, ...rest] = parts;
+    if (jurisdiction === "us") {
+      if (!rest.length) return `${title} CFR Part ${part}`;
+      const first = rest[0];
+      if (first.startsWith("subpart-")) {
+        return `${title} CFR ${part} Subpart ${first.slice("subpart-".length).toUpperCase()}`;
+      }
+      const restSuffix = rest.length > 1 ? ` (${rest.slice(1).join(")(")})` : "";
+      return `${title} CFR § ${part}.${first}${restSuffix}`;
     }
-    const restSuffix = rest.length > 1 ? ` (${rest.slice(1).join(")(")})` : "";
-    return `${title} CFR § ${part}.${first}${restSuffix}`;
+    if (jurisdiction.startsWith("us-")) {
+      // State regulations are not CFR — label them with the state and
+      // the section identifier, which is self-contained ("He-W 734.01").
+      const state = jurisdiction.slice(3).toUpperCase();
+      const restSuffix = rest.length ? ` (${rest.join(")(")})` : "";
+      return `${state} reg. ${part}${restSuffix}`;
+    }
   }
   return path;
 }
@@ -46,10 +55,14 @@ export function formatCitationLabel(path: string): string {
 function RefItem({ ref }: { ref: InlineReference }) {
   // Incoming refs carry offsets into the citing rule's body; pass
   // them through as ``?mark=start-end`` so the target page scrolls
-  // to and highlights the exact citing passage.
+  // to and highlights the exact citing passage. ``mt`` carries the
+  // cited text so the target page can verify the offsets against its
+  // own body and re-anchor when they are stale.
   const markQuery =
     ref.direction === "incoming"
-      ? `?mark=${ref.start_offset}-${ref.end_offset}`
+      ? `?mark=${ref.start_offset}-${ref.end_offset}&mt=${encodeURIComponent(
+          ref.citation_text
+        )}`
       : "";
   const href = `/${ref.other_citation_path}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);

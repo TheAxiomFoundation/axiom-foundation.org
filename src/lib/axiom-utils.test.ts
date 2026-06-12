@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  encodingAncestorCitationPath,
   isRuleRepealed,
   transformRuleToViewerDoc,
   type ViewerDocument,
@@ -109,6 +110,63 @@ describe("transformRuleToViewerDoc", () => {
       const doc = transformRuleToViewerDoc(rule, []);
 
       expect(doc.citation).toBe("26 USC 24(d)(1)(A)");
+    });
+  });
+
+  describe("citation fallbacks never expose raw ingestion file paths", () => {
+    it("formats federal regulation sections as CFR citations", () => {
+      const rule = mockRule({
+        doc_type: "regulation",
+        citation_path: "us/regulation/7/273/9",
+        source_path:
+          "sources/us/regulation/2026-01-01/ecfr-html/title-7/part-273/section-9.html",
+      });
+      expect(transformRuleToViewerDoc(rule, []).citation).toBe("7 CFR § 273.9");
+    });
+
+    it("formats federal regulation subparts", () => {
+      const rule = mockRule({
+        doc_type: "regulation",
+        citation_path: "us/regulation/7/273/subpart-d",
+      });
+      expect(transformRuleToViewerDoc(rule, []).citation).toBe(
+        "7 CFR 273 Subpart D"
+      );
+    });
+
+    it("uses the state regulation section identifier as the citation", () => {
+      const rule = mockRule({
+        jurisdiction: "us-nh",
+        doc_type: "regulation",
+        citation_path: "us-nh/regulation/he-w-700/He-W 734.01",
+        source_path:
+          "sources/us-nh/regulation/2026-05-27-nh-he-w-700-snap-rules/official-document.pdf",
+      });
+      expect(transformRuleToViewerDoc(rule, []).citation).toBe("He-W 734.01");
+    });
+
+    it("falls back to the citation path tail for short statute paths", () => {
+      const rule = mockRule({
+        jurisdiction: "us-mt",
+        citation_path: "us-mt/statute/Rule 35",
+        source_path:
+          "sources/us-mt/statute/2026-05-05/montana-code-html/title_0250/chapter_0200/part_0050/section_0350/0250-0200-0050-0350.html",
+      });
+      expect(transformRuleToViewerDoc(rule, []).citation).toBe("Rule 35");
+    });
+
+    it("prefers the full citation path over a bare numeric tail", () => {
+      const rule = mockRule({
+        jurisdiction: "us-al",
+        doc_type: "manual",
+        citation_path: "us-al/manual/dhr/100",
+        source_path: "sources/us-al/manual/poe/100.html",
+      });
+      // "100" alone is meaningless; doc_type manual has no formatter, so
+      // the canonical path wins over the ingestion file path.
+      expect(transformRuleToViewerDoc(rule, []).citation).toBe(
+        "us-al/manual/dhr/100"
+      );
     });
   });
 
@@ -236,5 +294,51 @@ describe("transformRuleToViewerDoc", () => {
       expect(isRuleRepealed(rule)).toBe(false);
       expect(transformRuleToViewerDoc(rule, []).isRepealed).toBeUndefined();
     });
+  });
+});
+
+describe("encodingAncestorCitationPath", () => {
+  it("returns null when the encoding covers the exact provision", () => {
+    expect(
+      encodingAncestorCitationPath(
+        "statutes/26/3101/a.yaml",
+        "us/statute/26/3101/a"
+      )
+    ).toBeNull();
+  });
+
+  it("detects an ancestor section encoding shown on a subsection page", () => {
+    expect(
+      encodingAncestorCitationPath("statutes/26/32.yaml", "us/statute/26/32/b/1")
+    ).toBe("us/statute/26/32");
+  });
+
+  it("translates duplicated terminal sections before comparing", () => {
+    expect(
+      encodingAncestorCitationPath(
+        "statutes/26/32/32.yaml",
+        "us/statute/26/32/b"
+      )
+    ).toBe("us/statute/26/32");
+    expect(
+      encodingAncestorCitationPath("statutes/26/32/32.yaml", "us/statute/26/32")
+    ).toBeNull();
+  });
+
+  it("translates -cfr regulation titles before comparing", () => {
+    expect(
+      encodingAncestorCitationPath(
+        "regulations/7-cfr/273/9.yaml",
+        "us/regulation/7/273/9/a"
+      )
+    ).toBe("us/regulation/7/273/9");
+  });
+
+  it("returns null for unrelated paths and missing citation paths", () => {
+    expect(
+      encodingAncestorCitationPath("statutes/26/21.yaml", "us/statute/26/32/b")
+    ).toBeNull();
+    expect(encodingAncestorCitationPath("statutes/26/32.yaml", null)).toBeNull();
+    expect(encodingAncestorCitationPath("statutes/26/32.yaml", "us")).toBeNull();
   });
 });

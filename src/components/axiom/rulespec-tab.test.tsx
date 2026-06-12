@@ -137,6 +137,42 @@ describe("RuleSpecTab — rendering edge cases", () => {
     expect(container.textContent).not.toContain("Formulas");
   });
 
+  it("labels encodings inherited from an ancestor provision", () => {
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({
+          encoding_run_id: "github:statutes/26/32.yaml",
+          file_path: "statutes/26/32.yaml",
+          rulespec_content: TWO_RULES_DOC,
+        })}
+        loading={false}
+        jurisdiction="us"
+        citationPath="us/statute/26/32/b/1"
+      />
+    );
+    const note = screen.getByTestId("encoding-ancestor-note");
+    expect(note).toHaveTextContent("covers the parent provision");
+    expect(
+      screen.getByRole("link", { name: "us/statute/26/32" })
+    ).toHaveAttribute("href", "/us/statute/26/32");
+  });
+
+  it("does not label an encoding that covers the exact provision", () => {
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({
+          encoding_run_id: "github:statutes/26/32.yaml",
+          file_path: "statutes/26/32.yaml",
+          rulespec_content: TWO_RULES_DOC,
+        })}
+        loading={false}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+      />
+    );
+    expect(screen.queryByTestId("encoding-ancestor-note")).toBeNull();
+  });
+
   it("applies shared formula highlighting inside per-rule YAML cards", () => {
     const { container } = render(
       <RuleSpecTab

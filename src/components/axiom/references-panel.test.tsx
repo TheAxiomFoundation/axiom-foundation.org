@@ -72,6 +72,14 @@ describe("formatCitationLabel", () => {
   it("falls back to the raw path for unknown shapes", () => {
     expect(formatCitationLabel("some/weird/path")).toBe("some/weird/path");
   });
+  it("does not mislabel state regulations as CFR", () => {
+    expect(
+      formatCitationLabel("us-nh/regulation/he-w-700/He-W 734.01")
+    ).toBe("NH reg. He-W 734.01");
+    expect(formatCitationLabel("us-nh/regulation/he-w-700/He-W 734.01/a")).toBe(
+      "NH reg. He-W 734.01 (a)"
+    );
+  });
 });
 
 describe("ReferencesPanel", () => {
@@ -144,6 +152,26 @@ describe("ReferencesPanel", () => {
     expect(
       screen.getByText(/1 other rule cites this one\./)
     ).toBeInTheDocument();
+  });
+
+  it("carries the cited text on incoming links so the target can verify the mark", () => {
+    render(
+      <ReferencesPanel
+        outgoing={[]}
+        incoming={[
+          ref({
+            direction: "incoming",
+            other_citation_path: "us/statute/31/9502",
+            citation_text: "26 U.S.C. 3101",
+          }),
+        ]}
+      />
+    );
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute(
+      "href",
+      `/us/statute/31/9502?mark=0-10&mt=${encodeURIComponent("26 U.S.C. 3101")}`
+    );
   });
 
   it("marks unresolved outgoing targets as pending", () => {

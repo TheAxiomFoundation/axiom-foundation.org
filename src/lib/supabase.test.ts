@@ -731,8 +731,10 @@ describe('supabase lib', () => {
 
       const result = await getRuleEncoding('rule-us-co')
       expect(result?.encoding_run_id).toBe('github:statutes/crs/26-2-703/2.5.yaml')
+      // Colorado now lives under the us-co directory of the shared
+      // rulespec-us monorepo, not a standalone rulespec-us-co repo.
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us-co/main/statutes/crs/26-2-703/2.5.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us-co/statutes/crs/26-2-703/2.5.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()
@@ -755,9 +757,11 @@ describe('supabase lib', () => {
       })
 
       const result = await getRuleEncoding('github:us/statute/26/3101/a')
+      // file_path stays bucket-rooted; the GitHub URL gains the
+      // jurisdiction-dir prefix the monorepo layout requires.
       expect(result?.file_path).toBe('statutes/26/3101/a.yaml')
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/statutes/26/3101/a.yaml',
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us/statutes/26/3101/a.yaml',
         expect.any(Object)
       )
       vi.unstubAllGlobals()

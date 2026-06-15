@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
-import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
+import {
+  getRuleSpecRepoLocation,
+  ruleSpecRepoTreeUrl,
+} from "@/lib/axiom/repo-map";
 import {
   listEncodedFiles,
+  listRuleSpecJurisdictions,
   type EncodedFile,
 } from "@/lib/axiom/rulespec/repo-listing";
 
@@ -12,21 +16,30 @@ export const revalidate = 600;
 interface JurisdictionGroup {
   slug: string;
   label: string;
-  repo: string;
+  /** Display label for the source, e.g. ``rulespec-us/us-ca``. */
+  repoLabel: string;
+  /** Link to the jurisdiction's directory within its monorepo. */
+  repoUrl: string;
   files: EncodedFile[];
 }
 
+function labelForSlug(slug: string): string {
+  return JURISDICTIONS_SEED.find((j) => j.slug === slug)?.label ?? slug;
+}
+
 async function loadGroups(): Promise<JurisdictionGroup[]> {
-  const candidates = JURISDICTIONS_SEED.filter((j) =>
-    getRuleSpecRepoForJurisdiction(j.slug)
-  );
+  // Discover which jurisdiction directories actually exist in the
+  // monorepos, then list each — rather than probing every seed slug.
+  const slugs = await listRuleSpecJurisdictions();
   const settled = await Promise.all(
-    candidates.map(async (j) => {
-      const files = await listEncodedFiles(j.slug);
+    slugs.map(async (slug) => {
+      const location = getRuleSpecRepoLocation(slug);
+      const files = await listEncodedFiles(slug);
       return {
-        slug: j.slug,
-        label: j.label,
-        repo: getRuleSpecRepoForJurisdiction(j.slug) ?? "",
+        slug,
+        label: labelForSlug(slug),
+        repoLabel: location ? `${location.repo}/${location.prefix}` : slug,
+        repoUrl: ruleSpecRepoTreeUrl(slug) ?? "",
         files,
       };
     })
@@ -93,12 +106,12 @@ function JurisdictionSection({ group }: { group: JurisdictionGroup }) {
             {group.files.length === 1 ? "rule" : "rules"}
           </span>
           <a
-            href={`https://github.com/TheAxiomFoundation/${group.repo}`}
+            href={group.repoUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[var(--color-accent)] no-underline hover:underline"
           >
-            {group.repo}
+            {group.repoLabel}
           </a>
         </div>
       </header>

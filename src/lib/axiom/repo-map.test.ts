@@ -1,32 +1,137 @@
-import { describe, it, expect } from "vitest";
-import { getRuleSpecRepoForJurisdiction } from "./repo-map";
+import { describe, it, expect, afterEach } from "vitest";
+import {
+  getRuleSpecRepoForJurisdiction,
+  getRuleSpecRepoLocation,
+  gitHubApiHeaders,
+  ruleSpecRawFileUrl,
+  ruleSpecBlobUrl,
+  ruleSpecRepoTreeUrl,
+  ruleSpecRepoSubtreeApiUrl,
+  ruleSpecRepoRootTreeApiUrl,
+} from "./repo-map";
 
 describe("getRuleSpecRepoForJurisdiction", () => {
-  it("maps every supported jurisdiction to its rulespec-* repo", () => {
+  it("maps every jurisdiction family to its shared monorepo", () => {
     const expected: Record<string, string> = {
       us: "rulespec-us",
+      "us-al": "rulespec-us",
+      "us-ca": "rulespec-us",
+      // States added to the monorepo with no prior per-state repo still
+      // resolve — the prefix logic is open, not a hand-maintained list.
+      "us-az": "rulespec-us",
+      "us-nh": "rulespec-us",
+      "us-oh": "rulespec-us",
       uk: "rulespec-uk",
+      "uk-kingston-upon-thames": "rulespec-uk",
       canada: "rulespec-ca",
-      "us-al": "rulespec-us-al",
-      "us-ar": "rulespec-us-ar",
-      "us-ca": "rulespec-us-ca",
-      "us-co": "rulespec-us-co",
-      "us-fl": "rulespec-us-fl",
-      "us-ga": "rulespec-us-ga",
-      "us-md": "rulespec-us-md",
-      "us-nc": "rulespec-us-nc",
-      "us-ny": "rulespec-us-ny",
-      "us-sc": "rulespec-us-sc",
-      "us-tn": "rulespec-us-tn",
-      "us-tx": "rulespec-us-tx",
     };
     for (const [slug, repo] of Object.entries(expected)) {
       expect(getRuleSpecRepoForJurisdiction(slug)).toBe(repo);
     }
   });
 
-  it("returns null for jurisdictions without a published rulespec-* repo", () => {
-    expect(getRuleSpecRepoForJurisdiction("us-oh")).toBeNull();
+  it("returns null for jurisdictions outside a published repo family", () => {
+    expect(getRuleSpecRepoForJurisdiction("fr")).toBeNull();
     expect(getRuleSpecRepoForJurisdiction("nope")).toBeNull();
+    expect(getRuleSpecRepoForJurisdiction("")).toBeNull();
+  });
+});
+
+describe("getRuleSpecRepoLocation", () => {
+  it("returns the repo and the jurisdiction-dir prefix", () => {
+    expect(getRuleSpecRepoLocation("us")).toEqual({
+      repo: "rulespec-us",
+      prefix: "us",
+    });
+    expect(getRuleSpecRepoLocation("us-ca")).toEqual({
+      repo: "rulespec-us",
+      prefix: "us-ca",
+    });
+    expect(getRuleSpecRepoLocation("uk")).toEqual({
+      repo: "rulespec-uk",
+      prefix: "uk",
+    });
+    expect(getRuleSpecRepoLocation("canada")).toEqual({
+      repo: "rulespec-ca",
+      prefix: "canada",
+    });
+  });
+
+  it("returns null for unsupported jurisdictions", () => {
+    expect(getRuleSpecRepoLocation("fr")).toBeNull();
+  });
+});
+
+describe("URL builders inject the monorepo jurisdiction-dir prefix", () => {
+  it("builds raw file URLs for federal and state bucket-rooted paths", () => {
+    expect(ruleSpecRawFileUrl("us", "statutes/26/32.yaml")).toBe(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us/statutes/26/32.yaml"
+    );
+    expect(
+      ruleSpecRawFileUrl("us-ca", "regulations/mpp/63-300/1.yaml")
+    ).toBe(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us-ca/regulations/mpp/63-300/1.yaml"
+    );
+  });
+
+  it("builds blob URLs for the human-facing View on GitHub link", () => {
+    expect(ruleSpecBlobUrl("us", "statutes/26/32.yaml")).toBe(
+      "https://github.com/TheAxiomFoundation/rulespec-us/blob/main/us/statutes/26/32.yaml"
+    );
+  });
+
+  it("builds a tree URL pointing at the jurisdiction directory", () => {
+    expect(ruleSpecRepoTreeUrl("us-ny")).toBe(
+      "https://github.com/TheAxiomFoundation/rulespec-us/tree/main/us-ny"
+    );
+  });
+
+  it("builds the recursive subtree git-trees API URL for a jurisdiction", () => {
+    expect(ruleSpecRepoSubtreeApiUrl("rulespec-us", "us")).toBe(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main:us?recursive=1"
+    );
+    expect(ruleSpecRepoSubtreeApiUrl("rulespec-us", "us-ca")).toBe(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main:us-ca?recursive=1"
+    );
+  });
+
+  it("builds the top-level (non-recursive) git-trees API URL for a repo", () => {
+    expect(ruleSpecRepoRootTreeApiUrl("rulespec-uk")).toBe(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main"
+    );
+  });
+
+  it("returns null from the file/blob/tree builders for unsupported jurisdictions", () => {
+    expect(ruleSpecRawFileUrl("fr", "statutes/1.yaml")).toBeNull();
+    expect(ruleSpecBlobUrl("fr", "statutes/1.yaml")).toBeNull();
+    expect(ruleSpecRepoTreeUrl("fr")).toBeNull();
+  });
+});
+
+describe("gitHubApiHeaders", () => {
+  const original = {
+    GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+    GH_TOKEN: process.env.GH_TOKEN,
+  };
+  afterEach(() => {
+    process.env.GITHUB_TOKEN = original.GITHUB_TOKEN;
+    process.env.GH_TOKEN = original.GH_TOKEN;
+  });
+
+  it("sends only the Accept header when no token is configured", () => {
+    delete process.env.GITHUB_TOKEN;
+    delete process.env.GH_TOKEN;
+    expect(gitHubApiHeaders()).toEqual({
+      Accept: "application/vnd.github+json",
+    });
+  });
+
+  it("authenticates when a token is configured", () => {
+    delete process.env.GH_TOKEN;
+    process.env.GITHUB_TOKEN = "secret-token";
+    expect(gitHubApiHeaders()).toEqual({
+      Accept: "application/vnd.github+json",
+      Authorization: "Bearer secret-token",
+    });
   });
 });

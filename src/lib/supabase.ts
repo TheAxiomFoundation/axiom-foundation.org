@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getLandingJurisdictions } from '@/lib/axiom/landing-jurisdictions'
-import { getRuleSpecRepoForJurisdiction } from '@/lib/axiom/repo-map'
+import { ruleSpecRawFileUrl } from '@/lib/axiom/repo-map'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 
 // Supabase configuration
@@ -366,11 +366,12 @@ async function fetchRuleSpecFromGitHub(
   candidates: string[],
   jurisdiction: string
 ): Promise<RuleEncodingData | null> {
-  const repo = getRuleSpecRepoForJurisdiction(jurisdiction)
-  if (!repo) return null
-
   for (const filePath of candidates) {
-    const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${filePath}`
+    // ``filePath`` is bucket-rooted (``statutes/26/32.yaml``); the
+    // helper injects the monorepo jurisdiction-dir prefix and returns
+    // null when the jurisdiction has no published repo.
+    const url = ruleSpecRawFileUrl(jurisdiction, filePath)
+    if (!url) return null
     const res = await cachedRawFetch(url, { next: { revalidate: 3600 } } as RequestInit)
     if (!res.ok) continue
     return {

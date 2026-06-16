@@ -16,15 +16,18 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const { mockListEncodedFiles, mockRedirect } = vi.hoisted(() => ({
-  mockListEncodedFiles: vi.fn(),
-  mockRedirect: vi.fn((path: string) => {
-    throw new Error(`NEXT_REDIRECT:${path}`);
-  }),
-}));
+const { mockListEncodedFiles, mockListRuleSpecJurisdictions, mockRedirect } =
+  vi.hoisted(() => ({
+    mockListEncodedFiles: vi.fn(),
+    mockListRuleSpecJurisdictions: vi.fn(),
+    mockRedirect: vi.fn((path: string) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    }),
+  }));
 
 vi.mock("@/lib/axiom/rulespec/repo-listing", () => ({
   listEncodedFiles: mockListEncodedFiles,
+  listRuleSpecJurisdictions: mockListRuleSpecJurisdictions,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -39,6 +42,7 @@ import EncodedRuleViewerPage from "./[...path]/page";
 
 describe("EncodedRulesIndexPage", () => {
   it("renders the empty state when no jurisdiction has encodings", async () => {
+    mockListRuleSpecJurisdictions.mockResolvedValue(["us", "uk"]);
     mockListEncodedFiles.mockResolvedValue([]);
     const ui = await EncodedRulesIndexPage();
     render(ui);
@@ -48,6 +52,7 @@ describe("EncodedRulesIndexPage", () => {
   });
 
   it("groups files by jurisdiction, sorts groups by descending count, and links each row", async () => {
+    mockListRuleSpecJurisdictions.mockResolvedValue(["us", "uk", "us-ca"]);
     mockListEncodedFiles.mockImplementation(async (jurisdiction: string) => {
       if (jurisdiction === "us") {
         return [

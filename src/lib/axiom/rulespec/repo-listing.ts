@@ -1,4 +1,12 @@
-import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
+import {
+  getRuleSpecRepoForJurisdiction,
+  getRuleSpecRepoLocation,
+  gitHubApiHeaders,
+  ruleSpecRawFileUrl,
+  ruleSpecRepoRootTreeApiUrl,
+  ruleSpecRepoSubtreeApiUrl,
+  RULESPEC_REPOS,
+} from "@/lib/axiom/repo-map";
 import { cachedRawFetch } from "./raw-cache";
 
 /**
@@ -42,34 +50,74 @@ interface GitHubTreeResponse {
 const REVALIDATE_SECONDS = 600;
 
 /**
- * Fetch and filter the file tree for one jurisdiction. Returns an
- * empty list when the jurisdiction has no repo or the API call
- * fails — the caller renders that as "no encodings yet" instead of
- * surfacing the network error.
+ * Fetch and filter the encoded-file listing for one jurisdiction.
+ * Returns an empty list when the jurisdiction has no repo or the API
+ * call fails — the caller renders that as "no encodings yet" instead
+ * of surfacing the network error.
+ *
+ * The ``rulespec-*`` repos are monorepos shared across a whole
+ * jurisdiction family (federal + every state live in ``rulespec-us``
+ * under ``us/``, ``us-ca/``, …). We fetch just the requested
+ * jurisdiction's subtree, which keeps each response small enough to
+ * cache (the full monorepo tree is several MB — over Next's cache
+ * limit — so caching it fails and every browse re-hits GitHub) and
+ * returns bucket-rooted paths the parser already understands.
  */
 export async function listEncodedFiles(
   jurisdiction: string
 ): Promise<EncodedFile[]> {
-  const repo = getRuleSpecRepoForJurisdiction(jurisdiction);
-  if (!repo) return [];
-  const url = `https://api.github.com/repos/TheAxiomFoundation/${repo}/git/trees/main?recursive=1`;
-  let body: GitHubTreeResponse | null = null;
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/vnd.github+json" },
-      next: { revalidate: REVALIDATE_SECONDS },
-    } as RequestInit);
-    if (!res.ok) return [];
-    body = (await res.json()) as GitHubTreeResponse;
-  } catch {
-    return [];
-  }
+  const loc = getRuleSpecRepoLocation(jurisdiction);
+  if (!loc) return [];
+  const body = await fetchTree(
+    ruleSpecRepoSubtreeApiUrl(loc.repo, loc.prefix)
+  );
   return parseTreeEntries(body, jurisdiction);
 }
 
 /**
- * Pure transform from a GitHub tree response to encoded-file
+ * Discover which jurisdiction directories actually exist across the
+ * ``rulespec-*`` monorepos. Reads each repo's top-level tree (one small
+ * request per repo) and keeps the directories that name a jurisdiction.
+ * Lets the encoded index list exactly the populated jurisdictions
+ * without probing every conceivable slug (which would burn the
+ * unauthenticated GitHub rate limit on 404s).
+ */
+export async function listRuleSpecJurisdictions(): Promise<string[]> {
+  const trees = await Promise.all(
+    RULESPEC_REPOS.map((repo) => fetchTree(ruleSpecRepoRootTreeApiUrl(repo)))
+  );
+  const slugs = new Set<string>();
+  for (const body of trees) {
+    if (!body || !Array.isArray(body.tree)) continue;
+    for (const entry of body.tree) {
+      if (entry.type !== "tree") continue;
+      if (getRuleSpecRepoForJurisdiction(entry.path)) slugs.add(entry.path);
+    }
+  }
+  return [...slugs];
+}
+
+async function fetchTree(url: string): Promise<GitHubTreeResponse | null> {
+  try {
+    const res = await fetch(url, {
+      headers: gitHubApiHeaders(),
+      next: { revalidate: REVALIDATE_SECONDS },
+    } as RequestInit);
+    if (!res.ok) return null;
+    return (await res.json()) as GitHubTreeResponse;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pure transform from a jurisdiction's GitHub subtree to encoded-file
  * records. Exposed for testing.
+ *
+ * The subtree is rooted at the jurisdiction directory, so its paths are
+ * already bucket-rooted (``statutes/26/32.yaml``, ``regulations/…``) —
+ * the same shape ``EncodedFile.filePath`` and the rest of the Axiom app
+ * speak.
  */
 export function parseTreeEntries(
   body: GitHubTreeResponse | null,
@@ -188,11 +236,10 @@ export async function fetchEncodedFile(
 ): Promise<{ filePath: string; content: string } | null> {
   const parts = citationPath.split("/");
   const jurisdiction = parts[0];
-  const repo = getRuleSpecRepoForJurisdiction(jurisdiction);
-  if (!repo) return null;
   const filePath = citationPathToFilePath(citationPath);
   if (!filePath) return null;
-  const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${filePath}`;
+  const url = ruleSpecRawFileUrl(jurisdiction, filePath);
+  if (!url) return null;
   const res = await cachedRawFetch(url, {
     next: { revalidate: REVALIDATE_SECONDS },
   } as RequestInit);

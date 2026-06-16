@@ -4,33 +4,34 @@ import {
   parseTreeEntries,
   citationPathToFilePath,
   listEncodedFiles,
+  listRuleSpecJurisdictions,
   fetchEncodedFile,
   findEncodedDescendants,
 } from "./repo-listing";
 import { _resetRawFetchCache } from "./raw-cache";
 
 describe("parseTreeEntries", () => {
+  // A jurisdiction subtree (``git/trees/main:us``) — rooted at the
+  // jurisdiction directory, so its paths are already bucket-rooted.
   const TREE = {
     tree: [
       { path: "README.md", type: "blob" },
       { path: "statutes/26/3101/a.yaml", type: "blob" },
       { path: "statutes/26/3101/a.test.yaml", type: "blob" },
       { path: "statutes/26/3101/b/1.yaml", type: "blob" },
-      { path: "regulations/7/273/9.yaml", type: "blob" },
+      { path: "regulations/7-cfr/273/9.yaml", type: "blob" },
       { path: "policies/usda/snap/fy-2026-cola/deductions.yaml", type: "blob" },
-      {
-        path: "sources/slices/cdss/calfresh/foo.meta.yaml",
-        type: "blob",
-      },
+      { path: ".axiom/encoding-manifests/statutes/26/3101/a.json", type: "blob" },
+      { path: "sources/slices/foo.meta.yaml", type: "blob" },
       { path: "statutes/26", type: "tree" },
     ],
   };
 
-  it("returns one record per encoding YAML, ignoring tests/meta/markdown/non-blobs", () => {
+  it("returns one record per encoding YAML, ignoring tests/meta/manifests/markdown/non-blobs", () => {
     const out = parseTreeEntries(TREE, "us");
     expect(out.map((f) => f.filePath)).toEqual([
       "policies/usda/snap/fy-2026-cola/deductions.yaml",
-      "regulations/7/273/9.yaml",
+      "regulations/7-cfr/273/9.yaml",
       "statutes/26/3101/a.yaml",
       "statutes/26/3101/b/1.yaml",
     ]);
@@ -38,18 +39,26 @@ describe("parseTreeEntries", () => {
 
   it("renames repo buckets back to the citation_path dialect", () => {
     const out = parseTreeEntries(TREE, "us");
-    expect(out.find((f) => f.filePath.startsWith("statutes/"))?.citationPath)
-      .toBe("us/statute/26/3101/a");
-    expect(out.find((f) => f.filePath.startsWith("regulations/"))?.citationPath)
-      .toBe("us/regulation/7/273/9");
-    expect(out.find((f) => f.filePath.startsWith("policies/"))?.citationPath)
-      .toBe("us/policy/usda/snap/fy-2026-cola/deductions");
+    expect(out.find((f) => f.bucket === "statutes")?.citationPath).toBe(
+      "us/statute/26/3101/a"
+    );
+    expect(out.find((f) => f.bucket === "policies")?.citationPath).toBe(
+      "us/policy/usda/snap/fy-2026-cola/deductions"
+    );
+  });
+
+  it("drops the -cfr suffix on federal regulation titles", () => {
+    const out = parseTreeEntries(TREE, "us");
+    expect(out.find((f) => f.bucket === "regulations")?.citationPath).toBe(
+      "us/regulation/7/273/9"
+    );
   });
 
   it("preserves the bucket label so the UI can group / badge entries", () => {
     const out = parseTreeEntries(TREE, "us");
-    const buckets = new Set(out.map((f) => f.bucket));
-    expect(buckets).toEqual(new Set(["statutes", "regulations", "policies"]));
+    expect(new Set(out.map((f) => f.bucket))).toEqual(
+      new Set(["statutes", "regulations", "policies"])
+    );
   });
 
   it("returns an empty list when the body is missing or invalid", () => {
@@ -108,7 +117,7 @@ describe("listEncodedFiles", () => {
   });
 
   it("returns an empty list for a jurisdiction without a published repo", async () => {
-    expect(await listEncodedFiles("us-oh")).toEqual([]);
+    expect(await listEncodedFiles("fr")).toEqual([]);
   });
 
   it("returns an empty list when the GitHub API responds non-2xx", async () => {
@@ -127,23 +136,92 @@ describe("listEncodedFiles", () => {
     expect(await listEncodedFiles("us")).toEqual([]);
   });
 
-  it("parses the tree and includes only encoding YAMLs", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          tree: [
-            { path: "statutes/26/3101/a.yaml", type: "blob" },
-            { path: "statutes/26/3101/a.test.yaml", type: "blob" },
-            { path: "README.md", type: "blob" },
-          ],
-        }),
-      })
-    );
+  it("fetches the jurisdiction subtree and parses encoding YAMLs", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tree: [
+          { path: "statutes/26/3101/a.yaml", type: "blob" },
+          { path: "statutes/26/3101/a.test.yaml", type: "blob" },
+          { path: "README.md", type: "blob" },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
     const out = await listEncodedFiles("us");
     expect(out).toHaveLength(1);
     expect(out[0].citationPath).toBe("us/statute/26/3101/a");
+    // Scopes to the federal subtree of the shared rulespec-us monorepo.
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main:us?recursive=1",
+      expect.anything()
+    );
+  });
+
+  it("scopes a state to its own directory in the shared monorepo", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tree: [{ path: "regulations/mpp/63-300/1.yaml", type: "blob" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const out = await listEncodedFiles("us-ca");
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "us-ca/regulation/mpp/63-300/1",
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main:us-ca?recursive=1",
+      expect.anything()
+    );
+  });
+});
+
+describe("listRuleSpecJurisdictions", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    _resetRawFetchCache();
+  });
+
+  it("returns the jurisdiction directories present across the monorepos, skipping non-jurisdiction dirs", async () => {
+    const byUrl: Record<string, unknown> = {
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main": {
+        tree: [
+          { path: "us", type: "tree" },
+          { path: "us-ca", type: "tree" },
+          { path: "programs", type: "tree" },
+          { path: ".github", type: "tree" },
+          { path: "README.md", type: "blob" },
+        ],
+      },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main": {
+        tree: [{ path: "uk", type: "tree" }],
+      },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main": {
+        tree: [],
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => ({
+        ok: true,
+        json: async () => byUrl[url],
+      }))
+    );
+    const slugs = await listRuleSpecJurisdictions();
+    expect(new Set(slugs)).toEqual(new Set(["us", "us-ca", "uk"]));
+  });
+
+  it("tolerates a repo whose tree request fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) =>
+        url.includes("rulespec-us")
+          ? { ok: true, json: async () => ({ tree: [{ path: "us", type: "tree" }] }) }
+          : { ok: false, status: 404 }
+      )
+    );
+    expect(await listRuleSpecJurisdictions()).toEqual(["us"]);
   });
 });
 
@@ -154,7 +232,7 @@ describe("fetchEncodedFile", () => {
   });
 
   it("returns null when the jurisdiction has no published repo", async () => {
-    expect(await fetchEncodedFile("us-ny/statute/foo/bar")).toBeNull();
+    expect(await fetchEncodedFile("fr/statute/foo/bar")).toBeNull();
   });
 
   it("returns null when the citation path can't be mapped to a file", async () => {
@@ -166,19 +244,34 @@ describe("fetchEncodedFile", () => {
     expect(await fetchEncodedFile("us/statute/26/9999/z")).toBeNull();
   });
 
-  it("returns the file path + content on success", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: async () => "format: rulespec/v1\n",
-      })
-    );
+  it("fetches the prefixed monorepo URL and returns a bucket-rooted file path", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "format: rulespec/v1\n",
+    });
+    vi.stubGlobal("fetch", fetchMock);
     const out = await fetchEncodedFile("us/statute/26/3101/a");
     expect(out).toEqual({
       filePath: "statutes/26/3101/a.yaml",
       content: "format: rulespec/v1\n",
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us/statutes/26/3101/a.yaml",
+      expect.anything()
+    );
+  });
+
+  it("prefixes state encodings with the state directory", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "format: rulespec/v1\n",
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchEncodedFile("us-ny/statute/tax/606/d");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/us-ny/statutes/tax/606/d.yaml",
+      expect.anything()
+    );
   });
 
   it("returns null when the fetch throws", async () => {
@@ -241,6 +334,6 @@ describe("findEncodedDescendants", () => {
   });
 
   it("returns an empty list for a jurisdiction without a published repo", async () => {
-    expect(await findEncodedDescendants("us-ny/statute/foo")).toEqual([]);
+    expect(await findEncodedDescendants("fr/statute/foo")).toEqual([]);
   });
 });

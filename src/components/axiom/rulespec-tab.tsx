@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { isGitHubEncoding } from "@/lib/axiom-utils";
 import type { EncodingRunScores, RuleEncodingData } from "@/lib/supabase";
-import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
+import { ruleSpecBlobUrl, ruleSpecRawFileUrl } from "@/lib/axiom/repo-map";
 import {
   dumpRuleYaml,
   parseRuleSpec,
@@ -93,10 +93,7 @@ export function RuleSpecTab({
   }
 
   const isGitHub = isGitHubEncoding(encoding);
-  const repo = getRuleSpecRepoForJurisdiction(jurisdiction);
-  const gitHubUrl = repo
-    ? `https://github.com/TheAxiomFoundation/${repo}/blob/main/${encoding.file_path}`
-    : null;
+  const gitHubUrl = ruleSpecBlobUrl(jurisdiction, encoding.file_path);
   const sourceDescription = isGitHub
     ? "Displaying the canonical repository encoding."
     : "Displaying the latest stored encoding run. It may differ from the repository file.";
@@ -541,11 +538,10 @@ function useRuleSpecTests(
   useEffect(() => {
     setTests([]);
     if (!encoding || !isGitHubEncoding(encoding)) return;
-    const repo = getRuleSpecRepoForJurisdiction(jurisdiction);
-    if (!repo) return;
     const testPath = encoding.file_path.replace(/\.yaml$/, ".test.yaml");
     if (testPath === encoding.file_path) return;
-    const url = `https://raw.githubusercontent.com/TheAxiomFoundation/${repo}/main/${testPath}`;
+    const url = ruleSpecRawFileUrl(jurisdiction, testPath);
+    if (!url) return;
     let cancelled = false;
     /* v8 ignore start -- network fetch */
     cachedRawFetch(url)

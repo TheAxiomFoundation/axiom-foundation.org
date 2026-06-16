@@ -309,6 +309,33 @@ describe("buildBreadcrumbs", () => {
     expect(crumbs).toEqual([{ label: "Axiom", href: "/" }]);
   });
 
+  it("does not prefix identifier-style statute segments with 'Title'", () => {
+    const crumbs = buildBreadcrumbs(["us-mt", "statute", "Rule 35"]);
+    expect(crumbs[3]).toEqual({
+      label: "Rule 35",
+      href: "/us-mt/statute/Rule 35",
+    });
+  });
+
+  it("does not prefix identifier-style regulation segments with 'Title'/'Part'", () => {
+    const crumbs = buildBreadcrumbs([
+      "us-nh",
+      "regulation",
+      "he-w-700",
+      "He-W 734.01",
+    ]);
+    expect(crumbs[3].label).toBe("He W 700");
+    expect(crumbs[4]).toEqual({
+      label: "He-W 734.01",
+      href: "/us-nh/regulation/he-w-700/He-W 734.01",
+    });
+  });
+
+  it("keeps numeric titles prefixed with 'Title'", () => {
+    const crumbs = buildBreadcrumbs(["us", "statute", "26", "32"]);
+    expect(crumbs[3].label).toBe("Title 26");
+  });
+
   it("uses raw segment for unknown doc_type", () => {
     const crumbs = buildBreadcrumbs(["uk", "regulation"]);
     expect(crumbs[2].label).toBe("Regulation");

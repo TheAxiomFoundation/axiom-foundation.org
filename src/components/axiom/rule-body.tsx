@@ -148,6 +148,31 @@ function parseMark(raw: string | null): Range | null {
   return { start, end };
 }
 
+/**
+ * Stored reference offsets are frequently stale (computed against an
+ * older or longer body revision), so a raw ``?mark=`` range can land
+ * on the wrong words. When the link also carries the cited text
+ * (``mt``), trust the range only if it matches; otherwise re-anchor
+ * on the first occurrence of the text, and drop the highlight rather
+ * than mark unrelated text. Without ``mt`` (legacy/external links)
+ * keep the old in-bounds behaviour.
+ */
+function resolveMarkRange(
+  range: Range | null,
+  markText: string | null,
+  body: string
+): Range | null {
+  if (!range) return null;
+  const inBounds = range.end <= body.length;
+  if (!markText) return inBounds ? range : null;
+  if (inBounds && body.slice(range.start, range.end) === markText) {
+    return range;
+  }
+  const index = body.indexOf(markText);
+  if (index === -1) return null;
+  return { start: index, end: index + markText.length };
+}
+
 function parseTableLine(line: string, lineOffset: number): TableCell[] {
   const pipeIndexes: number[] = [];
   for (let i = 0; i < line.length; i++) {
@@ -318,10 +343,13 @@ function parseBodyBlocks(body: string): BodyBlock[] {
 function Citation({ ref, text }: { ref: InlineReference; text: string }) {
   // Incoming refs carry offsets into the citing (target) body; pass them
   // through as a ``mark`` query so the target page lands on the exact
-  // passage.
+  // passage. ``mt`` carries the cited text so the target can verify the
+  // offsets against its own body and re-anchor when they are stale.
   const markQuery =
     ref.direction === "incoming"
-      ? `?mark=${ref.start_offset}-${ref.end_offset}`
+      ? `?mark=${ref.start_offset}-${ref.end_offset}&mt=${encodeURIComponent(
+          ref.citation_text
+        )}`
       : "";
   const href = `/${ref.other_citation_path}${markQuery}`;
   const title = ref.inferred
@@ -543,6 +571,7 @@ export function RuleBody({
 }: RuleBodyProps) {
   const searchParams = useSearchParams();
   const markString = searchParams?.get("mark") ?? null;
+  const markText = searchParams?.get("mt") ?? null;
   const markRange = parseMark(markString);
   const firstMarkRef = useRef<HTMLElement | null>(null);
 
@@ -574,7 +603,7 @@ export function RuleBody({
   const inlineRefs = buildInlineReferences(body, citationPath, refs);
   const segments = applyMark(
     spliceRefs(body, inlineRefs),
-    markRange && markRange.end <= body.length ? markRange : null
+    resolveMarkRange(markRange, markText, body)
   );
 
   // Precompute the index of the first marked segment so the ref

@@ -388,11 +388,11 @@ function TabbedCodeExamples() {
       </div>
 
       {/* Format tabs */}
-      <div className="flex border-b border-[var(--color-rule)] mb-0">
+      <div className="flex overflow-x-auto border-b border-[var(--color-rule)] mb-0">
         {(["rulespec", "dmn", "openfisca", "catala"] as FormatTab[]).map((tab) => (
           <button
             key={tab}
-            className={`px-5 py-3 font-mono text-xs font-medium border-b-2 transition-colors duration-150 bg-transparent ${
+            className={`shrink-0 px-5 py-3 font-mono text-xs font-medium border-b-2 transition-colors duration-150 bg-transparent ${
               activeTab === tab
                 ? "border-[var(--color-accent)] text-[var(--color-accent)]"
                 : "border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink-secondary)]"

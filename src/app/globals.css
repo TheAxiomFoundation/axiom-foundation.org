@@ -2,6 +2,24 @@
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 
+/* ── Mobile: prevent horizontal page scroll ──
+   The shared tokens already set `overflow-x: hidden` on <body>, but a
+   fixed-position decorative canvas (the citation-network background) is
+   sized to `window.innerWidth`, which can edge a hair past the layout
+   viewport on small screens and let the document element scroll
+   sideways. Clamping the root element closes that gap. No effect on
+   desktop, where nothing exceeds the viewport. */
+html {
+  overflow-x: hidden;
+}
+
+/* Belt-and-suspenders: the background canvas is purely decorative and
+   should never widen the page. Cap it to the viewport so it can't
+   introduce a sub-pixel horizontal scrollbar on phones. */
+canvas[aria-hidden] {
+  max-width: 100vw;
+}
+
 /* ── Axiom reference highlight (scroll-to-mark on incoming-ref click) */
 @keyframes axiom-mark-flash {
   0% {

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { CorpusStatusPage } from "@/components/axiom/corpus-status-page";
 import { getCorpusStatus } from "@/lib/corpus-status";
 import { SITE_URL } from "@/lib/urls";
@@ -15,7 +14,5 @@ export const metadata: Metadata = {
 
 export default async function OpsPage() {
   const status = await getCorpusStatus();
-  const host = (await headers()).get("host")?.split(":")[0] ?? "";
-  const corpusHref = host === "app.axiom-foundation.org" ? "/" : "/axiom";
-  return <CorpusStatusPage status={status} corpusHref={corpusHref} />;
+  return <CorpusStatusPage status={status} />;
 }

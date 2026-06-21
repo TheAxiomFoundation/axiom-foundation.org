@@ -268,7 +268,7 @@ python -m pytest -q python/tests`,
     snippet: `Axiom shows:
 - official source documents
 - RuleSpec encodings
-- encoding_runs metadata
+- optional legacy encoding-run metadata
 - per-encoding agent logs`,
     icon: <TargetIcon className="w-5 h-5" />,
   },

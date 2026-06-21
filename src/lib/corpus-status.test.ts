@@ -227,6 +227,8 @@ describe("corpus status helpers", () => {
     vi.stubEnv("AXIOM_CORPUS_STATUS_BASE_URL", "https://status.example/");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubEnv("AXIOM_GITHUB_TOKEN", "github-token");
+    vi.stubEnv("AXIOM_COMPILED_ARTIFACT_REPOS", "axiom-programs");
     vi.stubGlobal("fetch", vi.fn(mockStatusFetch));
 
     const status = await getCorpusStatus();
@@ -245,6 +247,110 @@ describe("corpus status helpers", () => {
       reviewer_agent: 1,
       unknown: 1,
     });
+    expect(status.corpusStats?.source).toBe("supabase");
+    expect(status.corpusStats?.value?.document_classes).toEqual([
+      {
+        document_class: "statute",
+        count: 2161435,
+        body_count: 1874670,
+        top_level_count: 4102,
+        rulespec_count: 0,
+        refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+      },
+      {
+        document_class: "regulation",
+        count: 659947,
+        body_count: 566047,
+        top_level_count: 8494,
+        rulespec_count: 0,
+        refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+      },
+    ]);
+    expect(status.rulespecRepoActivity?.source).toBe("github");
+    expect(status.rulespecRepoActivity?.value?.repo_count).toBe(1);
+    expect(status.rulespecRepoActivity?.value?.rulespec_count).toBe(2);
+    expect(status.rulespecRepoActivity?.value?.test_count).toBe(1);
+    expect(status.rulespecRepoActivity?.value?.corpus_provision_file_count).toBe(1);
+    expect(status.rulespecRepoActivity?.value?.rows[0]).toMatchObject({
+      name: "rulespec-nz",
+      rulespec_count: 2,
+      latest_commit: {
+        author: "Max Ghenis",
+        message: "Encode NZ taxable income core",
+      },
+    });
+    expect(status.compiledArtifacts?.source).toBe("github");
+    expect(status.compiledArtifacts?.value?.artifact_count).toBe(2);
+    expect(status.compiledArtifacts?.value?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          repo: "axiom-programs",
+          path: "artifacts/uk/universal-credit/fy-2026-27.compiled.json",
+          package_id: "universal-credit/fy-2026-27",
+          package_type: "compiled-runtime",
+          has_manifest: true,
+          has_rulespec_bundle: true,
+          latest_commit: expect.objectContaining({
+            author: "Pavel Makarchuk",
+            message: "Update UK Universal Credit compiled package",
+          }),
+        }),
+        expect.objectContaining({
+          repo: "axiom-programs",
+          path: ".axiom/encoding-manifests/policies/example/snap.json",
+          package_id: "policies/example/snap",
+          package_type: "applied-rulespec",
+          has_manifest: true,
+          has_rulespec_bundle: true,
+          latest_commit: null,
+        }),
+      ])
+    );
+  });
+
+  it("rebuilds the release artifact report from Supabase when the status artifact is absent", async () => {
+    vi.stubEnv("AXIOM_CORPUS_STATUS_BASE_URL", "https://status.example/");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubGlobal("fetch", vi.fn(mockMissingArtifactReportFetch));
+
+    const status = await getCorpusStatus();
+
+    expect(status.artifactReport.source).toBe("supabase");
+    expect(status.artifactReport.value?.rows).toEqual([
+      expect.objectContaining({
+        jurisdiction: "us",
+        document_class: "guidance",
+        version: "2026-05-01-snap-fy2026-cola",
+        provision_count: 3,
+        source_count: 3,
+        r2_complete: true,
+        supabase_count: 3,
+        supabase_matches_provisions: true,
+      }),
+      expect.objectContaining({
+        jurisdiction: "us",
+        document_class: "guidance",
+        version: "2026-05-02-irs-rev-proc-2025-32",
+        provision_count: 37,
+        source_count: 37,
+        r2_complete: true,
+        supabase_count: 37,
+        supabase_matches_provisions: true,
+      }),
+      expect.objectContaining({
+        jurisdiction: "us-co",
+        document_class: "statute",
+        version: "2026-04-29",
+        provision_count: null,
+        source_count: null,
+        r2_complete: true,
+        supabase_count: null,
+        supabase_matches_provisions: null,
+      }),
+    ]);
+    expect(status.artifactReport.value?.supabase_group_count).toBe(2);
+    expect(status.artifactReport.value?.supabase_mismatch_count).toBe(1);
   });
 
   it("loads corpus artifacts from a local root when no remote source is configured", async () => {
@@ -468,6 +574,104 @@ function mockStatusFetch(input: RequestInfo | URL) {
   }
 
   if (url.hostname === "example.supabase.co") {
+    if (url.pathname.endsWith("/rpc/get_corpus_stats")) {
+      return Promise.resolve(
+        jsonResponse({
+          refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+          document_classes: [
+            {
+              document_class: "statute",
+              count: 2161435,
+              body_count: 1874670,
+              top_level_count: 4102,
+              rulespec_count: 0,
+              refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+            },
+            {
+              document_class: "regulation",
+              count: 659947,
+              body_count: 566047,
+              top_level_count: 8494,
+              rulespec_count: 0,
+              refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+            },
+          ],
+        })
+      );
+    }
+
+    if (url.pathname.endsWith("/current_release_scopes")) {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            release_name: "current",
+            jurisdiction: "us",
+            document_class: "guidance",
+            version: "2026-05-01-snap-fy2026-cola",
+            synced_at: "2026-05-01T12:00:00.000Z",
+          },
+          {
+            release_name: "current",
+            jurisdiction: "us",
+            document_class: "guidance",
+            version: "2026-05-02-irs-rev-proc-2025-32",
+            synced_at: "2026-05-02T12:00:00.000Z",
+          },
+          {
+            release_name: "current",
+            jurisdiction: "us-co",
+            document_class: "statute",
+            version: "2026-04-29",
+            synced_at: "2026-04-29T12:00:00.000Z",
+          },
+        ])
+      );
+    }
+
+    if (url.pathname.endsWith("/current_provision_counts")) {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            jurisdiction: "us",
+            document_class: "guidance",
+            provision_count: 40,
+            body_count: 40,
+            top_level_count: 2,
+            rulespec_count: 0,
+            refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+          },
+          {
+            jurisdiction: "us-co",
+            document_class: "statute",
+            provision_count: 39920,
+            body_count: 39920,
+            top_level_count: 1,
+            rulespec_count: 0,
+            refreshed_at: "2026-06-07T15:26:49.300257+00:00",
+          },
+        ])
+      );
+    }
+
+    if (url.pathname.endsWith("/current_provisions")) {
+      const version = url.searchParams.get("version");
+      if (version === "eq.2026-04-29") {
+        return Promise.resolve(
+          jsonResponse(
+            { message: "canceling statement due to statement timeout" },
+            { status: 500 }
+          )
+        );
+      }
+      const count =
+        version === "eq.2026-05-01-snap-fy2026-cola"
+          ? 3
+          : version === "eq.2026-05-02-irs-rev-proc-2025-32"
+            ? 37
+            : 0;
+      return Promise.resolve(jsonResponse([{ id: "provision-1" }], { contentRange: `0-0/${count}` }));
+    }
+
     if (url.pathname.endsWith("/encoding_runs")) {
       if (url.searchParams.get("select") === "id") {
         const count = url.searchParams.has("timestamp")
@@ -529,7 +733,121 @@ function mockStatusFetch(input: RequestInfo | URL) {
     }
   }
 
+  if (url.hostname === "api.github.com") {
+    if (url.pathname === "/orgs/TheAxiomFoundation/repos") {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            name: "rulespec-nz",
+            html_url: "https://github.com/TheAxiomFoundation/rulespec-nz",
+            default_branch: "main",
+            pushed_at: "2026-06-17T13:23:33Z",
+          },
+          {
+            name: "axiom-encode",
+            html_url: "https://github.com/TheAxiomFoundation/axiom-encode",
+            default_branch: "main",
+            pushed_at: "2026-06-18T08:35:45Z",
+          },
+        ])
+      );
+    }
+    if (
+      url.pathname ===
+      "/repos/TheAxiomFoundation/rulespec-nz/git/trees/main"
+    ) {
+      return Promise.resolve(
+        jsonResponse({
+          tree: [
+            { path: "nz/statutes/income_tax/core/taxable_income.yaml", type: "blob" },
+            { path: "nz/statutes/income_tax/core/taxable_income.test.yaml", type: "blob" },
+            { path: "nz/regulations/acc/earners_levy.yaml", type: "blob" },
+            { path: "data/corpus/provisions/nz/statute/2026-06-17-taxable-income-core.jsonl", type: "blob" },
+            { path: "data/coverage/tax-benefit-source-map.json", type: "blob" },
+            { path: "data/oracles/oracle-index.json", type: "blob" },
+          ],
+        })
+      );
+    }
+    if (url.pathname === "/repos/TheAxiomFoundation/rulespec-nz/commits") {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            sha: "b918e1a245093b5f06eef9abfc6e80842a2659af",
+            html_url:
+              "https://github.com/TheAxiomFoundation/rulespec-nz/commit/b918e1a245093b5f06eef9abfc6e80842a2659af",
+            commit: {
+              author: {
+                name: "Max Ghenis",
+                date: "2026-06-17T13:23:33Z",
+              },
+              message: "Encode NZ taxable income core\n\nMore detail",
+            },
+          },
+        ])
+      );
+    }
+    if (url.pathname === "/repos/TheAxiomFoundation/axiom-programs") {
+      return Promise.resolve(
+        jsonResponse({
+          name: "axiom-programs",
+          html_url: "https://github.com/TheAxiomFoundation/axiom-programs",
+          default_branch: "main",
+          pushed_at: "2026-06-10T05:11:09Z",
+        })
+      );
+    }
+    if (
+      url.pathname ===
+      "/repos/TheAxiomFoundation/axiom-programs/git/trees/main"
+    ) {
+      return Promise.resolve(
+        jsonResponse({
+          tree: [
+            { path: "artifacts/uk/universal-credit/fy-2026-27.compiled.json", type: "blob" },
+            { path: "artifacts/uk/universal-credit/fy-2026-27.manifest.json", type: "blob" },
+            { path: "artifacts/uk/universal-credit/fy-2026-27.rulespec.yaml", type: "blob" },
+            { path: ".axiom/encoding-manifests/policies/example/snap.json", type: "blob" },
+          ],
+        })
+      );
+    }
+    if (
+      url.pathname === "/repos/TheAxiomFoundation/axiom-programs/commits" &&
+      url.searchParams.get("path") ===
+        "artifacts/uk/universal-credit/fy-2026-27.compiled.json"
+    ) {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            sha: "abc123456789",
+            html_url:
+              "https://github.com/TheAxiomFoundation/axiom-programs/commit/abc123456789",
+            commit: {
+              author: {
+                name: "Pavel Makarchuk",
+                date: "2026-06-10T05:11:09Z",
+              },
+              message: "Update UK Universal Credit compiled package",
+            },
+          },
+        ])
+      );
+    }
+  }
+
   return Promise.resolve(jsonResponse({ message: "not found" }, { status: 404 }));
+}
+
+function mockMissingArtifactReportFetch(input: RequestInfo | URL) {
+  const url = new URL(input.toString());
+  if (
+    url.hostname === "status.example" &&
+    url.pathname === "/analytics/artifact-report-current-r2.json"
+  ) {
+    return Promise.resolve(jsonResponse({ message: "missing" }, { status: 404 }));
+  }
+  return mockStatusFetch(input);
 }
 
 function mockR2Fetch(input: RequestInfo | URL) {

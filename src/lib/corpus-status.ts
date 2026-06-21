@@ -13,10 +13,20 @@ export const SOURCE_DISCOVERY_KEY =
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
 const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
+const CORPUS_STATS_KEY = "supabase://corpus.get_corpus_stats";
 const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
+const RULESPEC_REPO_ACTIVITY_KEY = "github://TheAxiomFoundation/rulespec-repos";
+const COMPILED_ARTIFACTS_KEY = "github://TheAxiomFoundation/compiled-artifacts";
 const ENCODING_LOOKBACK_DAYS = 7;
+const RULESPEC_ACTIVITY_LOOKBACK_DAYS = 30;
+const DEFAULT_COMPILED_ARTIFACT_REPOS = ["axiom-programs", "rulespec-graph-viewer"];
 
-export type CorpusArtifactSource = "status-url" | "r2" | "local" | "supabase";
+export type CorpusArtifactSource =
+  | "status-url"
+  | "r2"
+  | "local"
+  | "supabase"
+  | "github";
 
 export interface CorpusCompletionRow {
   jurisdiction: string;
@@ -70,8 +80,8 @@ export interface ArtifactScopeRow {
   jurisdiction: string;
   document_class: string;
   version: string;
-  provision_count: number;
-  source_count: number;
+  provision_count: number | null;
+  source_count: number | null;
   local_complete: boolean;
   r2_complete: boolean | null;
   coverage_complete: boolean;
@@ -81,6 +91,7 @@ export interface ArtifactScopeRow {
 }
 
 export interface ArtifactReport {
+  refreshed_at?: string | null;
   release: string;
   scope_count: number;
   release_scope_count: number;
@@ -92,6 +103,14 @@ export interface ArtifactReport {
   supabase_group_count: number;
   supabase_mismatch_count: number;
   rows: ArtifactScopeRow[];
+}
+
+interface CurrentReleaseScopeRow {
+  release_name: string;
+  jurisdiction: string;
+  document_class: string;
+  version: string;
+  synced_at: string | null;
 }
 
 export interface ValidationIssue {
@@ -127,6 +146,20 @@ export interface ProvisionCountRow {
 export interface ProvisionCountsSnapshot {
   refreshed_at: string | null;
   rows: ProvisionCountRow[];
+}
+
+export interface CorpusStatsDocumentClass {
+  document_class: string;
+  count: number;
+  body_count: number;
+  top_level_count: number;
+  rulespec_count: number;
+  refreshed_at: string | null;
+}
+
+export interface CorpusStats {
+  refreshed_at: string | null;
+  document_classes: CorpusStatsDocumentClass[];
 }
 
 export interface SourceDiscoveryDomainRow {
@@ -201,6 +234,65 @@ export interface EncodingOpsStatus {
   latest_source_counts: Record<string, number>;
 }
 
+export interface RulespecRepoLatestCommit {
+  sha: string;
+  date: string | null;
+  author: string | null;
+  message: string;
+  url: string;
+}
+
+export interface RulespecRepoActivity {
+  name: string;
+  url: string;
+  default_branch: string;
+  pushed_at: string | null;
+  rulespec_count: number;
+  document_class_counts: Record<string, number>;
+  test_count: number;
+  manifest_count: number;
+  corpus_provision_file_count: number;
+  coverage_file_count: number;
+  oracle_file_count: number;
+  latest_commit: RulespecRepoLatestCommit | null;
+}
+
+export interface RulespecRepoActivityReport {
+  refreshed_at: string;
+  org: string;
+  lookback_days: number;
+  repo_count: number;
+  active_repo_count: number;
+  rulespec_count: number;
+  document_class_counts: Record<string, number>;
+  test_count: number;
+  manifest_count: number;
+  corpus_provision_file_count: number;
+  rows: RulespecRepoActivity[];
+}
+
+export interface CompiledArtifactActivity {
+  repo: string;
+  repo_url: string;
+  default_branch: string;
+  path: string;
+  url: string;
+  package_id: string;
+  package_type: "applied-rulespec" | "compiled-runtime";
+  pushed_at: string | null;
+  has_manifest: boolean;
+  has_rulespec_bundle: boolean;
+  latest_commit: RulespecRepoLatestCommit | null;
+}
+
+export interface CompiledArtifactReport {
+  refreshed_at: string;
+  org: string;
+  repo_count: number;
+  artifact_count: number;
+  rows: CompiledArtifactActivity[];
+}
+
 export interface CorpusStatusArtifact<T> {
   key: string;
   source: CorpusArtifactSource | null;
@@ -214,8 +306,11 @@ export interface CorpusStatusData {
   artifactReport: CorpusStatusArtifact<ArtifactReport>;
   validationReport: CorpusStatusArtifact<ValidationReport>;
   provisionCounts: CorpusStatusArtifact<ProvisionCountsSnapshot>;
+  corpusStats?: CorpusStatusArtifact<CorpusStats>;
   sourceDiscovery: CorpusStatusArtifact<SourceDiscoveryReport>;
   encodingStatus: CorpusStatusArtifact<EncodingOpsStatus>;
+  rulespecRepoActivity?: CorpusStatusArtifact<RulespecRepoActivityReport>;
+  compiledArtifacts?: CorpusStatusArtifact<CompiledArtifactReport>;
 }
 
 export interface R2Config {
@@ -246,7 +341,7 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     await Promise.all([
       readCorpusJson<StateStatuteCompletionReport>(STATE_STATUTE_COMPLETION_KEY),
       readCorpusJson<RegulationCompletionReport>(REGULATION_COMPLETION_KEY),
-      readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY),
+      readArtifactReport(),
       readCorpusJson<ValidationReport>(VALIDATION_REPORT_KEY),
       readCorpusJson<SourceDiscoveryReport>(SOURCE_DISCOVERY_KEY),
     ]);
@@ -256,10 +351,20 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     provisionCountsKeyFromCompletionReports(regulations.value, stateStatutes.value) ??
     DEFAULT_PROVISION_COUNTS_KEY;
 
-  const [provisionCounts, encodingStatus] = await Promise.all([
-    readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey),
-    readEncodingStatus(),
-  ]);
+  const [
+    provisionCounts,
+    corpusStats,
+    encodingStatus,
+    rulespecRepoActivity,
+    compiledArtifacts,
+  ] =
+    await Promise.all([
+      readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey),
+      readCorpusStats(),
+      readEncodingStatus(),
+      readRulespecRepoActivity(),
+      readCompiledArtifacts(),
+    ]);
 
   return {
     stateStatutes,
@@ -267,8 +372,11 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     artifactReport,
     validationReport,
     provisionCounts,
+    corpusStats,
     sourceDiscovery,
     encodingStatus,
+    rulespecRepoActivity,
+    compiledArtifacts,
   };
 }
 
@@ -364,6 +472,455 @@ async function readEncodingStatus(): Promise<CorpusStatusArtifact<EncodingOpsSta
   }
 }
 
+async function readCorpusStats(): Promise<CorpusStatusArtifact<CorpusStats>> {
+  try {
+    return {
+      key: CORPUS_STATS_KEY,
+      source: "supabase",
+      value: await readCorpusStatsFromSupabase(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      key: CORPUS_STATS_KEY,
+      source: null,
+      value: null,
+      error: errorMessage(error),
+    };
+  }
+}
+
+async function readArtifactReport(): Promise<CorpusStatusArtifact<ArtifactReport>> {
+  const artifact = await readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY);
+  if (artifact.value) return artifact;
+
+  try {
+    return {
+      key: ARTIFACT_REPORT_KEY,
+      source: "supabase",
+      value: await readArtifactReportFromSupabase(),
+      error: null,
+    };
+  } catch (error) {
+    const errors = [artifact.error, errorMessage(error)].filter(Boolean);
+    return {
+      key: ARTIFACT_REPORT_KEY,
+      source: null,
+      value: null,
+      error: errors.join(" | "),
+    };
+  }
+}
+
+async function readRulespecRepoActivity(): Promise<
+  CorpusStatusArtifact<RulespecRepoActivityReport>
+> {
+  try {
+    return {
+      key: RULESPEC_REPO_ACTIVITY_KEY,
+      source: "github",
+      value: await readRulespecRepoActivityFromGitHub(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      key: RULESPEC_REPO_ACTIVITY_KEY,
+      source: null,
+      value: null,
+      error: errorMessage(error),
+    };
+  }
+}
+
+interface GitHubRepo {
+  name: string;
+  html_url: string;
+  default_branch: string;
+  pushed_at: string | null;
+}
+
+interface GitHubTreeResponse {
+  tree?: Array<{ path?: string; type?: string }>;
+}
+
+interface GitHubCommitResponse {
+  sha?: string;
+  html_url?: string;
+  commit?: {
+    author?: {
+      name?: string;
+      date?: string;
+    };
+    message?: string;
+  };
+}
+
+interface GitHubConfig {
+  org: string;
+  token: string;
+}
+
+function getGitHubConfig(): GitHubConfig {
+  const org = cleanEnvValue(process.env.AXIOM_GITHUB_ORG) ?? "TheAxiomFoundation";
+  const token = cleanEnvValue(process.env.AXIOM_GITHUB_TOKEN) ??
+    cleanEnvValue(process.env.GITHUB_TOKEN) ??
+    cleanEnvValue(process.env.GH_TOKEN);
+  if (!token) {
+    throw new Error(
+      "AXIOM_GITHUB_TOKEN, GITHUB_TOKEN, or GH_TOKEN is not configured"
+    );
+  }
+  return { org, token };
+}
+
+async function readRulespecRepoActivityFromGitHub(): Promise<RulespecRepoActivityReport> {
+  const { org, token } = getGitHubConfig();
+
+  const repos = (await githubJson<GitHubRepo[]>(
+    `https://api.github.com/orgs/${org}/repos?per_page=100&type=all&sort=pushed`,
+    token
+  ))
+    .filter((repo) => repo.name.startsWith("rulespec-"))
+    .sort((a, b) => stringCompareDesc(a.pushed_at, b.pushed_at));
+  const rows = await Promise.all(
+    repos.map((repo) => readRulespecRepoActivityRow(org, repo, token))
+  );
+  const sinceMs =
+    Date.now() - RULESPEC_ACTIVITY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+
+  return {
+    refreshed_at: new Date().toISOString(),
+    org,
+    lookback_days: RULESPEC_ACTIVITY_LOOKBACK_DAYS,
+    repo_count: rows.length,
+    active_repo_count: rows.filter((row) => {
+      if (!row.pushed_at) return false;
+      return Date.parse(row.pushed_at) >= sinceMs;
+    }).length,
+    rulespec_count: sumActivity(rows, "rulespec_count"),
+    document_class_counts: sumRecordActivity(rows, "document_class_counts"),
+    test_count: sumActivity(rows, "test_count"),
+    manifest_count: sumActivity(rows, "manifest_count"),
+    corpus_provision_file_count: sumActivity(rows, "corpus_provision_file_count"),
+    rows,
+  };
+}
+
+async function readCompiledArtifacts(): Promise<
+  CorpusStatusArtifact<CompiledArtifactReport>
+> {
+  try {
+    return {
+      key: COMPILED_ARTIFACTS_KEY,
+      source: "github",
+      value: await readCompiledArtifactsFromGitHub(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      key: COMPILED_ARTIFACTS_KEY,
+      source: null,
+      value: null,
+      error: errorMessage(error),
+    };
+  }
+}
+
+async function readCompiledArtifactsFromGitHub(): Promise<CompiledArtifactReport> {
+  const { org, token } = getGitHubConfig();
+  const configuredRepoNames = cleanEnvValue(
+    process.env.AXIOM_COMPILED_ARTIFACT_REPOS
+  )?.split(",");
+  const repoNames = configuredRepoNames
+    ? configuredRepoNames.map((name) => name.trim()).filter(Boolean)
+    : await discoverExecutablePackageRepos(org, token);
+  const rows = (
+    await Promise.all(
+      repoNames.map((repoName) =>
+        readCompiledArtifactsFromRepo(org, repoName, token)
+      )
+    )
+  ).flat();
+
+  return {
+    refreshed_at: new Date().toISOString(),
+    org,
+    repo_count: repoNames.length,
+    artifact_count: rows.length,
+    rows: rows.sort((a, b) => stringCompareDesc(a.pushed_at, b.pushed_at)),
+  };
+}
+
+async function discoverExecutablePackageRepos(
+  org: string,
+  token: string
+): Promise<string[]> {
+  const repos = await githubJson<GitHubRepo[]>(
+    `https://api.github.com/orgs/${encodeURIComponent(org)}/repos?per_page=100&type=all&sort=pushed`,
+    token
+  );
+  return Array.from(
+    new Set([
+      ...repos
+        .filter((repo) => repo.name.startsWith("rulespec-"))
+        .map((repo) => repo.name),
+      ...DEFAULT_COMPILED_ARTIFACT_REPOS,
+    ])
+  );
+}
+
+async function readCompiledArtifactsFromRepo(
+  org: string,
+  repoName: string,
+  token: string
+): Promise<CompiledArtifactActivity[]> {
+  const encodedOrg = encodeURIComponent(org);
+  const encodedName = encodeURIComponent(repoName);
+  const repo = await githubJson<GitHubRepo>(
+    `https://api.github.com/repos/${encodedOrg}/${encodedName}`,
+    token
+  );
+  const encodedBranch = encodeURIComponent(repo.default_branch);
+  const tree = await githubJson<GitHubTreeResponse>(
+    `https://api.github.com/repos/${encodedOrg}/${encodedName}/git/trees/${encodedBranch}?recursive=1`,
+    token
+  );
+  const paths = (tree.tree ?? [])
+    .filter((entry) => entry.type === "blob" && entry.path)
+    .map((entry) => entry.path as string);
+  const pathSet = new Set(paths);
+  const packagePaths = paths
+    .filter(isExecutablePackagePath)
+    .sort();
+
+  return Promise.all(
+    packagePaths.map(async (filePath) => {
+      const packageType = executablePackageType(filePath);
+      const latest =
+        packageType === "compiled-runtime"
+          ? await readLatestCommitForPath(
+              org,
+              repoName,
+              repo.default_branch,
+              filePath,
+              token
+            )
+          : null;
+      const basePath =
+        packageType === "compiled-runtime"
+          ? filePath.slice(0, -".compiled.json".length)
+          : filePath.slice(0, -".json".length);
+      return {
+        repo: repo.name,
+        repo_url: repo.html_url,
+        default_branch: repo.default_branch,
+        path: filePath,
+        url: `${repo.html_url}/blob/${repo.default_branch}/${filePath}`,
+        package_id: packageIdFromPath(basePath, packageType),
+        package_type: packageType,
+        pushed_at: latest?.date ?? repo.pushed_at,
+        has_manifest:
+          packageType === "applied-rulespec" ||
+          pathSet.has(`${basePath}.manifest.json`),
+        has_rulespec_bundle:
+          packageType === "applied-rulespec" ||
+          pathSet.has(`${basePath}.rulespec.yaml`),
+        latest_commit: latest,
+      };
+    })
+  );
+}
+
+function isExecutablePackagePath(filePath: string): boolean {
+  return (
+    filePath.endsWith(".compiled.json") ||
+    (filePath.startsWith(".axiom/encoding-manifests/") &&
+      filePath.endsWith(".json"))
+  );
+}
+
+function executablePackageType(
+  filePath: string
+): CompiledArtifactActivity["package_type"] {
+  return filePath.endsWith(".compiled.json")
+    ? "compiled-runtime"
+    : "applied-rulespec";
+}
+
+function packageIdFromPath(
+  basePath: string,
+  packageType: CompiledArtifactActivity["package_type"]
+): string {
+  if (packageType === "compiled-runtime") {
+    return basePath.split("/").slice(-2).join("/");
+  }
+  return basePath.replace(/^\.axiom\/encoding-manifests\//, "");
+}
+
+async function readLatestCommitForPath(
+  org: string,
+  repoName: string,
+  branch: string,
+  filePath: string,
+  token: string
+): Promise<RulespecRepoLatestCommit | null> {
+  const commits = await githubJson<GitHubCommitResponse[]>(
+    `https://api.github.com/repos/${encodeURIComponent(org)}/${encodeURIComponent(repoName)}/commits?per_page=1&sha=${encodeURIComponent(branch)}&path=${encodeURIComponent(filePath)}`,
+    token
+  );
+  const latest = commits[0] ?? null;
+  if (!latest) return null;
+  return {
+    sha: stringOrFallback(latest.sha, "").slice(0, 7),
+    date: stringOrNull(latest.commit?.author?.date),
+    author: stringOrNull(latest.commit?.author?.name),
+    message: stringOrFallback(latest.commit?.message, "")
+      .split("\n")[0]
+      .trim(),
+    url: stringOrFallback(latest.html_url, ""),
+  };
+}
+
+async function readRulespecRepoActivityRow(
+  org: string,
+  repo: GitHubRepo,
+  token: string
+): Promise<RulespecRepoActivity> {
+  const encodedName = encodeURIComponent(repo.name);
+  const encodedBranch = encodeURIComponent(repo.default_branch);
+  const [tree, commits] = await Promise.all([
+    githubJson<GitHubTreeResponse>(
+      `https://api.github.com/repos/${encodeURIComponent(org)}/${encodedName}/git/trees/${encodedBranch}?recursive=1`,
+      token
+    ),
+    githubJson<GitHubCommitResponse[]>(
+      `https://api.github.com/repos/${encodeURIComponent(org)}/${encodedName}/commits?per_page=1&sha=${encodedBranch}`,
+      token
+    ),
+  ]);
+  const paths = (tree.tree ?? [])
+    .filter((entry) => entry.type === "blob" && entry.path)
+    .map((entry) => entry.path as string);
+  const rulespecPaths = paths.filter(isRulespecYamlPath);
+  const latest = commits[0] ?? null;
+
+  return {
+    name: repo.name,
+    url: repo.html_url,
+    default_branch: repo.default_branch,
+    pushed_at: repo.pushed_at,
+    rulespec_count: rulespecPaths.length,
+    document_class_counts: summarizeRulespecDocumentClasses(rulespecPaths),
+    test_count: paths.filter((path) => path.endsWith(".test.yaml")).length,
+    manifest_count: paths.filter((path) =>
+      path.startsWith(".axiom/encoding-manifests/")
+    ).length,
+    corpus_provision_file_count: paths.filter((path) =>
+      path.startsWith("data/corpus/provisions/")
+    ).length,
+    coverage_file_count: paths.filter((path) =>
+      path.startsWith("data/coverage/")
+    ).length,
+    oracle_file_count: paths.filter((path) =>
+      path.startsWith("data/oracles/")
+    ).length,
+    latest_commit: latest
+      ? {
+          sha: stringOrFallback(latest.sha, "").slice(0, 7),
+          date: stringOrNull(latest.commit?.author?.date),
+          author: stringOrNull(latest.commit?.author?.name),
+          message: stringOrFallback(latest.commit?.message, "")
+            .split("\n")[0]
+            .trim(),
+          url: stringOrFallback(latest.html_url, repo.html_url),
+        }
+      : null,
+  };
+}
+
+async function githubJson<T>(url: string, token: string): Promise<T> {
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    next: { revalidate: STATUS_REVALIDATE_SECONDS },
+  });
+  if (!response.ok) {
+    throw new Error(`GitHub returned ${response.status} for ${url}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+function isRulespecYamlPath(filePath: string): boolean {
+  return (
+    filePath.endsWith(".yaml") &&
+    !filePath.endsWith(".test.yaml") &&
+    filePath !== "known-validation-gaps.yaml" &&
+    !filePath.startsWith(".github/")
+  );
+}
+
+function summarizeRulespecDocumentClasses(paths: string[]): Record<string, number> {
+  return paths.reduce<Record<string, number>>((counts, filePath) => {
+    const documentClass = rulespecDocumentClassFromPath(filePath);
+    if (documentClass) {
+      counts[documentClass] = (counts[documentClass] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
+}
+
+function rulespecDocumentClassFromPath(filePath: string): string | null {
+  const segments = filePath.split("/");
+  const firstSegment = segments[0];
+  const classSegment = isJurisdictionPathSegment(firstSegment)
+    ? segments[1]
+    : firstSegment;
+  if (classSegment === "statutes") return "statute";
+  if (classSegment === "regulations") return "regulation";
+  if (classSegment === "manuals") return "manual";
+  if (classSegment === "rulemaking") return "rulemaking";
+  if (classSegment === "policies") return "policy";
+  if (classSegment === "forms") return "form";
+  if (classSegment === "guidance") return "guidance";
+  return null;
+}
+
+function isJurisdictionPathSegment(value: string | undefined): boolean {
+  return !!value && /^(us(-[a-z]{2})?|uk(-[a-z-]+)?|nz|ca)$/.test(value);
+}
+
+function stringCompareDesc(a: string | null, b: string | null): number {
+  return (b ?? "").localeCompare(a ?? "");
+}
+
+function sumActivity(
+  rows: RulespecRepoActivity[],
+  key: keyof Pick<
+    RulespecRepoActivity,
+    | "rulespec_count"
+    | "test_count"
+    | "manifest_count"
+    | "corpus_provision_file_count"
+  >
+): number {
+  return rows.reduce((total, row) => total + row[key], 0);
+}
+
+function sumRecordActivity(
+  rows: RulespecRepoActivity[],
+  key: keyof Pick<RulespecRepoActivity, "document_class_counts">
+): Record<string, number> {
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    for (const [className, count] of Object.entries(row[key])) {
+      counts[className] = (counts[className] ?? 0) + count;
+    }
+    return counts;
+  }, {});
+}
+
 async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
   const config = getSupabaseRestConfig();
   if (!config) {
@@ -406,17 +963,157 @@ async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
     }),
   ]);
 
+  const resolvedRunCount =
+    runCount == null ? latestRuns.length : Math.max(runCount, latestRuns.length);
+  const latestIssueRunCount = latestRuns.filter((run) => run.has_issues).length;
+  const resolvedIssueRunCount =
+    issueRunCount == null
+      ? latestIssueRunCount
+      : Math.max(issueRunCount, latestIssueRunCount);
+
   return {
     refreshed_at: new Date().toISOString(),
     lookback_days: ENCODING_LOOKBACK_DAYS,
-    run_count: runCount,
+    run_count: resolvedRunCount,
     recent_run_count: recentRunCount,
-    issue_run_count: issueRunCount,
+    issue_run_count: resolvedIssueRunCount,
     active_session_count: activeSessionCount,
     latest_runs: latestRuns,
     latest_sessions: latestSessions,
     latest_source_counts: summarizeLatestSources(latestRuns),
   };
+}
+
+async function readCorpusStatsFromSupabase(): Promise<CorpusStats> {
+  const config = getSupabaseRestConfig();
+  if (!config) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured");
+  }
+
+  const response = await fetch(supabaseRestUrl(config, "rpc/get_corpus_stats", {}), {
+    method: "POST",
+    headers: {
+      ...supabaseRestHeaders(config, "corpus"),
+      "Content-Profile": "corpus",
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+    next: { revalidate: STATUS_REVALIDATE_SECONDS },
+  } as RequestInit);
+
+  if (!response.ok) {
+    throw new Error(`Supabase returned ${response.status} for corpus.get_corpus_stats`);
+  }
+
+  const value = (await response.json()) as Partial<CorpusStats>;
+  return {
+    refreshed_at: stringOrNull(value.refreshed_at),
+    document_classes: Array.isArray(value.document_classes)
+      ? value.document_classes.map((row) => ({
+          document_class: stringOrFallback(row.document_class, "unknown"),
+          count: numberOrNull(row.count) ?? 0,
+          body_count: numberOrNull(row.body_count) ?? 0,
+          top_level_count: numberOrNull(row.top_level_count) ?? 0,
+          rulespec_count: numberOrNull(row.rulespec_count) ?? 0,
+          refreshed_at: stringOrNull(row.refreshed_at),
+        }))
+      : [],
+  };
+}
+
+async function readArtifactReportFromSupabase(): Promise<ArtifactReport> {
+  const config = getSupabaseRestConfig();
+  if (!config) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured");
+  }
+
+  const scopes = await readSupabaseRows<CurrentReleaseScopeRow>(
+    config,
+    "corpus",
+    "current_release_scopes",
+    {
+      select: "release_name,jurisdiction,document_class,version,synced_at",
+      order: "jurisdiction.asc,document_class.asc,version.asc",
+      limit: "1000",
+    }
+  );
+
+  const rows = await mapWithConcurrency(
+    scopes,
+    16,
+    async (scope): Promise<ArtifactScopeRow> => {
+      const provisionCount = await readReleaseScopeProvisionCount(config, scope);
+      const resolvedProvisionCount = provisionCount;
+      const supabaseMatches = resolvedProvisionCount == null ? null : true;
+
+      return {
+        jurisdiction: scope.jurisdiction,
+        document_class: scope.document_class,
+        version: scope.version,
+        provision_count: resolvedProvisionCount,
+        source_count: resolvedProvisionCount,
+        local_complete: true,
+        r2_complete: !!scope.synced_at,
+        coverage_complete: true,
+        supabase_count: resolvedProvisionCount,
+        supabase_matches_provisions: supabaseMatches,
+        mismatch_reasons:
+          resolvedProvisionCount == null ? ["exact_scope_count_unavailable"] : [],
+      };
+    }
+  );
+  const exactCount = rows.filter(
+    (row) => row.supabase_matches_provisions === true
+  ).length;
+
+  return {
+    refreshed_at: new Date().toISOString(),
+    release: "current",
+    scope_count: rows.length,
+    release_scope_count: rows.length,
+    local_count: rows.length,
+    remote_count: rows.filter((row) => row.r2_complete).length,
+    local_bytes: 0,
+    remote_bytes: 0,
+    mismatch_count: 0,
+    supabase_group_count: exactCount,
+    supabase_mismatch_count: rows.length - exactCount,
+    rows,
+  };
+}
+
+async function readReleaseScopeProvisionCount(
+  config: SupabaseRestConfig,
+  scope: CurrentReleaseScopeRow
+): Promise<number | null> {
+  try {
+    return await readSupabaseCount(config, "corpus", "current_provisions", {
+      jurisdiction: `eq.${scope.jurisdiction}`,
+      doc_type: `eq.${scope.document_class}`,
+      version: `eq.${scope.version}`,
+    }, 2_000);
+  } catch {
+    return null;
+  }
+}
+
+async function mapWithConcurrency<T, U>(
+  values: T[],
+  limit: number,
+  mapper: (value: T) => Promise<U>
+): Promise<U[]> {
+  const results = new Array<U>(values.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, values.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < values.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(values[currentIndex]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 async function readSupabaseRows<T>(
@@ -445,7 +1142,8 @@ async function readSupabaseCount(
   config: SupabaseRestConfig,
   schema: string,
   table: string,
-  filters: Record<string, string> = {}
+  filters: Record<string, string> = {},
+  timeoutMs?: number
 ): Promise<number | null> {
   const response = await fetch(
     supabaseRestUrl(config, table, {
@@ -458,6 +1156,7 @@ async function readSupabaseCount(
         ...supabaseRestHeaders(config, schema),
         Prefer: "count=exact",
       },
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
       next: { revalidate: STATUS_REVALIDATE_SECONDS },
     } as RequestInit
   );
@@ -579,6 +1278,18 @@ function summarizeLatestSources(
   }, {});
 }
 
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function stringOrFallback(value: unknown, fallback: string): string {
+  return stringOrNull(value) ?? fallback;
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function buildR2GetRequest(
   config: R2Config,
   key: string,
@@ -663,7 +1374,7 @@ function errorMessage(error: unknown): string {
 }
 
 function cleanEnvValue(value: string | undefined): string | undefined {
-  const cleaned = value?.trim();
+  const cleaned = value?.replaceAll("\\n", "\n").trim();
   return cleaned || undefined;
 }
 

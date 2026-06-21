@@ -285,7 +285,7 @@ assessed_income_period_satisfied:
       "changed files listed in manifest",
       "repo validators pass before sync",
     ],
-    outputs: ["manifest.json", "encoding_runs", "Axiom rule tree"],
+    outputs: ["manifest.json", "rulespec repo state", "Axiom rule tree"],
     snippetLabel: "wave manifest",
     snippetLanguage: "plain",
     snippet: `{

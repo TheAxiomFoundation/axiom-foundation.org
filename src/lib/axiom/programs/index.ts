@@ -43,11 +43,19 @@ export function findPrograms(query: string, limit = 8): Program[] {
 
     for (const alias of program.aliases) {
       const a = alias.toLowerCase();
+      const aliasTokens = tokenise(a);
       if (a === q) {
         score += 1000;
         break;
       }
       if (a.includes(q)) score = Math.max(score, 40);
+      if (
+        (aliasTokens.length > 1 || a.length <= 4) &&
+        aliasTokens.length > 0 &&
+        aliasTokens.every((token) => queryTokens.includes(token))
+      ) {
+        score = Math.max(score, 180 + aliasTokens.length * 20);
+      }
     }
 
     const haystackTokens = new Set(tokenise(haystack));

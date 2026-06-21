@@ -1,17 +1,13 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-const mockSearchRules = vi.fn();
-
-vi.mock("@/lib/supabase", () => ({
-  searchRules: (...args: unknown[]) => mockSearchRules(...args),
-}));
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 import { AxiomSearch } from "./axiom-search";
+
+const mockFetch = vi.fn();
 
 const hit = (overrides: Partial<{
   id: string;
@@ -34,16 +30,75 @@ const hit = (overrides: Partial<{
   ...overrides,
 });
 
+const encodedHit = (overrides: Partial<{
+  filePath: string;
+  citationPath: string;
+  bucket: string;
+  label: string;
+  jurisdictionLabel: string;
+  matchKind: "file" | "symbol";
+  symbolMatches: unknown[];
+  fileSummary: unknown;
+  score: number;
+}> = {}) => ({
+  filePath: "policies/cdhs/snap/fy-2026-benefit-calculation.yaml",
+  citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+  bucket: "policies",
+  label: "CDHS SNAP FY 2026 Benefit Calculation",
+  jurisdictionLabel: "Colorado",
+  matchKind: "file",
+  symbolMatches: [],
+  fileSummary: null,
+  score: 730,
+  ...overrides,
+});
+
+function responseJson(overrides: Partial<{
+  query: string;
+  programs: unknown[];
+  encoded: unknown[];
+  corpus: unknown[];
+}> = {}) {
+  return {
+    query: "snap",
+    programs: [],
+    encoded: [],
+    corpus: [],
+    ...overrides,
+  };
+}
+
+function okResponse(body: unknown) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  );
+}
+
+function latestSearchUrl(): URL {
+  const latest = mockFetch.mock.calls.at(-1)?.[0];
+  if (typeof latest !== "string") throw new Error("fetch URL missing");
+  return new URL(latest, "https://app.axiom-foundation.org");
+}
+
 describe("AxiomSearch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue(okResponse(responseJson()));
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   // Component debounces at DEBOUNCE_MS = 200. Real timers + a short settle
   // beats the fake-timers/waitFor impedance mismatch.
   function flush(_ms = 250) {
-    // no-op — callers await waitFor which handles real-time debounce.
-    // Kept as a syntactic marker at call sites.
+    // no-op; callers await waitFor which handles real-time debounce.
   }
 
   it("renders the search input with a descriptive placeholder", () => {
@@ -55,79 +110,224 @@ describe("AxiomSearch", () => {
     );
   });
 
-  it("does not call the RPC for queries below the minimum length", async () => {
+  it("does not call the search endpoint for queries below the minimum length", async () => {
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "a" },
     });
     flush();
-    expect(mockSearchRules).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("debounces and then issues a search returning results", async () => {
-    mockSearchRules.mockResolvedValueOnce([
-      hit({}),
-      hit({
-        id: "hit-2",
-        citation_path: "us/statute/26/32",
-        heading: "Earned income",
-        has_rulespec: true,
-        snippet: "<mark>earned income</mark> tax credit",
-      }),
-    ]);
+  it("debounces and then issues a grouped search returning results", async () => {
+    mockFetch.mockResolvedValueOnce(
+      okResponse(
+        responseJson({
+          corpus: [
+            hit({}),
+            hit({
+              id: "hit-2",
+              citation_path: "us/statute/26/32",
+              heading: "Earned income",
+              has_rulespec: true,
+              snippet: "<mark>earned income</mark> tax credit",
+            }),
+          ],
+        })
+      )
+    );
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "SNAP households" },
     });
 
-    // Before debounce fires, no call
-    expect(mockSearchRules).not.toHaveBeenCalled();
-
+    expect(mockFetch).not.toHaveBeenCalled();
     flush(250);
 
     await waitFor(() => {
-      expect(mockSearchRules).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
-    expect(mockSearchRules).toHaveBeenCalledWith("SNAP households", {
-      jurisdiction: undefined,
-      docType: undefined,
-      limit: 30,
-    });
+    const url = latestSearchUrl();
+    expect(url.pathname).toBe("/api/axiom/search");
+    expect(url.searchParams.get("q")).toBe("SNAP households");
+    expect(url.searchParams.get("limit")).toBe("30");
+    expect(url.searchParams.has("jurisdiction")).toBe(false);
+    expect(url.searchParams.has("docType")).toBe(false);
 
-    // Render results
     await waitFor(() => {
       expect(screen.getByText("Income and deductions")).toBeInTheDocument();
     });
     expect(screen.getByText("Earned income")).toBeInTheDocument();
-    // Citation labels formatted correctly
     expect(screen.getByText("7 CFR § 273.9")).toBeInTheDocument();
     expect(screen.getByText("26 USC § 32")).toBeInTheDocument();
-    // Encoded badge only on the hit with has_rulespec: true
     expect(screen.getAllByText("Encoded").length).toBe(1);
   });
 
+  it("renders program and encoded sections ahead of corpus text", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          programs: [
+            {
+              program: {
+                slug: "colorado-snap",
+                displayName: "Colorado SNAP",
+                aliases: ["co snap"],
+                jurisdiction: "us-co",
+                governingBody: "Colorado Department of Human Services",
+                summary: "Colorado's state-administered SNAP program.",
+                anchors: [],
+              },
+              anchors: [
+                {
+                  role: "benefit_calculation",
+                  citationPath:
+                    "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+                  label: "Benefit calculation",
+                  displayCitation: "Colorado CDHS SNAP FY 2026",
+                },
+              ],
+            },
+          ],
+          encoded: [encodedHit()],
+          corpus: [
+            hit({
+              id: "co-container",
+              jurisdiction: "us-co",
+              doc_type: "policy",
+              citation_path: "us-co/policy/co-cdhs-snap-page",
+              heading: "Supplemental Nutrition Assistance Program",
+            }),
+          ],
+        })
+      )
+    );
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CO SNAP" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Programs")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Executable RuleSpecs")).toBeInTheDocument();
+    expect(screen.getByText("Source text")).toBeInTheDocument();
+    expect(
+      screen.getByText("Colorado SNAP: Benefit calculation")
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("us-co/policy/cdhs/snap/fy-2026-benefit-calculation")
+        .length
+    ).toBeGreaterThan(0);
+
+    const resultText = screen.getByLabelText("Search results").textContent ?? "";
+    expect(resultText.indexOf("Programs")).toBeLessThan(
+      resultText.indexOf("Source text")
+    );
+    expect(resultText.indexOf("fy-2026-benefit-calculation")).toBeLessThan(
+      resultText.indexOf("co-cdhs-snap-page")
+    );
+  });
+
+  it("renders a direct citation shortcut on the full search page", async () => {
+    mockFetch.mockResolvedValueOnce(okResponse(responseJson()));
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "7 CFR 273.9" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Citation")).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: /Open exact citation/i });
+    expect(link).toHaveAttribute("href", "/us/regulation/7/273/9");
+    expect(screen.queryByText(/No matches/)).not.toBeInTheDocument();
+  });
+
+  it("puts encoded RuleSpecs first for specific symbol queries", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          programs: [
+            {
+              program: {
+                slug: "colorado-snap",
+                displayName: "Colorado SNAP",
+                aliases: ["co snap"],
+                jurisdiction: "us-co",
+                summary: "Colorado's state-administered SNAP program.",
+                anchors: [],
+              },
+              anchors: [
+                {
+                  role: "benefit_calculation",
+                  citationPath:
+                    "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+                  label: "Benefit calculation",
+                  displayCitation: "Colorado CDHS SNAP FY 2026",
+                },
+              ],
+            },
+          ],
+          encoded: [
+            encodedHit({
+              label: "Utility Allowance",
+              matchKind: "symbol",
+              symbolMatches: [
+                {
+                  name: "snap_standard_utility_allowance",
+                  label: "Standard Utility Allowance",
+                  kind: "parameter",
+                  source: "Colorado SNAP FY 2026 benefit calculation composition",
+                  formula: "490",
+                  matchedTerms: ["utility", "allowance"],
+                  score: 900,
+                },
+              ],
+            }),
+          ],
+        })
+      )
+    );
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CO SNAP utility allowance" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Utility Allowance")).toBeInTheDocument();
+    });
+    const resultText = screen.getByLabelText("Search results").textContent ?? "";
+    expect(resultText.indexOf("Executable RuleSpecs")).toBeLessThan(
+      resultText.indexOf("Programs")
+    );
+    expect(
+      screen.getByText(
+        "Source: Colorado SNAP FY 2026 benefit calculation composition"
+      )
+    ).toBeInTheDocument();
+  });
+
   it("applies the statute filter when clicked", async () => {
-    mockSearchRules.mockResolvedValue([]);
+    mockFetch.mockResolvedValue(okResponse(responseJson()));
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "qualifying child" },
     });
     flush(250);
-    await waitFor(() => expect(mockSearchRules).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
-    mockSearchRules.mockClear();
-    mockSearchRules.mockResolvedValue([]);
+    mockFetch.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Statutes" }));
     flush(250);
 
     await waitFor(() => {
-      expect(mockSearchRules).toHaveBeenCalledWith("qualifying child", {
-        jurisdiction: undefined,
-        docType: "statute",
-        limit: 30,
-      });
+      expect(latestSearchUrl().searchParams.get("docType")).toBe("statute");
     });
     expect(
       screen.getByRole("button", { name: "Statutes" })
@@ -135,35 +335,28 @@ describe("AxiomSearch", () => {
   });
 
   it("applies the rulemaking filter when clicked", async () => {
-    mockSearchRules.mockResolvedValue([]);
+    mockFetch.mockResolvedValue(okResponse(responseJson()));
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "comment deadline" },
     });
     flush(250);
-    await waitFor(() => expect(mockSearchRules).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
-    mockSearchRules.mockClear();
-    mockSearchRules.mockResolvedValue([]);
+    mockFetch.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Rulemaking" }));
     flush(250);
 
     await waitFor(() => {
-      expect(mockSearchRules).toHaveBeenCalledWith("comment deadline", {
-        jurisdiction: undefined,
-        docType: "rulemaking",
-        limit: 30,
-      });
+      expect(latestSearchUrl().searchParams.get("docType")).toBe("rulemaking");
     });
     expect(
       screen.getByRole("button", { name: "Rulemaking" })
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("forwards jurisdiction prop to searchRules", async () => {
-    mockSearchRules.mockResolvedValue([]);
-
+  it("forwards jurisdiction prop to the search endpoint", async () => {
     render(<AxiomSearch jurisdiction="us" />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "household" },
@@ -171,16 +364,12 @@ describe("AxiomSearch", () => {
     flush(250);
 
     await waitFor(() =>
-      expect(mockSearchRules).toHaveBeenCalledWith("household", {
-        jurisdiction: "us",
-        docType: undefined,
-        limit: 30,
-      })
+      expect(latestSearchUrl().searchParams.get("jurisdiction")).toBe("us")
     );
   });
 
   it("shows the empty state when a valid query returns no rows", async () => {
-    mockSearchRules.mockResolvedValue([]);
+    mockFetch.mockResolvedValue(okResponse(responseJson()));
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -188,14 +377,14 @@ describe("AxiomSearch", () => {
     });
     flush(250);
 
-    await waitFor(() => expect(mockSearchRules).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
     await waitFor(() => {
       expect(screen.getByText(/No matches/)).toBeInTheDocument();
     });
   });
 
-  it("shows an error message when the RPC rejects", async () => {
-    mockSearchRules.mockRejectedValue(new Error("boom"));
+  it("shows an error message when the search endpoint rejects", async () => {
+    mockFetch.mockRejectedValue(new Error("boom"));
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -208,12 +397,18 @@ describe("AxiomSearch", () => {
     });
   });
 
-  it("renders <mark> tokens from the snippet as styled <mark> elements", async () => {
-    mockSearchRules.mockResolvedValue([
-      hit({
-        snippet: "plain before <mark>highlighted</mark> plain after",
-      }),
-    ]);
+  it("renders <mark> tokens from corpus snippets as styled <mark> elements", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          corpus: [
+            hit({
+              snippet: "plain before <mark>highlighted</mark> plain after",
+            }),
+          ],
+        })
+      )
+    );
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -229,23 +424,29 @@ describe("AxiomSearch", () => {
   });
 
   it("formats CFR Part (no subpart/section) and subpart labels correctly", async () => {
-    mockSearchRules.mockResolvedValue([
-      hit({
-        id: "a",
-        citation_path: "us/regulation/7/273",
-        heading: "Certification of eligible households",
-      }),
-      hit({
-        id: "b",
-        citation_path: "us/regulation/7/273/subpart-d",
-        heading: "Subpart D — Eligibility and Benefit Levels",
-      }),
-      hit({
-        id: "c",
-        citation_path: "us/unknown/random/path",
-        heading: "Fallback path",
-      }),
-    ]);
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          corpus: [
+            hit({
+              id: "a",
+              citation_path: "us/regulation/7/273",
+              heading: "Certification of eligible households",
+            }),
+            hit({
+              id: "b",
+              citation_path: "us/regulation/7/273/subpart-d",
+              heading: "Subpart D — Eligibility and Benefit Levels",
+            }),
+            hit({
+              id: "c",
+              citation_path: "us/unknown/random/path",
+              heading: "Fallback path",
+            }),
+          ],
+        })
+      )
+    );
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -256,62 +457,61 @@ describe("AxiomSearch", () => {
       expect(screen.getByText("7 CFR Part 273")).toBeInTheDocument();
     });
     expect(screen.getByText("7 CFR 273 Subpart D")).toBeInTheDocument();
-    // Fallback: unknown path shape renders the raw citation_path
     expect(screen.getByText("us/unknown/random/path")).toBeInTheDocument();
   });
 
   it("form submit forces an immediate search (bypasses debounce)", async () => {
-    mockSearchRules.mockResolvedValue([hit({})]);
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
     render(<AxiomSearch />);
     const input = screen.getByRole("searchbox");
     fireEvent.change(input, { target: { value: "urgent query" } });
-    // Submit the form immediately
     const form = input.closest("form")!;
     fireEvent.submit(form);
 
-    // waitFor handles the promise microtask
     await waitFor(() => {
-      expect(mockSearchRules).toHaveBeenCalledWith(
-        "urgent query",
-        expect.any(Object)
-      );
+      expect(latestSearchUrl().searchParams.get("q")).toBe("urgent query");
     });
   });
 
-  it("treats stale RPC responses as discarded when a newer query finishes first", async () => {
-    // First call hangs until we resolve it manually.
-    let resolveFirst: (v: unknown) => void = () => {};
-    const firstCall = new Promise((resolve) => {
+  it("treats stale responses as discarded when a newer query finishes first", async () => {
+    let resolveFirst: (v: Response) => void = () => {};
+    const firstCall = new Promise<Response>((resolve) => {
       resolveFirst = resolve;
     });
-    mockSearchRules.mockReturnValueOnce(firstCall);
-    // Second call is also async so the debounce fires after a change.
-    mockSearchRules.mockResolvedValueOnce([
-      hit({ heading: "Second call result" }),
-    ]);
+    mockFetch.mockReturnValueOnce(firstCall);
+    mockFetch.mockResolvedValueOnce(
+      okResponse(
+        responseJson({
+          corpus: [hit({ heading: "Second call result" })],
+        })
+      )
+    );
 
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "first query" },
     });
-    // Wait long enough for debounce to fire the first RPC.
-    await waitFor(() => expect(mockSearchRules).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
-    // Now issue a second query while the first is still pending.
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "second query" },
     });
-    await waitFor(() => expect(mockSearchRules).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
 
-    // Second call resolves first (mockResolvedValueOnce is eager), so its
-    // results should render.
     await waitFor(() =>
       expect(screen.getByText("Second call result")).toBeInTheDocument()
     );
 
-    // Resolve the stale first call — it must NOT replace the newer results.
-    resolveFirst([hit({ heading: "Stale first result" })]);
-    // Give the microtask queue a chance.
+    resolveFirst(
+      new Response(
+        JSON.stringify(
+          responseJson({
+            corpus: [hit({ heading: "Stale first result" })],
+          })
+        ),
+        { status: 200 }
+      )
+    );
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByText("Stale first result")).not.toBeInTheDocument();
     expect(screen.getByText("Second call result")).toBeInTheDocument();

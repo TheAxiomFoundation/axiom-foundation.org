@@ -145,7 +145,8 @@ export function gitHubApiHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
   };
-  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+  const token =
+    process.env.AXIOM_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }

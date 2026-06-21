@@ -10,7 +10,12 @@ import {
 import { useRouter } from "next/navigation";
 import { parseCitation, type ParsedCitation } from "@/lib/axiom/citation";
 import { findPrograms, type Program } from "@/lib/axiom/programs";
-import { searchRules, type SearchHit } from "@/lib/supabase";
+import type {
+  AxiomSearchResults,
+  EncodedSearchResult,
+  ProgramSearchResult,
+} from "@/lib/axiom/search";
+import type { SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
 
 interface CommandPaletteProps {
@@ -22,6 +27,12 @@ const SEARCH_DEBOUNCE_MS = 180;
 const SEARCH_MIN_LEN = 2;
 const SEARCH_LIMIT = 6;
 const PROGRAM_LIMIT = 6;
+const EMPTY_SEARCH_RESULTS: AxiomSearchResults = {
+  query: "",
+  programs: [],
+  encoded: [],
+  corpus: [],
+};
 
 type Row =
   | { kind: "citation"; parsed: ParsedCitation; href: string }
@@ -31,7 +42,16 @@ type Row =
       anchor: Program["anchors"][number];
       href: string;
     }
+  | { kind: "encoded"; hit: EncodedSearchResult; href: string }
   | { kind: "search"; hit: SearchHit; href: string };
+
+interface SectionRange {
+  title: string;
+  startIndex: number;
+  count: number;
+  subtitle?: string;
+  featured?: boolean;
+}
 
 /**
  * The Axiom command palette — the single fastest-path entry point
@@ -43,8 +63,8 @@ type Row =
  *      citation_path.
  *   2. Program registry — typed inputs like "SNAP" or "Universal
  *      Credit" surface the program's curated anchors.
- *   3. Full-text search — everything else (debounced) falls through
- *      to the existing search_provisions RPC.
+ *   3. Hybrid search — debounced search groups live encoded RuleSpecs
+ *      ahead of corpus text matches.
  *
  * Arrow-key navigation is global across all three sections; Enter
  * navigates to the focused row's href.
@@ -52,7 +72,8 @@ type Row =
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const [searchResults, setSearchResults] =
+    useState<AxiomSearchResults>(EMPTY_SEARCH_RESULTS);
   const [searching, setSearching] = useState(false);
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +84,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   useEffect(() => {
     if (open) {
       setQuery("");
-      setSearchHits([]);
+      setSearchResults(EMPTY_SEARCH_RESULTS);
       setCursor(0);
       setSearching(false);
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -85,7 +106,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     if (!open) return;
     const trimmed = query.trim();
     if (trimmed.length < SEARCH_MIN_LEN) {
-      setSearchHits([]);
+      setSearchResults(EMPTY_SEARCH_RESULTS);
       setSearching(false);
       return;
     }
@@ -93,9 +114,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     setSearching(true);
     const handle = setTimeout(async () => {
       try {
-        const hits = await searchRules(trimmed, { limit: SEARCH_LIMIT });
+        const params = new URLSearchParams({
+          q: trimmed,
+          limit: String(SEARCH_LIMIT),
+        });
+        const response = await fetch(`/api/axiom/search?${params.toString()}`);
+        if (!response.ok) throw new Error("Search failed");
+        const hits = (await response.json()) as AxiomSearchResults;
         if (token !== inflight.current) return;
-        setSearchHits(hits);
+        setSearchResults(hits);
+      } catch {
+        if (token !== inflight.current) return;
+        setSearchResults(EMPTY_SEARCH_RESULTS);
       } finally {
         if (token === inflight.current) setSearching(false);
       }
@@ -107,71 +137,128 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { rows, sections } = useMemo(() => {
     const trimmed = query.trim();
     const parsed = trimmed ? parseCitation(trimmed) : null;
-    const programs = findPrograms(trimmed, PROGRAM_LIMIT);
+    const programResults: ProgramSearchResult[] =
+      searchResults.programs.length > 0
+        ? searchResults.programs
+        : findPrograms(trimmed, PROGRAM_LIMIT).map((program) => ({
+            program,
+            anchors: program.anchors,
+          }));
+    const hasSpecificEncodedHit = searchResults.encoded.some(
+      (hit) => hit.matchKind === "symbol"
+    );
 
-    const all: Row[] = [];
-    const sectionRanges: Array<{
-      title: string;
-      startIndex: number;
-      count: number;
-      subtitle?: string;
-    }> = [];
+    const citationRows: Row[] = [];
+    const programRows: Row[] = [];
+    const encodedRows: Row[] = [];
+    const corpusRows: Row[] = [];
 
     if (parsed) {
-      sectionRanges.push({
-        title: "Citation",
-        startIndex: all.length,
-        count: 1,
-      });
-      all.push({
+      citationRows.push({
         kind: "citation",
         parsed,
         href: `/${parsed.citationPath}`,
       });
     }
 
-    if (programs.length > 0) {
-      const start = all.length;
-      for (const program of programs) {
-        for (const anchor of program.anchors) {
-          all.push({
-            kind: "program-anchor",
-            program,
-            anchor,
-            href: `/${anchor.citationPath}`,
-          });
-        }
-      }
-      sectionRanges.push({
-        title: "Programs",
-        startIndex: start,
-        count: all.length - start,
-        subtitle:
-          programs.length === 1
-            ? `${programs[0].displayName} · ${programs[0].anchors.length} anchors`
-            : `${programs.length} programs`,
-      });
-    }
-
-    if (searchHits.length > 0) {
-      const start = all.length;
-      for (const hit of searchHits) {
-        all.push({
-          kind: "search",
-          hit,
-          href: `/${hit.citation_path}`,
+    for (const result of programResults) {
+      for (const anchor of result.anchors) {
+        programRows.push({
+          kind: "program-anchor",
+          program: result.program,
+          anchor,
+          href: `/${anchor.citationPath}`,
         });
       }
-      sectionRanges.push({
-        title: "Search",
-        startIndex: start,
-        count: all.length - start,
-        subtitle: `${searchHits.length} hit${searchHits.length === 1 ? "" : "s"}`,
+    }
+
+    for (const hit of searchResults.encoded) {
+      encodedRows.push({
+        kind: "encoded",
+        hit,
+        href: `/${hit.citationPath}`,
       });
     }
 
+    for (const hit of searchResults.corpus) {
+      corpusRows.push({
+        kind: "search",
+        hit,
+        href: `/${hit.citation_path}`,
+      });
+    }
+
+    const bestRow =
+      citationRows[0] ??
+      (hasSpecificEncodedHit ? encodedRows[0] : null) ??
+      (!hasSpecificEncodedHit && programRows.length > 0 ? programRows[0] : null) ??
+      encodedRows[0] ??
+      corpusRows[0] ??
+      null;
+    const bestKey = bestRow ? rowKey(bestRow) : null;
+
+    const all: Row[] = [];
+    const sectionRanges: SectionRange[] = [];
+    const withoutBest = (items: Row[]) =>
+      bestKey ? items.filter((row) => rowKey(row) !== bestKey) : items;
+    const pushSection = (
+      title: string,
+      items: Row[],
+      subtitle?: string,
+      featured = false
+    ) => {
+      if (items.length === 0) return;
+      const start = all.length;
+      all.push(...items);
+      sectionRanges.push({
+        title,
+        startIndex: start,
+        count: items.length,
+        subtitle,
+        featured,
+      });
+    };
+
+    if (bestRow) {
+      pushSection("Best match", [bestRow], rowDescriptor(bestRow), true);
+    }
+
+    if (!hasSpecificEncodedHit) {
+      const items = withoutBest(programRows);
+      pushSection(
+        "Program / pathway",
+        items,
+        `${items.length} shortcut${items.length === 1 ? "" : "s"}`
+      );
+    }
+
+    const remainingEncoded = withoutBest(encodedRows);
+    pushSection(
+      "Executable RuleSpecs",
+      remainingEncoded,
+      `${remainingEncoded.length} encoded node${
+        remainingEncoded.length === 1 ? "" : "s"
+      }`
+    );
+
+    if (hasSpecificEncodedHit) {
+      const items = withoutBest(programRows);
+      pushSection(
+        "Program / pathway",
+        items,
+        `${items.length} shortcut${items.length === 1 ? "" : "s"}`
+      );
+    }
+
+    const remainingCorpus = withoutBest(corpusRows);
+    pushSection(
+      "Source text",
+      remainingCorpus,
+      `${remainingCorpus.length} hit${remainingCorpus.length === 1 ? "" : "s"}`
+    );
+
     return { rows: all, sections: sectionRanges };
-  }, [query, searchHits]);
+  }, [query, searchResults]);
 
   // Clamp cursor when rows shrink.
   useEffect(() => {
@@ -194,6 +281,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           role: row.anchor.role,
           citation_path: row.anchor.citationPath,
         });
+      } else if (row.kind === "encoded") {
+        trackAxiomEvent("axiom_palette_commit", {
+          kind: "search",
+          citation_path: row.hit.citationPath,
+        });
       } else {
         trackAxiomEvent("axiom_palette_commit", {
           kind: "search",
@@ -202,7 +294,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       }
       onClose();
       const href =
-        row.kind === "search" ? row.href : await resolveNavigableHref(row.href);
+        row.kind === "search" || row.kind === "encoded"
+          ? row.href
+          : await resolveNavigableHref(row.href);
       router.push(href);
     },
     [router, onClose]
@@ -271,7 +365,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       />
 
       {/* Palette card */}
-      <div className="relative w-full max-w-[640px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-[720px] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md shadow-2xl overflow-hidden">
         {/* Input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-rule)]">
           <svg
@@ -293,15 +387,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               setQuery(e.target.value);
               setCursor(0);
             }}
-            placeholder="Citation, program, or topic…"
+            placeholder="Citation, program, source, or encoded rule…"
             aria-label="Search"
             className="flex-1 bg-transparent font-body text-base text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] outline-none"
           />
           {searching && (
             <span
               aria-live="polite"
-              className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]"
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]"
             >
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 rounded-full border border-[var(--color-ink-muted)] border-t-transparent animate-spin"
+              />
               searching…
             </span>
           )}
@@ -341,6 +439,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       key={idx}
                       row={row}
                       focused={idx === cursor}
+                      featured={section.featured}
                       index={idx}
                       onHover={() => setCursor(idx)}
                       onCommit={() => commit(row)}
@@ -393,12 +492,14 @@ async function resolveNavigableHref(href: string): Promise<string> {
 function Row({
   row,
   focused,
+  featured = false,
   index,
   onHover,
   onCommit,
 }: {
   row: Row;
   focused: boolean;
+  featured?: boolean;
   index: number;
   onHover: () => void;
   onCommit: () => void;
@@ -406,7 +507,10 @@ function Row({
   const focusedCls = focused
     ? "bg-[var(--color-accent-light)]"
     : "bg-transparent";
-  const baseCls = `w-full flex items-center gap-4 px-5 py-2.5 text-left transition-colors cursor-pointer ${focusedCls}`;
+  const featuredCls = featured
+    ? "border-l-2 border-l-[var(--color-accent)] py-3.5"
+    : "border-l-2 border-l-transparent py-2.5";
+  const baseCls = `w-full flex items-center gap-4 px-5 text-left transition-colors cursor-pointer ${featuredCls} ${focusedCls}`;
 
   if (row.kind === "citation") {
     return (
@@ -419,7 +523,7 @@ function Row({
         onClick={onCommit}
         className={baseCls}
       >
-        <IconBadge label="→" />
+        <IconBadge label="→" tone="citation" />
         <div className="flex-1 min-w-0">
           <div className="text-sm text-[var(--color-ink)] font-medium truncate">
             {row.parsed.displayLabel}
@@ -428,9 +532,7 @@ function Row({
             {row.parsed.citationPath}
           </div>
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] shrink-0">
-          Jump
-        </span>
+        <ResultBadge>Direct</ResultBadge>
       </button>
     );
   }
@@ -446,7 +548,7 @@ function Row({
         onClick={onCommit}
         className={baseCls}
       >
-        <IconBadge label="§" />
+        <IconBadge label="§" tone="program" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 text-sm text-[var(--color-ink)]">
             <span className="font-medium truncate">
@@ -460,7 +562,66 @@ function Row({
           <div className="font-mono text-xs text-[var(--color-accent)] truncate">
             {row.anchor.displayCitation ?? row.anchor.citationPath}
           </div>
+          {featured && (
+            <p className="mt-1 text-xs text-[var(--color-ink-muted)] leading-snug line-clamp-2">
+              {row.program.summary}
+            </p>
+          )}
         </div>
+        <ResultBadge>Pathway</ResultBadge>
+      </button>
+    );
+  }
+
+  if (row.kind === "encoded") {
+    return (
+      <button
+        type="button"
+        data-palette-row={index}
+        role="option"
+        aria-selected={focused}
+        onMouseEnter={onHover}
+        onClick={onCommit}
+        className={baseCls}
+      >
+        <IconBadge label="λ" tone="encoded" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 text-sm text-[var(--color-ink)]">
+            <span className="font-medium truncate">{row.hit.label}</span>
+            <span className="text-[var(--color-ink-muted)] shrink-0">·</span>
+            <span className="text-[var(--color-ink-secondary)] truncate">
+              {row.hit.jurisdictionLabel}
+            </span>
+          </div>
+          <div className="font-mono text-xs text-[var(--color-accent)] truncate">
+            {row.hit.citationPath}
+          </div>
+          {row.hit.symbolMatches.length > 0 && (
+            <div className="mt-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)] truncate">
+              {row.hit.symbolMatches.map((symbol) => symbol.name).join(", ")}
+            </div>
+          )}
+          {featured && row.hit.symbolMatches[0]?.formula && (
+            <div className="mt-1 font-mono text-[11px] text-[var(--color-ink-muted)] truncate">
+              {row.hit.symbolMatches[0].formula}
+            </div>
+          )}
+          {row.hit.symbolMatches.length === 0 && row.hit.fileSummary && (
+            <div className="mt-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)] truncate">
+              {row.hit.fileSummary.ruleCount} rules
+              {row.hit.fileSummary.importCount > 0
+                ? ` · ${row.hit.fileSummary.importCount} imports`
+                : ""}
+              {row.hit.fileSummary.previewRules.length > 0
+                ? ` · ${row.hit.fileSummary.previewRules
+                    .slice(0, 3)
+                    .map((rule) => rule.name)
+                    .join(", ")}`
+                : ""}
+            </div>
+          )}
+        </div>
+        <ResultBadge>Executable</ResultBadge>
       </button>
     );
   }
@@ -475,7 +636,7 @@ function Row({
       onClick={onCommit}
       className={baseCls}
     >
-      <IconBadge label="⌕" />
+      <IconBadge label="⌕" tone="source" />
       <div className="flex-1 min-w-0">
         <div className="text-sm text-[var(--color-ink)] truncate">
           {row.hit.heading || row.hit.citation_path}
@@ -484,22 +645,56 @@ function Row({
           {row.hit.citation_path}
         </div>
       </div>
-      {row.hit.has_rulespec && (
-        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] border border-[var(--color-accent)] rounded px-1.5 py-0.5 shrink-0">
-          RuleSpec
-        </span>
-      )}
+      <ResultBadge>{row.hit.has_rulespec ? "Encoded source" : "Source"}</ResultBadge>
     </button>
   );
 }
 
-function IconBadge({ label }: { label: string }) {
+function rowKey(row: Row): string {
+  if (row.kind === "citation") return `citation:${row.parsed.citationPath}`;
+  if (row.kind === "program-anchor") {
+    return `program:${row.program.slug}:${row.anchor.citationPath}`;
+  }
+  if (row.kind === "encoded") return `encoded:${row.hit.citationPath}`;
+  return `source:${row.hit.id}`;
+}
+
+function rowDescriptor(row: Row): string {
+  if (row.kind === "citation") return "exact citation";
+  if (row.kind === "program-anchor") return "program pathway";
+  if (row.kind === "encoded") {
+    return row.hit.matchKind === "symbol" ? "executable symbol" : "RuleSpec package";
+  }
+  return row.hit.has_rulespec ? "encoded source text" : "source text";
+}
+
+function IconBadge({
+  label,
+  tone = "default",
+}: {
+  label: string;
+  tone?: "default" | "citation" | "program" | "encoded" | "source";
+}) {
+  const toneCls =
+    tone === "encoded"
+      ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+      : tone === "citation"
+        ? "border-[var(--color-focus-ring)] text-[var(--color-ink)]"
+        : "border-[var(--color-rule)] text-[var(--color-ink-muted)]";
   return (
     <span
       aria-hidden="true"
-      className="shrink-0 w-6 h-6 flex items-center justify-center rounded border border-[var(--color-rule)] font-mono text-xs text-[var(--color-ink-muted)] bg-[var(--color-paper)]"
+      className={`shrink-0 w-6 h-6 flex items-center justify-center rounded border font-mono text-xs bg-[var(--color-paper)] ${toneCls}`}
     >
       {label}
+    </span>
+  );
+}
+
+function ResultBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] border border-[var(--color-rule)] rounded px-1.5 py-0.5 shrink-0">
+      {children}
     </span>
   );
 }
@@ -534,12 +729,11 @@ function EmptyState() {
           — Colorado SNAP income eligibility
         </li>
       </ul>
-      <p className="mt-4 mb-1">Or a program name:</p>
+      <p className="mt-4 mb-1">Or a program, source, or encoded rule:</p>
       <p className="font-mono text-xs text-[var(--color-ink-secondary)]">
-        <span className="text-[var(--color-accent)]">SNAP</span>,{" "}
-        <span className="text-[var(--color-accent)]">OASDI</span>,{" "}
-        <span className="text-[var(--color-accent)]">SECA</span>,{" "}
-        <span className="text-[var(--color-accent)]">Standard deduction</span>…
+        <span className="text-[var(--color-accent)]">Arizona SNAP</span>,{" "}
+        <span className="text-[var(--color-accent)]">premium tax credit poverty line</span>,{" "}
+        <span className="text-[var(--color-accent)]">kingston council tax reduction</span>
       </p>
     </div>
   );

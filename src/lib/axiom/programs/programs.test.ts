@@ -45,7 +45,7 @@ describe("findPrograms", () => {
     const hits = findPrograms("Colorado SNAP");
     expect(hits[0]?.slug).toBe("colorado-snap");
     expect(hits[0]?.anchors[0]?.citationPath).toBe(
-      "us-co/policy/co-cdhs-snap-page"
+      "us-co/policy/cdhs/snap/fy-2026-benefit-calculation"
     );
   });
 

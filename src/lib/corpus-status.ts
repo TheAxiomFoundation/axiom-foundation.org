@@ -491,9 +491,6 @@ async function readCorpusStats(): Promise<CorpusStatusArtifact<CorpusStats>> {
 }
 
 async function readArtifactReport(): Promise<CorpusStatusArtifact<ArtifactReport>> {
-  const artifact = await readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY);
-  if (artifact.value) return artifact;
-
   try {
     return {
       key: ARTIFACT_REPORT_KEY,
@@ -502,12 +499,15 @@ async function readArtifactReport(): Promise<CorpusStatusArtifact<ArtifactReport
       error: null,
     };
   } catch (error) {
-    const errors = [artifact.error, errorMessage(error)].filter(Boolean);
+    const supabaseError = errorMessage(error);
+    const artifact = await readCorpusJson<ArtifactReport>(ARTIFACT_REPORT_KEY);
+    if (artifact.value) return artifact;
+
     return {
       key: ARTIFACT_REPORT_KEY,
       source: null,
       value: null,
-      error: errors.join(" | "),
+      error: [supabaseError, artifact.error].filter(Boolean).join(" | "),
     };
   }
 }

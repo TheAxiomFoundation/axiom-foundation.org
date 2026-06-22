@@ -70,6 +70,7 @@ describe("GoogleAnalytics", () => {
     await waitFor(() =>
       expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
         page_path: "/axiom?q=snap",
+        tool_name: "axiom-app",
       }),
     );
   });
@@ -86,6 +87,7 @@ describe("GoogleAnalytics", () => {
     await waitFor(() =>
       expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
         page_path: "/axiom",
+        tool_name: "axiom-app",
       }),
     );
   });

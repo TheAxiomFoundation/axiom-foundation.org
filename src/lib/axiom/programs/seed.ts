@@ -255,16 +255,10 @@ export const PROGRAM_SEED: Program[] = [
       "Colorado's state-administered SNAP program pages and eligibility guidance.",
     anchors: [
       {
-        role: "eligibility",
-        citationPath: "us-co/policy/co-cdhs-snap-page",
-        label: "SNAP program page",
-        displayCitation: "Colorado CDHS SNAP",
-      },
-      {
-        role: "eligibility",
-        citationPath: "us-co/policy/co-cdhs-snap-page/block-1",
-        label: "SNAP eligibility guidance",
-        displayCitation: "Colorado CDHS SNAP eligibility",
+        role: "benefit_calculation",
+        citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+        label: "Benefit calculation",
+        displayCitation: "Colorado CDHS SNAP FY 2026",
       },
     ],
   },

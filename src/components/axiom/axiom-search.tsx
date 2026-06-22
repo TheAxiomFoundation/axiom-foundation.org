@@ -1,15 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { searchRules, type SearchHit } from "@/lib/supabase";
+import { parseCitation, type ParsedCitation } from "@/lib/axiom/citation";
+import type {
+  AxiomSearchResults,
+  EncodedSearchResult,
+  ProgramSearchResult,
+} from "@/lib/axiom/search";
+import type { SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
 
-type DocTypeFilter = "all" | "statute" | "regulation" | "rulemaking";
+type DocTypeFilter = "all" | "policy" | "statute" | "regulation" | "rulemaking";
 
 const DEBOUNCE_MS = 200;
 const MIN_QUERY_LEN = 2;
 const RESULT_LIMIT = 30;
+const EMPTY_RESULTS: AxiomSearchResults = {
+  query: "",
+  programs: [],
+  encoded: [],
+  corpus: [],
+};
 
 interface AxiomSearchProps {
   /**
@@ -83,17 +96,21 @@ function Snippet({ html }: { html: string }) {
 export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
   const [query, setQuery] = useState("");
   const [docType, setDocType] = useState<DocTypeFilter>("all");
-  const [results, setResults] = useState<SearchHit[]>([]);
+  const [results, setResults] = useState<AxiomSearchResults>(EMPTY_RESULTS);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inflightToken = useRef(0);
+  const parsedCitation = useMemo(
+    () => parseCitation(query.trim()),
+    [query]
+  );
 
   const runSearch = useCallback(
     async (q: string, type: DocTypeFilter) => {
       const trimmed = q.trim();
       if (trimmed.length < MIN_QUERY_LEN) {
-        setResults([]);
+        setResults(EMPTY_RESULTS);
         setSubmitted(false);
         setLoading(false);
         setError(null);
@@ -103,22 +120,27 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
       setLoading(true);
       setError(null);
       try {
-        const hits = await searchRules(trimmed, {
-          jurisdiction,
-          docType: type === "all" ? undefined : type,
-          limit: RESULT_LIMIT,
+        const params = new URLSearchParams({
+          q: trimmed,
+          limit: String(RESULT_LIMIT),
         });
+        if (jurisdiction) params.set("jurisdiction", jurisdiction);
+        if (type !== "all") params.set("docType", type);
+        const response = await fetch(`/api/axiom/search?${params.toString()}`);
+        if (!response.ok) throw new Error("Search failed");
+        const hits = (await response.json()) as AxiomSearchResults;
         if (token !== inflightToken.current) return;
         setResults(hits);
         setSubmitted(true);
         trackAxiomEvent("axiom_search", {
           query_length: trimmed.length,
           doc_type: type,
-          result_count: hits.length,
+          result_count:
+            hits.programs.length + hits.encoded.length + hits.corpus.length,
         });
       } catch (err) {
         if (token !== inflightToken.current) return;
-        setResults([]);
+        setResults(EMPTY_RESULTS);
         setError(err instanceof Error ? err.message : "Search failed");
       } finally {
         if (token === inflightToken.current) setLoading(false);
@@ -135,7 +157,13 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
   }, [query, docType, runSearch]);
 
   const showEmptyState =
-    submitted && !loading && results.length === 0 && query.trim().length >= MIN_QUERY_LEN;
+    submitted &&
+    !loading &&
+    results.programs.length === 0 &&
+    results.encoded.length === 0 &&
+    results.corpus.length === 0 &&
+    !parsedCitation &&
+    query.trim().length >= MIN_QUERY_LEN;
 
   return (
     <div className="mb-12">
@@ -165,13 +193,17 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
         >
           <span>
             Quoted phrases, OR, and −exclude are supported. Ranked by relevance
-            across statutes, regulations, and rulemaking.
+            across programs, encoded RuleSpecs, and corpus text.
           </span>
           {loading && (
             <span
-              className="text-[var(--color-accent)]"
+              className="inline-flex items-center gap-1.5 text-[var(--color-accent)]"
               aria-live="polite"
             >
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 rounded-full border border-[var(--color-accent)] border-t-transparent animate-spin"
+              />
               Searching…
             </span>
           )}
@@ -182,6 +214,7 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
         {(
           [
             { key: "all", label: "All" },
+            { key: "policy", label: "Policies" },
             { key: "statute", label: "Statutes" },
             { key: "regulation", label: "Regulations" },
             { key: "rulemaking", label: "Rulemaking" },
@@ -218,43 +251,248 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
         </div>
       )}
 
-      {results.length > 0 && (
-        <ul
-          className="divide-y divide-[var(--color-rule)] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden"
+      {(results.programs.length > 0 ||
+        results.encoded.length > 0 ||
+        results.corpus.length > 0 ||
+        parsedCitation) && (
+        <div
+          className="space-y-4"
           aria-label="Search results"
         >
-          {results.map((hit) => {
-            const href = `/${hit.citation_path}`;
-            return (
-              <li key={hit.id}>
-                <Link
-                  href={href}
-                  className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
-                >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="font-mono text-xs text-[var(--color-accent)]">
-                      {formatCitationLabel(hit.citation_path)}
-                    </div>
-                    {hit.has_rulespec && (
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                        Encoded
-                      </span>
-                    )}
-                  </div>
-                  {hit.heading && (
-                    <div className="mt-1 text-base text-[var(--color-ink)]">
-                      {hit.heading}
-                    </div>
-                  )}
-                  <p className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
-                    <Snippet html={hit.snippet} />
-                  </p>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+          <CitationResult parsed={parsedCitation} />
+          {results.encoded.some((hit) => hit.matchKind === "symbol") ? (
+            <>
+              <EncodedResults results={results.encoded} />
+              <ProgramResults programs={results.programs} />
+            </>
+          ) : (
+            <>
+              <ProgramResults programs={results.programs} />
+              <EncodedResults results={results.encoded} />
+            </>
+          )}
+          <CorpusResults results={results.corpus} />
+        </div>
       )}
     </div>
+  );
+}
+
+function CitationResult({ parsed }: { parsed: ParsedCitation | null }) {
+  if (!parsed) return null;
+  return (
+    <Section title="Citation" count={1}>
+      <li>
+        <Link
+          href={`/${parsed.citationPath}`}
+          className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <div className="font-mono text-xs text-[var(--color-accent)]">
+              {formatCitationLabel(parsed.citationPath)}
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              Direct
+            </span>
+          </div>
+          <div className="mt-1 text-base text-[var(--color-ink)]">
+            Open exact citation
+          </div>
+          <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
+            {parsed.citationPath}
+          </p>
+        </Link>
+      </li>
+    </Section>
+  );
+}
+
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+}) {
+  if (count === 0) return null;
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)]">
+          {title}
+        </h2>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          {count}
+        </span>
+      </div>
+      <ul className="divide-y divide-[var(--color-rule)] bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md overflow-hidden">
+        {children}
+      </ul>
+    </section>
+  );
+}
+
+function ProgramResults({ programs }: { programs: ProgramSearchResult[] }) {
+  const count = programs.reduce((sum, result) => sum + result.anchors.length, 0);
+  return (
+    <Section title="Programs" count={count}>
+      {programs.map((result) =>
+        result.anchors.map((anchor) => (
+          <li key={`${result.program.slug}:${anchor.citationPath}`}>
+            <Link
+              href={`/${anchor.citationPath}`}
+              className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="font-mono text-xs text-[var(--color-accent)]">
+                  {anchor.displayCitation ?? formatCitationLabel(anchor.citationPath)}
+                </div>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                  Encoded path
+                </span>
+              </div>
+              <div className="mt-1 text-base text-[var(--color-ink)]">
+                {result.program.displayName}: {anchor.label}
+              </div>
+              <p className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
+                {result.program.summary}
+              </p>
+            </Link>
+          </li>
+        ))
+      )}
+    </Section>
+  );
+}
+
+function EncodedResults({ results }: { results: EncodedSearchResult[] }) {
+  return (
+    <Section title="Executable RuleSpecs" count={results.length}>
+      {results.map((hit) => (
+        <li key={hit.citationPath}>
+          <Link
+            href={`/${hit.citationPath}`}
+            className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="font-mono text-xs text-[var(--color-accent)]">
+                {hit.jurisdictionLabel} / {hit.bucket}
+              </div>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Encoded
+              </span>
+            </div>
+            <div className="mt-1 text-base text-[var(--color-ink)]">
+              {hit.label}
+            </div>
+            {hit.fileSummary && (
+              <div className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
+                <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+                  {hit.fileSummary.ruleCount} rules
+                  {hit.fileSummary.importCount > 0
+                    ? ` · ${hit.fileSummary.importCount} imports`
+                    : ""}
+                </span>
+                {hit.fileSummary.summary && (
+                  <p className="mt-1">{hit.fileSummary.summary}</p>
+                )}
+                {hit.symbolMatches.length === 0 &&
+                  hit.fileSummary.previewRules.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {hit.fileSummary.previewRules.slice(0, 6).map((rule) => (
+                        <span
+                          key={rule.name}
+                          className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1"
+                        >
+                          {rule.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                {hit.symbolMatches.length === 0 &&
+                  hit.fileSummary.imports.length > 0 && (
+                    <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-muted)] leading-snug break-words">
+                      imports {hit.fileSummary.imports.slice(0, 3).join(", ")}
+                    </p>
+                  )}
+              </div>
+            )}
+            {hit.symbolMatches.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {hit.symbolMatches.map((symbol) => (
+                  <div
+                    key={symbol.name}
+                    className="rounded border border-[var(--color-rule)] bg-[var(--color-paper)] px-3 py-2"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-mono text-xs text-[var(--color-ink)]">
+                        {symbol.name}
+                      </span>
+                      {symbol.kind && (
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                          {symbol.kind}
+                        </span>
+                      )}
+                    </div>
+                    {symbol.formula && (
+                      <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
+                        {symbol.formula}
+                      </p>
+                    )}
+                    {symbol.source && (
+                      <p className="mt-1 text-xs text-[var(--color-ink-muted)] leading-snug">
+                        Source: {symbol.source}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
+              {hit.citationPath}
+            </p>
+          </Link>
+        </li>
+      ))}
+    </Section>
+  );
+}
+
+function CorpusResults({ results }: { results: SearchHit[] }) {
+  return (
+    <Section title="Source text" count={results.length}>
+      {results.map((hit) => {
+        const href = `/${hit.citation_path}`;
+        return (
+          <li key={hit.id}>
+            <Link
+              href={href}
+              className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="font-mono text-xs text-[var(--color-accent)]">
+                  {formatCitationLabel(hit.citation_path)}
+                </div>
+                {hit.has_rulespec && (
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                    Encoded
+                  </span>
+                )}
+              </div>
+              {hit.heading && (
+                <div className="mt-1 text-base text-[var(--color-ink)]">
+                  {hit.heading}
+                </div>
+              )}
+              <p className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
+                <Snippet html={hit.snippet} />
+              </p>
+            </Link>
+          </li>
+        );
+      })}
+    </Section>
   );
 }

@@ -524,6 +524,35 @@ rules:
     });
   });
 
+  it("maps lay synonyms like food stamps onto encoded SNAP paths", async () => {
+    const results = await searchAxiom("colorado food stamps deduction");
+
+    expect(results.programs[0]?.program.slug).toBe("colorado-snap");
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us-co/policy/cdhs/snap/fy-2026-benefit-calculation"
+    );
+  });
+
+  it("maps obamacare onto the ACA premium tax credit encoding", async () => {
+    const results = await searchAxiom("obamacare subsidy");
+
+    expect(results.programs[0]?.program.slug).toBe("aca-ptc");
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us/policy/irs/rev-proc-2025-25/aca-ptc"
+    );
+  });
+
+  it("prunes any state-administered federal program when a state encoding answers", async () => {
+    const results = await searchAxiom("arizona food stamps");
+
+    expect(results.programs.map((result) => result.program.slug)).not.toContain(
+      "snap"
+    );
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us-az/policy/des/faa5/na-eligibility-and-benefit-determination/fy-2026-benefit-calculation"
+    );
+  });
+
   it("discovers newer standalone jurisdiction repos such as New Zealand", async () => {
     const hits = await searchEncodedRuleSpecs("New Zealand tax");
 

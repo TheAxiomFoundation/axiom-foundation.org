@@ -19,6 +19,7 @@ import {
   SINGLE_TOKEN_PROGRAM_ALIASES,
   type TokenImplication,
 } from "@/lib/axiom/search-lexicon";
+import { fetchIndexedRuleSpecCandidates } from "@/lib/axiom/rulespec-index";
 
 export interface AxiomSearchOptions {
   jurisdiction?: string;
@@ -87,7 +88,10 @@ interface RuleSpecSearchRoot {
 }
 
 interface EncodedFileCandidate extends EncodedFile {
-  root: RuleSpecSearchRoot;
+  /** Repo location for on-demand YAML fetches; null for index rows. */
+  root: RuleSpecSearchRoot | null;
+  /** Raw YAML when it arrived with the candidate (index rows). */
+  content?: string | null;
 }
 
 interface EncodedFileBaseScore
@@ -322,18 +326,11 @@ export async function searchEncodedRuleSpecs(
       hintedJurisdictions.add("us");
     }
   }
-  const roots = await discoverRuleSpecSearchRoots();
-  const candidateRoots =
-    hintedJurisdictions.size > 0
-      ? roots.filter((root) => hintedJurisdictions.has(root.jurisdiction))
-      : roots;
   const bucket = options.docType ? DOC_TYPE_TO_REPO_BUCKET[options.docType] : null;
-  const files = dedupeEncodedFileCandidates(
-    (
-      await Promise.all(
-        candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
-      )
-    ).flat()
+  const files = await listEncodedFileCandidates(
+    tokens,
+    hintedJurisdictions,
+    bucket
   );
 
   const scored = await Promise.all(
@@ -516,6 +513,45 @@ function fiscalYearBoost(file: EncodedFile): number {
   return Math.min(40, Math.max(0, Number(match[1]) - 2000));
 }
 
+/**
+ * List candidate files for scoring — from the database index when it
+ * is populated (one query, YAML included), otherwise by crawling the
+ * rulespec-* repos on GitHub at request time.
+ */
+async function listEncodedFileCandidates(
+  tokens: string[],
+  hintedJurisdictions: Set<string>,
+  bucket: string | null
+): Promise<EncodedFileCandidate[]> {
+  const indexed = await fetchIndexedRuleSpecCandidates(
+    tokens,
+    hintedJurisdictions,
+    bucket
+  );
+  if (indexed !== null) {
+    return indexed.map((row) => ({
+      filePath: row.filePath,
+      citationPath: row.citationPath,
+      bucket: row.bucket,
+      root: null,
+      content: row.rawYaml,
+    }));
+  }
+
+  const roots = await discoverRuleSpecSearchRoots();
+  const candidateRoots =
+    hintedJurisdictions.size > 0
+      ? roots.filter((root) => hintedJurisdictions.has(root.jurisdiction))
+      : roots;
+  return dedupeEncodedFileCandidates(
+    (
+      await Promise.all(
+        candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
+      )
+    ).flat()
+  );
+}
+
 async function analyzeRuleSpecFile(
   file: EncodedFileCandidate,
   queryTokens: string[]
@@ -523,7 +559,10 @@ async function analyzeRuleSpecFile(
   symbolMatches: RuleSpecSymbolMatch[];
   summary: RuleSpecFileSummary;
 } | null> {
-  const content = await fetchRuleSpecYaml(file).catch(() => null);
+  const content =
+    file.content !== undefined
+      ? file.content
+      : await fetchRuleSpecYaml(file).catch(() => null);
   if (!content) return null;
   const doc = parseRuleSpec(content);
   const symbolMatches = dedupeSymbolMatches(
@@ -738,6 +777,7 @@ const PREVIEW_RULE_WEIGHTS: Readonly<Record<string, number>> = Object.freeze({
 });
 
 async function fetchRuleSpecYaml(file: EncodedFileCandidate): Promise<string | null> {
+  if (!file.root) return null;
   const prefixedPath = file.root.prefix
     ? `${file.root.prefix}/${file.filePath}`
     : file.filePath;

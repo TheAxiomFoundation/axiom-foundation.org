@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchAxiom, searchEncodedRuleSpecs } from "./search";
 
-const { mockSearchRules } = vi.hoisted(() => ({
+const { mockSearchRules, mockFetchIndexedCandidates } = vi.hoisted(() => ({
   mockSearchRules: vi.fn(),
+  mockFetchIndexedCandidates: vi.fn(),
 }));
 const mockFetch = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   searchRules: (...args: unknown[]) => mockSearchRules(...args),
+}));
+vi.mock("@/lib/axiom/rulespec-index", () => ({
+  fetchIndexedRuleSpecCandidates: (...args: unknown[]) =>
+    mockFetchIndexedCandidates(...args),
 }));
 
 function jsonResponse(body: unknown) {
@@ -36,6 +41,8 @@ describe("axiom hybrid search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchRules.mockResolvedValue([]);
+    // Default: index unavailable — exercises the GitHub fallback path.
+    mockFetchIndexedCandidates.mockResolvedValue(null);
     vi.stubGlobal("fetch", mockFetch);
     mockFetch.mockImplementation((url: string) => {
       if (
@@ -560,6 +567,41 @@ rules:
       citationPath: "nz/statute/income_tax/core/taxable_income",
       jurisdictionLabel: "New Zealand",
     });
+  });
+
+  it("serves encoded results from the database index without touching GitHub", async () => {
+    mockFetchIndexedCandidates.mockResolvedValue([
+      {
+        filePath: "policies/cdhs/snap/fy-2026-benefit-calculation.yaml",
+        citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+        bucket: "policies",
+        jurisdiction: "us-co",
+        rawYaml: `format: rulespec/v1
+module:
+  summary: Colorado SNAP benefit calculation.
+rules:
+- name: snap_standard_utility_allowance
+  kind: parameter
+  entity: Household
+  dtype: Money
+  versions:
+  - effective_from: '2025-10-01'
+    formula: 490
+`,
+      },
+    ]);
+
+    const results = await searchEncodedRuleSpecs("CO SNAP utility allowance");
+
+    expect(results[0]).toMatchObject({
+      citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+      matchKind: "symbol",
+    });
+    expect(results[0]?.fileSummary).toMatchObject({
+      summary: "Colorado SNAP benefit calculation.",
+      ruleCount: 1,
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("respects document class filters for encoded results", async () => {

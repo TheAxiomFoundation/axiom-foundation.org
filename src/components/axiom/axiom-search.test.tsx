@@ -164,7 +164,7 @@ describe("AxiomSearch", () => {
     expect(screen.getAllByText("Encoded").length).toBe(1);
   });
 
-  it("renders program and encoded sections ahead of corpus text", async () => {
+  it("merges program and encoded hits for one destination and ranks them above corpus text", async () => {
     mockFetch.mockResolvedValue(
       okResponse(
         responseJson({
@@ -210,22 +210,19 @@ describe("AxiomSearch", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Programs")).toBeInTheDocument();
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
-    expect(screen.getByText("Executable RuleSpecs")).toBeInTheDocument();
-    expect(screen.getByText("Source text")).toBeInTheDocument();
+    // The program anchor and the encoded hit point at the same
+    // destination, so they fuse into a single encoded row that keeps
+    // the program context line.
     expect(
       screen.getByText("Colorado SNAP: Benefit calculation")
     ).toBeInTheDocument();
     expect(
       screen.getAllByText("us-co/policy/cdhs/snap/fy-2026-benefit-calculation")
-        .length
-    ).toBeGreaterThan(0);
+    ).toHaveLength(1);
 
     const resultText = screen.getByLabelText("Search results").textContent ?? "";
-    expect(resultText.indexOf("Programs")).toBeLessThan(
-      resultText.indexOf("Source text")
-    );
     expect(resultText.indexOf("fy-2026-benefit-calculation")).toBeLessThan(
       resultText.indexOf("co-cdhs-snap-page")
     );
@@ -301,10 +298,8 @@ describe("AxiomSearch", () => {
     await waitFor(() => {
       expect(screen.getByText("Utility Allowance")).toBeInTheDocument();
     });
-    const resultText = screen.getByLabelText("Search results").textContent ?? "";
-    expect(resultText.indexOf("Executable RuleSpecs")).toBeLessThan(
-      resultText.indexOf("Programs")
-    );
+    // Symbol-level hit carries the matched rule detail on the fused row.
+    expect(screen.getByText("snap_standard_utility_allowance")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Source: Colorado SNAP FY 2026 benefit calculation composition"
@@ -365,6 +360,27 @@ describe("AxiomSearch", () => {
 
     await waitFor(() =>
       expect(latestSearchUrl().searchParams.get("jurisdiction")).toBe("us")
+    );
+    // A fixed jurisdiction hides the picker.
+    expect(screen.queryByRole("combobox", { name: "Jurisdiction" })).toBeNull();
+  });
+
+  it("applies the jurisdiction picker to the search endpoint", async () => {
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "snap deduction" },
+    });
+    flush(250);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+
+    mockFetch.mockClear();
+    fireEvent.change(screen.getByRole("combobox", { name: "Jurisdiction" }), {
+      target: { value: "us-co" },
+    });
+    flush(250);
+
+    await waitFor(() =>
+      expect(latestSearchUrl().searchParams.get("jurisdiction")).toBe("us-co")
     );
   });
 

@@ -268,14 +268,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [rows.length, cursor]);
 
   const commit = useCallback(
-    async (row: Row) => {
+    async (row: Row, position: number) => {
+      const base = { query: query.trim(), position };
       if (row.kind === "citation") {
         trackAxiomEvent("axiom_palette_commit", {
+          ...base,
           kind: "citation",
           citation_path: row.parsed.citationPath,
         });
       } else if (row.kind === "program-anchor") {
         trackAxiomEvent("axiom_palette_commit", {
+          ...base,
           kind: "program",
           program: row.program.slug,
           role: row.anchor.role,
@@ -283,11 +286,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         });
       } else if (row.kind === "encoded") {
         trackAxiomEvent("axiom_palette_commit", {
+          ...base,
           kind: "search",
           citation_path: row.hit.citationPath,
         });
       } else {
         trackAxiomEvent("axiom_palette_commit", {
+          ...base,
           kind: "search",
           citation_path: row.hit.citation_path,
         });
@@ -299,7 +304,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           : await resolveNavigableHref(row.href);
       router.push(href);
     },
-    [router, onClose]
+    [router, onClose, query]
   );
 
   const onKey = useCallback(
@@ -324,7 +329,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       if (e.key === "Enter") {
         e.preventDefault();
         const row = rows[cursor];
-        if (row) commit(row);
+        if (row) commit(row, cursor);
         return;
       }
     },
@@ -442,7 +447,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       featured={section.featured}
                       index={idx}
                       onHover={() => setCursor(idx)}
-                      onCommit={() => commit(row)}
+                      onCommit={() => commit(row, idx)}
                     />
                   );
                 })}
@@ -463,9 +468,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               <Kbd>esc</Kbd> close
             </span>
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            Axiom
-          </span>
+          <a
+            href="/axiom/search"
+            onClick={onClose}
+            className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+          >
+            Full search →
+          </a>
         </div>
       </div>
     </div>

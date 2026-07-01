@@ -566,7 +566,26 @@ function EncodedRow({
           {hit.citationPath}
         </p>
       </Link>
-      {hit.symbolMatches.length === 0 &&
+      {/* Rule chips: matched symbols when the query hit rule names,
+          otherwise a preview of the file's headline rules. Matched
+          chips carry the formula as a tooltip — kinds ("derived",
+          "source_relation") are RuleSpec internals and stay off the
+          card; the rule page explains them in context. */}
+      {hit.symbolMatches.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {hit.symbolMatches.map((symbol) => (
+            <Link
+              key={symbol.name}
+              href={`${href}${symbolAnchor(symbol)}`}
+              onClick={onNavigate}
+              title={symbol.formula ? `= ${symbol.formula}` : undefined}
+              className="font-mono text-[11px] text-[var(--color-accent)] border border-[var(--color-accent)] bg-[var(--color-paper)] rounded px-2 py-1 transition-colors hover:bg-[var(--color-accent-light)]"
+            >
+              {symbol.name}
+            </Link>
+          ))}
+        </div>
+      ) : (
         hit.fileSummary &&
         hit.fileSummary.previewRules.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -575,48 +594,19 @@ function EncodedRow({
                 key={rule.name}
                 href={`${href}#rule-${rule.name}`}
                 onClick={onNavigate}
+                title={rule.formula ? `= ${rule.formula}` : undefined}
                 className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1 transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
               >
                 {rule.name}
               </Link>
             ))}
           </div>
-        )}
-      {hit.symbolMatches.length === 0 &&
-        hit.fileSummary &&
-        hit.fileSummary.imports.length > 0 && (
-          <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-muted)] leading-snug break-words">
-            imports {hit.fileSummary.imports.slice(0, 3).join(", ")}
-          </p>
-        )}
-      {hit.symbolMatches.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {hit.symbolMatches.map((symbol) => (
-            <Link
-              key={symbol.name}
-              href={`${href}${symbolAnchor(symbol)}`}
-              onClick={onNavigate}
-              className="block rounded border border-[var(--color-rule)] bg-[var(--color-paper)] px-3 py-2 transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-mono text-xs text-[var(--color-ink)]">
-                  {symbol.name}
-                </span>
-                {symbol.kind && <Badge>{symbol.kind}</Badge>}
-              </div>
-              {symbol.formula && (
-                <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
-                  {symbol.formula}
-                </p>
-              )}
-              {symbol.source && (
-                <p className="mt-1 text-xs text-[var(--color-ink-muted)] leading-snug">
-                  Source: {symbol.source}
-                </p>
-              )}
-            </Link>
-          ))}
-        </div>
+        )
+      )}
+      {hit.fileSummary && hit.fileSummary.imports.length > 0 && (
+        <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-muted)] leading-snug break-words">
+          imports {hit.fileSummary.imports.slice(0, 3).join(", ")}
+        </p>
       )}
     </div>
   );

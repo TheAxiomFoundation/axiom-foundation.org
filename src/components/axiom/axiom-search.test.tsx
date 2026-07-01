@@ -337,9 +337,9 @@ describe("AxiomSearch", () => {
     await waitFor(() => {
       expect(screen.getByText("Utility Allowance")).toBeInTheDocument();
     });
-    // Symbol-level hit carries the matched rule detail on the fused row,
-    // and each symbol is its own deep link to the rule card anchor.
-    expect(screen.getByText("snap_standard_utility_allowance")).toBeInTheDocument();
+    // Matched symbols render as compact chips: each one deep-links to
+    // its rule card anchor and carries the formula as a tooltip. The
+    // RuleSpec internals (kind, source citation) stay off the card.
     const symbolLink = screen
       .getByText("snap_standard_utility_allowance")
       .closest("a");
@@ -347,11 +347,9 @@ describe("AxiomSearch", () => {
       "href",
       "/us-co/policy/cdhs/snap/fy-2026-benefit-calculation#rule-snap_standard_utility_allowance"
     );
-    expect(
-      screen.getByText(
-        "Source: Colorado SNAP FY 2026 benefit calculation composition"
-      )
-    ).toBeInTheDocument();
+    expect(symbolLink).toHaveAttribute("title", "= 490");
+    expect(screen.queryByText(/Source: Colorado SNAP/)).not.toBeInTheDocument();
+    expect(screen.queryByText("derived")).not.toBeInTheDocument();
   });
 
   it("applies the statute filter when clicked", async () => {

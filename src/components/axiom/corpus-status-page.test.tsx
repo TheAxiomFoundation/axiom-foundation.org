@@ -544,8 +544,42 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /operations dashboard/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /encoding activity/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 encoding session running now/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
+    expect(screen.getByText("sdk-1")).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /encoding pipeline/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /statute completion by jurisdiction/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /regulation completion by jurisdiction/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+    expect(
+      screen.getByText("find primary official source")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /release validation/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/has neither body nor heading/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /source discovery backlog/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("ftb.ca.gov")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         name: /indexed corpus by document class/i,
@@ -556,13 +590,15 @@ describe("CorpusStatusPage", () => {
     expect(
       screen.getByRole("heading", { name: /current artifact scopes/i })
     ).toBeInTheDocument();
-    expect(screen.getByText("us-co")).toBeInTheDocument();
+    expect(screen.getAllByText("us-co").length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("columnheader", { name: /^jurisdiction$/i })
-    ).toBeInTheDocument();
+      screen.getAllByRole("columnheader", { name: /^jurisdiction$/i }).length
+    ).toBeGreaterThan(0);
     expect(screen.getAllByRole("columnheader", { name: /^class$/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("columnheader", { name: /version/i })).toBeInTheDocument();
-    expect(screen.getByText("Synced")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("columnheader", { name: /version/i }).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Synced").length).toBeGreaterThan(0);
     expect(screen.getByText("Matched")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /recent movement/i })
@@ -611,6 +647,52 @@ describe("CorpusStatusPage", () => {
         jurisdiction_count: 1,
       },
     ]);
+  });
+
+  it("labels live Supabase counts without claiming they matched a report", () => {
+    render(
+      <CorpusStatusPage
+        status={{
+          ...status,
+          artifactReport: {
+            key: "analytics/artifact-report-current-r2.json",
+            source: "supabase",
+            error: null,
+            value: {
+              ...status.artifactReport.value!,
+              counts_mode: "live",
+              local_count: 0,
+              rows: [
+                {
+                  ...status.artifactReport.value!.rows[0],
+                  source_count: null,
+                  local_complete: null,
+                  coverage_complete: null,
+                  supabase_matches_provisions: null,
+                },
+                {
+                  ...status.artifactReport.value!.rows[0],
+                  version: "2026-05-15",
+                  provision_count: null,
+                  supabase_count: null,
+                  source_count: null,
+                  local_complete: null,
+                  coverage_complete: null,
+                  supabase_matches_provisions: null,
+                  mismatch_reasons: ["exact_scope_count_unavailable"],
+                },
+              ],
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Live count")).toBeInTheDocument();
+    expect(screen.getByText("No count")).toBeInTheDocument();
+    expect(screen.queryByText("Matched")).not.toBeInTheDocument();
+    expect(screen.queryByText(/local artifacts/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/live provision counts/i)).toBeInTheDocument();
   });
 
   it("renders release artifact scope unavailable state without substituting GitHub package rows", () => {

@@ -317,26 +317,31 @@ describe("corpus status helpers", () => {
     const status = await getCorpusStatus();
 
     expect(status.artifactReport.source).toBe("supabase");
+    expect(status.artifactReport.value?.counts_mode).toBe("live");
     expect(status.artifactReport.value?.rows).toEqual([
       expect.objectContaining({
         jurisdiction: "us",
         document_class: "guidance",
         version: "2026-05-01-snap-fy2026-cola",
         provision_count: 3,
-        source_count: 3,
+        source_count: null,
+        local_complete: null,
+        coverage_complete: null,
         r2_complete: true,
         supabase_count: 3,
-        supabase_matches_provisions: true,
+        supabase_matches_provisions: null,
       }),
       expect.objectContaining({
         jurisdiction: "us",
         document_class: "guidance",
         version: "2026-05-02-irs-rev-proc-2025-32",
         provision_count: 37,
-        source_count: 37,
+        source_count: null,
+        local_complete: null,
+        coverage_complete: null,
         r2_complete: true,
         supabase_count: 37,
-        supabase_matches_provisions: true,
+        supabase_matches_provisions: null,
       }),
       expect.objectContaining({
         jurisdiction: "us-co",
@@ -347,10 +352,12 @@ describe("corpus status helpers", () => {
         r2_complete: true,
         supabase_count: null,
         supabase_matches_provisions: null,
+        mismatch_reasons: ["exact_scope_count_unavailable"],
       }),
     ]);
     expect(status.artifactReport.value?.supabase_group_count).toBe(2);
     expect(status.artifactReport.value?.supabase_mismatch_count).toBe(1);
+    expect(status.artifactReport.value?.local_count).toBe(0);
   });
 
   it("loads corpus artifacts from a local root when no remote source is configured", async () => {

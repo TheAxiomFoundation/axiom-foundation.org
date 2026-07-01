@@ -35,6 +35,16 @@ describe("HeroSearchBar", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("navigates to the full search page when a suggestion is clicked", () => {
+    render(<HeroSearchBar />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "colorado snap deduction" })
+    );
+    expect(mockPush).toHaveBeenCalledWith(
+      "/axiom/search?q=colorado%20snap%20deduction"
+    );
+  });
+
   it("opens the command palette from the shortcut chip", () => {
     render(<HeroSearchBar />);
     fireEvent.click(

@@ -110,6 +110,29 @@ describe("AxiomSearch", () => {
     );
   });
 
+  it("offers verified suggestions on the empty page and runs one on click", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+
+    expect(screen.getByText("Try one of these")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "colorado snap deduction" })
+    );
+    expect(
+      (screen.getByRole("searchbox") as HTMLInputElement).value
+    ).toBe("colorado snap deduction");
+
+    await waitFor(() => {
+      expect(latestSearchUrl().searchParams.get("q")).toBe(
+        "colorado snap deduction"
+      );
+    });
+    // Suggestions step aside once results render.
+    await waitFor(() => {
+      expect(screen.queryByText("Try one of these")).not.toBeInTheDocument();
+    });
+  });
+
   it("runs an initialQuery from the URL on mount", async () => {
     mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
 

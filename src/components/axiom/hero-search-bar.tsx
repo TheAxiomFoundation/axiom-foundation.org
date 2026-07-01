@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCommandPalette } from "./command-palette-provider";
+import { HERO_SUGGESTIONS } from "@/lib/axiom/search-suggestions";
 
 /**
  * The landing-page search bar — a real input, not a palette trigger.
@@ -78,13 +79,21 @@ export function HeroSearchBar() {
           {isMac ? "⌘K" : "Ctrl K"}
         </button>
       </form>
-      <p className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-        Try{" "}
-        <em className="not-italic text-[var(--color-accent)]">
-          colorado snap deduction
-        </em>
-        , <em className="not-italic text-[var(--color-accent)]">26 USC § 32</em>,
-        or <em className="not-italic text-[var(--color-accent)]">food stamps</em>
+      <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        <span>Try</span>
+        {HERO_SUGGESTIONS.map((suggestion, i) => (
+          <span key={suggestion.query} className="inline-flex items-center gap-x-2">
+            <button
+              type="button"
+              title={suggestion.hint}
+              onClick={() => router.push(fullSearchPath(suggestion.query))}
+              className="cursor-pointer border-b border-dotted border-[var(--color-accent)] text-[var(--color-accent)] normal-case tracking-normal transition-colors hover:border-solid"
+            >
+              {suggestion.query}
+            </button>
+            {i < HERO_SUGGESTIONS.length - 1 && <span aria-hidden>·</span>}
+          </span>
+        ))}
       </p>
     </div>
   );

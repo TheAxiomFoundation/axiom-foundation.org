@@ -11,6 +11,7 @@ import {
   type UnifiedResult,
 } from "@/lib/axiom/unified-results";
 import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
+import { SEARCH_SUGGESTIONS } from "@/lib/axiom/search-suggestions";
 import type { SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
 
@@ -300,6 +301,27 @@ export function AxiomSearch({ jurisdiction, initialQuery }: AxiomSearchProps) {
       {showEmptyState && (
         <div className="p-6 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md text-sm text-[var(--color-ink-secondary)]">
           No matches. Try broader terms or switch the filter to &ldquo;All&rdquo;.
+        </div>
+      )}
+
+      {(query.trim().length < MIN_QUERY_LEN || showEmptyState) && (
+        <div className="mt-4">
+          <p className="mb-2 font-mono text-xs uppercase tracking-wider text-[var(--color-ink-muted)]">
+            Try one of these
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SEARCH_SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion.query}
+                type="button"
+                title={suggestion.hint}
+                onClick={() => setQuery(suggestion.query)}
+                className="px-3 py-1.5 font-body text-sm rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-[var(--color-ink-secondary)] transition-colors cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              >
+                {suggestion.query}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

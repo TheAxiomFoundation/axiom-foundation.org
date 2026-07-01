@@ -13,6 +13,7 @@ import { SiblingStrip } from "./sibling-strip";
 import { AxiomStats } from "./axiom-stats";
 import { LiveProvisionTile } from "./live-provision-tile";
 import { PaletteTrigger } from "./palette-trigger";
+import { HeroSearchBar } from "./hero-search-bar";
 import { transformRuleToViewerDoc } from "@/lib/axiom-utils";
 import type { AxiomStats as AxiomStatsPayload } from "@/lib/supabase";
 import {
@@ -446,7 +447,7 @@ export function AxiomBrowser({
               Search, browse, or wire it into your own software.
             </p>
             <div className="mt-8">
-              <PaletteTrigger variant="hero" />
+              <HeroSearchBar />
             </div>
           </div>
           <LiveProvisionTile />

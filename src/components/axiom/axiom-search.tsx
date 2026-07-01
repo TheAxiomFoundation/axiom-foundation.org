@@ -33,6 +33,11 @@ interface AxiomSearchProps {
    * hidden. Leave undefined to search everything.
    */
   jurisdiction?: string;
+  /**
+   * Query to run on mount — lets other surfaces (the landing hero,
+   * shared links) deep-link into /axiom/search?q=….
+   */
+  initialQuery?: string;
 }
 
 function formatCitationLabel(path: string): string {
@@ -96,8 +101,8 @@ function Snippet({ html }: { html: string }) {
   );
 }
 
-export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
-  const [query, setQuery] = useState("");
+export function AxiomSearch({ jurisdiction, initialQuery }: AxiomSearchProps) {
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [docType, setDocType] = useState<DocTypeFilter>("all");
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [results, setResults] = useState<AxiomSearchResults>(EMPTY_RESULTS);
@@ -162,6 +167,18 @@ export function AxiomSearch({ jurisdiction }: AxiomSearchProps) {
     }, DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [query, docType, effectiveJurisdiction, runSearch]);
+
+  // Keep ?q= shareable: reflect the live query into the URL without
+  // adding history entries.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const trimmed = query.trim();
+    if ((url.searchParams.get("q") ?? "") === trimmed) return;
+    if (trimmed) url.searchParams.set("q", trimmed);
+    else url.searchParams.delete("q");
+    window.history.replaceState(null, "", url);
+  }, [query]);
 
   const unified = useMemo(() => buildUnifiedResults(results), [results]);
 

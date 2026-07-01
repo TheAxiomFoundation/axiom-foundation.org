@@ -110,6 +110,22 @@ describe("AxiomSearch", () => {
     );
   });
 
+  it("runs an initialQuery from the URL on mount", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+
+    render(<AxiomSearch initialQuery="snap deduction" />);
+
+    expect(
+      (screen.getByRole("searchbox") as HTMLInputElement).value
+    ).toBe("snap deduction");
+    await waitFor(() => {
+      expect(latestSearchUrl().searchParams.get("q")).toBe("snap deduction");
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+  });
+
   it("does not call the search endpoint for queries below the minimum length", async () => {
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {

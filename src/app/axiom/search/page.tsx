@@ -7,7 +7,12 @@ export const metadata: Metadata = {
     "Search programs, encoded RuleSpecs, and source law across every Axiom jurisdiction.",
 };
 
-export default function AxiomSearchPage() {
+export default async function AxiomSearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   return (
     <div className="relative z-1 py-24 px-8">
       <div className="max-w-[800px] mx-auto">
@@ -19,7 +24,7 @@ export default function AxiomSearchPage() {
             citation (&ldquo;7 CFR 273.9&rdquo;), or plain words.
           </p>
         </header>
-        <AxiomSearch />
+        <AxiomSearch initialQuery={q} />
       </div>
     </div>
   );

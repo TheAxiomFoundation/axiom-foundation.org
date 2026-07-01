@@ -110,6 +110,85 @@ describe("AxiomSearch", () => {
     );
   });
 
+  it("tracks clicks on result rows and the citation shortcut", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "7 CFR 273.9" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+    // Clicking a result row and the citation card exercises the click
+    // tracking path (a no-op capture without a PostHog key).
+    fireEvent.click(screen.getByText("Income and deductions").closest("a")!);
+    fireEvent.click(screen.getByRole("link", { name: /Open exact citation/i }));
+  });
+
+  it("renders preview rule chips with deep links for file-level matches", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          encoded: [
+            encodedHit({
+              fileSummary: {
+                summary: "Colorado SNAP benefit calculation.",
+                ruleCount: 4,
+                importCount: 1,
+                imports: ["us:regulations/7-cfr/273/9"],
+                previewRules: [
+                  {
+                    name: "shelter_costs",
+                    label: "Shelter Costs",
+                    kind: "derived",
+                    source: null,
+                    formula: "a + b",
+                    matchedTerms: [],
+                    score: 0,
+                  },
+                ],
+              },
+            }),
+          ],
+        })
+      )
+    );
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CO SNAP" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("shelter_costs")).toBeInTheDocument();
+    });
+    expect(screen.getByText("shelter_costs").closest("a")).toHaveAttribute(
+      "href",
+      "/us-co/policy/cdhs/snap/fy-2026-benefit-calculation#rule-shelter_costs"
+    );
+    expect(screen.getByText(/imports us:regulations/)).toBeInTheDocument();
+  });
+
+  it("clears results when the query drops below the minimum length", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "snap households" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "a" } });
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Income and deductions")
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Try one of these")).toBeInTheDocument();
+  });
+
   it("offers verified suggestions on the empty page and runs one on click", async () => {
     mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
     render(<AxiomSearch />);

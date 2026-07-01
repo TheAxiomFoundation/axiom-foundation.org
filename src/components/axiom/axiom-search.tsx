@@ -256,30 +256,19 @@ export function AxiomSearch({ jurisdiction, initialQuery }: AxiomSearchProps) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search statutes, regulations, and rulemaking (e.g. "SNAP standard deduction")'
           className="w-full px-4 py-3 font-body text-base bg-[var(--color-paper-elevated)] border border-[var(--color-rule-strong)] rounded-md placeholder:text-[var(--color-ink-muted)] focus:outline-2 focus:outline-[var(--color-focus-ring)] focus:outline-offset-2 focus:border-[var(--color-accent)] transition-colors"
-          aria-describedby="axiom-search-help"
         />
-        <p
-          id="axiom-search-help"
-          className="mt-2 font-mono text-xs text-[var(--color-ink-muted)] flex items-center gap-2"
-        >
-          <span>
-            One ranked list across programs, encoded rules, and source text —
-            try &ldquo;colorado snap deduction&rdquo;. Quoted phrases, OR, and
-            −exclude refine source-text matches.
-          </span>
-          {loading && (
+        {loading && (
+          <p
+            className="mt-2 font-mono text-xs inline-flex items-center gap-1.5 text-[var(--color-accent)]"
+            aria-live="polite"
+          >
             <span
-              className="inline-flex items-center gap-1.5 text-[var(--color-accent)]"
-              aria-live="polite"
-            >
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 rounded-full border border-[var(--color-accent)] border-t-transparent animate-spin"
-              />
-              Searching…
-            </span>
-          )}
-        </p>
+              aria-hidden="true"
+              className="h-3 w-3 rounded-full border border-[var(--color-accent)] border-t-transparent animate-spin"
+            />
+            Searching…
+          </p>
+        )}
       </form>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">

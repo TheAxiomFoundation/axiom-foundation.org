@@ -337,8 +337,16 @@ describe("AxiomSearch", () => {
     await waitFor(() => {
       expect(screen.getByText("Utility Allowance")).toBeInTheDocument();
     });
-    // Symbol-level hit carries the matched rule detail on the fused row.
+    // Symbol-level hit carries the matched rule detail on the fused row,
+    // and each symbol is its own deep link to the rule card anchor.
     expect(screen.getByText("snap_standard_utility_allowance")).toBeInTheDocument();
+    const symbolLink = screen
+      .getByText("snap_standard_utility_allowance")
+      .closest("a");
+    expect(symbolLink).toHaveAttribute(
+      "href",
+      "/us-co/policy/cdhs/snap/fy-2026-benefit-calculation#rule-snap_standard_utility_allowance"
+    );
     expect(
       screen.getByText(
         "Source: Colorado SNAP FY 2026 benefit calculation composition"

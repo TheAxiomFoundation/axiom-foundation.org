@@ -429,6 +429,20 @@ function UnifiedRow({
   row: UnifiedResult;
   onNavigate: () => void;
 }) {
+  // Encoded rows carry independently-clickable rule symbols, so they
+  // manage their own links instead of one card-wide anchor.
+  if (row.kind === "encoded") {
+    return (
+      <li>
+        <EncodedRow
+          hit={row.hit}
+          programContext={row.programContext}
+          href={row.href}
+          onNavigate={onNavigate}
+        />
+      </li>
+    );
+  }
   return (
     <li>
       <Link
@@ -441,7 +455,6 @@ function UnifiedRow({
             context={{ program: row.program, anchor: row.anchor }}
           />
         )}
-        {row.kind === "encoded" && <EncodedRowBody hit={row.hit} programContext={row.programContext} />}
         {row.kind === "corpus" && <CorpusRowBody hit={row.hit} />}
       </Link>
     </li>
@@ -468,65 +481,95 @@ function ProgramRowBody({ context }: { context: ProgramContext }) {
   );
 }
 
-function EncodedRowBody({
+/**
+ * Anchor on the rule page for a matched symbol. RuleSpecTab renders
+ * each rule card with id="rule-<name>"; formula references anchor to
+ * the rule whose formula mentioned them (their `source`).
+ */
+function symbolAnchor(symbol: EncodedSearchResult["symbolMatches"][number]): string {
+  const target =
+    symbol.kind === "formula_ref" && symbol.source ? symbol.source : symbol.name;
+  return `#rule-${target}`;
+}
+
+function EncodedRow({
   hit,
   programContext,
+  href,
+  onNavigate,
 }: {
   hit: EncodedSearchResult;
   programContext?: ProgramContext;
+  href: string;
+  onNavigate: () => void;
 }) {
   return (
-    <>
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="font-mono text-xs text-[var(--color-accent)]">
-          {hit.jurisdictionLabel} / {hit.bucket}
+    <div className="px-5 py-4">
+      <Link
+        href={href}
+        onClick={onNavigate}
+        className="block -mx-2 rounded px-2 py-1 hover:bg-[var(--color-accent-light)] transition-colors"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="font-mono text-xs text-[var(--color-accent)]">
+            {hit.jurisdictionLabel} / {hit.bucket}
+          </div>
+          <Badge>Encoded</Badge>
         </div>
-        <Badge>Encoded</Badge>
-      </div>
-      <div className="mt-1 text-base text-[var(--color-ink)]">{hit.label}</div>
-      {programContext && (
-        <p className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
-          {programContext.program.displayName}: {programContext.anchor.label}
+        <div className="mt-1 text-base text-[var(--color-ink)]">{hit.label}</div>
+        {programContext && (
+          <p className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
+            {programContext.program.displayName}: {programContext.anchor.label}
+          </p>
+        )}
+        {hit.fileSummary && (
+          <div className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
+            <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+              {hit.fileSummary.ruleCount} rules
+              {hit.fileSummary.importCount > 0
+                ? ` · ${hit.fileSummary.importCount} imports`
+                : ""}
+            </span>
+            {hit.fileSummary.summary && (
+              <p className="mt-1">{hit.fileSummary.summary}</p>
+            )}
+          </div>
+        )}
+        <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
+          {hit.citationPath}
         </p>
-      )}
-      {hit.fileSummary && (
-        <div className="mt-1 text-sm text-[var(--color-ink-secondary)] leading-snug">
-          <span className="font-mono text-xs text-[var(--color-ink-muted)]">
-            {hit.fileSummary.ruleCount} rules
-            {hit.fileSummary.importCount > 0
-              ? ` · ${hit.fileSummary.importCount} imports`
-              : ""}
-          </span>
-          {hit.fileSummary.summary && (
-            <p className="mt-1">{hit.fileSummary.summary}</p>
-          )}
-          {hit.symbolMatches.length === 0 &&
-            hit.fileSummary.previewRules.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {hit.fileSummary.previewRules.slice(0, 6).map((rule) => (
-                  <span
-                    key={rule.name}
-                    className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1"
-                  >
-                    {rule.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          {hit.symbolMatches.length === 0 &&
-            hit.fileSummary.imports.length > 0 && (
-              <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-muted)] leading-snug break-words">
-                imports {hit.fileSummary.imports.slice(0, 3).join(", ")}
-              </p>
-            )}
-        </div>
-      )}
+      </Link>
+      {hit.symbolMatches.length === 0 &&
+        hit.fileSummary &&
+        hit.fileSummary.previewRules.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {hit.fileSummary.previewRules.slice(0, 6).map((rule) => (
+              <Link
+                key={rule.name}
+                href={`${href}#rule-${rule.name}`}
+                onClick={onNavigate}
+                className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1 transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              >
+                {rule.name}
+              </Link>
+            ))}
+          </div>
+        )}
+      {hit.symbolMatches.length === 0 &&
+        hit.fileSummary &&
+        hit.fileSummary.imports.length > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-[var(--color-ink-muted)] leading-snug break-words">
+            imports {hit.fileSummary.imports.slice(0, 3).join(", ")}
+          </p>
+        )}
       {hit.symbolMatches.length > 0 && (
         <div className="mt-2 space-y-1">
           {hit.symbolMatches.map((symbol) => (
-            <div
+            <Link
               key={symbol.name}
-              className="rounded border border-[var(--color-rule)] bg-[var(--color-paper)] px-3 py-2"
+              href={`${href}${symbolAnchor(symbol)}`}
+              onClick={onNavigate}
+              className="block rounded border border-[var(--color-rule)] bg-[var(--color-paper)] px-3 py-2 transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-mono text-xs text-[var(--color-ink)]">
@@ -544,14 +587,11 @@ function EncodedRowBody({
                   Source: {symbol.source}
                 </p>
               )}
-            </div>
+            </Link>
           ))}
         </div>
       )}
-      <p className="mt-1 font-mono text-xs text-[var(--color-ink-secondary)] leading-snug break-words">
-        {hit.citationPath}
-      </p>
-    </>
+    </div>
   );
 }
 

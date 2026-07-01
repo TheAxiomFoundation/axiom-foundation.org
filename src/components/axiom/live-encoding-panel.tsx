@@ -366,6 +366,7 @@ function formatUtcShortDate(value: string | null): string {
     hour: "numeric",
     minute: "2-digit",
     timeZone: "UTC",
+    timeZoneName: "short",
   }).format(date);
 }
 

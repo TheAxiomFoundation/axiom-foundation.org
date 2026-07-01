@@ -1,5 +1,8 @@
 import { searchRules, type SearchHit } from "@/lib/supabase";
-import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
+import {
+  EXTRA_JURISDICTION_LABELS,
+  JURISDICTIONS_SEED,
+} from "@/lib/axiom/jurisdictions-seed";
 import {
   findPrograms,
   type Program,
@@ -113,11 +116,6 @@ const CORPUS_LIMIT_DEFAULT = 20;
 const JURISDICTION_BY_SLUG = new Map(
   JURISDICTIONS_SEED.map((jurisdiction) => [jurisdiction.slug, jurisdiction])
 );
-const EXTRA_JURISDICTION_LABELS: Readonly<Record<string, string>> =
-  Object.freeze({
-    nz: "New Zealand",
-    "uk-kingston-upon-thames": "Kingston upon Thames",
-  });
 const DOC_TYPE_TO_REPO_BUCKET: Readonly<Record<string, string>> = Object.freeze({
   statute: "statutes",
   regulation: "regulations",

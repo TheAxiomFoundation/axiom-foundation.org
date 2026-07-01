@@ -10,7 +10,10 @@ import {
   type ProgramContext,
   type UnifiedResult,
 } from "@/lib/axiom/unified-results";
-import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
+import {
+  EXTRA_JURISDICTION_LABELS,
+  JURISDICTIONS_SEED,
+} from "@/lib/axiom/jurisdictions-seed";
 import { SEARCH_SUGGESTIONS } from "@/lib/axiom/search-suggestions";
 import type { SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
@@ -26,6 +29,37 @@ const EMPTY_RESULTS: AxiomSearchResults = {
   encoded: [],
   corpus: [],
 };
+
+/**
+ * The jurisdiction picker groups ~57 entries so the national ones a
+ * user most likely wants aren't buried under fifty states.
+ */
+const JURISDICTION_GROUPS: ReadonlyArray<{
+  label: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+}> = (() => {
+  const bySlug = new Map(JURISDICTIONS_SEED.map((j) => [j.slug, j.label]));
+  const national = ["us", "uk", "canada"]
+    .filter((slug) => bySlug.has(slug))
+    .map((slug) => ({ value: slug, label: bySlug.get(slug)! }));
+  national.push({ value: "nz", label: EXTRA_JURISDICTION_LABELS["nz"] });
+  const states = JURISDICTIONS_SEED.filter((j) => j.slug.startsWith("us-")).map(
+    (j) => ({ value: j.slug, label: j.label })
+  );
+  return [
+    { label: "Federal & national", options: national },
+    { label: "US states & territories", options: states },
+    {
+      label: "UK local authorities",
+      options: [
+        {
+          value: "uk-kingston-upon-thames",
+          label: EXTRA_JURISDICTION_LABELS["uk-kingston-upon-thames"],
+        },
+      ],
+    },
+  ];
+})();
 
 interface AxiomSearchProps {
   /**
@@ -280,10 +314,14 @@ export function AxiomSearch({ jurisdiction, initialQuery }: AxiomSearchProps) {
             className="ml-auto px-3 py-1.5 font-mono text-xs rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] text-[var(--color-ink-secondary)] focus:outline-2 focus:outline-[var(--color-focus-ring)]"
           >
             <option value="">All jurisdictions</option>
-            {JURISDICTIONS_SEED.map((entry) => (
-              <option key={entry.slug} value={entry.slug}>
-                {entry.label}
-              </option>
+            {JURISDICTION_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         )}

@@ -421,9 +421,23 @@ describe("AxiomSearch", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
     mockFetch.mockClear();
-    fireEvent.change(screen.getByRole("combobox", { name: "Jurisdiction" }), {
-      target: { value: "us-co" },
-    });
+    const picker = screen.getByRole("combobox", { name: "Jurisdiction" });
+    // Grouped for scanability: national entries aren't buried under
+    // fifty states, and the standalone encoded jurisdictions appear.
+    expect(
+      screen.getByRole("group", { name: "Federal & national" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "US states & territories" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "New Zealand" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Kingston upon Thames" })
+    ).toBeInTheDocument();
+
+    fireEvent.change(picker, { target: { value: "us-co" } });
     flush(250);
 
     await waitFor(() =>

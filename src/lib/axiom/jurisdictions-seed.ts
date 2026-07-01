@@ -15,6 +15,18 @@ import type { Jurisdiction } from "@/lib/tree-data";
  * only shows jurisdictions whose rule count is > 0, so unused
  * entries here simply stay hidden.
  */
+/**
+ * Jurisdictions with encoded content that live outside the canonical
+ * corpus seed below — newer standalone rulespec repos (NZ) and local
+ * authorities (Kingston). Search infers them from queries and the
+ * jurisdiction filter offers them alongside the seed.
+ */
+export const EXTRA_JURISDICTION_LABELS: Readonly<Record<string, string>> =
+  Object.freeze({
+    nz: "New Zealand",
+    "uk-kingston-upon-thames": "Kingston upon Thames",
+  });
+
 export const JURISDICTIONS_SEED: Jurisdiction[] = [
   // Federal / non-US
   { slug: "us", label: "US Federal", hasCitationPaths: true },

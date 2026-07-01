@@ -1,5 +1,8 @@
 import { searchRules, type SearchHit } from "@/lib/supabase";
-import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
+import {
+  EXTRA_JURISDICTION_LABELS,
+  JURISDICTIONS_SEED,
+} from "@/lib/axiom/jurisdictions-seed";
 import {
   findPrograms,
   type Program,
@@ -12,6 +15,14 @@ import {
   tokenizeFormula,
   type RuleSpecRule,
 } from "@/lib/axiom/rulespec/doc";
+import {
+  HAYSTACK_TOKEN_IMPLICATIONS,
+  QUERY_STOPWORDS,
+  QUERY_TOKEN_IMPLICATIONS,
+  SINGLE_TOKEN_PROGRAM_ALIASES,
+  type TokenImplication,
+} from "@/lib/axiom/search-lexicon";
+import { fetchIndexedRuleSpecCandidates } from "@/lib/axiom/rulespec-index";
 
 export interface AxiomSearchOptions {
   jurisdiction?: string;
@@ -80,7 +91,10 @@ interface RuleSpecSearchRoot {
 }
 
 interface EncodedFileCandidate extends EncodedFile {
-  root: RuleSpecSearchRoot;
+  /** Repo location for on-demand YAML fetches; null for index rows. */
+  root: RuleSpecSearchRoot | null;
+  /** Raw YAML when it arrived with the candidate (index rows). */
+  content?: string | null;
 }
 
 interface EncodedFileBaseScore
@@ -102,11 +116,6 @@ const CORPUS_LIMIT_DEFAULT = 20;
 const JURISDICTION_BY_SLUG = new Map(
   JURISDICTIONS_SEED.map((jurisdiction) => [jurisdiction.slug, jurisdiction])
 );
-const EXTRA_JURISDICTION_LABELS: Readonly<Record<string, string>> =
-  Object.freeze({
-    nz: "New Zealand",
-    "uk-kingston-upon-thames": "Kingston upon Thames",
-  });
 const DOC_TYPE_TO_REPO_BUCKET: Readonly<Record<string, string>> = Object.freeze({
   statute: "statutes",
   regulation: "regulations",
@@ -133,21 +142,6 @@ const ACRONYMS = new Set([
   "usc",
   "usda",
   "wic",
-]);
-const QUERY_EXPANSIONS: Readonly<Record<string, string[]>> = Object.freeze({
-  sua: ["standard", "utility", "allowance"],
-  lua: ["limited", "utility", "allowance"],
-  calfresh: ["snap"],
-  calworks: ["tanf", "cash", "assistance"],
-  shelter: ["housing"],
-});
-const QUERY_STOPWORDS = new Set(["be", "no", "should"]);
-const ENCODED_BOOTSTRAP_TOKENS = new Set([
-  "snap",
-  "tanf",
-  "ssi",
-  "eitc",
-  "medicaid",
 ]);
 
 export async function searchAxiom(
@@ -189,7 +183,11 @@ function pruneProgramResults(
   const hintedStates = [...inferJurisdictions(tokens)].filter((jurisdiction) =>
     /^us-[a-z]{2}$/.test(jurisdiction)
   );
-  if (hintedStates.length === 0 || !tokens.includes("snap")) return programs;
+  if (hintedStates.length === 0) return programs;
+  const isPrunable = (result: ProgramSearchResult) =>
+    result.program.jurisdiction === "us" &&
+    result.program.stateAdministered === true;
+  if (!programs.some(isPrunable)) return programs;
 
   const hasStateEncodedHit = encoded.some((hit) => {
     const jurisdiction = hit.citationPath.split("/")[0];
@@ -200,7 +198,7 @@ function pruneProgramResults(
   );
   if (!hasStateEncodedHit || hasStateProgram) return programs;
 
-  return programs.filter((result) => result.program.slug !== "snap");
+  return programs.filter((result) => !isPrunable(result));
 }
 
 function searchProgramResults(
@@ -303,38 +301,42 @@ export async function searchEncodedRuleSpecs(
   const tokens = expandQueryTokens(tokenise(query));
   if (tokens.length === 0) return [];
 
+  const matchedPrograms = fullyMatchedPrograms(query, tokens);
   const hintedJurisdictions = options.jurisdiction
     ? new Set([options.jurisdiction])
     : inferJurisdictions(tokens);
   if (!options.jurisdiction) {
-    for (const jurisdiction of inferProgramJurisdictions(query, tokens)) {
+    for (const jurisdiction of inferProgramJurisdictions(matchedPrograms)) {
       hintedJurisdictions.add(jurisdiction);
     }
-  }
-  if (
-    tokens.includes("snap") &&
-    [...hintedJurisdictions].some((jurisdiction) => /^us-[a-z]{2}$/.test(jurisdiction))
-  ) {
-    hintedJurisdictions.add("us");
-  }
-  const roots = await discoverRuleSpecSearchRoots();
-  const candidateRoots =
-    hintedJurisdictions.size > 0
-      ? roots.filter((root) => hintedJurisdictions.has(root.jurisdiction))
-      : roots;
-  const bucket = options.docType ? DOC_TYPE_TO_REPO_BUCKET[options.docType] : null;
-  const files = dedupeEncodedFileCandidates(
-    (
-      await Promise.all(
-        candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
+    // A state-administered federal program has rules in both places:
+    // "colorado snap" should surface the CDHS manual and the federal
+    // baseline it implements.
+    const stateHinted = [...hintedJurisdictions].some((jurisdiction) =>
+      /^us-[a-z]{2}$/.test(jurisdiction)
+    );
+    if (
+      stateHinted &&
+      matchedPrograms.some(
+        (program) => program.jurisdiction === "us" && program.stateAdministered
       )
-    ).flat()
+    ) {
+      hintedJurisdictions.add("us");
+    }
+  }
+  const bucket = options.docType ? DOC_TYPE_TO_REPO_BUCKET[options.docType] : null;
+  const files = await listEncodedFileCandidates(
+    tokens,
+    hintedJurisdictions,
+    bucket
   );
 
   const scored = await Promise.all(
     files
-    .filter((file) => !bucket || file.bucket === bucket)
-      .map((file) => scoreEncodedCandidate(file, tokens, hintedJurisdictions))
+      .filter((file) => !bucket || file.bucket === bucket)
+      .map((file) =>
+        scoreEncodedCandidate(file, tokens, hintedJurisdictions, matchedPrograms)
+      )
   );
 
   return scored
@@ -346,9 +348,15 @@ export async function searchEncodedRuleSpecs(
 async function scoreEncodedCandidate(
   file: EncodedFileCandidate,
   queryTokens: string[],
-  hintedJurisdictions: Set<string>
+  hintedJurisdictions: Set<string>,
+  matchedPrograms: Program[]
 ): Promise<EncodedSearchResult | null> {
-  const base = scoreEncodedFile(file, queryTokens, hintedJurisdictions);
+  const base = scoreEncodedFile(
+    file,
+    queryTokens,
+    hintedJurisdictions,
+    matchedPrograms
+  );
   const analysis = base ? await analyzeRuleSpecFile(file, queryTokens) : null;
   const symbolMatches = analysis?.symbolMatches ?? [];
   if (!base && symbolMatches.length === 0) return null;
@@ -376,7 +384,8 @@ async function scoreEncodedCandidate(
 function scoreEncodedFile(
   file: EncodedFile,
   queryTokens: string[],
-  hintedJurisdictions: Set<string>
+  hintedJurisdictions: Set<string>,
+  matchedPrograms: Program[]
 ): EncodedFileBaseScore | null {
   const jurisdictionLabel = jurisdictionLabelFor(file.citationPath.split("/")[0]);
   const haystackTokens = encodedFileTokenSet(
@@ -389,12 +398,12 @@ function scoreEncodedFile(
     queryWithoutJurisdiction.length > 0 ? queryWithoutJurisdiction : queryTokens;
   const tokenMatches = matchQueryTokens(contentTokens, haystackTokens);
   const matched = tokenMatches.map((match) => match.canonicalToken);
-  const slugBoost = encodedSlugBoost(file, queryTokens);
-  if (matched.length === 0 && slugBoost === 0) return null;
+  const affinityBoost = programAffinityBoost(file, matchedPrograms);
+  if (matched.length === 0 && affinityBoost === 0) return null;
   if (
     contentTokens.length >= 3 &&
     matched.length === 1 &&
-    !ENCODED_BOOTSTRAP_TOKENS.has(matched[0])
+    !SINGLE_TOKEN_PROGRAM_ALIASES.has(matched[0])
   ) {
     return null;
   }
@@ -421,7 +430,8 @@ function scoreEncodedFile(
     (allContentMatched ? 240 : 0) +
     exactSegmentBoost +
     pathMatchScore +
-    slugBoost +
+    affinityBoost +
+    fiscalYearBoost(file) +
     (file.bucket === "policies" ? 20 : 0);
 
   return {
@@ -453,34 +463,90 @@ function scoreEncodedPathMatch(file: EncodedFile, contentTokens: string[]): numb
   return Math.round(260 + matched.length * 95 + coverage * 220 + exactTerminalBoost);
 }
 
-function encodedSlugBoost(file: EncodedFile, queryTokens: string[]): number {
-  const path = `${file.citationPath}/${file.filePath}`.toLowerCase();
-  if (
-    path.includes("aca-ptc") &&
-    (queryTokens.includes("aca") ||
-      (queryTokens.includes("premium") &&
-        queryTokens.includes("tax") &&
-        queryTokens.includes("credit")))
-  ) {
-    return 1200;
+/**
+ * Boost files the program registry already points at. Anchor paths are
+ * curated one-click destinations; a terminal path segment carrying the
+ * program's slug tokens is that program's own encoding. Both signals
+ * come from seed data, so new programs get them for free.
+ */
+function programAffinityBoost(
+  file: EncodedFile,
+  matchedPrograms: Program[]
+): number {
+  let boost = 0;
+  for (const program of matchedPrograms) {
+    if (
+      program.anchors.some(
+        (anchor) =>
+          file.citationPath === anchor.citationPath ||
+          file.citationPath.startsWith(`${anchor.citationPath}/`)
+      )
+    ) {
+      boost = Math.max(boost, 700);
+      continue;
+    }
+    const slugTokens = tokenise(program.slug).filter(
+      (token) => !isJurisdictionToken(token)
+    );
+    if (slugTokens.length === 0) continue;
+    const terminalTokens = new Set(
+      tokenise(file.citationPath.split("/").slice(-2).join(" ")).flatMap(
+        tokenVariants
+      )
+    );
+    if (slugTokens.every((token) => terminalTokens.has(token))) {
+      boost = Math.max(boost, 600);
+    }
   }
-  if (queryTokens.includes("snap") && isSnapEncodedPath(path)) {
-    if (path.includes("fy-2026-benefit-calculation")) return 380;
-    if (path.includes("benefit-calculation")) return 320;
-    if (path.includes("eligibility-and-benefit-determination")) return 260;
-    if (path.includes("benefit-amount")) return 220;
-    if (path.includes("categorical-eligibility")) return 120;
-  }
-  return 0;
+  return boost;
 }
 
-function isSnapEncodedPath(path: string): boolean {
-  return (
-    path.includes("/snap/") ||
-    path.includes("/na-") ||
-    path.includes("-na/") ||
-    path.includes("/nutrition-assistance/") ||
-    path.includes("/supplemental-nutrition-assistance/")
+/**
+ * Prefer the most recent fiscal-year edition when sibling files differ
+ * only by year ("fy-2026-benefit-calculation" over "fy-2025-…").
+ */
+function fiscalYearBoost(file: EncodedFile): number {
+  const match = file.citationPath.match(/fy-(20\d{2})/);
+  if (!match) return 0;
+  return Math.min(40, Math.max(0, Number(match[1]) - 2000));
+}
+
+/**
+ * List candidate files for scoring — from the database index when it
+ * is populated (one query, YAML included), otherwise by crawling the
+ * rulespec-* repos on GitHub at request time.
+ */
+async function listEncodedFileCandidates(
+  tokens: string[],
+  hintedJurisdictions: Set<string>,
+  bucket: string | null
+): Promise<EncodedFileCandidate[]> {
+  const indexed = await fetchIndexedRuleSpecCandidates(
+    tokens,
+    hintedJurisdictions,
+    bucket
+  );
+  if (indexed !== null) {
+    return indexed.map((row) => ({
+      filePath: row.filePath,
+      citationPath: row.citationPath,
+      bucket: row.bucket,
+      root: null,
+      content: row.rawYaml,
+    }));
+  }
+
+  const roots = await discoverRuleSpecSearchRoots();
+  const candidateRoots =
+    hintedJurisdictions.size > 0
+      ? roots.filter((root) => hintedJurisdictions.has(root.jurisdiction))
+      : roots;
+  return dedupeEncodedFileCandidates(
+    (
+      await Promise.all(
+        candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
+      )
+    ).flat()
   );
 }
 
@@ -491,7 +557,10 @@ async function analyzeRuleSpecFile(
   symbolMatches: RuleSpecSymbolMatch[];
   summary: RuleSpecFileSummary;
 } | null> {
-  const content = await fetchRuleSpecYaml(file).catch(() => null);
+  const content =
+    file.content !== undefined
+      ? file.content
+      : await fetchRuleSpecYaml(file).catch(() => null);
   if (!content) return null;
   const doc = parseRuleSpec(content);
   const symbolMatches = dedupeSymbolMatches(
@@ -706,6 +775,7 @@ const PREVIEW_RULE_WEIGHTS: Readonly<Record<string, number>> = Object.freeze({
 });
 
 async function fetchRuleSpecYaml(file: EncodedFileCandidate): Promise<string | null> {
+  if (!file.root) return null;
   const prefixedPath = file.root.prefix
     ? `${file.root.prefix}/${file.filePath}`
     : file.filePath;
@@ -832,14 +902,19 @@ function inferJurisdictions(tokens: string[]): Set<string> {
   return out;
 }
 
-function inferProgramJurisdictions(query: string, tokens: string[]): Set<string> {
+function fullyMatchedPrograms(query: string, tokens: string[]): Program[] {
+  return findPrograms(query, PROGRAM_LIMIT).filter((program) =>
+    programAliasFullyMatched(program, tokens)
+  );
+}
+
+function inferProgramJurisdictions(matchedPrograms: Program[]): Set<string> {
   const out = new Set<string>();
-  for (const program of findPrograms(query, PROGRAM_LIMIT)) {
-    if (program.slug === "snap") continue;
-    const aliases = program.aliases.map(tokenise);
-    if (aliases.some((alias) => alias.every((token) => tokens.includes(token)))) {
-      out.add(program.jurisdiction);
-    }
+  for (const program of matchedPrograms) {
+    // State-administered federal programs live in state manuals too, so
+    // their name alone must not narrow the search to federal sources.
+    if (program.jurisdiction === "us" && program.stateAdministered) continue;
+    out.add(program.jurisdiction);
   }
   return out;
 }
@@ -930,9 +1005,19 @@ function commonMeaningfulTokens(values: string[]): string[] {
   return [...first].filter((token) => rest.every((set) => set.has(token)));
 }
 
+/**
+ * Strip tokens that describe context rather than topic: program names,
+ * jurisdictions, and fiscal-year markers. What remains is what the
+ * user is actually asking about ("standard deduction", not "snap co").
+ */
 function meaningfulTokens(tokens: string[]): string[] {
-  const noise = new Set(tokenise("snap co us fy 2026"));
-  return tokens.filter((token) => !noise.has(token));
+  return tokens.filter(
+    (token) =>
+      !SINGLE_TOKEN_PROGRAM_ALIASES.has(token) &&
+      !isJurisdictionToken(token) &&
+      token !== "fy" &&
+      !/^(19|20)\d{2}$/.test(token)
+  );
 }
 
 function compactFormula(formula: string): string {
@@ -982,14 +1067,10 @@ function contextTokenSet(tokens: string[]): Set<string> {
 }
 
 function encodedFileTokenSet(tokens: string[]): Set<string> {
-  const expanded = new Set(tokens.flatMap(tokenVariants));
-  if (
-    (expanded.has("nutrition") && expanded.has("assistance")) ||
-    (expanded.has("faa5") && expanded.has("na"))
-  ) {
-    expanded.add("snap");
-  }
-  return expanded;
+  return applyImplications(
+    new Set(tokens.flatMap(tokenVariants)),
+    HAYSTACK_TOKEN_IMPLICATIONS
+  );
 }
 
 function matchQueryTokens(
@@ -1106,12 +1187,24 @@ function trigrams(value: string): Set<string> {
   return out;
 }
 
-function expandQueryTokens(tokens: string[]): string[] {
-  const expanded = new Set(tokens.flatMap(tokenVariants));
-  for (const token of tokens) {
-    for (const extra of QUERY_EXPANSIONS[token] ?? []) {
-      for (const variant of tokenVariants(extra)) expanded.add(variant);
+function applyImplications(
+  expanded: Set<string>,
+  implications: readonly TokenImplication[]
+): Set<string> {
+  for (const { when, add } of implications) {
+    if (!when.every((token) => expanded.has(token))) continue;
+    for (const token of add) {
+      for (const variant of tokenVariants(token)) expanded.add(variant);
     }
   }
-  return [...expanded];
+  return expanded;
+}
+
+function expandQueryTokens(tokens: string[]): string[] {
+  return [
+    ...applyImplications(
+      new Set(tokens.flatMap(tokenVariants)),
+      QUERY_TOKEN_IMPLICATIONS
+    ),
+  ];
 }

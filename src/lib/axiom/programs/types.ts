@@ -48,5 +48,12 @@ export interface Program {
   governingBody?: string;
   /** One-sentence summary shown in the palette and any future program card. */
   summary: string;
+  /**
+   * True for federal programs that states administer under their own
+   * policy manuals (SNAP, TANF, Medicaid, …). Search uses this to keep
+   * state-specific encodings in play for the program's queries and to
+   * step the federal shortcut aside when a state match answers better.
+   */
+  stateAdministered?: boolean;
   anchors: ProgramAnchor[];
 }

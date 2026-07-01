@@ -110,6 +110,124 @@ describe("AxiomSearch", () => {
     );
   });
 
+  it("tracks clicks on result rows and the citation shortcut", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "7 CFR 273.9" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+    // Clicking a result row and the citation card exercises the click
+    // tracking path (a no-op capture without a PostHog key).
+    fireEvent.click(screen.getByText("Income and deductions").closest("a")!);
+    fireEvent.click(screen.getByRole("link", { name: /Open exact citation/i }));
+  });
+
+  it("renders preview rule chips with deep links for file-level matches", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        responseJson({
+          encoded: [
+            encodedHit({
+              fileSummary: {
+                summary: "Colorado SNAP benefit calculation.",
+                ruleCount: 4,
+                importCount: 1,
+                imports: ["us:regulations/7-cfr/273/9"],
+                previewRules: [
+                  {
+                    name: "shelter_costs",
+                    label: "Shelter Costs",
+                    kind: "derived",
+                    source: null,
+                    formula: "a + b",
+                    matchedTerms: [],
+                    score: 0,
+                  },
+                ],
+              },
+            }),
+          ],
+        })
+      )
+    );
+
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "CO SNAP" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("shelter_costs")).toBeInTheDocument();
+    });
+    expect(screen.getByText("shelter_costs").closest("a")).toHaveAttribute(
+      "href",
+      "/us-co/policy/cdhs/snap/fy-2026-benefit-calculation#rule-shelter_costs"
+    );
+    expect(screen.getByText(/imports us:regulations/)).toBeInTheDocument();
+  });
+
+  it("clears results when the query drops below the minimum length", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "snap households" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "a" } });
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Income and deductions")
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Try one of these")).toBeInTheDocument();
+  });
+
+  it("offers verified suggestions on the empty page and runs one on click", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+    render(<AxiomSearch />);
+
+    expect(screen.getByText("Try one of these")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "colorado snap deduction" })
+    );
+    expect(
+      (screen.getByRole("searchbox") as HTMLInputElement).value
+    ).toBe("colorado snap deduction");
+
+    await waitFor(() => {
+      expect(latestSearchUrl().searchParams.get("q")).toBe(
+        "colorado snap deduction"
+      );
+    });
+    // Suggestions step aside once results render.
+    await waitFor(() => {
+      expect(screen.queryByText("Try one of these")).not.toBeInTheDocument();
+    });
+  });
+
+  it("runs an initialQuery from the URL on mount", async () => {
+    mockFetch.mockResolvedValue(okResponse(responseJson({ corpus: [hit({})] })));
+
+    render(<AxiomSearch initialQuery="snap deduction" />);
+
+    expect(
+      (screen.getByRole("searchbox") as HTMLInputElement).value
+    ).toBe("snap deduction");
+    await waitFor(() => {
+      expect(latestSearchUrl().searchParams.get("q")).toBe("snap deduction");
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Income and deductions")).toBeInTheDocument();
+    });
+  });
+
   it("does not call the search endpoint for queries below the minimum length", async () => {
     render(<AxiomSearch />);
     fireEvent.change(screen.getByRole("searchbox"), {
@@ -164,7 +282,7 @@ describe("AxiomSearch", () => {
     expect(screen.getAllByText("Encoded").length).toBe(1);
   });
 
-  it("renders program and encoded sections ahead of corpus text", async () => {
+  it("merges program and encoded hits for one destination and ranks them above corpus text", async () => {
     mockFetch.mockResolvedValue(
       okResponse(
         responseJson({
@@ -210,22 +328,19 @@ describe("AxiomSearch", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Programs")).toBeInTheDocument();
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
-    expect(screen.getByText("Executable RuleSpecs")).toBeInTheDocument();
-    expect(screen.getByText("Source text")).toBeInTheDocument();
+    // The program anchor and the encoded hit point at the same
+    // destination, so they fuse into a single encoded row that keeps
+    // the program context line.
     expect(
       screen.getByText("Colorado SNAP: Benefit calculation")
     ).toBeInTheDocument();
     expect(
       screen.getAllByText("us-co/policy/cdhs/snap/fy-2026-benefit-calculation")
-        .length
-    ).toBeGreaterThan(0);
+    ).toHaveLength(1);
 
     const resultText = screen.getByLabelText("Search results").textContent ?? "";
-    expect(resultText.indexOf("Programs")).toBeLessThan(
-      resultText.indexOf("Source text")
-    );
     expect(resultText.indexOf("fy-2026-benefit-calculation")).toBeLessThan(
       resultText.indexOf("co-cdhs-snap-page")
     );
@@ -301,15 +416,19 @@ describe("AxiomSearch", () => {
     await waitFor(() => {
       expect(screen.getByText("Utility Allowance")).toBeInTheDocument();
     });
-    const resultText = screen.getByLabelText("Search results").textContent ?? "";
-    expect(resultText.indexOf("Executable RuleSpecs")).toBeLessThan(
-      resultText.indexOf("Programs")
+    // Matched symbols render as compact chips: each one deep-links to
+    // its rule card anchor and carries the formula as a tooltip. The
+    // RuleSpec internals (kind, source citation) stay off the card.
+    const symbolLink = screen
+      .getByText("snap_standard_utility_allowance")
+      .closest("a");
+    expect(symbolLink).toHaveAttribute(
+      "href",
+      "/us-co/policy/cdhs/snap/fy-2026-benefit-calculation#rule-snap_standard_utility_allowance"
     );
-    expect(
-      screen.getByText(
-        "Source: Colorado SNAP FY 2026 benefit calculation composition"
-      )
-    ).toBeInTheDocument();
+    expect(symbolLink).toHaveAttribute("title", "= 490");
+    expect(screen.queryByText(/Source: Colorado SNAP/)).not.toBeInTheDocument();
+    expect(screen.queryByText("derived")).not.toBeInTheDocument();
   });
 
   it("applies the statute filter when clicked", async () => {
@@ -365,6 +484,41 @@ describe("AxiomSearch", () => {
 
     await waitFor(() =>
       expect(latestSearchUrl().searchParams.get("jurisdiction")).toBe("us")
+    );
+    // A fixed jurisdiction hides the picker.
+    expect(screen.queryByRole("combobox", { name: "Jurisdiction" })).toBeNull();
+  });
+
+  it("applies the jurisdiction picker to the search endpoint", async () => {
+    render(<AxiomSearch />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "snap deduction" },
+    });
+    flush(250);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+
+    mockFetch.mockClear();
+    const picker = screen.getByRole("combobox", { name: "Jurisdiction" });
+    // Grouped for scanability: national entries aren't buried under
+    // fifty states, and the standalone encoded jurisdictions appear.
+    expect(
+      screen.getByRole("group", { name: "Federal & national" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "US states & territories" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "New Zealand" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Kingston upon Thames" })
+    ).toBeInTheDocument();
+
+    fireEvent.change(picker, { target: { value: "us-co" } });
+    flush(250);
+
+    await waitFor(() =>
+      expect(latestSearchUrl().searchParams.get("jurisdiction")).toBe("us-co")
     );
   });
 

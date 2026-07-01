@@ -17,6 +17,7 @@ export const PROGRAM_SEED: Program[] = [
     governingBody: "USDA Food & Nutrition Service",
     summary:
       "Federal food-assistance program administered by states; covers roughly 1 in 8 Americans.",
+    stateAdministered: true,
     anchors: [
       {
         role: "authorizing_statute",
@@ -150,6 +151,7 @@ export const PROGRAM_SEED: Program[] = [
     governingBody: "Centers for Medicare & Medicaid Services",
     summary:
       "State-administered health coverage for low-income individuals, jointly funded with the federal government.",
+    stateAdministered: true,
     anchors: [
       {
         role: "authorizing_statute",
@@ -173,6 +175,7 @@ export const PROGRAM_SEED: Program[] = [
     governingBody: "HHS Administration for Children & Families",
     summary:
       "Federal block grant program funding state cash assistance and work supports for families with children.",
+    stateAdministered: true,
     anchors: [
       {
         role: "authorizing_statute",
@@ -201,6 +204,7 @@ export const PROGRAM_SEED: Program[] = [
     governingBody: "HUD",
     summary:
       "Tenant-based rental assistance helping low-income households afford private-market housing.",
+    stateAdministered: true,
     anchors: [
       {
         role: "authorizing_statute",
@@ -224,6 +228,7 @@ export const PROGRAM_SEED: Program[] = [
     governingBody: "USDA Food & Nutrition Service",
     summary:
       "Supplemental nutrition for pregnant and postpartum women, infants, and children under five.",
+    stateAdministered: true,
     anchors: [
       {
         role: "authorizing_statute",

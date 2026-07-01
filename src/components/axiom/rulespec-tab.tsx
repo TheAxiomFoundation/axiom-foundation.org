@@ -60,6 +60,28 @@ export function RuleSpecTab({
     [encoding?.rulespec_content]
   );
 
+  // Deep links from search results land on #rule-<name>. The encoding
+  // loads after first paint, so the browser's native hash scroll finds
+  // nothing — re-run it once the rule cards exist, with a brief
+  // highlight so the reader sees which rule the link meant.
+  const [handledHash, setHandledHash] = useState<string | null>(null);
+  useEffect(() => {
+    if (loading || !doc) return;
+    const hash = decodeURIComponent(window.location.hash);
+    if (!hash.startsWith("#rule-") || hash === handledHash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (!el) return;
+    setHandledHash(hash);
+    el.scrollIntoView({ block: "center" });
+    el.style.outline = "2px solid var(--color-accent)";
+    el.style.outlineOffset = "3px";
+    const timer = setTimeout(() => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [loading, doc, handledHash]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-[var(--color-ink-muted)]">

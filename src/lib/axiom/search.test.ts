@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchAxiom, searchEncodedRuleSpecs } from "./search";
 
-const { mockSearchRules } = vi.hoisted(() => ({
+const { mockSearchRules, mockFetchIndexedCandidates } = vi.hoisted(() => ({
   mockSearchRules: vi.fn(),
+  mockFetchIndexedCandidates: vi.fn(),
 }));
 const mockFetch = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   searchRules: (...args: unknown[]) => mockSearchRules(...args),
+}));
+vi.mock("@/lib/axiom/rulespec-index", () => ({
+  fetchIndexedRuleSpecCandidates: (...args: unknown[]) =>
+    mockFetchIndexedCandidates(...args),
 }));
 
 function jsonResponse(body: unknown) {
@@ -36,6 +41,8 @@ describe("axiom hybrid search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchRules.mockResolvedValue([]);
+    // Default: index unavailable — exercises the GitHub fallback path.
+    mockFetchIndexedCandidates.mockResolvedValue(null);
     vi.stubGlobal("fetch", mockFetch);
     mockFetch.mockImplementation((url: string) => {
       if (
@@ -524,6 +531,35 @@ rules:
     });
   });
 
+  it("maps lay synonyms like food stamps onto encoded SNAP paths", async () => {
+    const results = await searchAxiom("colorado food stamps deduction");
+
+    expect(results.programs[0]?.program.slug).toBe("colorado-snap");
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us-co/policy/cdhs/snap/fy-2026-benefit-calculation"
+    );
+  });
+
+  it("maps obamacare onto the ACA premium tax credit encoding", async () => {
+    const results = await searchAxiom("obamacare subsidy");
+
+    expect(results.programs[0]?.program.slug).toBe("aca-ptc");
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us/policy/irs/rev-proc-2025-25/aca-ptc"
+    );
+  });
+
+  it("prunes any state-administered federal program when a state encoding answers", async () => {
+    const results = await searchAxiom("arizona food stamps");
+
+    expect(results.programs.map((result) => result.program.slug)).not.toContain(
+      "snap"
+    );
+    expect(results.encoded[0]?.citationPath).toBe(
+      "us-az/policy/des/faa5/na-eligibility-and-benefit-determination/fy-2026-benefit-calculation"
+    );
+  });
+
   it("discovers newer standalone jurisdiction repos such as New Zealand", async () => {
     const hits = await searchEncodedRuleSpecs("New Zealand tax");
 
@@ -531,6 +567,41 @@ rules:
       citationPath: "nz/statute/income_tax/core/taxable_income",
       jurisdictionLabel: "New Zealand",
     });
+  });
+
+  it("serves encoded results from the database index without touching GitHub", async () => {
+    mockFetchIndexedCandidates.mockResolvedValue([
+      {
+        filePath: "policies/cdhs/snap/fy-2026-benefit-calculation.yaml",
+        citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+        bucket: "policies",
+        jurisdiction: "us-co",
+        rawYaml: `format: rulespec/v1
+module:
+  summary: Colorado SNAP benefit calculation.
+rules:
+- name: snap_standard_utility_allowance
+  kind: parameter
+  entity: Household
+  dtype: Money
+  versions:
+  - effective_from: '2025-10-01'
+    formula: 490
+`,
+      },
+    ]);
+
+    const results = await searchEncodedRuleSpecs("CO SNAP utility allowance");
+
+    expect(results[0]).toMatchObject({
+      citationPath: "us-co/policy/cdhs/snap/fy-2026-benefit-calculation",
+      matchKind: "symbol",
+    });
+    expect(results[0]?.fileSummary).toMatchObject({
+      summary: "Colorado SNAP benefit calculation.",
+      ruleCount: 1,
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("respects document class filters for encoded results", async () => {

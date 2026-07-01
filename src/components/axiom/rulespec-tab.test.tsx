@@ -119,6 +119,26 @@ describe("RuleSpecTab — rendering edge cases", () => {
     vi.unstubAllGlobals();
   });
 
+  it("scrolls to and highlights the #rule- hash target once the encoding renders", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    window.location.hash = "#rule-tax";
+    try {
+      render(
+        <RuleSpecTab
+          encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
+          loading={false}
+          jurisdiction="us"
+        />
+      );
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+      const target = document.getElementById("rule-tax") as HTMLElement;
+      expect(target.style.outline).toContain("var(--color-accent)");
+    } finally {
+      window.location.hash = "";
+    }
+  });
+
   it("emits each rule's YAML inside a code block", () => {
     const { container } = render(
       <RuleSpecTab

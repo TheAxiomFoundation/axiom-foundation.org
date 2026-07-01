@@ -28,12 +28,30 @@ export type AxiomEvent =
   | { event: "axiom_rule_viewed"; properties: { citation_path: string; jurisdiction: string; has_rulespec: boolean } }
   | { event: "axiom_encoding_viewed"; properties: { citation_path: string; source: "github" | "encoding_run" } }
   | { event: "axiom_jurisdiction_selected"; properties: { jurisdiction: string } }
-  | { event: "axiom_search"; properties: { query_length: number; doc_type: "all" | "policy" | "statute" | "regulation" | "rulemaking"; result_count: number } }
+  | {
+      event: "axiom_search";
+      properties: {
+        query: string;
+        query_length: number;
+        doc_type: "all" | "policy" | "statute" | "regulation" | "rulemaking";
+        jurisdiction: string;
+        result_count: number;
+      };
+    }
+  | {
+      event: "axiom_search_click";
+      properties: {
+        query: string;
+        citation_path: string;
+        kind: "citation" | "program" | "encoded" | "corpus";
+        position: number;
+      };
+    }
   | { event: "axiom_tree_navigated"; properties: { depth: number; segment: string } }
   | { event: "axiom_filter_toggled"; properties: { filter: string; enabled: boolean } }
   | {
       event: "axiom_palette_commit";
-      properties:
+      properties: { query: string; position: number } & (
         | { kind: "citation"; citation_path: string }
         | {
             kind: "program";
@@ -41,7 +59,8 @@ export type AxiomEvent =
             role: string;
             citation_path: string;
           }
-        | { kind: "search"; citation_path: string };
+        | { kind: "search"; citation_path: string }
+      );
     };
 
 /* v8 ignore start -- env-dependent capture */

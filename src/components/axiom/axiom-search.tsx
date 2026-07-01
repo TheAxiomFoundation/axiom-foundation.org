@@ -394,7 +394,7 @@ function CitationResult({
         <Link
           href={`/${parsed.citationPath}`}
           onClick={() => onNavigate(parsed.citationPath)}
-          className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+          className="block px-5 py-4 !no-underline hover:bg-[var(--color-accent-light)] transition-colors"
         >
           <div className="flex items-baseline justify-between gap-3">
             <div className="font-mono text-xs text-[var(--color-accent)]">
@@ -475,7 +475,7 @@ function UnifiedRow({
       <Link
         href={row.href}
         onClick={onNavigate}
-        className="block px-5 py-4 hover:bg-[var(--color-accent-light)] transition-colors"
+        className="block px-5 py-4 !no-underline hover:bg-[var(--color-accent-light)] transition-colors"
       >
         {row.kind === "program" && (
           <ProgramRowBody
@@ -535,7 +535,7 @@ function EncodedRow({
       <Link
         href={href}
         onClick={onNavigate}
-        className="block -mx-2 rounded px-2 py-1 hover:bg-[var(--color-accent-light)] transition-colors"
+        className="block -mx-2 rounded px-2 py-1 !no-underline hover:bg-[var(--color-accent-light)] transition-colors"
       >
         <div className="flex items-baseline justify-between gap-3">
           <div className="font-mono text-xs text-[var(--color-accent)]">
@@ -579,7 +579,7 @@ function EncodedRow({
               href={`${href}${symbolAnchor(symbol)}`}
               onClick={onNavigate}
               title={symbol.formula ? `= ${symbol.formula}` : undefined}
-              className="font-mono text-[11px] text-[var(--color-accent)] border border-[var(--color-accent)] bg-[var(--color-paper)] rounded px-2 py-1 transition-colors hover:bg-[var(--color-accent-light)]"
+              className="font-mono text-[11px] text-[var(--color-accent)] border border-[var(--color-accent)] bg-[var(--color-paper)] rounded px-2 py-1 !no-underline transition-colors hover:bg-[var(--color-accent-light)]"
             >
               {symbol.name}
             </Link>
@@ -595,7 +595,7 @@ function EncodedRow({
                 href={`${href}#rule-${rule.name}`}
                 onClick={onNavigate}
                 title={rule.formula ? `= ${rule.formula}` : undefined}
-                className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1 transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                className="font-mono text-[11px] text-[var(--color-ink-secondary)] border border-[var(--color-rule)] bg-[var(--color-paper)] rounded px-2 py-1 !no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
               >
                 {rule.name}
               </Link>

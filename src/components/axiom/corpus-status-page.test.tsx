@@ -497,6 +497,7 @@ const status: CorpusStatusData = {
       recent_run_count: 5,
       issue_run_count: 1,
       active_session_count: 1,
+      earliest_run_at: "2026-05-03T03:10:00.000Z",
       latest_source_counts: {
         reviewer_agent: 2,
         ci_only: 1,
@@ -544,8 +545,42 @@ describe("CorpusStatusPage", () => {
       screen.getByRole("heading", { name: /operations dashboard/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: /encoding activity/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 encoding session running now/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText("C.R.S. 26-2-703")).toBeInTheDocument();
+    expect(screen.getByText("sdk-1")).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: /encoding pipeline/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /statute completion by jurisdiction/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Colorado")).toBeInTheDocument();
+    expect(screen.getByText("Alabama")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /regulation completion by jurisdiction/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("New York")).toBeInTheDocument();
+    expect(
+      screen.getByText("find primary official source")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /release validation/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/has neither body nor heading/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /source discovery backlog/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("ftb.ca.gov")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         name: /indexed corpus by document class/i,
@@ -556,13 +591,15 @@ describe("CorpusStatusPage", () => {
     expect(
       screen.getByRole("heading", { name: /current artifact scopes/i })
     ).toBeInTheDocument();
-    expect(screen.getByText("us-co")).toBeInTheDocument();
+    expect(screen.getAllByText("us-co").length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("columnheader", { name: /^jurisdiction$/i })
-    ).toBeInTheDocument();
+      screen.getAllByRole("columnheader", { name: /^jurisdiction$/i }).length
+    ).toBeGreaterThan(0);
     expect(screen.getAllByRole("columnheader", { name: /^class$/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("columnheader", { name: /version/i })).toBeInTheDocument();
-    expect(screen.getByText("Synced")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("columnheader", { name: /version/i }).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Synced").length).toBeGreaterThan(0);
     expect(screen.getByText("Matched")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /recent movement/i })
@@ -613,6 +650,52 @@ describe("CorpusStatusPage", () => {
     ]);
   });
 
+  it("labels live Supabase counts without claiming they matched a report", () => {
+    render(
+      <CorpusStatusPage
+        status={{
+          ...status,
+          artifactReport: {
+            key: "analytics/artifact-report-current-r2.json",
+            source: "supabase",
+            error: null,
+            value: {
+              ...status.artifactReport.value!,
+              counts_mode: "live",
+              local_count: 0,
+              rows: [
+                {
+                  ...status.artifactReport.value!.rows[0],
+                  source_count: null,
+                  local_complete: null,
+                  coverage_complete: null,
+                  supabase_matches_provisions: null,
+                },
+                {
+                  ...status.artifactReport.value!.rows[0],
+                  version: "2026-05-15",
+                  provision_count: null,
+                  supabase_count: null,
+                  source_count: null,
+                  local_complete: null,
+                  coverage_complete: null,
+                  supabase_matches_provisions: null,
+                  mismatch_reasons: ["exact_scope_count_unavailable"],
+                },
+              ],
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Live count")).toBeInTheDocument();
+    expect(screen.getByText("No count")).toBeInTheDocument();
+    expect(screen.queryByText("Matched")).not.toBeInTheDocument();
+    expect(screen.queryByText(/local artifacts/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/live provision counts/i)).toBeInTheDocument();
+  });
+
   it("renders release artifact scope unavailable state without substituting GitHub package rows", () => {
     render(
       <CorpusStatusPage
@@ -634,6 +717,189 @@ describe("CorpusStatusPage", () => {
     expect(
       screen.getByText("Release artifact scopes are unavailable.")
     ).toBeInTheDocument();
+  });
+
+  it("renders honest unavailable states when every input is missing", () => {
+    const unavailable = <T,>(key: string): {
+      key: string;
+      source: null;
+      value: T | null;
+      error: string;
+    } => ({
+      key,
+      source: null,
+      value: null,
+      error: `${key} unreachable`,
+    });
+
+    render(
+      <CorpusStatusPage
+        status={{
+          stateStatutes: unavailable("analytics/state-statute-completion-current.json"),
+          regulations: unavailable("analytics/regulation-completion-current.json"),
+          artifactReport: unavailable("analytics/artifact-report-current-r2.json"),
+          validationReport: unavailable("analytics/validate-release-current.json"),
+          provisionCounts: unavailable("snapshots/provision-counts"),
+          corpusStats: unavailable("supabase://corpus.get_corpus_stats"),
+          sourceDiscovery: unavailable("analytics/source-discovery-current.json"),
+          encodingStatus: unavailable("supabase://encodings.encoding_runs"),
+          rulespecRepoActivity: unavailable("github://TheAxiomFoundation/rulespec-repos"),
+          compiledArtifacts: unavailable("github://TheAxiomFoundation/compiled-artifacts"),
+        }}
+      />
+    );
+
+    expect(screen.getByText(/status inputs missing/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/unreachable/).length
+    ).toBeGreaterThanOrEqual(10);
+    expect(
+      screen.getByText(/encoding telemetry is unavailable from supabase/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/pipeline status is unavailable/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("State statute completion report is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Regulation completion report is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Release artifact scopes are unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Release validation report is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Source discovery status is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("GitHub RuleSpec repo activity is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Package artifact activity is unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No indexed corpus counts returned.")
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
+  });
+
+  it("renders warning and error tones for degraded completion and validation rows", () => {
+    render(
+      <CorpusStatusPage
+        status={{
+          ...status,
+          stateStatutes: {
+            ...status.stateStatutes,
+            value: {
+              ...status.stateStatutes.value!,
+              rows: [
+                {
+                  ...status.stateStatutes.value!.rows[0],
+                  jurisdiction: "us-tx",
+                  name: "Texas",
+                  status: "release_only",
+                  r2_complete: false,
+                  validation_error_count: 3,
+                  validation_warning_count: 0,
+                },
+                {
+                  ...status.stateStatutes.value!.rows[0],
+                  jurisdiction: "us-nm",
+                  name: "New Mexico",
+                  status: "supabase_only_legacy",
+                  r2_complete: true,
+                  validation_error_count: 0,
+                  validation_warning_count: 2,
+                },
+              ],
+            },
+          },
+          validationReport: {
+            ...status.validationReport,
+            value: {
+              ...status.validationReport.value!,
+              error_count: 1,
+              issue_count: 14,
+              issues_truncated: true,
+              issues: [
+                {
+                  severity: "error",
+                  code: "missing_body",
+                  jurisdiction: "us-tx",
+                  document_class: "statute",
+                  version: "2026-06-01",
+                  message: "us-tx statute has no body content",
+                },
+                ...Array.from({ length: 13 }, (_, i) => ({
+                  severity: "warning",
+                  code: `warn_${i}`,
+                  jurisdiction: "us-nm",
+                  document_class: "statute",
+                  version: "2026-06-01",
+                  message: `warning number ${i}`,
+                })),
+              ],
+            },
+          },
+          sourceDiscovery: {
+            ...status.sourceDiscovery,
+            value: {
+              ...status.sourceDiscovery.value!,
+              domain_rows: [
+                {
+                  ...status.sourceDiscovery.value!.domain_rows[0],
+                  host: "vendor.example.com",
+                  source_status_counts: { vendor_or_paywalled: 12 },
+                  document_class_counts: {},
+                  jurisdiction_counts: {},
+                },
+                {
+                  ...status.sourceDiscovery.value!.domain_rows[0],
+                  host: "misc.example.com",
+                  source_status_counts: { needs_manual_review: 3 },
+                },
+              ],
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("3 errors")).toBeInTheDocument();
+    expect(screen.getByText("2 warnings")).toBeInTheDocument();
+    expect(screen.getAllByText("Missing").length).toBeGreaterThan(0);
+    expect(screen.getByText(/us-tx statute has no body content/)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 12 of 14 issues/)).toBeInTheDocument();
+    expect(screen.getByText(/report truncated at source/)).toBeInTheDocument();
+    expect(screen.getByText("vendor.example.com")).toBeInTheDocument();
+    expect(screen.getByText(/vendor or paywalled \(12\)/)).toBeInTheDocument();
+    expect(screen.getByText(/needs manual review \(3\)/)).toBeInTheDocument();
+  });
+
+  it("falls back to provision count snapshots when corpus stats are unavailable", () => {
+    render(
+      <CorpusStatusPage
+        status={{
+          ...status,
+          corpusStats: {
+            key: "supabase://corpus.get_corpus_stats",
+            source: null,
+            value: null,
+            error: "Supabase returned 500",
+          },
+        }}
+      />
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /indexed corpus by document class/i })
+    ).toBeInTheDocument();
+    // Falls back to the snapshot rows (statute + regulation classes).
+    expect(screen.getAllByText("statute").length).toBeGreaterThan(0);
+    expect(screen.getByText("60,446")).toBeInTheDocument();
   });
 
   it("renders encoding status input errors from active sources", () => {

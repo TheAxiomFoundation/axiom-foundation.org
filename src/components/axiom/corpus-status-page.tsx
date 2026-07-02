@@ -3,12 +3,19 @@ import type {
   ArtifactScopeRow,
   CompiledArtifactActivity,
   CompiledArtifactReport,
+  CorpusCompletionReport,
+  CorpusCompletionRow,
   CorpusStatsDocumentClass,
   CorpusStatusData,
   ProvisionCountRow,
   RulespecRepoActivity,
   RulespecRepoActivityReport,
+  SourceDiscoveryDomainRow,
+  SourceDiscoveryReport,
+  ValidationIssue,
+  ValidationReport,
 } from "@/lib/corpus-status";
+import { LiveEncodingPanel } from "./live-encoding-panel";
 
 interface CorpusStatusPageProps {
   status: CorpusStatusData;
@@ -52,6 +59,14 @@ export function CorpusStatusPage({
   const provisionCounts = status.provisionCounts.value;
   const source = firstSource(status);
   const errors = [
+    status.encodingStatus,
+    status.stateStatutes,
+    status.regulations,
+    status.artifactReport,
+    status.validationReport,
+    status.provisionCounts,
+    status.corpusStats,
+    status.sourceDiscovery,
     status.rulespecRepoActivity,
     status.compiledArtifacts,
   ].filter(
@@ -87,8 +102,9 @@ export function CorpusStatusPage({
                 Operations dashboard
               </h1>
               <p className="mt-3 text-sm md:text-base text-[var(--color-ink-secondary)]">
-                Current RuleSpec encoding, provenance packages, and compiled
-                runtime artifact flow across GitHub repos.
+                Live encoding telemetry, corpus completion by jurisdiction,
+                release artifacts, and RuleSpec repo activity read from
+                Supabase, R2, and GitHub.
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:text-right">
@@ -130,6 +146,17 @@ export function CorpusStatusPage({
 
         <section className="mt-8">
           <SectionHeader
+            eyebrow="Live"
+            title="Encoding Activity"
+            detail={status.encodingStatus.value
+              ? `Supabase telemetry, ${status.encodingStatus.value.lookback_days}d lookback`
+              : "Supabase telemetry unavailable"}
+          />
+          <LiveEncodingPanel initial={status.encodingStatus} />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
             eyebrow="Pipeline"
             title="Encoding Pipeline"
             detail={rulespecActivity
@@ -155,6 +182,30 @@ export function CorpusStatusPage({
 
         <section className="mt-10">
           <SectionHeader
+            eyebrow="Corpus"
+            title="Statute Completion By Jurisdiction"
+            detail={completionDetail(status.stateStatutes.value)}
+          />
+          <CompletionTable
+            report={status.stateStatutes.value}
+            emptyLabel="State statute completion report is unavailable."
+          />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Corpus"
+            title="Regulation Completion By Jurisdiction"
+            detail={completionDetail(status.regulations.value)}
+          />
+          <CompletionTable
+            report={status.regulations.value}
+            emptyLabel="Regulation completion report is unavailable."
+          />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
             eyebrow="Release"
             title="Current Artifact Scopes"
             detail={
@@ -166,6 +217,15 @@ export function CorpusStatusPage({
           <ArtifactScopesPanel
             report={artifactReport}
           />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Validation"
+            title="Release Validation"
+            detail={validationDetail(status.validationReport.value)}
+          />
+          <ValidationIssuesPanel report={status.validationReport.value} />
         </section>
 
         <section className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
@@ -204,9 +264,30 @@ export function CorpusStatusPage({
           <CompiledArtifactPanel report={compiledArtifacts} />
         </section>
 
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Sources"
+            title="Source Discovery Backlog"
+            detail={status.sourceDiscovery.value
+              ? `${formatNumber(status.sourceDiscovery.value.unique_url_count)} deduped URLs from ${status.sourceDiscovery.value.source_name}`
+              : "Source discovery report unavailable"}
+          />
+          <SourceDiscoveryPanel report={status.sourceDiscovery.value} />
+        </section>
+
       </div>
     </div>
   );
+}
+
+function completionDetail(report: CorpusCompletionReport | null): string {
+  if (!report) return "Completion report unavailable";
+  return `${formatNumber(report.productionized_and_validated_count)} of ${formatNumber(report.expected_jurisdiction_count)} jurisdictions productionized and validated`;
+}
+
+function validationDetail(report: ValidationReport | null): string {
+  if (!report) return "Validation report unavailable";
+  return `${formatNumber(report.error_count)} errors, ${formatNumber(report.warning_count)} warnings across ${formatNumber(report.scope_count)} scopes`;
 }
 
 function SectionHeader({
@@ -376,16 +457,23 @@ function ArtifactScopesPanel({
   }
 
   const rows = report.rows.slice(0, TABLE_ROW_LIMIT);
+  const live = isLiveCountReport(report);
 
   return (
     <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
       <div className="flex flex-wrap gap-x-6 gap-y-2 border-b border-[var(--color-rule)] px-4 py-3 text-xs text-[var(--color-ink-secondary)]">
         <span>{formatNumber(report.release_scope_count)} release scopes</span>
-        <span>{formatNumber(report.local_count)} local artifacts</span>
+        {!live && <span>{formatNumber(report.local_count)} local artifacts</span>}
         <span>{formatNumber(report.remote_count)} R2 artifacts</span>
-        <span>{formatNumber(report.supabase_group_count)} exact live counts</span>
+        <span>
+          {formatNumber(report.supabase_group_count)}{" "}
+          {live ? "live provision counts" : "matching Supabase groups"}
+        </span>
         {report.supabase_mismatch_count > 0 && (
-          <span>{formatNumber(report.supabase_mismatch_count)} counts unavailable</span>
+          <span>
+            {formatNumber(report.supabase_mismatch_count)}{" "}
+            {live ? "counts unavailable" : "Supabase mismatches"}
+          </span>
         )}
         {report.rows.length > rows.length && (
           <span>
@@ -414,6 +502,7 @@ function ArtifactScopesPanel({
                 <ArtifactScopeTableRow
                   key={`${row.jurisdiction}:${row.document_class}:${row.version}`}
                   row={row}
+                  live={live}
                 />
               ))
             ) : (
@@ -433,7 +522,13 @@ function ArtifactScopesPanel({
   );
 }
 
-function ArtifactScopeTableRow({ row }: { row: ArtifactScopeRow }) {
+function ArtifactScopeTableRow({
+  row,
+  live,
+}: {
+  row: ArtifactScopeRow;
+  live: boolean;
+}) {
   return (
     <tr className="border-t border-[var(--color-rule)]">
       <td className="px-4 py-3 font-medium text-[var(--color-ink)]">
@@ -458,15 +553,33 @@ function ArtifactScopeTableRow({ row }: { row: ArtifactScopeRow }) {
         />
       </td>
       <td className="px-4 py-3">
-        <StatusPill
-          label={row.supabase_matches_provisions ? "Matched" : "Check"}
-          tone={
-            row.supabase_matches_provisions ? "good" : "warn"
-          }
-        />
+        <StatusPill {...supabasePillProps(row, live)} />
       </td>
     </tr>
   );
+}
+
+function supabasePillProps(
+  row: ArtifactScopeRow,
+  live: boolean
+): { label: string; tone: StatusTone } {
+  // Live rows only carry a count read straight from Supabase; there is no
+  // report count to match against, so never claim "Matched" for them.
+  if (live) {
+    return row.supabase_count != null
+      ? { label: "Live count", tone: "good" }
+      : { label: "No count", tone: "warn" };
+  }
+  if (row.supabase_matches_provisions == null) {
+    return { label: "Unknown", tone: "neutral" };
+  }
+  return row.supabase_matches_provisions
+    ? { label: "Matched", tone: "good" }
+    : { label: "Mismatch", tone: "bad" };
+}
+
+function isLiveCountReport(report: ArtifactReport): boolean {
+  return report.counts_mode === "live";
 }
 
 function CoverageByDocumentClassPanel({
@@ -483,7 +596,7 @@ function CoverageByDocumentClassPanel({
             <th className="text-right font-medium px-4 py-3">Provisions</th>
             <th className="text-right font-medium px-4 py-3">Bodies</th>
             <th className="text-right font-medium px-4 py-3">Top level</th>
-            <th className="text-right font-medium px-4 py-3">Encoded</th>
+            <th className="text-right font-medium px-4 py-3">RuleSpec files</th>
             <th className="text-right font-medium px-4 py-3">Jurisdictions</th>
           </tr>
         </thead>
@@ -526,6 +639,13 @@ function CoverageByDocumentClassPanel({
           )}
         </tbody>
       </table>
+      <p className="border-t border-[var(--color-rule)] px-4 py-3 text-xs text-[var(--color-ink-secondary)]">
+        Provision counts come from the Supabase corpus stats snapshot.
+        RuleSpec files are counted from repo folders (statutes/, regulations/,
+        policies/, ...); program encodings under policies/ reference
+        provisions across classes, so that row is repo activity rather than
+        coverage of the policy document class.
+      </p>
     </div>
   );
 }
@@ -887,6 +1007,336 @@ function CompiledArtifactRow({ row }: { row: CompiledArtifactActivity }) {
   );
 }
 
+function CompletionTable({
+  report,
+  emptyLabel,
+}: {
+  report: CorpusCompletionReport | null;
+  emptyLabel: string;
+}) {
+  if (!report) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        {emptyLabel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 border-b border-[var(--color-rule)] px-4 py-3 text-xs text-[var(--color-ink-secondary)]">
+        {Object.entries(report.status_counts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([statusName, count]) => (
+            <span key={statusName}>
+              {formatNumber(count)} {labelize(statusName)}
+            </span>
+          ))}
+      </div>
+      <div className="max-h-[560px] overflow-auto">
+        <table className="w-full min-w-[1180px] text-sm">
+          <thead className="sticky top-0 z-10 bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+            <tr className="font-mono text-[10px] uppercase tracking-wider">
+              <th className="text-left font-medium px-4 py-3">Jurisdiction</th>
+              <th className="text-left font-medium px-4 py-3">Status</th>
+              <th className="text-right font-medium px-4 py-3">Supabase</th>
+              <th className="text-right font-medium px-4 py-3">Release</th>
+              <th className="text-left font-medium px-4 py-3">Version</th>
+              <th className="text-left font-medium px-4 py-3">R2</th>
+              <th className="text-left font-medium px-4 py-3">Validation</th>
+              <th className="text-left font-medium px-4 py-3">Next action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.length > 0 ? (
+              report.rows.map((row) => (
+                <CompletionTableRow key={row.jurisdiction} row={row} />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-4 py-6 text-center text-[var(--color-ink-secondary)]"
+                >
+                  {emptyLabel}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CompletionTableRow({ row }: { row: CorpusCompletionRow }) {
+  return (
+    <tr className="border-t border-[var(--color-rule)]">
+      <td className="px-4 py-3">
+        <div className="font-medium text-[var(--color-ink)]">{row.name}</div>
+        <div className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+          {row.jurisdiction}
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={labelize(row.status)}
+          tone={row.status === "productionized_and_validated" ? "good" : "warn"}
+        />
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNullableNumber(row.supabase_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNullableNumber(row.release_provision_count)}
+      </td>
+      <td className="px-4 py-3 font-mono text-xs">
+        {row.release_version ?? row.best_local_version ?? "-"}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={
+            row.r2_complete
+              ? "Synced"
+              : row.r2_complete == null
+                ? "Unknown"
+                : "Missing"
+          }
+          tone={
+            row.r2_complete
+              ? "good"
+              : row.r2_complete == null
+                ? "neutral"
+                : "bad"
+          }
+        />
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={validationStatusLabel(row)}
+          tone={validationStatusTone(row)}
+        />
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {row.next_action}
+        {row.source_access_note && (
+          <div className="mt-1 text-xs text-[var(--color-ink-muted)]">
+            {row.source_access_note}
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function ValidationIssuesPanel({ report }: { report: ValidationReport | null }) {
+  if (!report) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        Release validation report is unavailable.
+      </div>
+    );
+  }
+
+  if (report.issues.length === 0) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        No current validation issues returned.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] divide-y divide-[var(--color-rule)]">
+      {report.issues.slice(0, 12).map((issue, index) => (
+        <ValidationIssueRow
+          key={`${index}:${issue.code}:${issue.jurisdiction}:${issue.document_class}:${issue.version}`}
+          issue={issue}
+        />
+      ))}
+      {(report.issues.length > 12 || report.issues_truncated) && (
+        <div className="px-4 py-3 text-xs text-[var(--color-ink-secondary)]">
+          Showing 12 of {formatNumber(report.issue_count)} issues
+          {report.issues_truncated ? " (report truncated at source)" : ""}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ValidationIssueRow({ issue }: { issue: ValidationIssue }) {
+  return (
+    <div className="p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill
+          label={issue.severity}
+          tone={issue.severity === "error" ? "bad" : "warn"}
+        />
+        <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+          {issue.jurisdiction}/{issue.document_class}/{issue.version}
+        </span>
+        <span className="font-mono text-xs text-[var(--color-ink-muted)]">
+          {issue.code}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-[var(--color-ink-secondary)]">
+        {issue.message}
+      </p>
+    </div>
+  );
+}
+
+function SourceDiscoveryPanel({
+  report,
+}: {
+  report: SourceDiscoveryReport | null;
+}) {
+  if (!report) {
+    return (
+      <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5 text-sm text-[var(--color-ink-secondary)]">
+        Source discovery status is unavailable.
+      </div>
+    );
+  }
+
+  const rows = report.domain_rows.slice(0, TABLE_ROW_LIMIT);
+
+  return (
+    <div className="mt-3 space-y-4">
+      <div className="border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-5">
+        <dl className="grid grid-cols-2 gap-4 md:grid-cols-5 text-sm">
+          <SourceDiscoveryMetric
+            label="Deduped URLs"
+            value={report.unique_url_count}
+          />
+          <SourceDiscoveryMetric
+            label="Ready"
+            value={report.ready_for_manifest_count}
+          />
+          <SourceDiscoveryMetric
+            label="Needs review"
+            value={report.needs_review_count}
+          />
+          <SourceDiscoveryMetric
+            label="Excluded"
+            value={report.blocked_or_excluded_count}
+          />
+          <SourceDiscoveryMetric
+            label="Same release scope"
+            value={report.release_scope_present_count}
+          />
+        </dl>
+        <p className="mt-4 max-w-[880px] text-sm text-[var(--color-ink-secondary)]">
+          {report.corpus_source_policy ??
+            "External citations are discovery leads only; selected documents must be re-fetched from official sources before ingestion."}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
+        <table className="w-full min-w-[1080px] text-sm">
+          <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
+            <tr className="font-mono text-[10px] uppercase tracking-wider">
+              <th className="text-left font-medium px-4 py-3">Domain</th>
+              <th className="text-right font-medium px-4 py-3">URLs</th>
+              <th className="text-right font-medium px-4 py-3">Ready</th>
+              <th className="text-right font-medium px-4 py-3">Review</th>
+              <th className="text-right font-medium px-4 py-3">Excluded</th>
+              <th className="text-right font-medium px-4 py-3">
+                In release scope
+              </th>
+              <th className="text-left font-medium px-4 py-3">Status</th>
+              <th className="text-left font-medium px-4 py-3">Classes</th>
+              <th className="text-left font-medium px-4 py-3">
+                Jurisdictions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <SourceDiscoveryDomainTableRow key={row.host} row={row} />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-6 text-center text-[var(--color-ink-secondary)]"
+                >
+                  No source discovery domains returned.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SourceDiscoveryMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div>
+      <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {label}
+      </dt>
+      <dd className="mt-1 text-xl font-semibold tnum text-[var(--color-ink)]">
+        {formatNumber(value)}
+      </dd>
+    </div>
+  );
+}
+
+function SourceDiscoveryDomainTableRow({
+  row,
+}: {
+  row: SourceDiscoveryDomainRow;
+}) {
+  const [statusName, statusCount] = largestCount(row.source_status_counts);
+
+  return (
+    <tr className="border-t border-[var(--color-rule)]">
+      <td className="px-4 py-3">
+        <div className="max-w-[260px] truncate font-medium text-[var(--color-ink)]">
+          {row.host}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.url_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.ready_for_manifest_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.needs_review_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.excluded_count)}
+      </td>
+      <td className="px-4 py-3 text-right tnum">
+        {formatNumber(row.release_scope_present_count)}
+      </td>
+      <td className="px-4 py-3">
+        <StatusPill
+          label={`${labelize(statusName)} (${formatNumber(statusCount)})`}
+          tone={sourceStatusTone(statusName)}
+        />
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {formatCountMap(row.document_class_counts, 3)}
+      </td>
+      <td className="px-4 py-3 text-[var(--color-ink-secondary)]">
+        {formatCountMap(row.jurisdiction_counts, 3)}
+      </td>
+    </tr>
+  );
+}
+
 function StatusPill({
   label,
   tone,
@@ -925,8 +1375,12 @@ function coverageRowsFromStatus(
         provision_count: row.count,
         body_count: row.body_count,
         top_level_count: row.top_level_count,
-        rulespec_count:
-          githubRulespecCounts?.[row.document_class] ?? row.rulespec_count,
+        // Use one source for the whole column. GitHub repo-file counts and
+        // the corpus rulespec-link counts follow different taxonomies;
+        // mixing them per row made adjacent rows incomparable.
+        rulespec_count: githubRulespecCounts
+          ? (githubRulespecCounts[row.document_class] ?? 0)
+          : row.rulespec_count,
         jurisdiction_count: jurisdictionCounts.get(row.document_class) ?? null,
       }))
       .sort((a, b) => b.provision_count - a.provision_count);
@@ -1067,6 +1521,54 @@ function buildAttentionItems(rows: RulespecRepoActivity[]): AttentionItem[] {
   });
 }
 
+function labelize(value: string | null): string {
+  if (!value) return "Unknown";
+  return value.replaceAll("_", " ");
+}
+
+function validationStatusLabel(row: CorpusCompletionRow): string {
+  if (row.validation_error_count > 0) {
+    return `${formatNumber(row.validation_error_count)} errors`;
+  }
+  if (row.validation_warning_count > 0) {
+    return `${formatNumber(row.validation_warning_count)} warnings`;
+  }
+  return "Clear";
+}
+
+function validationStatusTone(row: CorpusCompletionRow): StatusTone {
+  if (row.validation_error_count > 0) return "bad";
+  if (row.validation_warning_count > 0) return "warn";
+  return "good";
+}
+
+function largestCount(counts: Record<string, number>): [string, number] {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return entries[0] ?? ["unknown", 0];
+}
+
+function formatCountMap(counts: Record<string, number>, limit: number): string {
+  const entries = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
+  if (entries.length === 0) return "-";
+  return entries
+    .map(([label, count]) => `${labelize(label)} ${formatNumber(count)}`)
+    .join(", ");
+}
+
+function sourceStatusTone(statusName: string): StatusTone {
+  if (statusName === "primary_official") return "good";
+  if (statusName === "vendor_or_paywalled") return "bad";
+  if (
+    statusName === "secondary_mirror" ||
+    statusName === "analytical_or_report"
+  ) {
+    return "neutral";
+  }
+  return "warn";
+}
+
 function percentOf(value: number, total: number): number {
   if (total <= 0) return 0;
   return clampPercent(Math.round((value / total) * 100));
@@ -1082,6 +1584,11 @@ function firstSource(status: CorpusStatusData): string | null {
     status.compiledArtifacts?.source ??
     status.artifactReport.source ??
     status.corpusStats?.source ??
+    status.encodingStatus.source ??
+    status.stateStatutes.source ??
+    status.regulations.source ??
+    status.validationReport.source ??
+    status.sourceDiscovery.source ??
     null
   );
 }

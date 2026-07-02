@@ -12,14 +12,14 @@ export const SOURCE_DISCOVERY_KEY =
   "analytics/source-discovery-current.json";
 export const ARTIFACT_REPORT_KEY = "analytics/artifact-report-current-r2.json";
 export const VALIDATION_REPORT_KEY = "analytics/validate-release-current.json";
-const DEFAULT_PROVISION_COUNTS_KEY = "snapshots/provision-counts-2026-05-02.json";
 const CORPUS_STATS_KEY = "supabase://corpus.get_corpus_stats";
 const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
 const RULESPEC_REPO_ACTIVITY_KEY = "github://TheAxiomFoundation/rulespec-repos";
 const COMPILED_ARTIFACTS_KEY = "github://TheAxiomFoundation/compiled-artifacts";
 const ENCODING_LOOKBACK_DAYS = 7;
 const RULESPEC_ACTIVITY_LOOKBACK_DAYS = 30;
-const DEFAULT_COMPILED_ARTIFACT_REPOS = ["axiom-programs", "rulespec-graph-viewer"];
+const GITHUB_REPOS_PAGE_SIZE = 100;
+const GITHUB_REPOS_MAX_PAGES = 10;
 
 export type CorpusArtifactSource =
   | "status-url"
@@ -82,9 +82,9 @@ export interface ArtifactScopeRow {
   version: string;
   provision_count: number | null;
   source_count: number | null;
-  local_complete: boolean;
+  local_complete: boolean | null;
   r2_complete: boolean | null;
-  coverage_complete: boolean;
+  coverage_complete: boolean | null;
   supabase_count: number | null;
   supabase_matches_provisions: boolean | null;
   mismatch_reasons: string[];
@@ -102,6 +102,13 @@ export interface ArtifactReport {
   mismatch_count: number;
   supabase_group_count: number;
   supabase_mismatch_count: number;
+  /**
+   * "live" rows carry only what Supabase can attest (scope, R2 sync, a live
+   * provision count) with no local/coverage comparison; "report" rows come
+   * from a full generated artifact report. Absent means "report" for older
+   * JSON artifacts.
+   */
+  counts_mode?: "live" | "report";
   rows: ArtifactScopeRow[];
 }
 
@@ -229,6 +236,8 @@ export interface EncodingOpsStatus {
   recent_run_count: number | null;
   issue_run_count: number | null;
   active_session_count: number | null;
+  /** Timestamp of the oldest recorded run — run telemetry only exists from here on. */
+  earliest_run_at: string | null;
   latest_runs: EncodingStatusRun[];
   latest_sessions: EncodingStatusSession[];
   latest_source_counts: Record<string, number>;
@@ -347,9 +356,8 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     ]);
 
   const provisionCountsKey =
-    process.env.AXIOM_CORPUS_PROVISION_COUNTS_KEY ??
-    provisionCountsKeyFromCompletionReports(regulations.value, stateStatutes.value) ??
-    DEFAULT_PROVISION_COUNTS_KEY;
+    cleanEnvValue(process.env.AXIOM_CORPUS_PROVISION_COUNTS_KEY) ??
+    provisionCountsKeyFromCompletionReports(regulations.value, stateStatutes.value);
 
   const [
     provisionCounts,
@@ -359,9 +367,17 @@ export async function getCorpusStatus(): Promise<CorpusStatusData> {
     compiledArtifacts,
   ] =
     await Promise.all([
-      readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey),
+      provisionCountsKey
+        ? readCorpusJson<ProvisionCountsSnapshot>(provisionCountsKey)
+        : Promise.resolve<CorpusStatusArtifact<ProvisionCountsSnapshot>>({
+            key: "snapshots/provision-counts",
+            source: null,
+            value: null,
+            error:
+              "No provision counts snapshot key could be derived from completion reports (set AXIOM_CORPUS_PROVISION_COUNTS_KEY to override)",
+          }),
       readCorpusStats(),
-      readEncodingStatus(),
+      getEncodingStatus(),
       readRulespecRepoActivity(),
       readCompiledArtifacts(),
     ]);
@@ -454,12 +470,14 @@ async function readCorpusJson<T>(key: string): Promise<CorpusStatusArtifact<T>> 
   };
 }
 
-async function readEncodingStatus(): Promise<CorpusStatusArtifact<EncodingOpsStatus>> {
+export async function getEncodingStatus(
+  options: { fresh?: boolean } = {}
+): Promise<CorpusStatusArtifact<EncodingOpsStatus>> {
   try {
     return {
       key: ENCODING_STATUS_KEY,
       source: "supabase",
-      value: await readEncodingStatusFromSupabase(),
+      value: await readEncodingStatusFromSupabase(options),
       error: null,
     };
   } catch (error) {
@@ -537,6 +555,8 @@ interface GitHubRepo {
   html_url: string;
   default_branch: string;
   pushed_at: string | null;
+  fork?: boolean;
+  archived?: boolean;
 }
 
 interface GitHubTreeResponse {
@@ -573,13 +593,23 @@ function getGitHubConfig(): GitHubConfig {
   return { org, token };
 }
 
+async function listOrgRepos(org: string, token: string): Promise<GitHubRepo[]> {
+  const repos: GitHubRepo[] = [];
+  for (let page = 1; page <= GITHUB_REPOS_MAX_PAGES; page += 1) {
+    const batch = await githubJson<GitHubRepo[]>(
+      `https://api.github.com/orgs/${encodeURIComponent(org)}/repos?per_page=${GITHUB_REPOS_PAGE_SIZE}&type=all&sort=pushed&page=${page}`,
+      token
+    );
+    repos.push(...batch);
+    if (batch.length < GITHUB_REPOS_PAGE_SIZE) break;
+  }
+  return repos;
+}
+
 async function readRulespecRepoActivityFromGitHub(): Promise<RulespecRepoActivityReport> {
   const { org, token } = getGitHubConfig();
 
-  const repos = (await githubJson<GitHubRepo[]>(
-    `https://api.github.com/orgs/${org}/repos?per_page=100&type=all&sort=pushed`,
-    token
-  ))
+  const repos = (await listOrgRepos(org, token))
     .filter((repo) => repo.name.startsWith("rulespec-"))
     .sort((a, b) => stringCompareDesc(a.pushed_at, b.pushed_at));
   const rows = await Promise.all(
@@ -655,18 +685,10 @@ async function discoverExecutablePackageRepos(
   org: string,
   token: string
 ): Promise<string[]> {
-  const repos = await githubJson<GitHubRepo[]>(
-    `https://api.github.com/orgs/${encodeURIComponent(org)}/repos?per_page=100&type=all&sort=pushed`,
-    token
-  );
-  return Array.from(
-    new Set([
-      ...repos
-        .filter((repo) => repo.name.startsWith("rulespec-"))
-        .map((repo) => repo.name),
-      ...DEFAULT_COMPILED_ARTIFACT_REPOS,
-    ])
-  );
+  const repos = await listOrgRepos(org, token);
+  return repos
+    .filter((repo) => !repo.fork && !repo.archived)
+    .map((repo) => repo.name);
 }
 
 async function readCompiledArtifactsFromRepo(
@@ -889,7 +911,10 @@ function rulespecDocumentClassFromPath(filePath: string): string | null {
 }
 
 function isJurisdictionPathSegment(value: string | undefined): boolean {
-  return !!value && /^(us(-[a-z]{2})?|uk(-[a-z-]+)?|nz|ca)$/.test(value);
+  // Two-letter country code, optionally with a region suffix (us, us-co,
+  // uk-scotland, nz). Derived from the path convention rather than an
+  // enumerated jurisdiction list so new countries are counted automatically.
+  return !!value && /^[a-z]{2}(-[a-z0-9-]+)?$/.test(value);
 }
 
 function stringCompareDesc(a: string | null, b: string | null): number {
@@ -921,12 +946,15 @@ function sumRecordActivity(
   }, {});
 }
 
-async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
+async function readEncodingStatusFromSupabase(
+  options: { fresh?: boolean } = {}
+): Promise<EncodingOpsStatus> {
   const config = getSupabaseRestConfig();
   if (!config) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured");
   }
 
+  const fetchOptions: SupabaseFetchOptions = { fresh: options.fresh };
   const since = new Date(
     Date.now() - ENCODING_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
@@ -936,31 +964,67 @@ async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
     recentRunCount,
     issueRunCount,
     activeSessionCount,
+    earliestRuns,
     latestRuns,
     latestSessions,
   ] = await Promise.all([
-    readSupabaseCount(config, "encodings", "encoding_runs"),
-    readSupabaseCount(config, "encodings", "encoding_runs", {
-      timestamp: `gte.${since}`,
-    }),
-    readSupabaseCount(config, "encodings", "encoding_runs", {
-      has_issues: "eq.true",
-    }),
-    readSupabaseCount(config, "telemetry", "sdk_sessions", {
-      ended_at: "is.null",
-    }),
-    readSupabaseRows<EncodingStatusRun>(config, "encodings", "encoding_runs", {
-      select:
-        "id,timestamp,citation,total_duration_ms,agent_type,agent_model,data_source,has_issues,session_id,encoder_version",
-      order: "timestamp.desc",
-      limit: "12",
-    }),
-    readSupabaseRows<EncodingStatusSession>(config, "telemetry", "sdk_sessions", {
-      select:
-        "id,started_at,ended_at,model,event_count,input_tokens,output_tokens,estimated_cost_usd,encoder_version",
-      order: "started_at.desc",
-      limit: "8",
-    }),
+    readSupabaseCount(config, "encodings", "encoding_runs", {}, fetchOptions),
+    readSupabaseCount(
+      config,
+      "encodings",
+      "encoding_runs",
+      { timestamp: `gte.${since}` },
+      fetchOptions
+    ),
+    readSupabaseCount(
+      config,
+      "encodings",
+      "encoding_runs",
+      { has_issues: "eq.true" },
+      fetchOptions
+    ),
+    readSupabaseCount(
+      config,
+      "telemetry",
+      "sdk_sessions",
+      { ended_at: "is.null" },
+      fetchOptions
+    ),
+    readSupabaseRows<{ timestamp: string }>(
+      config,
+      "encodings",
+      "encoding_runs",
+      {
+        select: "timestamp",
+        order: "timestamp.asc",
+        limit: "1",
+      },
+      fetchOptions
+    ),
+    readSupabaseRows<EncodingStatusRun>(
+      config,
+      "encodings",
+      "encoding_runs",
+      {
+        select:
+          "id,timestamp,citation,total_duration_ms,agent_type,agent_model,data_source,has_issues,session_id,encoder_version",
+        order: "timestamp.desc",
+        limit: "12",
+      },
+      fetchOptions
+    ),
+    readSupabaseRows<EncodingStatusSession>(
+      config,
+      "telemetry",
+      "sdk_sessions",
+      {
+        select:
+          "id,started_at,ended_at,model,event_count,input_tokens,output_tokens,estimated_cost_usd,encoder_version",
+        order: "started_at.desc",
+        limit: "8",
+      },
+      fetchOptions
+    ),
   ]);
 
   const resolvedRunCount =
@@ -978,6 +1042,7 @@ async function readEncodingStatusFromSupabase(): Promise<EncodingOpsStatus> {
     recent_run_count: recentRunCount,
     issue_run_count: resolvedIssueRunCount,
     active_session_count: activeSessionCount,
+    earliest_run_at: stringOrNull(earliestRuns[0]?.timestamp),
     latest_runs: latestRuns,
     latest_sessions: latestSessions,
     latest_source_counts: summarizeLatestSources(latestRuns),
@@ -1043,41 +1108,38 @@ async function readArtifactReportFromSupabase(): Promise<ArtifactReport> {
     16,
     async (scope): Promise<ArtifactScopeRow> => {
       const provisionCount = await readReleaseScopeProvisionCount(config, scope);
-      const resolvedProvisionCount = provisionCount;
-      const supabaseMatches = resolvedProvisionCount == null ? null : true;
 
       return {
         jurisdiction: scope.jurisdiction,
         document_class: scope.document_class,
         version: scope.version,
-        provision_count: resolvedProvisionCount,
-        source_count: resolvedProvisionCount,
-        local_complete: true,
+        provision_count: provisionCount,
+        source_count: null,
+        local_complete: null,
         r2_complete: !!scope.synced_at,
-        coverage_complete: true,
-        supabase_count: resolvedProvisionCount,
-        supabase_matches_provisions: supabaseMatches,
+        coverage_complete: null,
+        supabase_count: provisionCount,
+        supabase_matches_provisions: null,
         mismatch_reasons:
-          resolvedProvisionCount == null ? ["exact_scope_count_unavailable"] : [],
+          provisionCount == null ? ["exact_scope_count_unavailable"] : [],
       };
     }
   );
-  const exactCount = rows.filter(
-    (row) => row.supabase_matches_provisions === true
-  ).length;
+  const exactCount = rows.filter((row) => row.supabase_count != null).length;
 
   return {
     refreshed_at: new Date().toISOString(),
     release: "current",
     scope_count: rows.length,
     release_scope_count: rows.length,
-    local_count: rows.length,
+    local_count: 0,
     remote_count: rows.filter((row) => row.r2_complete).length,
     local_bytes: 0,
     remote_bytes: 0,
     mismatch_count: 0,
     supabase_group_count: exactCount,
     supabase_mismatch_count: rows.length - exactCount,
+    counts_mode: "live",
     rows,
   };
 }
@@ -1087,11 +1149,17 @@ async function readReleaseScopeProvisionCount(
   scope: CurrentReleaseScopeRow
 ): Promise<number | null> {
   try {
-    return await readSupabaseCount(config, "corpus", "current_provisions", {
-      jurisdiction: `eq.${scope.jurisdiction}`,
-      doc_type: `eq.${scope.document_class}`,
-      version: `eq.${scope.version}`,
-    }, 2_000);
+    return await readSupabaseCount(
+      config,
+      "corpus",
+      "current_provisions",
+      {
+        jurisdiction: `eq.${scope.jurisdiction}`,
+        doc_type: `eq.${scope.document_class}`,
+        version: `eq.${scope.version}`,
+      },
+      { timeoutMs: 2_000 }
+    );
   } catch {
     return null;
   }
@@ -1116,15 +1184,26 @@ async function mapWithConcurrency<T, U>(
   return results;
 }
 
+interface SupabaseFetchOptions {
+  fresh?: boolean;
+}
+
+function supabaseCacheOptions(options: SupabaseFetchOptions): RequestInit {
+  return options.fresh
+    ? { cache: "no-store" }
+    : ({ next: { revalidate: STATUS_REVALIDATE_SECONDS } } as RequestInit);
+}
+
 async function readSupabaseRows<T>(
   config: SupabaseRestConfig,
   schema: string,
   table: string,
-  query: Record<string, string>
+  query: Record<string, string>,
+  options: SupabaseFetchOptions = {}
 ): Promise<T[]> {
   const response = await fetch(supabaseRestUrl(config, table, query), {
     headers: supabaseRestHeaders(config, schema),
-    next: { revalidate: STATUS_REVALIDATE_SECONDS },
+    ...supabaseCacheOptions(options),
   } as RequestInit);
 
   if (!response.ok) {
@@ -1143,7 +1222,7 @@ async function readSupabaseCount(
   schema: string,
   table: string,
   filters: Record<string, string> = {},
-  timeoutMs?: number
+  options: SupabaseFetchOptions & { timeoutMs?: number } = {}
 ): Promise<number | null> {
   const response = await fetch(
     supabaseRestUrl(config, table, {
@@ -1156,8 +1235,8 @@ async function readSupabaseCount(
         ...supabaseRestHeaders(config, schema),
         Prefer: "count=exact",
       },
-      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
-      next: { revalidate: STATUS_REVALIDATE_SECONDS },
+      signal: options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
+      ...supabaseCacheOptions(options),
     } as RequestInit
   );
 

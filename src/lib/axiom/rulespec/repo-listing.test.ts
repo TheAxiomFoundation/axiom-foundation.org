@@ -175,6 +175,34 @@ describe("listEncodedFiles", () => {
       expect.anything()
     );
   });
+
+  it("lists a root-layout repo from its whole tree, skipping repo plumbing", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tree: [
+          { path: "policies/cra/t4127-2026/claim-codes.yaml", type: "blob" },
+          { path: "policies/cra/t4127-2026/claim-codes.test.yaml", type: "blob" },
+          // Plumbing beside the buckets: manifest config and corpus
+          // source slices are plain YAML but not encodings.
+          { path: ".axiom/repository-structure.yaml", type: "blob" },
+          { path: "sources/cra/t4127-2026/claim-codes.yaml", type: "blob" },
+          { path: "README.md", type: "blob" },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const out = await listEncodedFiles("canada");
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "canada/policy/cra/t4127-2026/claim-codes",
+    ]);
+    // Root-layout repos have no jurisdiction-dir prefix - the whole
+    // (single-jurisdiction) repo tree is the listing.
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main?recursive=1",
+      expect.anything()
+    );
+  });
 });
 
 describe("listRuleSpecJurisdictions", () => {
@@ -197,8 +225,14 @@ describe("listRuleSpecJurisdictions", () => {
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main": {
         tree: [{ path: "uk", type: "tree" }],
       },
+      // Root-layout repo: buckets at the repo root count as the repo's
+      // single jurisdiction; plumbing dirs alone would not.
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main": {
-        tree: [],
+        tree: [
+          { path: ".axiom", type: "tree" },
+          { path: "sources", type: "tree" },
+          { path: "policies", type: "tree" },
+        ],
       },
     };
     vi.stubGlobal(
@@ -209,7 +243,33 @@ describe("listRuleSpecJurisdictions", () => {
       }))
     );
     const slugs = await listRuleSpecJurisdictions();
-    expect(new Set(slugs)).toEqual(new Set(["us", "us-ca", "uk"]));
+    expect(new Set(slugs)).toEqual(new Set(["us", "us-ca", "uk", "canada"]));
+  });
+
+  it("does not report a root-layout repo whose root has only plumbing dirs", async () => {
+    const byUrl: Record<string, unknown> = {
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main": {
+        tree: [],
+      },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main": {
+        tree: [],
+      },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main": {
+        tree: [
+          { path: ".axiom", type: "tree" },
+          { path: ".github", type: "tree" },
+          { path: "sources", type: "tree" },
+        ],
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => ({
+        ok: true,
+        json: async () => byUrl[url],
+      }))
+    );
+    expect(await listRuleSpecJurisdictions()).toEqual([]);
   });
 
   it("tolerates a repo whose tree request fails", async () => {

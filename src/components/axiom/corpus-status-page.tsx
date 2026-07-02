@@ -596,7 +596,7 @@ function CoverageByDocumentClassPanel({
             <th className="text-right font-medium px-4 py-3">Provisions</th>
             <th className="text-right font-medium px-4 py-3">Bodies</th>
             <th className="text-right font-medium px-4 py-3">Top level</th>
-            <th className="text-right font-medium px-4 py-3">Encoded</th>
+            <th className="text-right font-medium px-4 py-3">RuleSpec files</th>
             <th className="text-right font-medium px-4 py-3">Jurisdictions</th>
           </tr>
         </thead>
@@ -639,6 +639,13 @@ function CoverageByDocumentClassPanel({
           )}
         </tbody>
       </table>
+      <p className="border-t border-[var(--color-rule)] px-4 py-3 text-xs text-[var(--color-ink-secondary)]">
+        Provision counts come from the Supabase corpus stats snapshot.
+        RuleSpec files are counted from repo folders (statutes/, regulations/,
+        policies/, ...); program encodings under policies/ reference
+        provisions across classes, so that row is repo activity rather than
+        coverage of the policy document class.
+      </p>
     </div>
   );
 }
@@ -1368,8 +1375,12 @@ function coverageRowsFromStatus(
         provision_count: row.count,
         body_count: row.body_count,
         top_level_count: row.top_level_count,
-        rulespec_count:
-          githubRulespecCounts?.[row.document_class] ?? row.rulespec_count,
+        // Use one source for the whole column. GitHub repo-file counts and
+        // the corpus rulespec-link counts follow different taxonomies;
+        // mixing them per row made adjacent rows incomparable.
+        rulespec_count: githubRulespecCounts
+          ? (githubRulespecCounts[row.document_class] ?? 0)
+          : row.rulespec_count,
         jurisdiction_count: jurisdictionCounts.get(row.document_class) ?? null,
       }))
       .sort((a, b) => b.provision_count - a.provision_count);

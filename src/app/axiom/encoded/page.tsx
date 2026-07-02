@@ -38,7 +38,11 @@ async function loadGroups(): Promise<JurisdictionGroup[]> {
       return {
         slug,
         label: labelForSlug(slug),
-        repoLabel: location ? `${location.repo}/${location.prefix}` : slug,
+        repoLabel: location
+          ? location.prefix
+            ? `${location.repo}/${location.prefix}`
+            : location.repo
+          : slug,
         repoUrl: ruleSpecRepoTreeUrl(slug) ?? "",
         files,
       };

@@ -3,6 +3,7 @@ import {
   getRuleSpecRepoLocation,
   gitHubApiHeaders,
   ruleSpecRawFileUrl,
+  ruleSpecRepoRootJurisdiction,
   ruleSpecRepoRootTreeApiUrl,
   ruleSpecRepoSubtreeApiUrl,
   RULESPEC_REPOS,
@@ -36,6 +37,33 @@ const REPO_TO_CITATION_BUCKET: Readonly<Record<string, string>> = Object.freeze(
   regulations: "regulation",
   policies: "policy",
 });
+
+/**
+ * Top-level directories that hold encodings. Mirrors RULESPEC_BUCKETS in
+ * scripts/sync-rulespec-index.mjs. Used to recognise a populated
+ * root-layout repo during jurisdiction discovery.
+ */
+const RULESPEC_BUCKETS: ReadonlySet<string> = new Set([
+  "statutes",
+  "regulations",
+  "policies",
+  "manuals",
+  "rulemaking",
+  "forms",
+  "guidance",
+]);
+
+/**
+ * Top-level segments that are repo plumbing rather than encoding
+ * buckets: dot-dirs (``.axiom/`` manifests, ``.github/``) and
+ * ``sources/`` (corpus source slices that mirror the encodings as
+ * plain YAML). Root-layout repos keep these beside the buckets, so a
+ * whole-repo listing must skip them; a denylist (rather than a bucket
+ * allowlist) keeps open-ended buckets like UK ``legislation/`` working.
+ */
+function isRepoPlumbingSegment(segment: string): boolean {
+  return segment.startsWith(".") || segment === "sources";
+}
 
 interface GitHubTreeEntry {
   path: string;
@@ -75,23 +103,33 @@ export async function listEncodedFiles(
 }
 
 /**
- * Discover which jurisdiction directories actually exist across the
- * ``rulespec-*`` monorepos. Reads each repo's top-level tree (one small
- * request per repo) and keeps the directories that name a jurisdiction.
- * Lets the encoded index list exactly the populated jurisdictions
- * without probing every conceivable slug (which would burn the
- * unauthenticated GitHub rate limit on 404s).
+ * Discover which jurisdictions actually have encodings across the
+ * ``rulespec-*`` repos. Reads each repo's top-level tree (one small
+ * request per repo); for jurisdiction-dir monorepos it keeps the
+ * directories that name a jurisdiction, and for root-layout repos
+ * (``rulespec-ca``) it adds the repo's single jurisdiction when any
+ * bucket directory exists at the root. Lets the encoded index list
+ * exactly the populated jurisdictions without probing every
+ * conceivable slug (which would burn the unauthenticated GitHub rate
+ * limit on 404s).
  */
 export async function listRuleSpecJurisdictions(): Promise<string[]> {
   const trees = await Promise.all(
     RULESPEC_REPOS.map((repo) => fetchTree(ruleSpecRepoRootTreeApiUrl(repo)))
   );
   const slugs = new Set<string>();
-  for (const body of trees) {
+  for (const [index, body] of trees.entries()) {
     if (!body || !Array.isArray(body.tree)) continue;
+    const rootJurisdiction = ruleSpecRepoRootJurisdiction(
+      RULESPEC_REPOS[index]
+    );
     for (const entry of body.tree) {
       if (entry.type !== "tree") continue;
-      if (getRuleSpecRepoForJurisdiction(entry.path)) slugs.add(entry.path);
+      if (rootJurisdiction) {
+        if (RULESPEC_BUCKETS.has(entry.path)) slugs.add(rootJurisdiction);
+      } else if (getRuleSpecRepoForJurisdiction(entry.path)) {
+        slugs.add(entry.path);
+      }
     }
   }
   return [...slugs];
@@ -131,6 +169,7 @@ export function parseTreeEntries(
     const stripped = entry.path.replace(/\.yaml$/, "");
     const segs = stripped.split("/");
     const repoBucket = segs[0];
+    if (isRepoPlumbingSegment(repoBucket)) continue;
     const citationBucket = REPO_TO_CITATION_BUCKET[repoBucket] ?? repoBucket;
     const tail = normaliseTitleSegment(
       segs.slice(1),

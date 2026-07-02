@@ -51,9 +51,13 @@ describe("getRuleSpecRepoLocation", () => {
       repo: "rulespec-uk",
       prefix: "uk",
     });
+  });
+
+  it("returns an empty prefix for root-layout single-jurisdiction repos", () => {
+    // rulespec-ca keeps its buckets at the repo root (no canada/ dir).
     expect(getRuleSpecRepoLocation("canada")).toEqual({
       repo: "rulespec-ca",
-      prefix: "canada",
+      prefix: "",
     });
   });
 
@@ -80,6 +84,18 @@ describe("URL builders inject the monorepo jurisdiction-dir prefix", () => {
     );
   });
 
+  it("builds prefix-free URLs for root-layout repos", () => {
+    expect(ruleSpecRawFileUrl("canada", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-ca/main/policies/cra/t4127-2026/claim-codes.yaml"
+    );
+    expect(ruleSpecBlobUrl("canada", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
+      "https://github.com/TheAxiomFoundation/rulespec-ca/blob/main/policies/cra/t4127-2026/claim-codes.yaml"
+    );
+    expect(ruleSpecRepoTreeUrl("canada")).toBe(
+      "https://github.com/TheAxiomFoundation/rulespec-ca/tree/main"
+    );
+  });
+
   it("builds a tree URL pointing at the jurisdiction directory", () => {
     expect(ruleSpecRepoTreeUrl("us-ny")).toBe(
       "https://github.com/TheAxiomFoundation/rulespec-us/tree/main/us-ny"
@@ -92,6 +108,10 @@ describe("URL builders inject the monorepo jurisdiction-dir prefix", () => {
     );
     expect(ruleSpecRepoSubtreeApiUrl("rulespec-us", "us-ca")).toBe(
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-us/git/trees/main:us-ca?recursive=1"
+    );
+    // Root-layout repos list the whole (single-jurisdiction) repo tree.
+    expect(ruleSpecRepoSubtreeApiUrl("rulespec-ca", "")).toBe(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main?recursive=1"
     );
   });
 

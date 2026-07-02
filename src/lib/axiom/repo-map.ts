@@ -6,14 +6,16 @@
  * GitHub" links. Keeping the layout here prevents those surfaces from
  * drifting.
  *
- * Layout: the ``rulespec-*`` repos are monorepos keyed by jurisdiction
+ * Layout: most ``rulespec-*`` repos are monorepos keyed by jurisdiction
  * directory at the top level — federal and every state share
  * ``rulespec-us`` under ``us/``, ``us-ca/``, ``us-al/``, …; UK and its
- * localities share ``rulespec-uk`` under ``uk/``, ``uk-…/``; Canada
- * uses ``rulespec-ca`` under ``canada/``. Within each jurisdiction
- * directory the buckets are ``statutes/`` | ``regulations/`` |
- * ``policies/`` (the "bucket-rooted" path the rest of the Axiom app
- * speaks once the prefix is stripped).
+ * localities share ``rulespec-uk`` under ``uk/``, ``uk-…/``. Some repos
+ * hold a single jurisdiction with the buckets at the repo root instead:
+ * ``rulespec-ca`` keeps Canada's encodings directly under
+ * ``statutes/`` | ``regulations/`` | ``policies/`` with no ``canada/``
+ * prefix (see its ``.axiom/repository-structure.yaml``). Either way the
+ * bucket-rooted path is the shape the rest of the Axiom app speaks once
+ * any prefix is stripped.
  *
  * Keys are the axiom's canonical jurisdiction slugs as they land in
  * ``jurisdiction`` on corpus provision rows — so ``canada`` (not
@@ -31,9 +33,29 @@ export interface RuleSpecRepoLocation {
   repo: string;
   /**
    * Top-level directory within the monorepo holding this
-   * jurisdiction's encodings — always the jurisdiction slug.
+   * jurisdiction's encodings — the jurisdiction slug for
+   * jurisdiction-dir monorepos, or ``""`` for single-jurisdiction
+   * repos whose buckets sit at the repo root (``rulespec-ca``).
    */
   prefix: string;
+}
+
+/**
+ * Repos that hold exactly one jurisdiction with the buckets at the
+ * repo root (no jurisdiction-directory prefix). Mirrors
+ * ``jurisdictionFromRepoName`` in ``scripts/sync-rulespec-index.mjs``.
+ */
+const ROOT_LAYOUT_REPO_JURISDICTIONS: Readonly<Record<string, string>> =
+  Object.freeze({
+    "rulespec-ca": "canada",
+  });
+
+/**
+ * The jurisdiction a root-layout repo holds, or ``null`` for
+ * jurisdiction-dir monorepos.
+ */
+export function ruleSpecRepoRootJurisdiction(repo: string): string | null {
+  return ROOT_LAYOUT_REPO_JURISDICTIONS[repo] ?? null;
 }
 
 function repoForJurisdiction(jurisdiction: string): string | null {
@@ -59,7 +81,15 @@ export function getRuleSpecRepoLocation(
   jurisdiction: string
 ): RuleSpecRepoLocation | null {
   const repo = repoForJurisdiction(jurisdiction);
-  return repo ? { repo, prefix: jurisdiction } : null;
+  if (!repo) return null;
+  const prefix =
+    ruleSpecRepoRootJurisdiction(repo) === jurisdiction ? "" : jurisdiction;
+  return { repo, prefix };
+}
+
+/** Join a location's prefix onto a bucket-rooted path (no leading slash). */
+function prefixedPath(loc: RuleSpecRepoLocation, path: string): string {
+  return loc.prefix ? `${loc.prefix}/${path}` : path;
 }
 
 /**
@@ -74,7 +104,7 @@ export function ruleSpecRawFileUrl(
 ): string | null {
   const loc = getRuleSpecRepoLocation(jurisdiction);
   if (!loc) return null;
-  return `https://raw.githubusercontent.com/${GITHUB_ORG}/${loc.repo}/main/${loc.prefix}/${bucketRootedPath}`;
+  return `https://raw.githubusercontent.com/${GITHUB_ORG}/${loc.repo}/main/${prefixedPath(loc, bucketRootedPath)}`;
 }
 
 /**
@@ -88,7 +118,7 @@ export function ruleSpecBlobUrl(
 ): string | null {
   const loc = getRuleSpecRepoLocation(jurisdiction);
   if (!loc) return null;
-  return `https://github.com/${GITHUB_ORG}/${loc.repo}/blob/main/${loc.prefix}/${bucketRootedPath}`;
+  return `https://github.com/${GITHUB_ORG}/${loc.repo}/blob/main/${prefixedPath(loc, bucketRootedPath)}`;
 }
 
 /**
@@ -99,7 +129,9 @@ export function ruleSpecBlobUrl(
 export function ruleSpecRepoTreeUrl(jurisdiction: string): string | null {
   const loc = getRuleSpecRepoLocation(jurisdiction);
   if (!loc) return null;
-  return `https://github.com/${GITHUB_ORG}/${loc.repo}/tree/main/${loc.prefix}`;
+  return loc.prefix
+    ? `https://github.com/${GITHUB_ORG}/${loc.repo}/tree/main/${loc.prefix}`
+    : `https://github.com/${GITHUB_ORG}/${loc.repo}/tree/main`;
 }
 
 /**
@@ -114,7 +146,11 @@ export function ruleSpecRepoSubtreeApiUrl(
   repo: string,
   prefix: string
 ): string {
-  return `https://api.github.com/repos/${GITHUB_ORG}/${repo}/git/trees/main:${prefix}?recursive=1`;
+  // Root-layout repos (empty prefix) list the whole repo tree — they
+  // hold a single jurisdiction, so the response stays small enough for
+  // the fetch cache, unlike the multi-jurisdiction monorepos.
+  const ref = prefix ? `main:${prefix}` : "main";
+  return `https://api.github.com/repos/${GITHUB_ORG}/${repo}/git/trees/${ref}?recursive=1`;
 }
 
 /**
@@ -146,7 +182,20 @@ export function gitHubApiHeaders(): Record<string, string> {
     Accept: "application/vnd.github+json",
   };
   const token =
-    process.env.AXIOM_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+    cleanTokenValue(process.env.AXIOM_GITHUB_TOKEN) ??
+    cleanTokenValue(process.env.GITHUB_TOKEN) ??
+    cleanTokenValue(process.env.GH_TOKEN);
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
+}
+
+/**
+ * Vercel-managed secrets sometimes carry a trailing newline (stored
+ * verbatim, escaped to a literal ``\n`` by ``vercel env pull``). Either
+ * form corrupts the Authorization header into a guaranteed 401, which
+ * is worse than sending no token at all — so strip both before use.
+ */
+function cleanTokenValue(value: string | undefined): string | undefined {
+  const cleaned = value?.replaceAll("\\n", "").trim();
+  return cleaned || undefined;
 }

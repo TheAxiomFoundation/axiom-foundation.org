@@ -153,8 +153,16 @@ function isEncodingFile(path) {
   return (
     path.endsWith(".yaml") &&
     !path.endsWith(".test.yaml") &&
-    !path.endsWith(".meta.yaml")
+    !path.endsWith(".meta.yaml") &&
+    // Repo plumbing beside the buckets — .axiom/ manifests, .github/
+    // config, and sources/ corpus slices (plain YAML mirrors of the
+    // encodings in root-layout repos like rulespec-ca).
+    !isRepoPlumbingSegment(path.split("/")[0])
   );
+}
+
+function isRepoPlumbingSegment(segment) {
+  return segment.startsWith(".") || segment === "sources";
 }
 
 /** Mirror of parseTreeEntries + normaliseTitleSegment in repo-listing.ts. */

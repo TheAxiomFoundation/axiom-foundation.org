@@ -16,6 +16,7 @@ function encodingStatus(
     recent_run_count: 5,
     issue_run_count: 1,
     active_session_count: 0,
+    earliest_run_at: "2026-05-03T23:18:20.000Z",
     latest_runs: [
       {
         id: "enc-1",
@@ -76,6 +77,9 @@ describe("LiveEncodingPanel", () => {
     expect(screen.getByText("sdk-1")).toBeInTheDocument();
     expect(screen.getByText("Finished")).toBeInTheDocument();
     expect(screen.getByText(/refreshes every 30s/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/telemetry since May 3, 2026/i)
+    ).toBeInTheDocument();
   });
 
   it("shows active sessions as running now", () => {

@@ -236,6 +236,8 @@ export interface EncodingOpsStatus {
   recent_run_count: number | null;
   issue_run_count: number | null;
   active_session_count: number | null;
+  /** Timestamp of the oldest recorded run — run telemetry only exists from here on. */
+  earliest_run_at: string | null;
   latest_runs: EncodingStatusRun[];
   latest_sessions: EncodingStatusSession[];
   latest_source_counts: Record<string, number>;
@@ -962,6 +964,7 @@ async function readEncodingStatusFromSupabase(
     recentRunCount,
     issueRunCount,
     activeSessionCount,
+    earliestRuns,
     latestRuns,
     latestSessions,
   ] = await Promise.all([
@@ -985,6 +988,17 @@ async function readEncodingStatusFromSupabase(
       "telemetry",
       "sdk_sessions",
       { ended_at: "is.null" },
+      fetchOptions
+    ),
+    readSupabaseRows<{ timestamp: string }>(
+      config,
+      "encodings",
+      "encoding_runs",
+      {
+        select: "timestamp",
+        order: "timestamp.asc",
+        limit: "1",
+      },
       fetchOptions
     ),
     readSupabaseRows<EncodingStatusRun>(
@@ -1028,6 +1042,7 @@ async function readEncodingStatusFromSupabase(
     recent_run_count: recentRunCount,
     issue_run_count: resolvedIssueRunCount,
     active_session_count: activeSessionCount,
+    earliest_run_at: stringOrNull(earliestRuns[0]?.timestamp),
     latest_runs: latestRuns,
     latest_sessions: latestSessions,
     latest_source_counts: summarizeLatestSources(latestRuns),

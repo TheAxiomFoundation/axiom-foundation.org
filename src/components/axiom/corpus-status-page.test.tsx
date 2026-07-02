@@ -497,6 +497,7 @@ const status: CorpusStatusData = {
       recent_run_count: 5,
       issue_run_count: 1,
       active_session_count: 1,
+      earliest_run_at: "2026-05-03T03:10:00.000Z",
       latest_source_counts: {
         reviewer_agent: 2,
         ci_only: 1,

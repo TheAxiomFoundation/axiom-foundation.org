@@ -125,8 +125,13 @@ export function LiveEncodingPanel({
               value={formatNullableNumber(status.issue_run_count)}
             />
             <LiveMetric
-              label="Total runs"
+              label="Runs recorded"
               value={formatNullableNumber(status.run_count)}
+              hint={
+                status.earliest_run_at
+                  ? `telemetry since ${formatUtcDay(status.earliest_run_at)}`
+                  : undefined
+              }
             />
           </dl>
 
@@ -214,7 +219,15 @@ export function LiveEncodingPanel({
   );
 }
 
-function LiveMetric({ label, value }: { label: string; value: string }) {
+function LiveMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="bg-[var(--color-paper-elevated)] p-3">
       <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
@@ -222,6 +235,11 @@ function LiveMetric({ label, value }: { label: string; value: string }) {
       </dt>
       <dd className="mt-1 text-xl font-semibold tnum text-[var(--color-ink)]">
         {value}
+        {hint && (
+          <span className="mt-0.5 block text-[10px] font-normal text-[var(--color-ink-muted)]">
+            {hint}
+          </span>
+        )}
       </dd>
     </div>
   );
@@ -367,6 +385,17 @@ function formatUtcShortDate(value: string | null): string {
     minute: "2-digit",
     timeZone: "UTC",
     timeZoneName: "short",
+  }).format(date);
+}
+
+function formatUtcDay(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 

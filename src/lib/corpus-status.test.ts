@@ -243,6 +243,9 @@ describe("corpus status helpers", () => {
     expect(status.encodingStatus.value?.recent_run_count).toBe(5);
     expect(status.encodingStatus.value?.issue_run_count).toBe(1);
     expect(status.encodingStatus.value?.active_session_count).toBe(1);
+    expect(status.encodingStatus.value?.earliest_run_at).toBe(
+      "2026-05-03T12:00:00.000Z"
+    );
     expect(status.encodingStatus.value?.latest_source_counts).toEqual({
       reviewer_agent: 1,
       unknown: 1,

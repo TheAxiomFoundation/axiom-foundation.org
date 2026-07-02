@@ -1141,9 +1141,9 @@ function ValidationIssuesPanel({ report }: { report: ValidationReport | null }) 
 
   return (
     <div className="mt-3 border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] divide-y divide-[var(--color-rule)]">
-      {report.issues.slice(0, 12).map((issue) => (
+      {report.issues.slice(0, 12).map((issue, index) => (
         <ValidationIssueRow
-          key={`${issue.code}:${issue.jurisdiction}:${issue.document_class}:${issue.message}`}
+          key={`${index}:${issue.code}:${issue.jurisdiction}:${issue.document_class}:${issue.version}`}
           issue={issue}
         />
       ))}

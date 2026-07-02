@@ -172,6 +172,102 @@ describe("LiveEncodingPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("refreshes immediately when the tab becomes visible again", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => artifact(encodingStatus({ active_session_count: 3 })),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <LiveEncodingPanel
+        initial={artifact(encodingStatus())}
+        pollIntervalMs={60_000}
+      />
+    );
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText(/3 encoding sessions running now/i)
+    ).toBeInTheDocument();
+  });
+
+  it("formats durations, costs, and missing metadata across runs", () => {
+    render(
+      <LiveEncodingPanel
+        initial={artifact(
+          encodingStatus({
+            latest_runs: [
+              {
+                ...encodingStatus().latest_runs[0],
+                id: "enc-ms",
+                citation: null,
+                total_duration_ms: 500,
+                agent_model: null,
+                agent_type: null,
+                data_source: null,
+                has_issues: true,
+                encoder_version: null,
+              },
+              {
+                ...encodingStatus().latest_runs[0],
+                id: "enc-sec",
+                citation: "7 CFR 273.10",
+                total_duration_ms: 42_500,
+              },
+            ],
+            latest_sessions: [
+              {
+                ...encodingStatus().latest_sessions[0],
+                id: "sdk-costly",
+                model: null,
+                estimated_cost_usd: 12.5,
+              },
+            ],
+            latest_source_counts: {},
+          })
+        )}
+      />
+    );
+
+    expect(screen.getByText("enc-ms")).toBeInTheDocument();
+    expect(screen.getByText("500ms")).toBeInTheDocument();
+    expect(screen.getByText("42.5s")).toBeInTheDocument();
+    expect(screen.getByText("Check")).toBeInTheDocument();
+    expect(screen.getByText("$12.50")).toBeInTheDocument();
+    expect(screen.getByText(/Unknown model/)).toBeInTheDocument();
+    expect(screen.getByText("No source mix recorded yet.")).toBeInTheDocument();
+  });
+
+  it("renders empty run and session states", () => {
+    render(
+      <LiveEncodingPanel
+        initial={artifact(
+          encodingStatus({
+            run_count: 0,
+            recent_run_count: null,
+            issue_run_count: null,
+            active_session_count: null,
+            earliest_run_at: null,
+            latest_runs: [],
+            latest_sessions: [],
+            latest_source_counts: {},
+          })
+        )}
+      />
+    );
+
+    expect(screen.getByText("No encoding runs recorded yet.")).toBeInTheDocument();
+    expect(screen.getByText("No SDK sessions recorded yet.")).toBeInTheDocument();
+    expect(screen.getByText(/session status unavailable/i)).toBeInTheDocument();
+  });
+
   it("renders the unavailable state when there is no data at all", () => {
     render(
       <LiveEncodingPanel

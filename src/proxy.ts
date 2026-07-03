@@ -10,7 +10,7 @@ const APP_HOST = "app.axiom-foundation.org";
 // (``/us/statute/26/3101``) don't 404. Marketing routes (``/``,
 // ``/about``, ``/format`` …) are not in this list and pass through
 // unchanged so the dev server can also serve the marketing site.
-const APP_ROOT_PREFIX_RE = /^\/(?:us|uk|canada|us-[a-z]{2})(?:\/|$)/;
+const APP_ROOT_PREFIX_RE = /^\/(?:us|uk|ca|canada|us-[a-z]{2})(?:\/|$)/;
 
 function cleanHost(request: NextRequest): string {
   return (request.headers.get("host") ?? "").split(":")[0].toLowerCase();

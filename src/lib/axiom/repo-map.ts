@@ -14,14 +14,14 @@
  * ``be/``, ``be-bru/``, ``be-vlg/``, ``be-wal/``, …. Some repos
  * hold a single jurisdiction with the buckets at the repo root instead:
  * ``rulespec-ca`` keeps Canada's encodings directly under
- * ``statutes/`` | ``regulations/`` | ``policies/`` with no ``canada/``
+ * ``statutes/`` | ``regulations/`` | ``policies/`` with no ``ca/``
  * prefix (see its ``.axiom/repository-structure.yaml``). Either way the
  * bucket-rooted path is the shape the rest of the Axiom app speaks once
  * any prefix is stripped.
  *
  * Keys are the axiom's canonical jurisdiction slugs as they land in
- * ``jurisdiction`` on corpus provision rows — so ``canada`` (not
- * ``ca``) for Canada. A jurisdiction whose family has no published
+ * ``jurisdiction`` on corpus provision rows — so ``ca`` for Canada
+ * (short codes per the corpus citation-path schema). A jurisdiction whose family has no published
  * repo returns ``null``; a jurisdiction that maps to a repo but has no
  * directory there yet just resolves to an empty file listing, so the
  * UI degrades gracefully into "Not yet encoded" without a hard-coded
@@ -49,7 +49,7 @@ export interface RuleSpecRepoLocation {
  */
 const ROOT_LAYOUT_REPO_JURISDICTIONS: Readonly<Record<string, string>> =
   Object.freeze({
-    "rulespec-ca": "canada",
+    "rulespec-ca": "ca",
   });
 
 /**
@@ -70,7 +70,7 @@ function repoForJurisdiction(jurisdiction: string): string | null {
   if (jurisdiction === "be" || jurisdiction.startsWith("be-")) {
     return "rulespec-be";
   }
-  if (jurisdiction === "canada") {
+  if (jurisdiction === "ca") {
     return "rulespec-ca";
   }
   return null;

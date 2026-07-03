@@ -17,7 +17,7 @@ const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
     { slug: "be-vlg", label: "Flanders", hasCitationPaths: true },
     { slug: "be-wal", label: "Wallonia", hasCitationPaths: true },
     { slug: "be-dg", label: "German-speaking Community", hasCitationPaths: true },
-    { slug: "canada", label: "Canada", hasCitationPaths: false },
+    { slug: "ca", label: "Canada", hasCitationPaths: false },
     { slug: "us-co", label: "Colorado", hasCitationPaths: true },
     { slug: "us-dc", label: "District of Columbia", hasCitationPaths: true },
     { slug: "us-ny", label: "New York", hasCitationPaths: true },
@@ -101,7 +101,7 @@ describe("jurisdictionDisplay", () => {
     // is a clickable pill on the landing, collisions are real.
     expect(jurisdictionDisplay("uk")).toBe("UK");
     expect(jurisdictionDisplay("be")).toBe("BE");
-    expect(jurisdictionDisplay("canada")).toBe("CAN");
+    expect(jurisdictionDisplay("ca")).toBe("CAN");
   });
   it("falls back to uppercasing an unknown jurisdiction", () => {
     // jurisdictionDisplay renders the slug as the code chip; for
@@ -201,7 +201,7 @@ describe("AxiomStats", () => {
       jurisdictions_count: 18,
       jurisdictions: [
         ...fullPayload.jurisdictions,
-        { jurisdiction: "canada", count: 2_000 },
+        { jurisdiction: "ca", count: 2_000 },
       ],
     });
     render(<AxiomStats />);

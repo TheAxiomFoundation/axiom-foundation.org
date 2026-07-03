@@ -67,7 +67,7 @@ const CHILD_PREFIX: Record<string, string> = {
   be: "be-",
 };
 
-const FEDERAL_ORDER = ["us", "uk", "be", "canada"] as const;
+const FEDERAL_ORDER = ["us", "uk", "be", "ca"] as const;
 
 function partitionItems(items: JurisdictionItem[]) {
   const bySlug = new Map(items.map((i) => [i.slug, i]));

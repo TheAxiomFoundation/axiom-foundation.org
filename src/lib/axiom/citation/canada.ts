@@ -3,11 +3,11 @@ import type { JurisdictionParser } from "./types";
 /**
  * Canadian federal Revised Statutes — e.g.
  *
- *   RSC 1985, c 1 (5th Supp)             → canada/statute/rsc-1985/c-1-5th-supp
- *   RSC 1985 c 1                         → canada/statute/rsc-1985/c-1
- *   RSC 1985, c 1 (5th Supp), s 3(1)     → canada/statute/rsc-1985/c-1-5th-supp/3/1
+ *   RSC 1985, c 1 (5th Supp)             → ca/statute/rsc-1985/c-1-5th-supp
+ *   RSC 1985 c 1                         → ca/statute/rsc-1985/c-1
+ *   RSC 1985, c 1 (5th Supp), s 3(1)     → ca/statute/rsc-1985/c-1-5th-supp/3/1
  *
- * The axiom's Canadian ingestion uses ``canada/statute/<collection>/<chapter>``
+ * The axiom's Canadian ingestion uses ``ca/statute/<collection>/<chapter>``
  * as the stable prefix with optional section + subsection segments.
  * We accept the "Supp" variant explicitly because it's the canonical
  * form for the Income Tax Act (c 1 (5th Supp)).
@@ -25,7 +25,7 @@ export const rscParser: JurisdictionParser = {
     const chapterSlug = supp
       ? `c-${chapter}-${supp}th-supp`
       : `c-${chapter}`;
-    const segments = ["canada", "statute", collection, chapterSlug];
+    const segments = ["ca", "statute", collection, chapterSlug];
     let displayLabel = `RSC ${year}, c ${chapter}`;
     if (supp) displayLabel += ` (${supp}th Supp)`;
     if (section) {
@@ -43,7 +43,7 @@ export const rscParser: JurisdictionParser = {
       displayLabel += `, s ${section}${subs.map((s) => `(${s})`).join("")}`;
     }
     return {
-      jurisdiction: "canada",
+      jurisdiction: "ca",
       docType: "statute",
       citationPath: segments.join("/"),
       displayLabel,
@@ -56,8 +56,8 @@ export const rscParser: JurisdictionParser = {
  * Act live at a known citation path; users almost never type the full
  * RSC formulation from memory, so we short-circuit the common ones.
  *
- *   Income Tax Act             → canada/statute/rsc-1985/c-1-5th-supp
- *   Income Tax Act s 3(1)      → canada/statute/rsc-1985/c-1-5th-supp/3/1
+ *   Income Tax Act             → ca/statute/rsc-1985/c-1-5th-supp
+ *   Income Tax Act s 3(1)      → ca/statute/rsc-1985/c-1-5th-supp/3/1
  */
 interface ActShortcut {
   name: string;
@@ -97,7 +97,7 @@ function buildActParser(shortcut: ActShortcut): JurisdictionParser {
       if (!m) return null;
       const [, section, subsTail] = m;
       const segments = [
-        "canada",
+        "ca",
         "statute",
         shortcut.collection,
         shortcut.chapter,
@@ -118,7 +118,7 @@ function buildActParser(shortcut: ActShortcut): JurisdictionParser {
         displayLabel += `, s ${section}${subs.map((s) => `(${s})`).join("")}`;
       }
       return {
-        jurisdiction: "canada",
+        jurisdiction: "ca",
         docType: "statute",
         citationPath: segments.join("/"),
         displayLabel,

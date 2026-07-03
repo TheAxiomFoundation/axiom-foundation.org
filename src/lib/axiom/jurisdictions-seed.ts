@@ -40,7 +40,7 @@ export const JURISDICTIONS_SEED: Jurisdiction[] = [
     label: "German-speaking Community",
     hasCitationPaths: true,
   },
-  { slug: "canada", label: "Canada", hasCitationPaths: false },
+  { slug: "ca", label: "Canada", hasCitationPaths: false },
 
   // US states + DC + territories
   { slug: "us-al", label: "Alabama", hasCitationPaths: true },

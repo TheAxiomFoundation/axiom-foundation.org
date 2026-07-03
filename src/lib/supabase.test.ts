@@ -1027,7 +1027,7 @@ describe('supabase lib', () => {
       mockRpc.mockResolvedValue({ data: stats, error: null })
       const eq = vi.fn((_column: string, jurisdiction: string) =>
         Promise.resolve({
-          count: jurisdiction === 'canada' ? 22275 : 0,
+          count: jurisdiction === 'ca' ? 22275 : 0,
           error: null,
         })
       )
@@ -1040,7 +1040,7 @@ describe('supabase lib', () => {
       expect(result?.jurisdictions).toEqual(
         expect.arrayContaining([
           { jurisdiction: 'us', count: 467993 },
-          { jurisdiction: 'canada', count: 22275 },
+          { jurisdiction: 'ca', count: 22275 },
         ])
       )
       expect(result?.jurisdictions_count).toBeGreaterThanOrEqual(2)

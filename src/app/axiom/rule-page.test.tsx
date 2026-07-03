@@ -124,8 +124,8 @@ describe("getJurisdictionLabel", () => {
     expect(getJurisdictionLabel("be")).toBe("BE");
   });
 
-  it('returns CA for "canada"', () => {
-    expect(getJurisdictionLabel("canada")).toBe("CA");
+  it('returns CA for "ca"', () => {
+    expect(getJurisdictionLabel("ca")).toBe("CA");
   });
 
   it("returns state abbreviation for us- prefix", () => {

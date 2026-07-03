@@ -31,6 +31,15 @@ export const JURISDICTIONS_SEED: Jurisdiction[] = [
   // Federal / non-US
   { slug: "us", label: "US Federal", hasCitationPaths: true },
   { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
+  { slug: "be", label: "Belgium", hasCitationPaths: true },
+  { slug: "be-bru", label: "Brussels-Capital Region", hasCitationPaths: true },
+  { slug: "be-vlg", label: "Flanders", hasCitationPaths: true },
+  { slug: "be-wal", label: "Wallonia", hasCitationPaths: true },
+  {
+    slug: "be-dg",
+    label: "German-speaking Community",
+    hasCitationPaths: true,
+  },
   { slug: "canada", label: "Canada", hasCitationPaths: false },
 
   // US states + DC + territories

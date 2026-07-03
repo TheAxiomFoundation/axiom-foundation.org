@@ -120,6 +120,10 @@ describe("getJurisdictionLabel", () => {
     expect(getJurisdictionLabel("uk")).toBe("UK");
   });
 
+  it('returns BE for "be"', () => {
+    expect(getJurisdictionLabel("be")).toBe("BE");
+  });
+
   it('returns CA for "canada"', () => {
     expect(getJurisdictionLabel("canada")).toBe("CA");
   });

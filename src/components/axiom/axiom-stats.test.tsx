@@ -12,6 +12,8 @@ const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
   TEST_JURISDICTIONS: [
     { slug: "us", label: "US Federal", hasCitationPaths: true },
     { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
+    { slug: "be", label: "Belgium", hasCitationPaths: true },
+    { slug: "be-bru", label: "Brussels-Capital Region", hasCitationPaths: true },
     { slug: "canada", label: "Canada", hasCitationPaths: false },
     { slug: "us-co", label: "Colorado", hasCitationPaths: true },
     { slug: "us-dc", label: "District of Columbia", hasCitationPaths: true },
@@ -95,6 +97,7 @@ describe("jurisdictionDisplay", () => {
     // California's CA display — now that every ingested jurisdiction
     // is a clickable pill on the landing, collisions are real.
     expect(jurisdictionDisplay("uk")).toBe("UK");
+    expect(jurisdictionDisplay("be")).toBe("BE");
     expect(jurisdictionDisplay("canada")).toBe("CAN");
   });
   it("falls back to uppercasing an unknown jurisdiction", () => {
@@ -227,7 +230,7 @@ describe("AxiomStats", () => {
     });
 
     const pills = within(screen.getByTestId("axiom-stats-pills"));
-    // Federal tabs surface UK and Canada even when the stats payload
+    // Federal tabs surface UK, Belgium, and Canada even when the stats payload
     // omits them; state chips render inside the active US panel.
     expect(
       pills.getByRole("tab", { name: /United Kingdom/i })
@@ -235,9 +238,12 @@ describe("AxiomStats", () => {
     expect(
       pills.getByRole("tab", { name: /Canada/i })
     ).toBeInTheDocument();
+    expect(
+      pills.getByRole("tab", { name: /Belgium/i })
+    ).toBeInTheDocument();
     expect(pills.getByText("Colorado")).toBeInTheDocument();
     expect(pills.getByText("New York")).toBeInTheDocument();
-    expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
   });
 
   it("does not create uncounted territory links from the static seed", async () => {

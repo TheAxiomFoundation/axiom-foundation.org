@@ -142,7 +142,7 @@ type JurisdictionNavCount =
   | { jurisdiction: string; count: null };
 
 /**
- * Order the stations grid: federal/national first (US, UK, Canada),
+ * Order the stations grid: federal/national first (US, UK, Belgium, Canada),
  * then US states + territories sorted by descending rule count so the
  * biggest corpora surface near the top. Pending tiles fall to the
  * bottom of the states block so the grid leads with what's actually
@@ -166,6 +166,7 @@ function orderForStations(
     if (
       j.jurisdiction === "us" ||
       j.jurisdiction === "uk" ||
+      j.jurisdiction === "be" ||
       j.jurisdiction === "canada"
     ) {
       federal.push(item);
@@ -273,12 +274,14 @@ function useCountUp(target: number | null, durationMs = 900): number {
  *   'us-ny'  → 'NY'
  *   'us-dc'  → 'DC'
  *   'uk'     → 'UK'
+ *   'be'     → 'BE'
  *   'canada' → 'CAN'
  */
 export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction === "us") return "USC+CFR";
   if (jurisdiction === "canada") return "CAN";
   if (jurisdiction === "uk") return "UK";
+  if (jurisdiction === "be") return "BE";
   if (jurisdiction.startsWith("us-")) {
     return jurisdiction.slice(3).toUpperCase();
   }

@@ -39,16 +39,20 @@ const JURISDICTION_GROUPS: ReadonlyArray<{
   options: ReadonlyArray<{ value: string; label: string }>;
 }> = (() => {
   const bySlug = new Map(JURISDICTIONS_SEED.map((j) => [j.slug, j.label]));
-  const national = ["us", "uk", "canada"]
+  const national = ["us", "uk", "be", "canada"]
     .filter((slug) => bySlug.has(slug))
     .map((slug) => ({ value: slug, label: bySlug.get(slug)! }));
   national.push({ value: "nz", label: EXTRA_JURISDICTION_LABELS["nz"] });
   const states = JURISDICTIONS_SEED.filter((j) => j.slug.startsWith("us-")).map(
     (j) => ({ value: j.slug, label: j.label })
   );
+  const belgianRegions = JURISDICTIONS_SEED.filter((j) =>
+    j.slug.startsWith("be-")
+  ).map((j) => ({ value: j.slug, label: j.label }));
   return [
     { label: "Federal & national", options: national },
     { label: "US states & territories", options: states },
+    { label: "Belgian regions & communities", options: belgianRegions },
     {
       label: "UK local authorities",
       options: [

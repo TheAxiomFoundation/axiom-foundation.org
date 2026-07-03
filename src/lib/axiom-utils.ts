@@ -85,6 +85,8 @@ export function getJurisdictionLabel(jurisdiction: string): string {
   switch (jurisdiction) {
     case "canada":
       return "CA";
+    case "be":
+      return "BE";
     case "uk":
       return "UK";
     default:

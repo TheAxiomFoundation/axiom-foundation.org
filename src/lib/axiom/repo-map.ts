@@ -9,7 +9,9 @@
  * Layout: most ``rulespec-*`` repos are monorepos keyed by jurisdiction
  * directory at the top level — federal and every state share
  * ``rulespec-us`` under ``us/``, ``us-ca/``, ``us-al/``, …; UK and its
- * localities share ``rulespec-uk`` under ``uk/``, ``uk-…/``. Some repos
+ * localities share ``rulespec-uk`` under ``uk/``, ``uk-…/``; Belgium
+ * and its regional/community modules share ``rulespec-be`` under
+ * ``be/``, ``be-bru/``, ``be-vlg/``, ``be-wal/``, …. Some repos
  * hold a single jurisdiction with the buckets at the repo root instead:
  * ``rulespec-ca`` keeps Canada's encodings directly under
  * ``statutes/`` | ``regulations/`` | ``policies/`` with no ``canada/``
@@ -64,6 +66,9 @@ function repoForJurisdiction(jurisdiction: string): string | null {
   }
   if (jurisdiction === "uk" || jurisdiction.startsWith("uk-")) {
     return "rulespec-uk";
+  }
+  if (jurisdiction === "be" || jurisdiction.startsWith("be-")) {
+    return "rulespec-be";
   }
   if (jurisdiction === "canada") {
     return "rulespec-ca";
@@ -167,6 +172,7 @@ export function ruleSpecRepoRootTreeApiUrl(repo: string): string {
 export const RULESPEC_REPOS = [
   "rulespec-us",
   "rulespec-uk",
+  "rulespec-be",
   "rulespec-ca",
 ] as const;
 

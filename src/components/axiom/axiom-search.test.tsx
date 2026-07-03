@@ -510,6 +510,13 @@ describe("AxiomSearch", () => {
     expect(
       screen.getByRole("option", { name: "New Zealand" })
     ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Belgium" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Belgian regions & communities" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Brussels-Capital Region" })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("option", { name: "Kingston upon Thames" })
     ).toBeInTheDocument();

@@ -76,9 +76,11 @@ function isJurisdictionSegment(value) {
   return (
     value === "us" ||
     value === "uk" ||
+    value === "be" ||
     value === "nz" ||
     value === "canada" ||
     value === "ca" ||
+    /^be-[a-z-]+$/.test(value) ||
     /^us-[a-z]{2}$/.test(value) ||
     /^uk-[a-z-]+$/.test(value)
   );

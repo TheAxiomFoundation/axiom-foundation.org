@@ -176,6 +176,24 @@ describe("listEncodedFiles", () => {
     );
   });
 
+  it("scopes Belgian regions to their directories in rulespec-be", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tree: [{ path: "statutes/gift_tax/rate_scale.yaml", type: "blob" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const out = await listEncodedFiles("be-bru");
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "be-bru/statute/gift_tax/rate_scale",
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-be/git/trees/main:be-bru?recursive=1",
+      expect.anything()
+    );
+  });
+
   it("lists a root-layout repo from its whole tree, skipping repo plumbing", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -225,6 +243,13 @@ describe("listRuleSpecJurisdictions", () => {
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main": {
         tree: [{ path: "uk", type: "tree" }],
       },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-be/git/trees/main": {
+        tree: [
+          { path: "be", type: "tree" },
+          { path: "be-bru", type: "tree" },
+          { path: "sources", type: "tree" },
+        ],
+      },
       // Root-layout repo: buckets at the repo root count as the repo's
       // single jurisdiction; plumbing dirs alone would not.
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main": {
@@ -243,7 +268,9 @@ describe("listRuleSpecJurisdictions", () => {
       }))
     );
     const slugs = await listRuleSpecJurisdictions();
-    expect(new Set(slugs)).toEqual(new Set(["us", "us-ca", "uk", "canada"]));
+    expect(new Set(slugs)).toEqual(
+      new Set(["us", "us-ca", "uk", "be", "be-bru", "canada"])
+    );
   });
 
   it("does not report a root-layout repo whose root has only plumbing dirs", async () => {
@@ -252,6 +279,9 @@ describe("listRuleSpecJurisdictions", () => {
         tree: [],
       },
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-uk/git/trees/main": {
+        tree: [],
+      },
+      "https://api.github.com/repos/TheAxiomFoundation/rulespec-be/git/trees/main": {
         tree: [],
       },
       "https://api.github.com/repos/TheAxiomFoundation/rulespec-ca/git/trees/main": {

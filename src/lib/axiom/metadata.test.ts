@@ -60,13 +60,13 @@ describe("getAxiomRuleMetadata", () => {
     expect(meta.docType).toBe("statute");
   });
 
-  it("falls through to a 'not yet ingested' payload when no prefix matches", async () => {
+  it("returns neutral metadata when no exact rule or ancestor matches", async () => {
     mockIn.mockResolvedValue({ data: [], error: null });
     const meta = await getAxiomRuleMetadata(["us", "statute", "99", "99"]);
     expect(meta.rule).toBeNull();
     expect(meta.citationPath).toBe("us/statute/99/99");
     expect(meta.title).toContain("us/statute/99/99");
-    expect(meta.description).toContain("not yet ingested");
+    expect(meta.description).toContain("Browse available Axiom legal-code entries");
   });
 
   it("resolves chapter-prefixed state statute aliases to canonical metadata", async () => {

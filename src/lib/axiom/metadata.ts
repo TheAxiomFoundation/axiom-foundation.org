@@ -96,7 +96,7 @@ export async function getAxiomRuleMetadata(
       rule: null,
       title: `${citationPath} — Axiom`,
       description:
-        "This citation is not yet ingested in the Axiom. View other atomic rules in the encoded legal code.",
+        "Browse available Axiom legal-code entries for this citation path, including source text, RuleSpec encodings, and citation graph context.",
       canonicalUrl,
       citationPath,
       jurisdiction: null,

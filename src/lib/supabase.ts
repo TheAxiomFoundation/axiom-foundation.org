@@ -708,15 +708,28 @@ async function enrichAxiomStatsWithNavigationCounts(
 
   if (missingSlugs.length === 0) return stats
 
+  const rulespecCounts = await withStatsTimeout(
+    getRuleSpecJurisdictionCounts(missingSlugs),
+    RULESPEC_JURISDICTION_COUNTS_TIMEOUT_MS,
+    []
+  )
+  const rulespecSlugs = new Set(
+    rulespecCounts.map((j) => j.jurisdiction)
+  )
+  const navigationMissingSlugs = missingSlugs.filter(
+    (slug) => !rulespecSlugs.has(slug)
+  )
   const navigationCounts = await withStatsTimeout(
-    getNavigationJurisdictionCounts(missingSlugs),
+    getNavigationJurisdictionCounts(navigationMissingSlugs),
     NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS,
     []
   )
 
-  if (navigationCounts.length === 0) return stats
+  const supplementalCounts = [...rulespecCounts, ...navigationCounts]
 
-  const jurisdictions = [...existingJurisdictions, ...navigationCounts].sort(
+  if (supplementalCounts.length === 0) return stats
+
+  const jurisdictions = [...existingJurisdictions, ...supplementalCounts].sort(
     (a, b) => b.count - a.count
   )
 
@@ -728,6 +741,24 @@ async function enrichAxiomStatsWithNavigationCounts(
       new Set(jurisdictions.map((j) => j.jurisdiction)).size
     ),
   }
+}
+
+async function getRuleSpecJurisdictionCounts(
+  jurisdictions: string[]
+): Promise<AxiomJurisdictionCount[]> {
+  const rows = await Promise.all(
+    jurisdictions.map(async (jurisdiction) => {
+      const { count, error } = await supabaseEncodings
+        .from('rulespec_files')
+        .select('citation_path', { count: 'exact', head: true })
+        .eq('jurisdiction', jurisdiction)
+
+      if (error || !count) return null
+      return { jurisdiction, count }
+    })
+  )
+
+  return rows.filter((row): row is AxiomJurisdictionCount => row !== null)
 }
 
 async function getNavigationJurisdictionCounts(
@@ -748,6 +779,7 @@ async function getNavigationJurisdictionCounts(
   return rows.filter((row): row is AxiomJurisdictionCount => row !== null)
 }
 
+const RULESPEC_JURISDICTION_COUNTS_TIMEOUT_MS = 1200
 const NAVIGATION_JURISDICTION_COUNTS_TIMEOUT_MS = 1200
 
 function withStatsTimeout<T, F = T>(

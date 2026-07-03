@@ -14,6 +14,9 @@ const { mockGetAxiomStats, TEST_JURISDICTIONS } = vi.hoisted(() => ({
     { slug: "uk", label: "United Kingdom", hasCitationPaths: true },
     { slug: "be", label: "Belgium", hasCitationPaths: true },
     { slug: "be-bru", label: "Brussels-Capital Region", hasCitationPaths: true },
+    { slug: "be-vlg", label: "Flanders", hasCitationPaths: true },
+    { slug: "be-wal", label: "Wallonia", hasCitationPaths: true },
+    { slug: "be-dg", label: "German-speaking Community", hasCitationPaths: true },
     { slug: "canada", label: "Canada", hasCitationPaths: false },
     { slug: "us-co", label: "Colorado", hasCitationPaths: true },
     { slug: "us-dc", label: "District of Columbia", hasCitationPaths: true },
@@ -243,7 +246,39 @@ describe("AxiomStats", () => {
     ).toBeInTheDocument();
     expect(pills.getByText("Colorado")).toBeInTheDocument();
     expect(pills.getByText("New York")).toBeInTheDocument();
-    expect(screen.getByText("8")).toBeInTheDocument();
+    expect(screen.getByText("11")).toBeInTheDocument();
+  });
+
+  it("shows Belgium sub-jurisdictions when RuleSpec counts are present", async () => {
+    mockGetAxiomStats.mockResolvedValue({
+      ...fullPayload,
+      jurisdictions: [
+        ...fullPayload.jurisdictions,
+        { jurisdiction: "be", count: 58 },
+        { jurisdiction: "be-bru", count: 12 },
+        { jurisdiction: "be-vlg", count: 7 },
+        { jurisdiction: "be-wal", count: 6 },
+        { jurisdiction: "be-dg", count: 2 },
+      ],
+    });
+    render(<AxiomStats />);
+
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+    await waitFor(() => {
+      expect(
+        pills.getByRole("tab", { name: /Belgium/i })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(pills.getByRole("tab", { name: /Belgium/i }));
+
+    expect(pills.getByText("Brussels-Capital Region")).toBeInTheDocument();
+    expect(pills.getByText("Flanders")).toBeInTheDocument();
+    expect(pills.getByText("Wallonia")).toBeInTheDocument();
+    expect(pills.getByText("German-speaking Community")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Belgium ingestion is pending/i)
+    ).not.toBeInTheDocument();
   });
 
   it("does not create uncounted territory links from the static seed", async () => {

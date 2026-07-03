@@ -1,18 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Use vi.hoisted to create mock functions that are available during vi.mock hoisting
-const { mockCreateClient, mockFrom, mockRpc } = vi.hoisted(() => {
+const { mockCreateClient, mockFrom, mockRpc, mockListEncodedFiles } = vi.hoisted(() => {
   const mockFrom = vi.fn()
   const mockRpc = vi.fn()
+  const mockListEncodedFiles = vi.fn()
   const mockCreateClient = vi.fn(() => ({
     from: mockFrom,
     rpc: mockRpc,
   }))
-  return { mockCreateClient, mockFrom, mockRpc }
+  return { mockCreateClient, mockFrom, mockRpc, mockListEncodedFiles }
 })
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: mockCreateClient,
+}))
+
+vi.mock('@/lib/axiom/rulespec/repo-listing', () => ({
+  listEncodedFiles: (...args: unknown[]) => mockListEncodedFiles(...args),
 }))
 
 // Now import the functions (they'll use the mocked supabase client)
@@ -34,6 +39,8 @@ describe('supabase lib', () => {
   beforeEach(() => {
     mockFrom.mockClear()
     mockRpc.mockClear()
+    mockListEncodedFiles.mockReset()
+    mockListEncodedFiles.mockResolvedValue([])
     _resetRawFetchCache()
   })
 
@@ -986,7 +993,7 @@ describe('supabase lib', () => {
       return { eq, select }
     }
 
-    it('calls the get_corpus_stats RPC and returns its payload', async () => {
+    it('calls the get_corpus_stats RPC and preserves its core payload', async () => {
       const stats = {
         provisions_count: 658899,
         references_count: 148604,
@@ -1000,7 +1007,14 @@ describe('supabase lib', () => {
       mockNavigationCount(0)
       const result = await getAxiomStats()
       expect(mockRpc).toHaveBeenCalledWith('get_corpus_stats')
-      expect(result).toEqual(stats)
+      expect(result).toMatchObject({
+        provisions_count: stats.provisions_count,
+        references_count: stats.references_count,
+        jurisdictions_count: expect.any(Number),
+      })
+      expect(result?.jurisdictions).toEqual(
+        expect.arrayContaining(stats.jurisdictions)
+      )
     })
 
     it('fills missing landing jurisdiction counts from navigation_nodes', async () => {
@@ -1030,6 +1044,110 @@ describe('supabase lib', () => {
         ])
       )
       expect(result?.jurisdictions_count).toBeGreaterThanOrEqual(2)
+    })
+
+    it('fills Belgium family counts from RuleSpec GitHub when the encodings index is unavailable', async () => {
+      const stats = {
+        provisions_count: 658899,
+        references_count: 148604,
+        jurisdictions_count: 1,
+        jurisdictions: [{ jurisdiction: 'us', count: 467993 }],
+      }
+      const rulespecCounts: Record<string, number> = {
+        be: 58,
+        'be-bru': 12,
+        'be-vlg': 7,
+        'be-wal': 6,
+        'be-dg': 2,
+      }
+      mockRpc.mockResolvedValue({ data: stats, error: null })
+      mockListEncodedFiles.mockImplementation(async (jurisdiction: string) =>
+        Array.from({ length: rulespecCounts[jurisdiction] ?? 0 }, (_, i) => ({
+          filePath: `statutes/example/${i}.yaml`,
+          citationPath: `${jurisdiction}/statute/example/${i}`,
+          bucket: 'statutes',
+        }))
+      )
+
+      mockFrom.mockImplementation((table: string) => {
+        const eq = vi.fn((_column: string, _jurisdiction: string) =>
+          Promise.resolve(
+            table === 'rulespec_files'
+              ? {
+                  count: null,
+                  error: {
+                    code: 'PGRST205',
+                    message:
+                      "Could not find the table 'encodings.rulespec_files' in the schema cache",
+                  },
+                }
+              : { count: 0, error: null }
+          )
+        )
+        const select = vi.fn().mockReturnValue({ eq })
+        return { select }
+      })
+
+      const result = await getAxiomStats()
+
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('be')
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('be-bru')
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('be-vlg')
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('be-wal')
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('be-dg')
+      expect(mockListEncodedFiles).not.toHaveBeenCalledWith('us-co')
+      expect(result?.jurisdictions).toEqual(
+        expect.arrayContaining([
+          { jurisdiction: 'be', count: 58 },
+          { jurisdiction: 'be-bru', count: 12 },
+          { jurisdiction: 'be-vlg', count: 7 },
+          { jurisdiction: 'be-wal', count: 6 },
+          { jurisdiction: 'be-dg', count: 2 },
+        ])
+      )
+      expect(result?.jurisdictions_count).toBeGreaterThanOrEqual(6)
+    })
+
+    it('keeps Belgium counts from the bootstrap seed when GitHub RuleSpec listing is unavailable', async () => {
+      const stats = {
+        provisions_count: 658899,
+        references_count: 148604,
+        jurisdictions_count: 1,
+        jurisdictions: [{ jurisdiction: 'us', count: 467993 }],
+      }
+      mockRpc.mockResolvedValue({ data: stats, error: null })
+      mockListEncodedFiles.mockResolvedValue([])
+
+      mockFrom.mockImplementation((table: string) => {
+        const eq = vi.fn((_column: string, _jurisdiction: string) =>
+          Promise.resolve(
+            table === 'rulespec_files'
+              ? {
+                  count: null,
+                  error: {
+                    code: 'PGRST205',
+                    message:
+                      "Could not find the table 'encodings.rulespec_files' in the schema cache",
+                  },
+                }
+              : { count: 0, error: null }
+          )
+        )
+        const select = vi.fn().mockReturnValue({ eq })
+        return { select }
+      })
+
+      const result = await getAxiomStats()
+
+      expect(result?.jurisdictions).toEqual(
+        expect.arrayContaining([
+          { jurisdiction: 'be', count: 58 },
+          { jurisdiction: 'be-bru', count: 12 },
+          { jurisdiction: 'be-vlg', count: 7 },
+          { jurisdiction: 'be-wal', count: 6 },
+          { jurisdiction: 'be-dg', count: 2 },
+        ])
+      )
     })
 
     it('returns null on RPC error', async () => {

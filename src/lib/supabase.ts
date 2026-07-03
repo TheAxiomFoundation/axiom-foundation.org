@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getLandingJurisdictions } from '@/lib/axiom/landing-jurisdictions'
 import { ruleSpecRawFileUrl } from '@/lib/axiom/repo-map'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
+import { listEncodedFiles } from '@/lib/axiom/rulespec/repo-listing'
 
 // Supabase configuration
 /* v8 ignore start -- env-dependent module initialization */
@@ -758,8 +759,59 @@ async function getRuleSpecJurisdictionCounts(
     })
   )
 
-  return rows.filter((row): row is AxiomJurisdictionCount => row !== null)
+  const indexedCounts = rows.filter(
+    (row): row is AxiomJurisdictionCount => row !== null
+  )
+  const indexedSlugs = new Set(indexedCounts.map((row) => row.jurisdiction))
+  const fallbackSlugs = jurisdictions.filter((slug) => !indexedSlugs.has(slug))
+
+  return [
+    ...indexedCounts,
+    ...(await getRuleSpecGitHubJurisdictionCounts(fallbackSlugs)),
+  ]
 }
+
+async function getRuleSpecGitHubJurisdictionCounts(
+  jurisdictions: string[]
+): Promise<AxiomJurisdictionCount[]> {
+  const fallbackJurisdictions = jurisdictions.filter(
+    isGitHubRuleSpecStatsFallbackJurisdiction
+  )
+  const rows = await Promise.all(
+    fallbackJurisdictions.map(async (jurisdiction) => {
+      const files = await listEncodedFiles(jurisdiction)
+      if (files.length === 0) return null
+      return { jurisdiction, count: files.length }
+    })
+  )
+
+  const liveRows = rows.filter(
+    (row): row is AxiomJurisdictionCount => row !== null
+  )
+  const liveSlugs = new Set(liveRows.map((row) => row.jurisdiction))
+  const bootstrapRows = fallbackJurisdictions
+    .filter((jurisdiction) => !liveSlugs.has(jurisdiction))
+    .map((jurisdiction) => {
+      const count = BELGIUM_RULESPEC_BOOTSTRAP_COUNTS[jurisdiction]
+      return count ? { jurisdiction, count } : null
+    })
+    .filter((row): row is AxiomJurisdictionCount => row !== null)
+
+  return [...liveRows, ...bootstrapRows]
+}
+
+function isGitHubRuleSpecStatsFallbackJurisdiction(jurisdiction: string) {
+  return jurisdiction === 'be' || jurisdiction.startsWith('be-')
+}
+
+const BELGIUM_RULESPEC_BOOTSTRAP_COUNTS: Readonly<Record<string, number>> =
+  Object.freeze({
+    be: 58,
+    'be-bru': 12,
+    'be-vlg': 7,
+    'be-wal': 6,
+    'be-dg': 2,
+  })
 
 async function getNavigationJurisdictionCounts(
   jurisdictions: string[]

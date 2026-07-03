@@ -300,7 +300,7 @@ function SelectionPanel({
         ) : (
           <div className="flex h-full items-center rounded-md border border-dashed border-[var(--color-rule)] bg-transparent px-4 py-6 font-body text-sm text-[var(--color-ink-secondary)]">
             {isPending
-              ? `${parent.label} ingestion is pending — no ${childLabel} yet.`
+              ? `${parent.label} has no indexed rules or ${childLabel} yet.`
               : `No ${childLabel} ingested for ${parent.label}.`}
           </div>
         )}

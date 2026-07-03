@@ -83,7 +83,7 @@ export interface ViewerDocument {
 
 export function getJurisdictionLabel(jurisdiction: string): string {
   switch (jurisdiction) {
-    case "canada":
+    case "ca":
       return "CA";
     case "be":
       return "BE";

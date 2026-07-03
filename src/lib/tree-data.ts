@@ -42,7 +42,7 @@ export interface TreeResult {
 // ---- Flat jurisdiction config ----
 
 export interface Jurisdiction {
-  /** URL segment and DB jurisdiction ID: "us", "us-oh", "uk", "canada" */
+  /** URL segment and DB jurisdiction ID: "us", "us-oh", "uk", "ca" */
   slug: string;
   /** Display label: "US Federal", "Ohio", "United Kingdom" */
   label: string;
@@ -419,7 +419,7 @@ export async function getDocTypeNodes(
 
 function fallbackDocTypeNodes(jurisdiction: string): TreeNode[] {
   if (jurisdiction === "uk") return [docTypeNode("legislation")];
-  if (jurisdiction === "canada") return [docTypeNode("statute")];
+  if (jurisdiction === "ca") return [docTypeNode("statute")];
   if (jurisdiction === "us") {
     return ["regulation", "rulemaking", "statute"].map((segment) =>
       docTypeNode(segment)

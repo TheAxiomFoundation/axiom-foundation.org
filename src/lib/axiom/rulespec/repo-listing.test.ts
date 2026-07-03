@@ -210,9 +210,9 @@ describe("listEncodedFiles", () => {
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    const out = await listEncodedFiles("canada");
+    const out = await listEncodedFiles("ca");
     expect(out.map((f) => f.citationPath)).toEqual([
-      "canada/policy/cra/t4127-2026/claim-codes",
+      "ca/policy/cra/t4127-2026/claim-codes",
     ]);
     // Root-layout repos have no jurisdiction-dir prefix - the whole
     // (single-jurisdiction) repo tree is the listing.
@@ -269,7 +269,7 @@ describe("listRuleSpecJurisdictions", () => {
     );
     const slugs = await listRuleSpecJurisdictions();
     expect(new Set(slugs)).toEqual(
-      new Set(["us", "us-ca", "uk", "be", "be-bru", "canada"])
+      new Set(["us", "us-ca", "uk", "be", "be-bru", "ca"])
     );
   });
 

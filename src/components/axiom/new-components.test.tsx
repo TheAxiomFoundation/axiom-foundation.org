@@ -497,8 +497,8 @@ describe('RuleDetailPanel', () => {
   it('renders Canada jurisdiction', () => {
     render(
       <RuleDetailPanel
-        document={makeDoc({ jurisdiction: 'canada' })}
-        rule={makeRule({ jurisdiction: 'canada' })}
+        document={makeDoc({ jurisdiction: 'ca' })}
+        rule={makeRule({ jurisdiction: 'ca' })}
       />
     )
     expect(screen.getByText('CA')).toBeInTheDocument()

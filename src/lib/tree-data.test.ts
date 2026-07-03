@@ -48,7 +48,7 @@ describe("JURISDICTIONS", () => {
     expect(slugs).toContain("uk");
     expect(slugs).toContain("be");
     expect(slugs).toContain("be-bru");
-    expect(slugs).toContain("canada");
+    expect(slugs).toContain("ca");
   });
 
   it("US Federal uses citation paths", () => {
@@ -107,7 +107,7 @@ describe("getJurisdiction", () => {
   it("marks UK as having citation paths and Canada as not", () => {
     expect(getJurisdiction("uk")?.hasCitationPaths).toBe(true);
     expect(getJurisdiction("be")?.hasCitationPaths).toBe(true);
-    expect(getJurisdiction("canada")?.hasCitationPaths).toBe(false);
+    expect(getJurisdiction("ca")?.hasCitationPaths).toBe(false);
   });
 });
 
@@ -166,9 +166,9 @@ describe("resolveAxiomPath", () => {
   });
 
   it("returns rule phase for Canada", () => {
-    const result = resolveAxiomPath(["canada"]);
+    const result = resolveAxiomPath(["ca"]);
     expect(result.phase).toBe("rule");
-    expect(result.jurisdiction?.slug).toBe("canada");
+    expect(result.jurisdiction?.slug).toBe("ca");
     expect(result.ruleSegments).toEqual([]);
   });
 
@@ -606,18 +606,18 @@ describe("getTitleNodes — root navigation", () => {
       [
         {
           id: "title-1-part",
-          jurisdiction: "canada",
+          jurisdiction: "ca",
           doc_type: "regulation",
-          citation_path: "canada/regulation/1/1",
+          citation_path: "ca/regulation/1/1",
           heading: "Part 1",
         },
       ],
       [
         {
           id: "title-10-part",
-          jurisdiction: "canada",
+          jurisdiction: "ca",
           doc_type: "regulation",
-          citation_path: "canada/regulation/10/1",
+          citation_path: "ca/regulation/10/1",
           heading: "Part 1",
         },
       ],
@@ -635,7 +635,7 @@ describe("getTitleNodes — root navigation", () => {
       .mockReturnValueOnce(emptyAlternateRootQuery)
       .mockReturnValue(prefixQuery as never);
 
-    const nodes = await getTitleNodes("canada", "regulation");
+    const nodes = await getTitleNodes("ca", "regulation");
 
     expect(nodes.map((n) => n.segment)).toEqual(["1", "10"]);
     expect(nodes.map((n) => n.rule)).toEqual([undefined, undefined]);

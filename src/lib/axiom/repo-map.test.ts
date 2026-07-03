@@ -28,7 +28,7 @@ describe("getRuleSpecRepoForJurisdiction", () => {
       "be-vlg": "rulespec-be",
       "be-wal": "rulespec-be",
       "be-dg": "rulespec-be",
-      canada: "rulespec-ca",
+      ca: "rulespec-ca",
     };
     for (const [slug, repo] of Object.entries(expected)) {
       expect(getRuleSpecRepoForJurisdiction(slug)).toBe(repo);
@@ -64,7 +64,7 @@ describe("getRuleSpecRepoLocation", () => {
 
   it("returns an empty prefix for root-layout single-jurisdiction repos", () => {
     // rulespec-ca keeps its buckets at the repo root (no canada/ dir).
-    expect(getRuleSpecRepoLocation("canada")).toEqual({
+    expect(getRuleSpecRepoLocation("ca")).toEqual({
       repo: "rulespec-ca",
       prefix: "",
     });
@@ -94,13 +94,13 @@ describe("URL builders inject the monorepo jurisdiction-dir prefix", () => {
   });
 
   it("builds prefix-free URLs for root-layout repos", () => {
-    expect(ruleSpecRawFileUrl("canada", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
+    expect(ruleSpecRawFileUrl("ca", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
       "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-ca/main/policies/cra/t4127-2026/claim-codes.yaml"
     );
-    expect(ruleSpecBlobUrl("canada", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
+    expect(ruleSpecBlobUrl("ca", "policies/cra/t4127-2026/claim-codes.yaml")).toBe(
       "https://github.com/TheAxiomFoundation/rulespec-ca/blob/main/policies/cra/t4127-2026/claim-codes.yaml"
     );
-    expect(ruleSpecRepoTreeUrl("canada")).toBe(
+    expect(ruleSpecRepoTreeUrl("ca")).toBe(
       "https://github.com/TheAxiomFoundation/rulespec-ca/tree/main"
     );
   });

@@ -45,7 +45,7 @@ describe("JurisdictionPicker", () => {
       ["us", 50000],
       ["us-oh", 10000],
       ["uk", 1500],
-      ["canada", 2000],
+      ["ca", 2000],
     ]);
     mockGetJurisdictionCounts.mockResolvedValue(counts);
 
@@ -70,7 +70,7 @@ describe("JurisdictionPicker", () => {
       ["us", 50000],
       ["us-oh", 0],
       ["uk", 0],
-      ["canada", 0],
+      ["ca", 0],
     ]);
     mockGetJurisdictionCounts.mockResolvedValue(counts);
 

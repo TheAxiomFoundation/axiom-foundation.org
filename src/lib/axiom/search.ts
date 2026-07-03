@@ -945,14 +945,13 @@ function jurisdictionAliases(slug: string, label: string): string[][] {
   if (slug === "uk-kingston-upon-thames") aliases.push(["kingston"]);
   if (slug === "us") aliases.push(["federal"], ["usa"]);
   if (slug === "uk") aliases.push(["britain"], ["gb"]);
-  if (slug === "canada") aliases.push(["ca"]);
+  if (slug === "ca") aliases.push(["canada"]);
   return aliases.filter((alias) => alias.length > 0);
 }
 
 function jurisdictionFromRepoName(repoName: string): string | null {
   const suffix = repoName.replace(/^rulespec-/, "");
   if (!suffix || suffix === repoName) return null;
-  if (suffix === "ca") return "canada";
   return suffix;
 }
 
@@ -962,7 +961,6 @@ function isJurisdictionSegment(value: string): boolean {
     value === "uk" ||
     value === "be" ||
     value === "nz" ||
-    value === "canada" ||
     value === "ca" ||
     /^be-[a-z-]+$/.test(value) ||
     /^us-[a-z]{2}$/.test(value) ||

@@ -164,21 +164,21 @@ describe("parseCitation — Canada", () => {
   it("parses RSC with Supp annotation", () => {
     expect(
       parseCitation("RSC 1985, c 1 (5th Supp)")?.citationPath
-    ).toBe("canada/statute/rsc-1985/c-1-5th-supp");
+    ).toBe("ca/statute/rsc-1985/c-1-5th-supp");
   });
 
   it("parses RSC with section and subsections", () => {
     expect(
       parseCitation("RSC 1985, c 1 (5th Supp), s 3(1)")?.citationPath
-    ).toBe("canada/statute/rsc-1985/c-1-5th-supp/3/1");
+    ).toBe("ca/statute/rsc-1985/c-1-5th-supp/3/1");
   });
 
   it("recognises the Income Tax Act shortcut", () => {
     expect(parseCitation("Income Tax Act")?.citationPath).toBe(
-      "canada/statute/rsc-1985/c-1-5th-supp"
+      "ca/statute/rsc-1985/c-1-5th-supp"
     );
     expect(parseCitation("Income Tax Act s 3(1)")?.citationPath).toBe(
-      "canada/statute/rsc-1985/c-1-5th-supp/3/1"
+      "ca/statute/rsc-1985/c-1-5th-supp/3/1"
     );
   });
 });

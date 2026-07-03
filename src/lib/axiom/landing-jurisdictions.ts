@@ -9,9 +9,14 @@ export function getLandingJurisdictions(
       jurisdiction.slug === "uk" ||
       jurisdiction.slug === "be" ||
       jurisdiction.slug === "canada" ||
+      isBelgiumRegionalOrCommunitySeed(jurisdiction.slug) ||
       countedSlugs.has(jurisdiction.slug) ||
       isUsStateOrDistrictSeed(jurisdiction.slug)
   );
+}
+
+function isBelgiumRegionalOrCommunitySeed(slug: string): boolean {
+  return slug.startsWith("be-");
 }
 
 function isUsStateOrDistrictSeed(slug: string): boolean {

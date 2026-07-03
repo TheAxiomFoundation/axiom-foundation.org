@@ -96,6 +96,7 @@ rules:
           { name: "rulespec-us", default_branch: "main" },
           { name: "rulespec-us-az", default_branch: "main" },
           { name: "rulespec-uk-kingston-upon-thames", default_branch: "main" },
+          { name: "rulespec-be", default_branch: "main" },
           { name: "rulespec-nz", default_branch: "main" },
         ]);
       }
@@ -116,6 +117,14 @@ rules:
         )
       ) {
         return jsonResponse(tree([{ path: "policies", type: "tree" }]));
+      }
+      if (url.endsWith("/repos/TheAxiomFoundation/rulespec-be/git/trees/main")) {
+        return jsonResponse(
+          tree([
+            { path: "be", type: "tree" },
+            { path: "be-bru", type: "tree" },
+          ])
+        );
       }
       if (url.endsWith("/repos/TheAxiomFoundation/rulespec-nz/git/trees/main")) {
         return jsonResponse(tree([{ path: "nz", type: "tree" }]));
@@ -182,6 +191,23 @@ rules:
               path: "policies/kingston-upon-thames/council-tax-reduction.yaml",
             },
           ])
+        );
+      }
+      if (url.includes("/rulespec-be/git/trees/main:be?recursive=1")) {
+        return jsonResponse(
+          tree([
+            {
+              path: "statutes/social_security/workers/article_38_ordinary_worker_rates.yaml",
+            },
+            {
+              path: "statutes/income_tax/individual/rate_scale.yaml",
+            },
+          ])
+        );
+      }
+      if (url.includes("/rulespec-be/git/trees/main:be-bru?recursive=1")) {
+        return jsonResponse(
+          tree([{ path: "statutes/gift_tax/rate_scale.yaml" }])
         );
       }
       if (url.includes("/rulespec-nz/git/trees/main:nz?recursive=1")) {
@@ -567,6 +593,19 @@ rules:
       citationPath: "nz/statute/income_tax/core/taxable_income",
       jurisdictionLabel: "New Zealand",
     });
+  });
+
+  it("discovers Belgium monorepo jurisdictions", async () => {
+    const hits = await searchEncodedRuleSpecs("Belgium ordinary worker contribution");
+
+    expect(hits[0]).toMatchObject({
+      citationPath:
+        "be/statute/social_security/workers/article_38_ordinary_worker_rates",
+      jurisdictionLabel: "Belgium",
+    });
+    expect(
+      hits.every((hit) => hit.citationPath.startsWith("be/"))
+    ).toBe(true);
   });
 
   it("serves encoded results from the database index without touching GitHub", async () => {

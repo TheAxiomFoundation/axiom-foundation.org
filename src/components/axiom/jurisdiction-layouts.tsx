@@ -19,12 +19,13 @@ interface LayoutProps {
  * Display overrides for federal-tier slugs so the tab labels read as
  * plain country names rather than the seed's corpus-typed labels
  * ("US Federal" carries useful taxonomic meaning elsewhere on the
- * site but reads as an inconsistent third format next to UK / Canada
+ * site but reads as an inconsistent third format next to country names
  * on the landing).
  */
 const FEDERAL_COUNTRY_LABEL: Record<string, string> = {
   us: "United States",
   uk: "United Kingdom",
+  be: "Belgium",
   canada: "Canada",
 };
 
@@ -55,17 +56,18 @@ function totalRulesForFederal(
 }
 
 /**
- * Per-federal child slug prefix. The corpus only has US-state children
- * today, but UK and Canada gain real children (regions / provinces) by
- * simply adding a prefix entry here when ingestion lands. Keeping the
- * lookup explicit avoids the drift the previous layout had, where
- * every federal selection silently inherited the US states list.
+ * Per-national child slug prefix. Belgium regions/communities and US
+ * states/territories are nested under their country tabs; future
+ * country families can be added here when ingestion lands. Keeping the
+ * lookup explicit avoids the drift the previous layout had, where every
+ * federal selection silently inherited the US states list.
  */
 const CHILD_PREFIX: Record<string, string> = {
   us: "us-",
+  be: "be-",
 };
 
-const FEDERAL_ORDER = ["us", "uk", "canada"] as const;
+const FEDERAL_ORDER = ["us", "uk", "be", "canada"] as const;
 
 function partitionItems(items: JurisdictionItem[]) {
   const bySlug = new Map(items.map((i) => [i.slug, i]));
@@ -104,12 +106,11 @@ function statusFor(count: number | null) {
 }
 
 /**
- * Hero + scoped chips. The federal trio (US, UK, Canada) acts as a tab
+ * Hero + scoped chips. The national/federal set acts as a tab
  * selector across the top — picking one scopes the chip wall underneath
- * to that federal's sub-jurisdictions. Today only US has children in
- * the corpus (its 50 states + territories), so selecting UK or Canada
- * shows an explicit empty state rather than letting the US chip list
- * drift across federal selections.
+ * to that jurisdiction family's sub-jurisdictions. Selecting a country
+ * with no children shows an explicit empty state rather than letting the
+ * US chip list drift across selections.
  *
  * Each federal tab also exposes an "Open" affordance inside the panel
  * so users can navigate straight into the federal corpus when they
@@ -159,7 +160,7 @@ export function HeroChips({ items, onNavigateHref }: LayoutProps) {
           <div
             role="tablist"
             aria-label="Federal & national jurisdictions"
-            className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
           >
             {federal.map((item) => {
               const childrenForItem =

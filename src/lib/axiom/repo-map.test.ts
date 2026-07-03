@@ -23,6 +23,11 @@ describe("getRuleSpecRepoForJurisdiction", () => {
       "us-oh": "rulespec-us",
       uk: "rulespec-uk",
       "uk-kingston-upon-thames": "rulespec-uk",
+      be: "rulespec-be",
+      "be-bru": "rulespec-be",
+      "be-vlg": "rulespec-be",
+      "be-wal": "rulespec-be",
+      "be-dg": "rulespec-be",
       canada: "rulespec-ca",
     };
     for (const [slug, repo] of Object.entries(expected)) {
@@ -50,6 +55,10 @@ describe("getRuleSpecRepoLocation", () => {
     expect(getRuleSpecRepoLocation("uk")).toEqual({
       repo: "rulespec-uk",
       prefix: "uk",
+    });
+    expect(getRuleSpecRepoLocation("be-bru")).toEqual({
+      repo: "rulespec-be",
+      prefix: "be-bru",
     });
   });
 

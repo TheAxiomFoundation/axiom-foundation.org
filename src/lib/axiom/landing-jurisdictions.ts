@@ -7,6 +7,7 @@ export function getLandingJurisdictions(
     (jurisdiction) =>
       jurisdiction.slug === "us" ||
       jurisdiction.slug === "uk" ||
+      jurisdiction.slug === "be" ||
       jurisdiction.slug === "canada" ||
       countedSlugs.has(jurisdiction.slug) ||
       isUsStateOrDistrictSeed(jurisdiction.slug)

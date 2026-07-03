@@ -40,12 +40,14 @@ function queryMock(result: unknown, terminal = "limit") {
 }
 
 describe("JURISDICTIONS", () => {
-  it("contains US Federal, Colorado, Ohio, UK, and Canada", () => {
+  it("contains US Federal, Colorado, Ohio, UK, Belgium, and Canada", () => {
     const slugs = JURISDICTIONS.map((j) => j.slug);
     expect(slugs).toContain("us");
     expect(slugs).toContain("us-co");
     expect(slugs).toContain("us-oh");
     expect(slugs).toContain("uk");
+    expect(slugs).toContain("be");
+    expect(slugs).toContain("be-bru");
     expect(slugs).toContain("canada");
   });
 
@@ -104,6 +106,7 @@ describe("getJurisdiction", () => {
 
   it("marks UK as having citation paths and Canada as not", () => {
     expect(getJurisdiction("uk")?.hasCitationPaths).toBe(true);
+    expect(getJurisdiction("be")?.hasCitationPaths).toBe(true);
     expect(getJurisdiction("canada")?.hasCitationPaths).toBe(false);
   });
 });
@@ -167,6 +170,18 @@ describe("resolveAxiomPath", () => {
     expect(result.phase).toBe("rule");
     expect(result.jurisdiction?.slug).toBe("canada");
     expect(result.ruleSegments).toEqual([]);
+  });
+
+  it("returns rule phase for Belgium and Belgian regions", () => {
+    const national = resolveAxiomPath(["be", "statute"]);
+    expect(national.phase).toBe("rule");
+    expect(national.jurisdiction?.slug).toBe("be");
+    expect(national.ruleSegments).toEqual(["statute"]);
+
+    const brussels = resolveAxiomPath(["be-bru", "regulation"]);
+    expect(brussels.phase).toBe("rule");
+    expect(brussels.jurisdiction?.slug).toBe("be-bru");
+    expect(brussels.ruleSegments).toEqual(["regulation"]);
   });
 });
 

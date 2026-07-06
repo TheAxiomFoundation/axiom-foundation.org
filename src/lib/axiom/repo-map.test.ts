@@ -29,6 +29,7 @@ describe("getRuleSpecRepoForJurisdiction", () => {
       "be-wal": "rulespec-be",
       "be-dg": "rulespec-be",
       ca: "rulespec-ca",
+      nz: "rulespec-nz",
     };
     for (const [slug, repo] of Object.entries(expected)) {
       expect(getRuleSpecRepoForJurisdiction(slug)).toBe(repo);

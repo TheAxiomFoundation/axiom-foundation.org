@@ -1059,6 +1059,7 @@ describe('supabase lib', () => {
         'be-vlg': 7,
         'be-wal': 6,
         'be-dg': 2,
+        ca: 106,
       }
       mockRpc.mockResolvedValue({ data: stats, error: null })
       mockListEncodedFiles.mockImplementation(async (jurisdiction: string) =>
@@ -1095,13 +1096,16 @@ describe('supabase lib', () => {
       expect(mockListEncodedFiles).toHaveBeenCalledWith('be-vlg')
       expect(mockListEncodedFiles).toHaveBeenCalledWith('be-wal')
       expect(mockListEncodedFiles).toHaveBeenCalledWith('be-dg')
-      expect(mockListEncodedFiles).not.toHaveBeenCalledWith('us-co')
+      // Any stats-missing jurisdiction with a published repo may be
+      // probed (graceful degradation); Canada fills from GitHub too.
+      expect(mockListEncodedFiles).toHaveBeenCalledWith('ca')
       expect(result?.jurisdictions).toEqual(
         expect.arrayContaining([
           { jurisdiction: 'be', count: 58 },
           { jurisdiction: 'be-bru', count: 12 },
           { jurisdiction: 'be-vlg', count: 7 },
           { jurisdiction: 'be-wal', count: 6 },
+          { jurisdiction: 'ca', count: 106 },
           { jurisdiction: 'be-dg', count: 2 },
         ])
       )

@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { getLandingJurisdictions } from '@/lib/axiom/landing-jurisdictions'
-import { ruleSpecRawFileUrl } from '@/lib/axiom/repo-map'
+import {
+  getRuleSpecRepoForJurisdiction,
+  ruleSpecRawFileUrl,
+} from '@/lib/axiom/repo-map'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 import { listEncodedFiles } from '@/lib/axiom/rulespec/repo-listing'
 
@@ -801,7 +804,12 @@ async function getRuleSpecGitHubJurisdictionCounts(
 }
 
 function isGitHubRuleSpecStatsFallbackJurisdiction(jurisdiction: string) {
-  return jurisdiction === 'be' || jurisdiction.startsWith('be-')
+  // Any jurisdiction with a published rulespec-* repo can have its tile
+  // count derived from the repo listing when the corpus stats and the
+  // rulespec_files index have no row for it. Derived from the repo map
+  // rather than a per-country allowlist so new jurisdictions (Canada,
+  // and whatever comes next) light up without editing this file.
+  return getRuleSpecRepoForJurisdiction(jurisdiction) !== null
 }
 
 const BELGIUM_RULESPEC_BOOTSTRAP_COUNTS: Readonly<Record<string, number>> =

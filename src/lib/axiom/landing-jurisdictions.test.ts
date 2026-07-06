@@ -13,6 +13,14 @@ describe("getLandingJurisdictions", () => {
     expect(slugs).toContain("be-dg");
   });
 
+  it("includes every country whose family has a published rulespec repo", () => {
+    const slugs = getLandingJurisdictions().map((jurisdiction) => jurisdiction.slug);
+
+    for (const slug of ["us", "uk", "be", "ca", "nz"]) {
+      expect(slugs).toContain(slug);
+    }
+  });
+
   it("keeps US territories hidden until stats confirm they exist", () => {
     const uncountedSlugs = getLandingJurisdictions().map(
       (jurisdiction) => jurisdiction.slug

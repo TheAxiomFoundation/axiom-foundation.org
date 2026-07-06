@@ -1,18 +1,26 @@
 import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
+import { getRuleSpecRepoForJurisdiction } from "@/lib/axiom/repo-map";
 
 export function getLandingJurisdictions(
   countedSlugs = new Set<string>()
 ) {
   return JURISDICTIONS_SEED.filter(
     (jurisdiction) =>
-      jurisdiction.slug === "us" ||
-      jurisdiction.slug === "uk" ||
-      jurisdiction.slug === "be" ||
-      jurisdiction.slug === "ca" ||
+      isCountryWithPublishedRepo(jurisdiction.slug) ||
       isBelgiumRegionalOrCommunitySeed(jurisdiction.slug) ||
       countedSlugs.has(jurisdiction.slug) ||
       isUsStateOrDistrictSeed(jurisdiction.slug)
   );
+}
+
+/**
+ * Country-level seeds surface on the landing as soon as their family
+ * has a published rulespec repo — derived from the repo map rather
+ * than a hand-maintained slug list, so a new country shows up (as
+ * "pending" until data lands) without touching this file.
+ */
+function isCountryWithPublishedRepo(slug: string): boolean {
+  return !slug.includes("-") && getRuleSpecRepoForJurisdiction(slug) !== null;
 }
 
 function isBelgiumRegionalOrCommunitySeed(slug: string): boolean {

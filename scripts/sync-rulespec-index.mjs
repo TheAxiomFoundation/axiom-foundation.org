@@ -78,7 +78,6 @@ function isJurisdictionSegment(value) {
     value === "uk" ||
     value === "be" ||
     value === "nz" ||
-    value === "canada" ||
     value === "ca" ||
     /^be-[a-z-]+$/.test(value) ||
     /^us-[a-z]{2}$/.test(value) ||
@@ -89,7 +88,6 @@ function isJurisdictionSegment(value) {
 function jurisdictionFromRepoName(repoName) {
   const suffix = repoName.replace(/^rulespec-/, "");
   if (!suffix || suffix === repoName) return null;
-  if (suffix === "ca") return "canada";
   return suffix;
 }
 

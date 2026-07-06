@@ -73,6 +73,9 @@ function repoForJurisdiction(jurisdiction: string): string | null {
   if (jurisdiction === "ca") {
     return "rulespec-ca";
   }
+  if (jurisdiction === "nz" || jurisdiction.startsWith("nz-")) {
+    return "rulespec-nz";
+  }
   return null;
 }
 
@@ -174,6 +177,7 @@ export const RULESPEC_REPOS = [
   "rulespec-uk",
   "rulespec-be",
   "rulespec-ca",
+  "rulespec-nz",
 ] as const;
 
 /**

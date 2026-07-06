@@ -167,7 +167,8 @@ function orderForStations(
       j.jurisdiction === "us" ||
       j.jurisdiction === "uk" ||
       j.jurisdiction === "be" ||
-      j.jurisdiction === "ca"
+      j.jurisdiction === "ca" ||
+      j.jurisdiction === "nz"
     ) {
       federal.push(item);
     } else if (j.jurisdiction.startsWith("us-")) {
@@ -280,6 +281,7 @@ function useCountUp(target: number | null, durationMs = 900): number {
 export function jurisdictionDisplay(jurisdiction: string): string {
   if (jurisdiction === "us") return "USC+CFR";
   if (jurisdiction === "ca") return "CAN";
+  if (jurisdiction === "nz") return "NZ";
   if (jurisdiction === "uk") return "UK";
   if (jurisdiction === "be") return "BE";
   if (jurisdiction.startsWith("us-")) {

@@ -154,6 +154,10 @@ function isEncodingFile(path) {
     path.endsWith(".yaml") &&
     !path.endsWith(".test.yaml") &&
     !path.endsWith(".meta.yaml") &&
+    // Encodings always sit inside a bucket directory; a YAML at the
+    // listing root is repo config (e.g. rulespec-ca's proof-obligation
+    // ratchet) and would fabricate an unresolvable citation path.
+    path.includes("/") &&
     // Repo plumbing beside the buckets — .axiom/ manifests, .github/
     // config, and sources/ corpus slices (plain YAML mirrors of the
     // encodings in root-layout repos like rulespec-ca).

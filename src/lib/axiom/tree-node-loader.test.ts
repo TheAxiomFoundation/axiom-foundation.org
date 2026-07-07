@@ -687,6 +687,63 @@ describe("loadTreeNodes", () => {
     expect(result.nodes).toEqual([]);
   });
 
+  it("prefers the real corpus provision over the synthesised stub when both exist", async () => {
+    // Canada regression: every ca leaf has a corpus provision AND an
+    // encoding at the same citation path. The synthesised RuleSpec stub
+    // (module summary) must not mask the provision's verbatim body.
+    const leaf = navRow({
+      jurisdiction: "ca",
+      doc_type: "policy",
+      path: "ca/policy/cra/t1-2025/alternative-minimum-tax",
+      citation_path: "ca/policy/cra/t1-2025/alternative-minimum-tax",
+      segment: "alternative-minimum-tax",
+      has_children: false,
+      child_count: 0,
+    });
+    const provision = {
+      id: "amt-provision",
+      citation_path: leaf.path,
+      body: "Protected B when completed… (the full captured form text)",
+    };
+    const stub = {
+      id: "github:ca/policy/cra/t1-2025/alternative-minimum-tax",
+      citation_path: leaf.path,
+      body: "CRA Form T691 for 2025 calculates federal alternative minimum tax",
+    };
+    mockGetNavigationIndexNode.mockResolvedValue(leaf);
+    mockGetNavigationIndexChildren.mockResolvedValue({
+      rows: [],
+      hasMore: false,
+      total: 0,
+    });
+    mockListEncodedFiles.mockResolvedValue([
+      {
+        filePath: "policies/cra/t1-2025/alternative-minimum-tax.yaml",
+        citationPath: leaf.path,
+        bucket: "policies",
+      },
+    ]);
+    mockSynthesiseRuleFromCitationPath.mockResolvedValue(stub);
+    mockGetProvisionForNavigationNode.mockResolvedValue(provision);
+
+    const result = await loadTreeNodes({
+      dbJurisdictionId: "ca",
+      ruleSegments: ["policy", "cra", "t1-2025", "alternative-minimum-tax"],
+      hasCitationPaths: true,
+      encodedOnly: false,
+      page: 0,
+    });
+
+    expect(result.leafRule).toEqual(
+      expect.objectContaining({
+        id: "amt-provision",
+        body: provision.body,
+        has_rulespec: true,
+      })
+    );
+    expect(result.nodes).toEqual([]);
+  });
+
   it("builds sparse intermediate folders when indexed citation paths skip parent nodes", async () => {
     mockGetNavigationIndexNode.mockResolvedValue(null);
     mockGetNavigationIndexChildren.mockResolvedValue({

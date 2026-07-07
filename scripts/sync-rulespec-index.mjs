@@ -73,22 +73,38 @@ async function githubJson(url) {
 }
 
 function isJurisdictionSegment(value) {
-  return (
-    value === "us" ||
-    value === "uk" ||
-    value === "be" ||
-    value === "nz" ||
-    value === "ca" ||
-    /^be-[a-z-]+$/.test(value) ||
-    /^us-[a-z]{2}$/.test(value) ||
-    /^uk-[a-z-]+$/.test(value)
-  );
+  // Mirror the JURISDICTION_DIR_RE the rulespec repos' own layout tests
+  // enforce (^[a-z]{2}(-[a-z0-9-]+)*$): a bare ISO-3166-style alpha-2 code
+  // (us, uk, gh, ng, ...) or a compound sub-jurisdiction (us-co, be-vlg,
+  // uk-kingston-upon-thames). A hardcoded allowlist here silently dropped
+  // new countries from the encoded-search index (gh and ng never synced).
+  return /^[a-z]{2}(-[a-z0-9-]+)*$/.test(value);
 }
 
 function jurisdictionFromRepoName(repoName) {
   const suffix = repoName.replace(/^rulespec-/, "");
   if (!suffix || suffix === repoName) return null;
   return suffix;
+}
+
+/**
+ * App-surface visibility marker (.axiom/registry.toml). Absent file/key or
+ * any fetch failure means "public" so a hiccup can't hide a live country;
+ * an explicit `app_visibility = "experimental"` keeps a repo off the
+ * encoded-search index (stale rows are removed by the end-of-run cleanup).
+ * Parsed line-wise — keep the marker in simple `key = "value"` form.
+ */
+async function fetchAppVisibility(repo) {
+  const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${repo.name}/${repo.default_branch}/.axiom/registry.toml`;
+  const res = await fetch(url, { headers: githubHeaders }).catch(() => null);
+  if (!res || !res.ok) return "public";
+  const text = await res.text().catch(() => null);
+  if (!text) return "public";
+  for (const line of text.split(/\r?\n/)) {
+    const match = line.match(/^\s*app_visibility\s*=\s*"([a-z]+)"\s*(?:#.*)?$/);
+    if (match) return match[1] === "experimental" ? "experimental" : "public";
+  }
+  return "public";
 }
 
 /**
@@ -104,6 +120,10 @@ async function discoverRoots() {
   const roots = [];
   for (const repo of repos) {
     if (!repo.name.startsWith("rulespec-")) continue;
+    if ((await fetchAppVisibility(repo)) === "experimental") {
+      console.log(`skip ${repo.name}: app_visibility=experimental`);
+      continue;
+    }
     let tree;
     try {
       tree = await githubJson(

@@ -193,13 +193,23 @@ export async function loadTreeNodes({
     }
     if (rulespecOnly) {
       const files = await getEncodedFiles();
-      const rule =
-        rulespecOnly.nodes.length > 0
-          ? await getOptionalProvisionForNode(currentNode, files)
-          : await requireProvisionForNode(currentNode, files);
+      if (rulespecOnly.nodes.length > 0) {
+        return {
+          ...rulespecOnly,
+          currentRule: await getOptionalProvisionForNode(currentNode, files),
+        };
+      }
+      // The synthesised rulespec leaf is a stand-in for encodings with
+      // no corpus backing. When the navigation node resolves to a real
+      // provision that provision must be the leaf, or the page renders
+      // the YAML module summary in place of the source text (Canada's
+      // T691 form hid 27k chars of captured text behind a 190-char
+      // stub). requireProvisionForNode falls back to the synthesised
+      // rule itself when no provision exists, preserving the
+      // rulespec-only behaviour.
       return {
         ...rulespecOnly,
-        currentRule: rule,
+        leafRule: await requireProvisionForNode(currentNode, files),
       };
     }
     if (currentNode.has_children) {

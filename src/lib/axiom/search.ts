@@ -1,3 +1,4 @@
+import { parseAppVisibility, type AppVisibility } from "./registry-visibility";
 import { searchRules, type SearchHit } from "@/lib/supabase";
 import {
   EXTRA_JURISDICTION_LABELS,
@@ -819,6 +820,7 @@ async function discoverRuleSpecSearchRoots(): Promise<RuleSpecSearchRoot[]> {
 }
 
 async function rootsFromRepo(repo: GitHubRepo): Promise<RuleSpecSearchRoot[]> {
+  if ((await fetchAppVisibility(repo)) === "experimental") return [];
   const tree = await githubJson<GitHubTreeResponse>(
     `https://api.github.com/repos/${GITHUB_ORG}/${repo.name}/git/trees/${repo.default_branch}`
   ).catch(() => null);
@@ -865,6 +867,16 @@ async function listEncodedFileCandidatesFromRoot(
     ...file,
     root,
   }));
+}
+
+async function fetchAppVisibility(repo: GitHubRepo): Promise<AppVisibility> {
+  const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${repo.name}/${repo.default_branch}/.axiom/registry.toml`;
+  const res = await fetch(url, {
+    headers: gitHubApiHeaders(),
+    next: { revalidate: REVALIDATE_SECONDS },
+  } as RequestInit).catch(() => null);
+  if (!res || !res.ok) return "public";
+  return parseAppVisibility(await res.text().catch(() => null));
 }
 
 async function githubJson<T>(url: string): Promise<T> {

@@ -92,6 +92,26 @@ function jurisdictionFromRepoName(repoName) {
 }
 
 /**
+ * App-surface visibility marker (.axiom/registry.toml). Absent file/key or
+ * any fetch failure means "public" so a hiccup can't hide a live country;
+ * an explicit `app_visibility = "experimental"` keeps a repo off the
+ * encoded-search index (stale rows are removed by the end-of-run cleanup).
+ * Parsed line-wise — keep the marker in simple `key = "value"` form.
+ */
+async function fetchAppVisibility(repo) {
+  const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${repo.name}/${repo.default_branch}/.axiom/registry.toml`;
+  const res = await fetch(url, { headers: githubHeaders }).catch(() => null);
+  if (!res || !res.ok) return "public";
+  const text = await res.text().catch(() => null);
+  if (!text) return "public";
+  for (const line of text.split(/\r?\n/)) {
+    const match = line.match(/^\s*app_visibility\s*=\s*"([a-z]+)"\s*(?:#.*)?$/);
+    if (match) return match[1] === "experimental" ? "experimental" : "public";
+  }
+  return "public";
+}
+
+/**
  * Discover jurisdiction roots across the org's rulespec-* repos:
  * monorepos with per-jurisdiction directories (rulespec-us → us/,
  * us-co/, …) and standalone repos with buckets at top level
@@ -104,6 +124,10 @@ async function discoverRoots() {
   const roots = [];
   for (const repo of repos) {
     if (!repo.name.startsWith("rulespec-")) continue;
+    if ((await fetchAppVisibility(repo)) === "experimental") {
+      console.log(`skip ${repo.name}: app_visibility=experimental`);
+      continue;
+    }
     let tree;
     try {
       tree = await githubJson(

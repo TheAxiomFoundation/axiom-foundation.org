@@ -8,7 +8,38 @@ import {
   ruleSpecRepoTreeUrl,
   ruleSpecRepoSubtreeApiUrl,
   ruleSpecRepoRootTreeApiUrl,
+  RULESPEC_REPOS,
+  RULESPEC_COUNTRY_SLUGS,
 } from "./repo-map";
+import { JURISDICTIONS_SEED } from "./jurisdictions-seed";
+
+/**
+ * Drift guard: adding a repo family is a three-part change (repo map,
+ * seed label, and the family entry itself). These assertions fail the
+ * PR when one part is missing — the gap that left New Zealand's 36
+ * encodings invisible to the app.
+ */
+describe("RULESPEC_COUNTRY_SLUGS", () => {
+  it("derives one country slug per published repo", () => {
+    expect(RULESPEC_COUNTRY_SLUGS).toEqual(["us", "uk", "be", "ca", "nz"]);
+    expect(RULESPEC_COUNTRY_SLUGS).toHaveLength(RULESPEC_REPOS.length);
+  });
+
+  it("maps every country slug back to its repo", () => {
+    for (const [i, slug] of RULESPEC_COUNTRY_SLUGS.entries()) {
+      expect(getRuleSpecRepoForJurisdiction(slug)).toBe(RULESPEC_REPOS[i]);
+    }
+  });
+
+  it("has a jurisdictions-seed label for every country slug", () => {
+    const seedSlugs = new Set(JURISDICTIONS_SEED.map((j) => j.slug));
+    for (const slug of RULESPEC_COUNTRY_SLUGS) {
+      expect(seedSlugs, `add "${slug}" to jurisdictions-seed.ts`).toContain(
+        slug
+      );
+    }
+  });
+});
 
 describe("getRuleSpecRepoForJurisdiction", () => {
   it("maps every jurisdiction family to its shared monorepo", () => {

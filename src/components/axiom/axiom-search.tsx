@@ -14,6 +14,7 @@ import {
   EXTRA_JURISDICTION_LABELS,
   JURISDICTIONS_SEED,
 } from "@/lib/axiom/jurisdictions-seed";
+import { RULESPEC_COUNTRY_SLUGS } from "@/lib/axiom/repo-map";
 import { SEARCH_SUGGESTIONS } from "@/lib/axiom/search-suggestions";
 import type { SearchHit } from "@/lib/supabase";
 import { trackAxiomEvent } from "@/lib/analytics";
@@ -39,7 +40,7 @@ const JURISDICTION_GROUPS: ReadonlyArray<{
   options: ReadonlyArray<{ value: string; label: string }>;
 }> = (() => {
   const bySlug = new Map(JURISDICTIONS_SEED.map((j) => [j.slug, j.label]));
-  const national = ["us", "uk", "be", "ca", "nz"]
+  const national = RULESPEC_COUNTRY_SLUGS
     .filter((slug) => bySlug.has(slug))
     .map((slug) => ({ value: slug, label: bySlug.get(slug)! }));
   const states = JURISDICTIONS_SEED.filter((j) => j.slug.startsWith("us-")).map(

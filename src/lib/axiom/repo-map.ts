@@ -181,6 +181,19 @@ export const RULESPEC_REPOS = [
 ] as const;
 
 /**
+ * Country-level (family-root) slugs, one per published repo, in
+ * display order. Derived from ``RULESPEC_REPOS`` — the registered root
+ * jurisdiction for root-layout repos, the repo-name suffix otherwise —
+ * so the tile ordering, search picker, and stats grouping all follow a
+ * new family entry automatically instead of each keeping its own copy
+ * of the list.
+ */
+export const RULESPEC_COUNTRY_SLUGS: readonly string[] = RULESPEC_REPOS.map(
+  (repo) =>
+    ruleSpecRepoRootJurisdiction(repo) ?? repo.replace(/^rulespec-/, "")
+);
+
+/**
  * Headers for GitHub git-trees API requests. Unauthenticated requests
  * are capped at 60/hour per IP — tight for the encoded index, which
  * reads several jurisdiction subtrees. When ``GITHUB_TOKEN`` is set

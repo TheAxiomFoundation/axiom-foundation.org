@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatCompact, jurisdictionDisplay } from "./axiom-stats";
+import { RULESPEC_COUNTRY_SLUGS } from "@/lib/axiom/repo-map";
 
 export type JurisdictionItem = {
   slug: string;
@@ -26,7 +27,8 @@ const FEDERAL_COUNTRY_LABEL: Record<string, string> = {
   us: "United States",
   uk: "United Kingdom",
   be: "Belgium",
-  canada: "Canada",
+  ca: "Canada",
+  nz: "New Zealand",
 };
 
 function federalCountryLabel(item: JurisdictionItem): string {
@@ -67,7 +69,7 @@ const CHILD_PREFIX: Record<string, string> = {
   be: "be-",
 };
 
-const FEDERAL_ORDER = ["us", "uk", "be", "ca", "nz"] as const;
+const FEDERAL_ORDER = RULESPEC_COUNTRY_SLUGS;
 
 function partitionItems(items: JurisdictionItem[]) {
   const bySlug = new Map(items.map((i) => [i.slug, i]));

@@ -73,16 +73,12 @@ async function githubJson(url) {
 }
 
 function isJurisdictionSegment(value) {
-  return (
-    value === "us" ||
-    value === "uk" ||
-    value === "be" ||
-    value === "nz" ||
-    value === "ca" ||
-    /^be-[a-z-]+$/.test(value) ||
-    /^us-[a-z]{2}$/.test(value) ||
-    /^uk-[a-z-]+$/.test(value)
-  );
+  // Mirror the JURISDICTION_DIR_RE the rulespec repos' own layout tests
+  // enforce (^[a-z]{2}(-[a-z0-9-]+)*$): a bare ISO-3166-style alpha-2 code
+  // (us, uk, gh, ng, ...) or a compound sub-jurisdiction (us-co, be-vlg,
+  // uk-kingston-upon-thames). A hardcoded allowlist here silently dropped
+  // new countries from the encoded-search index (gh and ng never synced).
+  return /^[a-z]{2}(-[a-z0-9-]+)*$/.test(value);
 }
 
 function jurisdictionFromRepoName(repoName) {

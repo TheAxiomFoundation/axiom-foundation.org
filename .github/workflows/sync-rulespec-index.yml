@@ -20,3 +20,17 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Fail loudly when a public rulespec repo and the app's repo map /
+  # jurisdictions seed disagree — a new country's encodings existing
+  # but invisible to the app (the rulespec-nz gap), a stale
+  # RULESPEC_REPOS entry, an unregistered root-layout repo.
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/check-rulespec-drift.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

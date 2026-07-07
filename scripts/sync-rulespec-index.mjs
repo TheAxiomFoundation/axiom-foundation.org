@@ -20,28 +20,22 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-// Bun resolves the TypeScript import (and the repo's tsconfig paths)
-// directly, so the script reuses the app's canonical RuleSpec parser.
+// Bun resolves the TypeScript imports (and the repo's tsconfig paths)
+// directly, so the script reuses the app's canonical RuleSpec parser
+// and tree-listing logic instead of mirroring them — a mirror is how
+// the index once kept a stale ca→canada slug mapping the app had
+// already dropped.
 import { parseRuleSpec, tokenizeFormula } from "../src/lib/axiom/rulespec/doc.ts";
+import { parseTreeEntries } from "../src/lib/axiom/rulespec/repo-listing.ts";
+import {
+  GITHUB_ORG,
+  discoverRoots,
+  githubHeaders,
+  githubJson,
+} from "./lib/rulespec-discovery.mjs";
 
-const GITHUB_ORG = "TheAxiomFoundation";
 const RAW_FETCH_CONCURRENCY = 8;
 const UPSERT_CHUNK_SIZE = 100;
-
-const REPO_TO_CITATION_BUCKET = {
-  statutes: "statute",
-  regulations: "regulation",
-  policies: "policy",
-};
-const RULESPEC_BUCKETS = new Set([
-  "statutes",
-  "regulations",
-  "policies",
-  "manuals",
-  "rulemaking",
-  "forms",
-  "guidance",
-]);
 
 const supabaseUrl =
   process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -58,158 +52,6 @@ const supabase = createClient(supabaseUrl, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const githubHeaders = {
-  Accept: "application/vnd.github+json",
-  "X-GitHub-Api-Version": "2022-11-28",
-  ...(process.env.GITHUB_TOKEN
-    ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
-    : {}),
-};
-
-async function githubJson(url) {
-  const res = await fetch(url, { headers: githubHeaders });
-  if (!res.ok) throw new Error(`GitHub returned ${res.status} for ${url}`);
-  return res.json();
-}
-
-function isJurisdictionSegment(value) {
-  // Mirror the JURISDICTION_DIR_RE the rulespec repos' own layout tests
-  // enforce (^[a-z]{2}(-[a-z0-9-]+)*$): a bare ISO-3166-style alpha-2 code
-  // (us, uk, gh, ng, ...) or a compound sub-jurisdiction (us-co, be-vlg,
-  // uk-kingston-upon-thames). A hardcoded allowlist here silently dropped
-  // new countries from the encoded-search index (gh and ng never synced).
-  return /^[a-z]{2}(-[a-z0-9-]+)*$/.test(value);
-}
-
-function jurisdictionFromRepoName(repoName) {
-  const suffix = repoName.replace(/^rulespec-/, "");
-  if (!suffix || suffix === repoName) return null;
-  return suffix;
-}
-
-/**
- * App-surface visibility marker (.axiom/registry.toml). Absent file/key or
- * any fetch failure means "public" so a hiccup can't hide a live country;
- * an explicit `app_visibility = "experimental"` keeps a repo off the
- * encoded-search index (stale rows are removed by the end-of-run cleanup).
- * Parsed line-wise — keep the marker in simple `key = "value"` form.
- */
-async function fetchAppVisibility(repo) {
-  const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${repo.name}/${repo.default_branch}/.axiom/registry.toml`;
-  const res = await fetch(url, { headers: githubHeaders }).catch(() => null);
-  if (!res || !res.ok) return "public";
-  const text = await res.text().catch(() => null);
-  if (!text) return "public";
-  for (const line of text.split(/\r?\n/)) {
-    const match = line.match(/^\s*app_visibility\s*=\s*"([a-z]+)"\s*(?:#.*)?$/);
-    if (match) return match[1] === "experimental" ? "experimental" : "public";
-  }
-  return "public";
-}
-
-/**
- * Discover jurisdiction roots across the org's rulespec-* repos:
- * monorepos with per-jurisdiction directories (rulespec-us → us/,
- * us-co/, …) and standalone repos with buckets at top level
- * (rulespec-nz).
- */
-async function discoverRoots() {
-  const repos = await githubJson(
-    `https://api.github.com/orgs/${GITHUB_ORG}/repos?per_page=100&type=all&sort=pushed`
-  );
-  const roots = [];
-  for (const repo of repos) {
-    if (!repo.name.startsWith("rulespec-")) continue;
-    if ((await fetchAppVisibility(repo)) === "experimental") {
-      console.log(`skip ${repo.name}: app_visibility=experimental`);
-      continue;
-    }
-    let tree;
-    try {
-      tree = await githubJson(
-        `https://api.github.com/repos/${GITHUB_ORG}/${repo.name}/git/trees/${repo.default_branch}`
-      );
-    } catch (error) {
-      console.warn(`skip ${repo.name}: ${error.message}`);
-      continue;
-    }
-    const entries = tree.tree ?? [];
-    const jurisdictionDirs = entries
-      .filter(
-        (entry) => entry.type === "tree" && isJurisdictionSegment(entry.path)
-      )
-      .map((entry) => entry.path);
-    if (jurisdictionDirs.length > 0) {
-      for (const jurisdiction of jurisdictionDirs) {
-        roots.push({
-          repo: repo.name,
-          branch: repo.default_branch,
-          jurisdiction,
-          prefix: jurisdiction,
-        });
-      }
-      continue;
-    }
-    if (
-      entries.some(
-        (entry) => entry.type === "tree" && RULESPEC_BUCKETS.has(entry.path)
-      )
-    ) {
-      const jurisdiction = jurisdictionFromRepoName(repo.name);
-      if (jurisdiction) {
-        roots.push({
-          repo: repo.name,
-          branch: repo.default_branch,
-          jurisdiction,
-          prefix: null,
-        });
-      }
-    }
-  }
-  return roots;
-}
-
-function isEncodingFile(path) {
-  return (
-    path.endsWith(".yaml") &&
-    !path.endsWith(".test.yaml") &&
-    !path.endsWith(".meta.yaml") &&
-    // Encodings always sit inside a bucket directory; a YAML at the
-    // listing root is repo config (e.g. rulespec-ca's proof-obligation
-    // ratchet) and would fabricate an unresolvable citation path.
-    path.includes("/") &&
-    // Repo plumbing beside the buckets — .axiom/ manifests, .github/
-    // config, and sources/ corpus slices (plain YAML mirrors of the
-    // encodings in root-layout repos like rulespec-ca).
-    !isRepoPlumbingSegment(path.split("/")[0])
-  );
-}
-
-function isRepoPlumbingSegment(segment) {
-  return segment.startsWith(".") || segment === "sources";
-}
-
-/** Mirror of parseTreeEntries + normaliseTitleSegment in repo-listing.ts. */
-function toEncodedFile(path, jurisdiction) {
-  const stripped = path.replace(/\.yaml$/, "");
-  const segs = stripped.split("/");
-  const repoBucket = segs[0];
-  const citationBucket = REPO_TO_CITATION_BUCKET[repoBucket] ?? repoBucket;
-  let tail = segs.slice(1);
-  if (jurisdiction === "us" && repoBucket === "regulations" && tail.length > 0) {
-    tail = [...tail];
-    tail[0] = tail[0].replace(/-cfr$/, "");
-  }
-  const joined = tail.join("/");
-  return {
-    filePath: path,
-    citationPath: joined
-      ? `${jurisdiction}/${citationBucket}/${joined}`
-      : `${jurisdiction}/${citationBucket}`,
-    bucket: repoBucket,
-  };
-}
-
 async function listFiles(root) {
   const treePath = root.prefix
     ? `${root.branch}:${root.prefix}`
@@ -220,9 +62,10 @@ async function listFiles(root) {
   if (body.truncated) {
     console.warn(`tree truncated for ${root.repo}:${root.prefix ?? ""}`);
   }
-  return (body.tree ?? [])
-    .filter((entry) => entry.type === "blob" && isEncodingFile(entry.path))
-    .map((entry) => ({ ...toEncodedFile(entry.path, root.jurisdiction), root }));
+  return parseTreeEntries(body, root.jurisdiction).map((file) => ({
+    ...file,
+    root,
+  }));
 }
 
 async function fetchRawYaml(file) {

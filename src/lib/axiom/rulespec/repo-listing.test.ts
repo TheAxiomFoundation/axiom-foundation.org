@@ -67,6 +67,24 @@ describe("parseTreeEntries", () => {
     expect(parseTreeEntries({ tree: "no" } as never, "us")).toEqual([]);
   });
 
+  it("skips root-level YAML files — repo config, not encodings", () => {
+    // rulespec-ca keeps its proof-obligation ratchet at the repo root;
+    // treating its filename as a bucket fabricated the unresolvable
+    // citation path ca/known-missing-money-atoms.
+    const out = parseTreeEntries(
+      {
+        tree: [
+          { path: "known-missing-money-atoms.yaml", type: "blob" },
+          { path: "policies/cra/t1-2025/canada-workers-benefit.yaml", type: "blob" },
+        ],
+      },
+      "ca"
+    );
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "ca/policy/cra/t1-2025/canada-workers-benefit",
+    ]);
+  });
+
   it("leaves the bucket alone for unknown top-level dirs (e.g. UK legislation/)", () => {
     const out = parseTreeEntries(
       {

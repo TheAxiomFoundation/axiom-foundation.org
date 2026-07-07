@@ -215,6 +215,11 @@ function isEncodingFile(path: string): boolean {
   if (!path.endsWith(".yaml")) return false;
   if (path.endsWith(".test.yaml")) return false;
   if (path.endsWith(".meta.yaml")) return false;
+  // Encodings always sit inside a bucket directory (statutes/…,
+  // policies/…). A YAML at the listing root is repo config — e.g.
+  // rulespec-ca's proof-obligation ratchet — and treating its filename
+  // as a bucket fabricates a citation path no index can resolve.
+  if (!path.includes("/")) return false;
   return true;
 }
 

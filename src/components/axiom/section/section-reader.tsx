@@ -5,7 +5,10 @@ import {
   type SectionPageData,
   type SectionProvision,
 } from "@/lib/axiom/section-page";
+import { buildInlineReferences } from "@/lib/axiom/inline-references";
 import { RuleBody } from "@/components/axiom/rule-body";
+import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
+import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { SectionToc } from "./section-toc";
 
 /**
@@ -166,9 +169,17 @@ function NeighborNav({ data }: { data: SectionPageData }) {
 export function SectionReader({ data }: { data: SectionPageData }) {
   const heading = data.root.heading?.trim();
   const effective = formatDate(data.root.effective_date);
+  const outgoing = buildInlineReferences(
+    data.root.body,
+    data.citationPath,
+    data.rootRefs
+  ).filter((ref) => ref.direction === "outgoing");
+  const incoming = data.rootRefs.filter(
+    (ref) => ref.direction === "incoming"
+  );
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
       <aside className="hidden lg:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />
@@ -252,6 +263,29 @@ export function SectionReader({ data }: { data: SectionPageData }) {
 
         <NeighborNav data={data} />
       </article>
+
+      {/* Encoding + citation-graph rail. Pinned on xl+ so the
+          encoding stays in view while the source scrolls — the
+          "prove faithfulness" pairing from the v1 detail panel. */}
+      <aside className="xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
+        <section>
+          <p className="mb-4 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            Encoding
+          </p>
+          <RuleSpecTab
+            encoding={data.encoding}
+            loading={false}
+            jurisdiction={data.root.jurisdiction}
+            citationPath={data.root.citation_path}
+            isRepealed={Boolean(data.root.repeal_date)}
+          />
+        </section>
+        {(outgoing.length > 0 || incoming.length > 0) && (
+          <section className="mt-8 border-t border-[var(--color-rule)] pt-6">
+            <ReferencesPanel outgoing={outgoing} incoming={incoming} />
+          </section>
+        )}
+      </aside>
     </div>
   );
 }

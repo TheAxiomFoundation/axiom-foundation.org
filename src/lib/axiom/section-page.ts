@@ -1,8 +1,10 @@
 import {
   supabaseCorpus,
   getRuleReferences,
+  getRuleEncoding,
   type Rule,
   type RuleReference,
+  type RuleEncodingData,
 } from "@/lib/supabase";
 import {
   resolveAxiomPath,
@@ -81,6 +83,8 @@ export interface SectionPageData {
   bodyChunks: BodyChunk[];
   toc: SectionTocEntry[];
   rootRefs: RuleReference[];
+  /** RuleSpec encoding for the section (encoding_runs or GitHub). */
+  encoding: RuleEncodingData | null;
   prev: SectionNeighbor | null;
   next: SectionNeighbor | null;
   /** True when the subtree hit SUBTREE_LIMIT and was cut off. */
@@ -355,11 +359,17 @@ export async function getSectionPageData(
     ...resolved.ruleSegments,
   ].join("/");
 
-  const [root, subtree, rootRefs, node] = await Promise.all([
-    getProvisionByCitationPath(citationPath).catch(() => null),
+  const rootPromise = getProvisionByCitationPath(citationPath).catch(
+    () => null
+  );
+  const [root, subtree, rootRefs, node, encoding] = await Promise.all([
+    rootPromise,
     getSubtreeProvisions(citationPath),
     getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
     getNavigationNode(citationPath),
+    rootPromise.then((rule) =>
+      rule ? getRuleEncoding(rule.id).catch(() => null) : null
+    ),
   ]);
   if (!root) return null;
 
@@ -402,6 +412,7 @@ export async function getSectionPageData(
     bodyChunks: bodySplit.chunks,
     toc,
     rootRefs,
+    encoding,
     prev,
     next,
     truncated: subtree.truncated,

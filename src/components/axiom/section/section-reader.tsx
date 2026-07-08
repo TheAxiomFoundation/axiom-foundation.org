@@ -168,7 +168,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const effective = formatDate(data.root.effective_date);
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside className="hidden lg:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />

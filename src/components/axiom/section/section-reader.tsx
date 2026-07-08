@@ -1,0 +1,257 @@
+import Link from "next/link";
+import {
+  refsForChunk,
+  type BodyChunk,
+  type SectionPageData,
+  type SectionProvision,
+} from "@/lib/axiom/section-page";
+import { RuleBody } from "@/components/axiom/rule-body";
+import { SectionToc } from "./section-toc";
+
+/**
+ * Server-rendered reading column for a section and its full
+ * descendant subtree — the v2 replacement for the client-monolith
+ * detail panel. Interactivity is limited to islands: RuleBody
+ * (?mark= highlighting) and SectionToc (scroll-spy).
+ */
+
+function formatDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function Breadcrumbs({ data }: { data: SectionPageData }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-4">
+      <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {data.breadcrumbs.map((item, index) => (
+          <li key={item.href} className="flex items-center gap-1">
+            {index > 0 && <span aria-hidden>/</span>}
+            {index === data.breadcrumbs.length - 1 ? (
+              <span aria-current="page" className="text-[var(--color-ink-secondary)]">
+                {item.label}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className="hover:text-[var(--color-ink)] transition-colors"
+              >
+                {item.label}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+function AnchorLink({ anchor }: { anchor: string }) {
+  return (
+    <a
+      href={`#${anchor}`}
+      aria-label={`Link to subsection ${anchor}`}
+      className="opacity-0 transition-opacity group-hover:opacity-100 text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] font-mono text-sm"
+    >
+      #
+    </a>
+  );
+}
+
+function ProvisionBlock({
+  provision,
+  citationPath,
+}: {
+  provision: SectionProvision;
+  citationPath: string;
+}) {
+  const { rule, anchor, designator, relativeDepth } = provision;
+  const heading = rule.heading?.trim();
+  const HeadingTag = relativeDepth === 1 ? "h2" : "h3";
+  return (
+    <section id={anchor} className="group scroll-mt-24">
+      <HeadingTag
+        className={`flex items-baseline gap-2 text-[var(--color-ink)] ${
+          relativeDepth === 1
+            ? "mt-10 text-lg font-semibold"
+            : "mt-6 text-base font-medium"
+        }`}
+      >
+        <span className="font-mono text-[0.85em] text-[var(--color-ink-muted)]">
+          {designator}
+        </span>
+        {heading && <span>{heading}</span>}
+        <AnchorLink anchor={anchor} />
+      </HeadingTag>
+      {rule.body && (
+        <div className="mt-2">
+          <RuleBody
+            body={rule.body}
+            refs={[]}
+            citationPath={rule.citation_path ?? undefined}
+            testId={null}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChunkBlock({
+  chunk,
+  data,
+}: {
+  chunk: BodyChunk;
+  data: SectionPageData;
+}) {
+  return (
+    <section id={chunk.anchor} className="group scroll-mt-24">
+      <h2 className="mt-8 flex items-baseline gap-2">
+        <span className="font-mono text-sm text-[var(--color-ink-muted)]">
+          {chunk.designator}
+        </span>
+        <AnchorLink anchor={chunk.anchor} />
+      </h2>
+      <div className="mt-1">
+        <RuleBody
+          body={chunk.text}
+          refs={refsForChunk(data.rootRefs, chunk.text)}
+          citationPath={data.root.citation_path ?? undefined}
+          testId={null}
+        />
+      </div>
+    </section>
+  );
+}
+
+function NeighborNav({ data }: { data: SectionPageData }) {
+  if (!data.prev && !data.next) return null;
+  return (
+    <nav
+      aria-label="Adjacent sections"
+      className="mt-12 flex justify-between gap-4 border-t border-[var(--color-rule)] pt-5 text-sm"
+    >
+      {data.prev ? (
+        <Link
+          href={`/axiom/v2/${data.prev.citationPath}`}
+          rel="prev"
+          className="max-w-[45%] truncate text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors"
+        >
+          ← {data.prev.label}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {data.next ? (
+        <Link
+          href={`/axiom/v2/${data.next.citationPath}`}
+          rel="next"
+          className="max-w-[45%] truncate text-right text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors"
+        >
+          {data.next.label} →
+        </Link>
+      ) : (
+        <span />
+      )}
+    </nav>
+  );
+}
+
+export function SectionReader({ data }: { data: SectionPageData }) {
+  const heading = data.root.heading?.trim();
+  const effective = formatDate(data.root.effective_date);
+
+  return (
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <aside className="hidden lg:block">
+        <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+          <SectionToc entries={data.toc} />
+        </div>
+      </aside>
+
+      <article data-testid="section-reader">
+        <Breadcrumbs data={data} />
+
+        <header className="border-b border-[var(--color-rule)] pb-5">
+          <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            {data.citationPath}
+          </p>
+          {heading && (
+            <h1
+              className="mt-2 text-2xl font-semibold text-[var(--color-ink)]"
+              style={{ fontFamily: "var(--f-serif)" }}
+            >
+              {heading}
+            </h1>
+          )}
+          <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-[var(--color-ink-muted)]">
+            {effective && <span>Effective {effective}</span>}
+            {data.root.source_url && (
+              <a
+                href={data.root.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-[var(--color-rule)] underline-offset-2 hover:text-[var(--color-ink)] transition-colors"
+              >
+                Official source
+              </a>
+            )}
+            {data.root.has_rulespec && (
+              <span className="text-[var(--color-accent)]">Encoded</span>
+            )}
+          </div>
+        </header>
+
+        {data.bodyChunks.length > 0 ? (
+          <>
+            {data.intro && (
+              <div className="mt-6">
+                <RuleBody
+                  body={data.intro}
+                  refs={refsForChunk(data.rootRefs, data.intro)}
+                  citationPath={data.root.citation_path ?? undefined}
+                />
+              </div>
+            )}
+            {data.bodyChunks.map((chunk) => (
+              <ChunkBlock key={chunk.anchor} chunk={chunk} data={data} />
+            ))}
+          </>
+        ) : (
+          data.root.body && (
+            <div className="mt-6">
+              <RuleBody
+                body={data.root.body}
+                refs={data.rootRefs}
+                citationPath={data.root.citation_path ?? undefined}
+              />
+            </div>
+          )
+        )}
+
+        {data.provisions.map((provision) => (
+          <ProvisionBlock
+            key={provision.rule.id}
+            provision={provision}
+            citationPath={data.citationPath}
+          />
+        ))}
+
+        {data.truncated && (
+          <p className="mt-8 text-sm text-[var(--color-ink-muted)]">
+            This section is unusually large; deeper subsections were cut
+            off. Use the tree browser to reach them.
+          </p>
+        )}
+
+        <NeighborNav data={data} />
+      </article>
+    </div>
+  );
+}

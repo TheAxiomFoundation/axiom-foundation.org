@@ -107,6 +107,32 @@ function ProvisionBlock({
   );
 }
 
+/**
+ * Chips tying a subsection to the rules that encode it. Each chip
+ * scrolls the encoding rail to that rule's card (#rule-<name> —
+ * RuleSpecTab expands the card on that hash).
+ */
+function EncodedRuleChips({ rules }: { rules: SectionPageData["encodedRules"] }) {
+  if (rules.length === 0) return null;
+  return (
+    <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        Encoded as
+      </span>
+      {rules.map((rule) => (
+        <a
+          key={rule.name}
+          href={`#rule-${rule.name}`}
+          title={rule.kind ? `${rule.kind} rule — view in encoding rail` : "View in encoding rail"}
+          className="rounded border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+        >
+          {rule.name}
+        </a>
+      ))}
+    </p>
+  );
+}
+
 function ChunkBlock({
   chunk,
   data,
@@ -115,6 +141,9 @@ function ChunkBlock({
   data: SectionPageData;
 }) {
   const focused = data.focusAnchor === chunk.anchor;
+  const chunkRules = data.encodedRules.filter(
+    (rule) => rule.anchor === chunk.anchor
+  );
   return (
     <section
       id={chunk.anchor}
@@ -134,6 +163,7 @@ function ChunkBlock({
         </Link>
         <AnchorLink anchor={chunk.anchor} />
       </h2>
+      <EncodedRuleChips rules={chunkRules} />
       <div className="mt-1">
         <RuleBody
           body={chunk.text}
@@ -227,8 +257,12 @@ export function SectionReader({ data }: { data: SectionPageData }) {
                 Official source
               </a>
             )}
-            {data.root.has_rulespec && (
-              <span className="text-[var(--color-accent)]">Encoded</span>
+            {(data.encoding || data.root.has_rulespec) && (
+              <span className="text-[var(--color-accent)]">
+                {data.encodedRules.length > 0
+                  ? `Encoded · ${data.encodedRules.length} rules`
+                  : "Encoded"}
+              </span>
             )}
           </div>
         </header>

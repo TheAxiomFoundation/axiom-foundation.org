@@ -4,6 +4,7 @@ import type { RuleReference } from "@/lib/supabase";
 import {
   buildSectionToc,
   compareCitationPaths,
+  mapRulesToSubsections,
   refsForChunk,
   relativeDesignator,
   splitBodyIntoSubsections,
@@ -200,6 +201,53 @@ describe("splitBodyIntoSubsections", () => {
       .join("\n");
     const { chunks } = splitBodyIntoSubsections(body);
     expect(chunks.at(-1)?.anchor).toBe("aa");
+  });
+});
+
+describe("mapRulesToSubsections", () => {
+  const yaml = [
+    "format: rulespec/v1",
+    "module:",
+    "  name: eitc",
+    "rules:",
+    "  - name: eitc_phase_in_rates",
+    "    kind: parameter",
+    "    source: 26 USC 32(b)(1)",
+    "    versions:",
+    "      - effective_from: '2026-01-01'",
+    "        values: {0: 0.0765}",
+    "  - name: eitc_eligible",
+    "    kind: formula",
+    "    source: 26 USC 32(c)(1)(A)",
+    "    versions:",
+    "      - effective_from: '2026-01-01'",
+    "        formula: 'age >= 19'",
+    "  - name: dependent_rule",
+    "    kind: formula",
+    "    source: 26 USC 152(c)",
+    "    versions:",
+    "      - effective_from: '2026-01-01'",
+    "        formula: 'x'",
+  ].join("\n");
+
+  it("maps rules to their top-level subsection anchors", () => {
+    const links = mapRulesToSubsections("us/statute/26/32", yaml);
+    expect(links.find((l) => l.name === "eitc_phase_in_rates")?.anchor).toBe(
+      "b"
+    );
+    expect(links.find((l) => l.name === "eitc_eligible")?.anchor).toBe("c");
+  });
+
+  it("leaves rules citing other sections unanchored", () => {
+    const links = mapRulesToSubsections("us/statute/26/32", yaml);
+    expect(links.find((l) => l.name === "dependent_rule")?.anchor).toBeNull();
+  });
+
+  it("returns empty for null or unparseable content", () => {
+    expect(mapRulesToSubsections("us/statute/26/32", null)).toEqual([]);
+    expect(mapRulesToSubsections("us/statute/26/32", "not: yaml: [")).toEqual(
+      []
+    );
   });
 });
 

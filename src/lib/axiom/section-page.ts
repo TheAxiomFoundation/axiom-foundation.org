@@ -13,6 +13,7 @@ import {
 } from "@/lib/tree-data";
 import { getProvisionByCitationPath } from "@/lib/axiom/navigation-index/read";
 import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
+import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 
 /**
  * Data assembly for the v2 server-rendered section page: one reading
@@ -85,6 +86,8 @@ export interface SectionPageData {
   rootRefs: RuleReference[];
   /** RuleSpec encoding for the section (encoding_runs or GitHub). */
   encoding: RuleEncodingData | null;
+  /** Rules from ``encoding`` mapped to their subsection anchors. */
+  encodedRules: EncodedRuleLink[];
   /**
    * Set when the requested path was deeper than the ingested corpus
    * row (e.g. …/26/32/a on a section-granular corpus): the section
@@ -178,6 +181,48 @@ export function buildSectionToc(
   }
 
   return rootEntries;
+}
+
+/** An encoded rule tied back to the subsection it implements. */
+export interface EncodedRuleLink {
+  name: string;
+  kind: string | null;
+  /** Top-level subsection anchor ("a", "b", …) or null when the
+   *  rule's source doesn't cite a subsection of this section. */
+  anchor: string | null;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Map each rule in the section's RuleSpec to the subsection it
+ * implements, using the rule's ``source`` citation ("26 USC
+ * 32(b)(1)" → subsection "b"). Rules citing other sections or the
+ * section as a whole get a null anchor and stay rail-only.
+ */
+export function mapRulesToSubsections(
+  citationPath: string,
+  rulespecContent: string | null
+): EncodedRuleLink[] {
+  if (!rulespecContent) return [];
+  const doc = parseRuleSpec(rulespecContent);
+  if (!doc) return [];
+  const section = citationPath.split("/").at(-1) ?? "";
+  if (!section) return [];
+  const sourceRe = new RegExp(
+    `(?:§+\\s*)?${escapeRegExp(section)}\\s*\\(([a-z]{1,2})\\)`
+  );
+  return doc.rules.map((rule) => {
+    const source = rule.source ?? "";
+    const match = source.match(sourceRe);
+    return {
+      name: rule.name,
+      kind: rule.kind ?? null,
+      anchor: match ? match[1] : null,
+    };
+  });
 }
 
 const LABEL_PREVIEW_LEN = 56;
@@ -434,6 +479,10 @@ export async function getSectionPageData(
     toc,
     rootRefs,
     encoding,
+    encodedRules: mapRulesToSubsections(
+      citationPath,
+      encoding?.rulespec_content ?? null
+    ),
     focusAnchor,
     prev,
     next,

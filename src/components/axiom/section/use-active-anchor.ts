@@ -3,40 +3,60 @@
 import { useEffect, useState } from "react";
 
 /**
+ * Vertical position of the "reading line": a section counts as
+ * active once its top edge crosses above this line. Sits below the
+ * 96px fixed nav so anchor jumps (scroll-mt-24) land exactly on it.
+ */
+const READING_LINE_PX = 160;
+
+/**
  * Scroll-spy over a list of element ids (in document order): returns
- * the id of the topmost element currently in the viewport band.
- * Shared by the TOC (highlight) and the encoding rail (follow mode).
+ * the id of the last element whose top has crossed the reading line
+ * — i.e. the subsection currently being read. Null while still above
+ * the first section. Shared by the TOC (highlight) and the encoding
+ * rail (follow mode).
+ *
+ * Deliberately scroll-driven rather than IntersectionObserver-based:
+ * "last top above the line" is deterministic at anchor-jump
+ * boundaries, where observer band membership is ambiguous.
  */
 export function useActiveAnchor(anchors: string[]): string | null {
   const [active, setActive] = useState<string | null>(null);
+  const key = anchors.join("|");
 
   useEffect(() => {
-    if (anchors.length === 0) return;
-    const targets = anchors
-      .map((anchor) => document.getElementById(anchor))
-      .filter((el): el is HTMLElement => Boolean(el));
-    if (targets.length === 0) return;
+    const ids = key ? key.split("|") : [];
+    if (ids.length === 0) return;
+    let frame = 0;
 
-    // Track which targets are on screen; the active row is the first
-    // visible one in document order (or the last scrolled past when
-    // none are visible, so fast scrolling doesn't blank the spy).
-    const visible = new Set<string>();
-    const observer = new IntersectionObserver(
-      (observed) => {
-        for (const entry of observed) {
-          if (entry.isIntersecting) visible.add(entry.target.id);
-          else visible.delete(entry.target.id);
+    const measure = () => {
+      frame = 0;
+      let current: string | null = null;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= READING_LINE_PX) {
+          current = id;
+        } else {
+          break;
         }
-        const first = anchors.find((anchor) => visible.has(anchor));
-        if (first) setActive(first);
-      },
-      { rootMargin: "-96px 0px -60% 0px" }
-    );
-    targets.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-    // anchors is stable per page render (derived from server data).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchors.join("|")]);
+      }
+      setActive(current);
+    };
+
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [key]);
 
   return active;
 }

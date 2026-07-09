@@ -223,8 +223,8 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
-      <aside className="hidden lg:block">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
+      <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />
         </div>
@@ -316,7 +316,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
       {/* Encoding + citation-graph rail. Pinned on xl+ so the
           encoding stays in view while the source scrolls — the
           "prove faithfulness" pairing from the v1 detail panel. */}
-      <aside className="xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
+      <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
         <section>
           <EncodingRail
             encoding={data.encoding}

@@ -3,14 +3,17 @@
 @import "@axiom-foundation/ui/tokens.css";
 
 /* ── Mobile: prevent horizontal page scroll ──
-   The shared tokens already set `overflow-x: hidden` on <body>, but a
-   fixed-position decorative canvas (the citation-network background) is
-   sized to `window.innerWidth`, which can edge a hair past the layout
-   viewport on small screens and let the document element scroll
-   sideways. Clamping the root element closes that gap. No effect on
-   desktop, where nothing exceeds the viewport. */
-html {
-  overflow-x: hidden;
+   The shared tokens set `overflow-x: hidden` on <body>, and this rule
+   used to mirror it on <html> because a fixed-position decorative
+   canvas (the citation-network background) sized to
+   `window.innerWidth` can edge a hair past the layout viewport on
+   small screens. `clip` instead of `hidden` because hidden turns the
+   root into a scroll container, which silently disables
+   `position: sticky` against page scroll (the v2 reader's TOC and
+   encoding rail). clip clips without creating a scroll container. */
+html,
+body {
+  overflow-x: clip;
 }
 
 /* Belt-and-suspenders: the background canvas is purely decorative and

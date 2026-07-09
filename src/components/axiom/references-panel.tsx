@@ -85,7 +85,12 @@ function RefItem({
 
   return (
     <li className="py-2 flex items-baseline gap-3">
-      <Link href={href} className={`font-mono text-xs ${linkClasses}`} title={title}>
+      <Link
+        href={href}
+        className={`font-mono text-xs ${linkClasses}`}
+        title={title}
+        {...(resolved && { "data-cite": ref.other_citation_path })}
+      >
         {label}
       </Link>
       {ref.other_heading && (

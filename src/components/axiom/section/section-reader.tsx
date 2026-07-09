@@ -11,6 +11,7 @@ import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
 import { CitationJump } from "./citation-jump";
+import { CitationPreviewLayer } from "./citation-preview";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -232,6 +233,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
       </aside>
 
       <article data-testid="section-reader">
+        <CitationPreviewLayer />
         {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs data={data} />

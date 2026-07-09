@@ -372,7 +372,12 @@ function Citation({
     ? "text-[var(--color-accent)] underline decoration-[var(--color-rule)] underline-offset-2 hover:decoration-[var(--color-accent)] transition-colors"
     : "text-[var(--color-ink-secondary)] underline decoration-dotted decoration-[var(--color-rule)] underline-offset-2";
   return (
-    <Link href={href} className={classes} title={title}>
+    <Link
+      href={href}
+      className={classes}
+      title={title}
+      {...(ref.target_resolved && { "data-cite": ref.other_citation_path })}
+    >
       {text}
     </Link>
   );

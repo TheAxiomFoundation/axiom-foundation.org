@@ -326,6 +326,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             jurisdiction={data.root.jurisdiction}
             citationPath={data.root.citation_path}
             isRepealed={Boolean(data.root.repeal_date)}
+            showSummary={false}
           />
         </section>
         {(outgoing.length > 0 || incoming.length > 0) && (

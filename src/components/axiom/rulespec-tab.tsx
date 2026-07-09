@@ -40,6 +40,7 @@ export function RuleSpecTab({
   jurisdiction,
   citationPath,
   isRepealed,
+  showSummary = true,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -50,6 +51,9 @@ export function RuleSpecTab({
    *  the source corpus has materialized child provisions. */
   citationPath?: string | null;
   isRepealed?: boolean;
+  /** The module summary is usually a verbatim source excerpt; hide
+   *  it on surfaces that already render the full source text. */
+  showSummary?: boolean;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -150,7 +154,7 @@ export function RuleSpecTab({
 
       {docHasContent ? (
         <>
-          {doc!.module.summary && (
+          {showSummary && doc!.module.summary && (
             <Summary text={doc!.module.summary} />
           )}
           {doc!.rules.length > 0 && (

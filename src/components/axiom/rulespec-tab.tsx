@@ -43,6 +43,7 @@ export function RuleSpecTab({
   showSummary = true,
   ruleGroups,
   includeUngrouped = true,
+  showHeader = true,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -64,6 +65,9 @@ export function RuleSpecTab({
    *  trailing under "Other" — used by the rail's follow-scroll mode,
    *  which shows only the active subsection's rules. */
   includeUngrouped?: boolean;
+  /** When false, the "Shown source" header and score block are
+   *  omitted — the rail's per-node view shows only rule cards. */
+  showHeader?: boolean;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -152,15 +156,17 @@ export function RuleSpecTab({
 
   return (
     <div className="space-y-8">
-      <SourceHeader
-        filePath={encoding.file_path}
-        description={sourceDescription}
-        gitHubUrl={gitHubUrl}
-        isGitHub={isGitHub}
-        ancestorPath={ancestorPath}
-      />
+      {showHeader && (
+        <SourceHeader
+          filePath={encoding.file_path}
+          description={sourceDescription}
+          gitHubUrl={gitHubUrl}
+          isGitHub={isGitHub}
+          ancestorPath={ancestorPath}
+        />
+      )}
 
-      {scores && !isGitHub && <ScoresBlock scores={scores} />}
+      {showHeader && scores && !isGitHub && <ScoresBlock scores={scores} />}
 
       {docHasContent ? (
         <>
@@ -254,7 +260,7 @@ function GroupedRules({
       <div>
         <div className="eyebrow mb-3">Rules</div>
         <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
-          No rules cite this subsection directly.
+          No rules are tied directly to this part of the section.
         </p>
       </div>
     );

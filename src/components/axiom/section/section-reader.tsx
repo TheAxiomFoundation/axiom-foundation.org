@@ -8,7 +8,6 @@ import {
 } from "@/lib/axiom/section-page";
 import { buildInlineReferences } from "@/lib/axiom/inline-references";
 import { RuleBody } from "@/components/axiom/rule-body";
-import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
@@ -317,25 +316,22 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           encoding stays in view while the source scrolls — the
           "prove faithfulness" pairing from the v1 detail panel. */}
       <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-        <section>
-          <EncodingRail
-            encoding={data.encoding}
-            jurisdiction={data.root.jurisdiction}
-            citationPath={data.root.citation_path}
-            isRepealed={Boolean(data.root.repeal_date)}
-            chunks={data.bodyChunks.map((chunk) => ({
-              anchor: chunk.anchor,
-              label: chunk.label,
-            }))}
-            encodedRules={data.encodedRules}
-            allGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
-          />
-        </section>
-        {(outgoing.length > 0 || incoming.length > 0) && (
-          <section className="mt-8 border-t border-[var(--color-rule)] pt-6">
-            <ReferencesPanel outgoing={outgoing} incoming={incoming} />
-          </section>
-        )}
+        <EncodingRail
+          encoding={data.encoding}
+          jurisdiction={data.root.jurisdiction}
+          citationPath={data.root.citation_path}
+          isRepealed={Boolean(data.root.repeal_date)}
+          chunks={data.bodyChunks.map((chunk) => ({
+            anchor: chunk.anchor,
+            designator: chunk.designator,
+            label: chunk.label,
+            text: chunk.text,
+          }))}
+          encodedRules={data.encodedRules}
+          allGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
+          outgoing={outgoing}
+          incoming={incoming}
+        />
       </aside>
     </div>
   );

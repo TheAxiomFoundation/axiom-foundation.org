@@ -45,8 +45,18 @@ function makeEncoding(): RuleEncodingData {
 }
 
 const CHUNKS = [
-  { anchor: "a", label: "(a) Allowance of credit" },
-  { anchor: "b", label: "(b) Percentages" },
+  {
+    anchor: "a",
+    designator: "(a)",
+    label: "(a) Allowance of credit",
+    text: "(a) Allowance of credit, see section 151 for details.",
+  },
+  {
+    anchor: "b",
+    designator: "(b)",
+    label: "(b) Percentages",
+    text: "(b) Percentages table text.",
+  },
 ];
 const ENCODED_RULES = [
   { name: "rule_for_a", kind: "derived", anchors: ["a"] },
@@ -79,6 +89,21 @@ function scrollTo(tops: Record<string, number>) {
   });
 }
 
+const OUTGOING = [
+  {
+    direction: "outgoing" as const,
+    citation_text: "section 151",
+    pattern_kind: "test",
+    confidence: 1,
+    start_offset: 0,
+    end_offset: 11,
+    other_citation_path: "us/statute/26/151",
+    other_provision_id: null,
+    other_heading: null,
+    target_resolved: true,
+  },
+];
+
 function renderRail() {
   return render(
     <EncodingRail
@@ -89,6 +114,8 @@ function renderRail() {
       chunks={CHUNKS}
       encodedRules={ENCODED_RULES}
       allGroups={ALL_GROUPS}
+      outgoing={OUTGOING}
+      incoming={[]}
     />
   );
 }
@@ -111,11 +138,16 @@ describe("EncodingRail", () => {
     document.body.innerHTML = "";
   });
 
-  it("shows all groups before any subsection crosses the reading line", () => {
+  it("shows the section overview before any subsection crosses the reading line", () => {
     placeSections({ a: 500, b: 1500 });
     renderRail();
+    // Subsection map with per-node rule counts, not rule cards.
+    expect(screen.getByTestId("rail-subsection-map")).toBeInTheDocument();
     expect(screen.getByText("(a) Allowance of credit")).toBeInTheDocument();
     expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
+    expect(screen.queryByText("rule_for_a")).not.toBeInTheDocument();
+    // Section-level references are visible.
+    expect(screen.getByTestId("references-panel")).toBeInTheDocument();
   });
 
   it("follows scroll: shows only the active subsection's rules", async () => {
@@ -129,6 +161,9 @@ describe("EncodingRail", () => {
     });
     expect(screen.getByText("rule_for_a")).toBeInTheDocument();
     expect(screen.queryByText("rule_for_b")).not.toBeInTheDocument();
+    // The node's own citations show; the source-file header does not.
+    expect(screen.getByTestId("references-panel")).toBeInTheDocument();
+    expect(screen.queryByText("Shown source")).not.toBeInTheDocument();
 
     scrollTo({ a: -1200, b: 100 }); // reading (b)
     await waitFor(() => {
@@ -168,15 +203,24 @@ describe("EncodingRail", () => {
         jurisdiction="us"
         citationPath="us/statute/26/32"
         isRepealed={false}
-        chunks={[{ anchor: "j", label: "(j) Inflation adjustments" }]}
+        chunks={[
+          {
+            anchor: "j",
+            designator: "(j)",
+            label: "(j) Inflation adjustments",
+            text: "(j) Inflation adjustments text.",
+          },
+        ]}
         encodedRules={[{ name: "rule_for_a", kind: "derived", anchors: ["a"] }]}
         allGroups={[]}
+        outgoing={[]}
+        incoming={[]}
       />
     );
     scrollTo({ j: -50 });
     await waitFor(() =>
       expect(
-        screen.getByText("No rules cite this subsection directly.")
+        screen.getByText("No rules are tied directly to this part of the section.")
       ).toBeInTheDocument()
     );
   });

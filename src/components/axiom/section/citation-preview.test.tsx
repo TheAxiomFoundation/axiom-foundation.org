@@ -51,6 +51,10 @@ describe("CitationPreviewLayer", () => {
     expect(card).toHaveTextContent("Dependent defined");
     expect(card).toHaveTextContent(/qualifying child/);
     expect(card).toHaveTextContent("Effective 2026-01-01");
+    expect(screen.getByText("Open →")).toHaveAttribute(
+      "href",
+      "/axiom/v2/us/statute/26/152"
+    );
   });
 
   it("hides the card after the pointer leaves the link", async () => {

@@ -11,6 +11,7 @@ import { RuleBody } from "@/components/axiom/rule-body";
 import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
+import { CitationJump } from "./citation-jump";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -32,7 +33,7 @@ function formatDate(value: string | null): string | null {
 
 function Breadcrumbs({ data }: { data: SectionPageData }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-4">
+    <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
         {data.breadcrumbs.map((item, index) => (
           <li key={item.href} className="flex items-center gap-1">
@@ -233,7 +234,10 @@ export function SectionReader({ data }: { data: SectionPageData }) {
 
       <article data-testid="section-reader">
         {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
-        <Breadcrumbs data={data} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumbs data={data} />
+          <CitationJump />
+        </div>
 
         <header className="border-b border-[var(--color-rule)] pb-5">
           <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">

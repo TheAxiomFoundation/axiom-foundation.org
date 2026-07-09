@@ -44,6 +44,7 @@ export function RuleSpecTab({
   ruleGroups,
   includeUngrouped = true,
   showHeader = true,
+  textAnchors,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -68,6 +69,9 @@ export function RuleSpecTab({
   /** When false, the "Shown source" header and score block are
    *  omitted — the rail's per-node view shows only rule cards. */
   showHeader?: boolean;
+  /** rule name → in-page text anchor; when present a rule card links
+   *  back to the subsection of the source text it implements. */
+  textAnchors?: Record<string, string>;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -180,6 +184,7 @@ export function RuleSpecTab({
                 groups={ruleGroups}
                 testsByRule={testsByRule}
                 includeUngrouped={includeUngrouped}
+                textAnchors={textAnchors}
               />
             ) : (
               <div className="space-y-6">
@@ -189,6 +194,7 @@ export function RuleSpecTab({
                     key={rule.name}
                     rule={rule}
                     tests={testsByRule.get(rule.name) ?? []}
+                    textAnchor={textAnchors?.[rule.name]}
                   />
                 ))}
               </div>
@@ -232,11 +238,13 @@ function GroupedRules({
   groups,
   testsByRule,
   includeUngrouped = true,
+  textAnchors,
 }: {
   rules: RuleSpecRule[];
   groups: Array<{ label: string; ruleNames: string[] }>;
   testsByRule: Map<string, RuleSpecTestCase[]>;
   includeUngrouped?: boolean;
+  textAnchors?: Record<string, string>;
 }) {
   const byName = new Map(rules.map((rule) => [rule.name, rule]));
   const grouped = new Set(groups.flatMap((group) => group.ruleNames));
@@ -287,6 +295,7 @@ function GroupedRules({
               key={rule.name}
               rule={rule}
               tests={testsByRule.get(rule.name) ?? []}
+              textAnchor={textAnchors?.[rule.name]}
             />
           ))}
         </section>
@@ -397,9 +406,13 @@ function Summary({ text }: { text: string }) {
 function RuleCard({
   rule,
   tests,
+  textAnchor,
 }: {
   rule: RuleSpecRule;
   tests: RuleSpecTestCase[];
+  /** In-page anchor of the source-text subsection this rule
+   *  implements — renders a back-link into the reading column. */
+  textAnchor?: string;
 }) {
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
@@ -419,11 +432,22 @@ function RuleCard({
               #{rule.name}
             </code>
           </div>
-          {rule.kind && (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              {humanizeKind(rule.kind)}
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {rule.kind && (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                {humanizeKind(rule.kind)}
+              </span>
+            )}
+            {textAnchor && (
+              <a
+                href={`#${textAnchor}`}
+                title="Jump to this subsection in the text"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                ({textAnchor}) in text ↖
+              </a>
+            )}
+          </div>
         </div>
         {meta.length > 0 && (
           <dl className="mt-3 grid grid-cols-1 gap-1.5 text-[11px]">

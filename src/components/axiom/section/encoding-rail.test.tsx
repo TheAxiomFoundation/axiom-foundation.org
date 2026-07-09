@@ -164,6 +164,9 @@ describe("EncodingRail", () => {
     // The node's own citations show; the source-file header does not.
     expect(screen.getByTestId("references-panel")).toBeInTheDocument();
     expect(screen.queryByText("Shown source")).not.toBeInTheDocument();
+    // Rule cards link back into the reading column.
+    const backLink = screen.getByTitle("Jump to this subsection in the text");
+    expect(backLink).toHaveAttribute("href", "#a");
 
     scrollTo({ a: -1200, b: 100 }); // reading (b)
     await waitFor(() => {

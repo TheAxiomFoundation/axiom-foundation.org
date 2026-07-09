@@ -58,6 +58,13 @@ export function EncodingRail({
   const canFollow = chunks.length > 0;
   const mode: "node" | "overview" | "all" =
     follow && canFollow ? (activeChunk ? "node" : "overview") : "all";
+  // rule name → the first subsection it cites; rule cards use this
+  // to link back into the reading column.
+  const textAnchors = Object.fromEntries(
+    encodedRules
+      .filter((rule) => rule.anchors.length > 0)
+      .map((rule) => [rule.name, rule.anchors[0]])
+  );
 
   return (
     <div>
@@ -103,6 +110,7 @@ export function EncodingRail({
             isRepealed={isRepealed}
             showSummary={false}
             ruleGroups={allGroups}
+            textAnchors={textAnchors}
           />
           {(outgoing.length > 0 || incoming.length > 0) && (
             <div className="border-t border-[var(--color-rule)] pt-6">
@@ -181,6 +189,11 @@ function NodeView({
     outgoing,
     chunk.text
   ) as InlineReference[];
+  // In node view every card links back to the node itself, so the
+  // reader can hop rail → text at the subsection being read.
+  const textAnchors = Object.fromEntries(
+    ruleNames.map((name) => [name, chunk.anchor])
+  );
 
   return (
     <div className="space-y-8">
@@ -194,6 +207,7 @@ function NodeView({
         showHeader={false}
         ruleGroups={[{ label: chunk.label, ruleNames }]}
         includeUngrouped={false}
+        textAnchors={textAnchors}
       />
       {nodeOutgoing.length > 0 && (
         <div className="border-t border-[var(--color-rule)] pt-6">

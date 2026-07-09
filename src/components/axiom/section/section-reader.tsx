@@ -10,6 +10,7 @@ import { RuleBody } from "@/components/axiom/rule-body";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { SectionToc } from "./section-toc";
+import { FocusScroll } from "./focus-scroll";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -113,12 +114,24 @@ function ChunkBlock({
   chunk: BodyChunk;
   data: SectionPageData;
 }) {
+  const focused = data.focusAnchor === chunk.anchor;
   return (
-    <section id={chunk.anchor} className="group scroll-mt-24">
+    <section
+      id={chunk.anchor}
+      className={`group scroll-mt-24 ${
+        focused
+          ? "rounded-md -mx-3 px-3 pb-3 shadow-[0_0_0_1px_rgba(146,64,14,0.35)] bg-[rgba(146,64,14,0.05)]"
+          : ""
+      }`}
+    >
       <h2 className="mt-8 flex items-baseline gap-2">
-        <span className="font-mono text-sm text-[var(--color-ink-muted)]">
+        <Link
+          href={`/axiom/v2/${data.citationPath}/${chunk.anchor}`}
+          className="font-mono text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+          title={`Open ${data.citationPath}/${chunk.anchor}`}
+        >
           {chunk.designator}
-        </span>
+        </Link>
         <AnchorLink anchor={chunk.anchor} />
       </h2>
       <div className="mt-1">
@@ -187,6 +200,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
       </aside>
 
       <article data-testid="section-reader">
+        {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
         <Breadcrumbs data={data} />
 
         <header className="border-b border-[var(--color-rule)] pb-5">

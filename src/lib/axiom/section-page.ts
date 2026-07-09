@@ -85,6 +85,13 @@ export interface SectionPageData {
   rootRefs: RuleReference[];
   /** RuleSpec encoding for the section (encoding_runs or GitHub). */
   encoding: RuleEncodingData | null;
+  /**
+   * Set when the requested path was deeper than the ingested corpus
+   * row (e.g. …/26/32/a on a section-granular corpus): the section
+   * renders in full and the reader highlights + scrolls to this
+   * subsection anchor.
+   */
+  focusAnchor: string | null;
   prev: SectionNeighbor | null;
   next: SectionNeighbor | null;
   /** True when the subtree hit SUBTREE_LIMIT and was cut off. */
@@ -354,24 +361,38 @@ export async function getSectionPageData(
   ) {
     return null;
   }
-  const citationPath = [
-    resolved.jurisdiction.slug,
-    ...resolved.ruleSegments,
-  ].join("/");
+  const slug = resolved.jurisdiction.slug;
+  const ruleSegments = resolved.ruleSegments;
+  const requestedPath = [slug, ...ruleSegments].join("/");
 
-  const rootPromise = getProvisionByCitationPath(citationPath).catch(
-    () => null
-  );
-  const [root, subtree, rootRefs, node, encoding] = await Promise.all([
-    rootPromise,
+  // Resolve the deepest ingested row at or above the requested path.
+  // The corpus is mostly section-granular, so subsection URLs
+  // (…/26/32/a) resolve to their section with a focus anchor.
+  let root = await getProvisionByCitationPath(requestedPath).catch(() => null);
+  let citationPath = requestedPath;
+  let focusAnchor: string | null = null;
+  if (!root) {
+    for (let end = ruleSegments.length - 1; end >= 2; end--) {
+      const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
+      const rule = await getProvisionByCitationPath(candidate).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = candidate;
+        focusAnchor = ruleSegments[end];
+        break;
+      }
+    }
+  }
+  if (!root) return null;
+
+  const [subtree, rootRefs, node, encoding] = await Promise.all([
     getSubtreeProvisions(citationPath),
     getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
     getNavigationNode(citationPath),
-    rootPromise.then((rule) =>
-      rule ? getRuleEncoding(rule.id).catch(() => null) : null
-    ),
+    getRuleEncoding(root.id).catch(() => null),
   ]);
-  if (!root) return null;
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -406,13 +427,14 @@ export async function getSectionPageData(
   return {
     citationPath,
     root,
-    breadcrumbs: buildBreadcrumbs(segments),
+    breadcrumbs: buildBreadcrumbs(citationPath.split("/")),
     provisions,
     intro: bodySplit.intro,
     bodyChunks: bodySplit.chunks,
     toc,
     rootRefs,
     encoding,
+    focusAnchor,
     prev,
     next,
     truncated: subtree.truncated,

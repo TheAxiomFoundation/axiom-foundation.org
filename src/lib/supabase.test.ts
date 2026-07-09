@@ -713,6 +713,44 @@ describe('supabase lib', () => {
       expect(result).toBeNull()
     })
 
+    it('falls back to the repo file when stored runs are telemetry-only (null content)', async () => {
+      // Only the real repo file exists; ancestor/duplicated-terminal
+      // probes 404 like they would against raw.githubusercontent.com.
+      const fetchMock = vi.fn().mockImplementation((url: string) =>
+        Promise.resolve(
+          url.endsWith('/us/statutes/26/32.yaml')
+            ? { ok: true, text: async () => 'format: rulespec/v1\n' }
+            : { ok: false, status: 404, text: async () => '' }
+        )
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'current_provisions') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({
+                  data: { citation_path: 'us/statute/26/32', jurisdiction: 'us', rulespec_path: null, has_rulespec: true },
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        // A stored run exists but carries no YAML — must not win.
+        return mockEncodingRunsChain({
+          data: [{ id: 'enc-empty', citation: '26 USC 32', session_id: 'sess-1', file_path: 'statutes/26/32.yaml', rulespec_content: null, final_scores: null }],
+          error: null,
+        })
+      })
+
+      const result = await getRuleEncoding('rule-32')
+      expect(result?.encoding_run_id).toBe('github:statutes/26/32.yaml')
+      expect(result?.rulespec_content).toBe('format: rulespec/v1\n')
+      vi.unstubAllGlobals()
+    })
+
     it('falls back to rulespec-us-co GitHub paths for Colorado rules', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SectionReader } from "./section-reader";
 import type { SectionPageData } from "@/lib/axiom/section-page";
@@ -130,16 +130,19 @@ describe("SectionReader", () => {
         })}
       />
     );
-    expect(screen.getByText("Title 26")).toHaveAttribute(
+    const crumbs = within(
+      screen.getByRole("navigation", { name: "Breadcrumb" })
+    );
+    expect(crumbs.getByText("Title 26")).toHaveAttribute(
       "href",
       "/us/statute/26"
     );
-    expect(screen.getByText("§ 32")).toHaveAttribute(
+    expect(crumbs.getByText("§ 32")).toHaveAttribute(
       "href",
       "/axiom/v2/us/statute/26/32"
     );
     // Leaf crumb is the current page, not a link.
-    expect(screen.getByText("(b)").tagName).toBe("SPAN");
+    expect(crumbs.getByText("(b)").tagName).toBe("SPAN");
   });
 
   it("highlights and scrolls to the focus anchor", () => {

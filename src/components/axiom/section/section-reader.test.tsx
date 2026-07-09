@@ -116,6 +116,32 @@ describe("SectionReader", () => {
     expect(screen.getByText(/§ 33/)).toHaveAttribute("rel", "next");
   });
 
+  it("keeps section-and-below breadcrumbs in v2, ancestors in v1", () => {
+    render(
+      <SectionReader
+        data={makeData({
+          focusAnchor: "b",
+          breadcrumbs: [
+            { label: "Axiom", href: "/" },
+            { label: "Title 26", href: "/us/statute/26" },
+            { label: "§ 32", href: "/us/statute/26/32" },
+            { label: "(b)", href: "/us/statute/26/32/b" },
+          ],
+        })}
+      />
+    );
+    expect(screen.getByText("Title 26")).toHaveAttribute(
+      "href",
+      "/us/statute/26"
+    );
+    expect(screen.getByText("§ 32")).toHaveAttribute(
+      "href",
+      "/axiom/v2/us/statute/26/32"
+    );
+    // Leaf crumb is the current page, not a link.
+    expect(screen.getByText("(b)").tagName).toBe("SPAN");
+  });
+
   it("highlights and scrolls to the focus anchor", () => {
     render(<SectionReader data={makeData({ focusAnchor: "b" })} />);
     const focused = document.getElementById("b");

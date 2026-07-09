@@ -32,6 +32,14 @@ function formatDate(value: string | null): string | null {
 }
 
 function Breadcrumbs({ data }: { data: SectionPageData }) {
+  // Section-depth crumbs and deeper (jurisdiction/doctype/title/
+  // section = 4+ segments) stay in the v2 reader; title and above go
+  // to the v1 tree browser, which remains the browse surface until
+  // v2 grows browse pages.
+  const v2Href = (href: string) => {
+    const path = href.replace(/^\//, "");
+    return path.split("/").length >= 4 ? `/axiom/v2/${path}` : href;
+  };
   return (
     <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
@@ -44,7 +52,7 @@ function Breadcrumbs({ data }: { data: SectionPageData }) {
               </span>
             ) : (
               <Link
-                href={item.href}
+                href={v2Href(item.href)}
                 className="hover:text-[var(--color-ink)] transition-colors"
               >
                 {item.label}

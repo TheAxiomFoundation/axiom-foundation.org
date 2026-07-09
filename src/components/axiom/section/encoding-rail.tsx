@@ -63,9 +63,7 @@ export function EncodingRail({
   return (
     <div>
       <p className="mb-4 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-        {mode === "node"
-          ? `Encoding · ${activeChunk!.designator}`
-          : "Encoding"}
+        Encoding
       </p>
 
       {mode === "node" ? (

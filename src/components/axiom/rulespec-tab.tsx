@@ -265,29 +265,22 @@ function GroupedRules({
 
   if (sections.length === 0) {
     return (
-      <div>
-        <div className="eyebrow mb-3">Rules</div>
-        <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
-          No rules are tied directly to this part of the section.
-        </p>
-      </div>
+      <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
+        No rules are tied directly to this part of the section.
+      </p>
     );
   }
 
   return (
     <div className="space-y-8">
-      <div className="eyebrow">Rules</div>
       {sections.map((section) => (
         <section key={section.label} className="space-y-4">
-          <div className="flex items-baseline justify-between gap-2 border-b border-[var(--color-rule)] pb-1.5">
+          <div className="border-b border-[var(--color-rule)] pb-1.5">
             <span
               className="text-sm text-[var(--color-ink)]"
               style={{ fontFamily: "var(--f-serif)" }}
             >
               {section.label}
-            </span>
-            <span className="font-mono text-[10px] text-[var(--color-ink-muted)]">
-              {section.rules.length}
             </span>
           </div>
           {section.rules.map((rule) => (

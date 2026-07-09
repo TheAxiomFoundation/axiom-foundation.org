@@ -42,6 +42,7 @@ export function RuleSpecTab({
   isRepealed,
   showSummary = true,
   ruleGroups,
+  includeUngrouped = true,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -59,6 +60,10 @@ export function RuleSpecTab({
    *  reader): each group renders under a subsection header. Rules
    *  not named in any group trail under "Other". */
   ruleGroups?: Array<{ label: string; ruleNames: string[] }>;
+  /** When false, rules outside ruleGroups are omitted instead of
+   *  trailing under "Other" — used by the rail's follow-scroll mode,
+   *  which shows only the active subsection's rules. */
+  includeUngrouped?: boolean;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -168,6 +173,7 @@ export function RuleSpecTab({
                 rules={doc!.rules}
                 groups={ruleGroups}
                 testsByRule={testsByRule}
+                includeUngrouped={includeUngrouped}
               />
             ) : (
               <div className="space-y-6">
@@ -219,14 +225,18 @@ function GroupedRules({
   rules,
   groups,
   testsByRule,
+  includeUngrouped = true,
 }: {
   rules: RuleSpecRule[];
   groups: Array<{ label: string; ruleNames: string[] }>;
   testsByRule: Map<string, RuleSpecTestCase[]>;
+  includeUngrouped?: boolean;
 }) {
   const byName = new Map(rules.map((rule) => [rule.name, rule]));
   const grouped = new Set(groups.flatMap((group) => group.ruleNames));
-  const leftovers = rules.filter((rule) => !grouped.has(rule.name));
+  const leftovers = includeUngrouped
+    ? rules.filter((rule) => !grouped.has(rule.name))
+    : [];
   const sections = [
     ...groups
       .map((group) => ({
@@ -238,6 +248,17 @@ function GroupedRules({
       .filter((group) => group.rules.length > 0),
     ...(leftovers.length > 0 ? [{ label: "Other", rules: leftovers }] : []),
   ];
+
+  if (sections.length === 0) {
+    return (
+      <div>
+        <div className="eyebrow mb-3">Rules</div>
+        <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
+          No rules cite this subsection directly.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

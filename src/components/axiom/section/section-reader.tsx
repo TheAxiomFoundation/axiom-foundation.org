@@ -8,10 +8,10 @@ import {
 } from "@/lib/axiom/section-page";
 import { buildInlineReferences } from "@/lib/axiom/inline-references";
 import { RuleBody } from "@/components/axiom/rule-body";
-import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
+import { EncodingRail } from "./encoding-rail";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -318,17 +318,17 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           "prove faithfulness" pairing from the v1 detail panel. */}
       <aside className="xl:sticky xl:top-24 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
         <section>
-          <p className="mb-4 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            Encoding
-          </p>
-          <RuleSpecTab
+          <EncodingRail
             encoding={data.encoding}
-            loading={false}
             jurisdiction={data.root.jurisdiction}
             citationPath={data.root.citation_path}
             isRepealed={Boolean(data.root.repeal_date)}
-            showSummary={false}
-            ruleGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
+            chunks={data.bodyChunks.map((chunk) => ({
+              anchor: chunk.anchor,
+              label: chunk.label,
+            }))}
+            encodedRules={data.encodedRules}
+            allGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
           />
         </section>
         {(outgoing.length > 0 || incoming.length > 0) && (

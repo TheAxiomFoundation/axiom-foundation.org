@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { SectionTocEntry } from "@/lib/axiom/section-page";
+import { useActiveAnchor } from "./use-active-anchor";
 
 /**
  * Sticky "On this page" table of contents for the v2 section reader.
- * Server-renderable markup with one client behaviour: an
- * IntersectionObserver scroll-spy that highlights the subsection
- * currently in view.
+ * Server-renderable markup with one client behaviour: a scroll-spy
+ * that highlights the subsection currently in view.
  */
 
 function collectAnchors(entries: SectionTocEntry[]): string[] {
@@ -17,39 +16,6 @@ function collectAnchors(entries: SectionTocEntry[]): string[] {
     anchors.push(...collectAnchors(entry.children));
   }
   return anchors;
-}
-
-function useActiveAnchor(entries: SectionTocEntry[]): string | null {
-  const [active, setActive] = useState<string | null>(null);
-
-  useEffect(() => {
-    const anchors = collectAnchors(entries);
-    if (anchors.length === 0) return;
-    const targets = anchors
-      .map((anchor) => document.getElementById(anchor))
-      .filter((el): el is HTMLElement => Boolean(el));
-    if (targets.length === 0) return;
-
-    // Track which targets are on screen; the active row is the first
-    // visible one in document order (or the last scrolled past when
-    // none are visible, so fast scrolling doesn't blank the spy).
-    const visible = new Set<string>();
-    const observer = new IntersectionObserver(
-      (observed) => {
-        for (const entry of observed) {
-          if (entry.isIntersecting) visible.add(entry.target.id);
-          else visible.delete(entry.target.id);
-        }
-        const first = anchors.find((anchor) => visible.has(anchor));
-        if (first) setActive(first);
-      },
-      { rootMargin: "-96px 0px -60% 0px" }
-    );
-    targets.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [entries]);
-
-  return active;
 }
 
 function TocList({
@@ -85,7 +51,7 @@ function TocList({
 }
 
 export function SectionToc({ entries }: { entries: SectionTocEntry[] }) {
-  const active = useActiveAnchor(entries);
+  const active = useActiveAnchor(collectAnchors(entries));
   if (entries.length === 0) return null;
 
   return (

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  buildRailGroups,
   refsForChunk,
   type BodyChunk,
   type SectionPageData,
@@ -336,7 +335,6 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             text: chunk.text,
           }))}
           encodedRules={data.encodedRules}
-          allGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
           outgoing={outgoing}
           incoming={incoming}
         />

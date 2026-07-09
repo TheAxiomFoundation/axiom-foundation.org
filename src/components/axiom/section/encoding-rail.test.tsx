@@ -62,10 +62,6 @@ const ENCODED_RULES = [
   { name: "rule_for_a", kind: "derived", anchors: ["a"] },
   { name: "rule_for_b", kind: "derived", anchors: ["b"] },
 ];
-const ALL_GROUPS = [
-  { anchor: "a", label: "(a) Allowance of credit", ruleNames: ["rule_for_a"] },
-  { anchor: "b", label: "(b) Percentages", ruleNames: ["rule_for_b"] },
-];
 
 /** Mount fake subsection targets and control their reading-line
  *  positions; the scroll-spy reads getBoundingClientRect().top. */
@@ -113,7 +109,6 @@ function renderRail() {
       isRepealed={false}
       chunks={CHUNKS}
       encodedRules={ENCODED_RULES}
-      allGroups={ALL_GROUPS}
       outgoing={OUTGOING}
       incoming={[]}
     />
@@ -176,24 +171,6 @@ describe("EncodingRail", () => {
     expect(screen.getByText("rule_for_b")).toBeInTheDocument();
   });
 
-  it("the All toggle restores the full grouping while reading a subsection", async () => {
-    placeSections({ a: 500, b: 1500 });
-    renderRail();
-    scrollTo({ a: -200, b: 900 });
-    await waitFor(() =>
-      expect(screen.queryByText("(b) Percentages")).not.toBeInTheDocument()
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "All" }));
-    expect(screen.getByText("(a) Allowance of credit")).toBeInTheDocument();
-    expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Follow" }));
-    await waitFor(() =>
-      expect(screen.queryByText("(b) Percentages")).not.toBeInTheDocument()
-    );
-  });
-
   it("shows an empty state for subsections nothing cites", async () => {
     renderRail();
     scrollTo({ a: -200, b: 900 });
@@ -215,7 +192,6 @@ describe("EncodingRail", () => {
           },
         ]}
         encodedRules={[{ name: "rule_for_a", kind: "derived", anchors: ["a"] }]}
-        allGroups={[]}
         outgoing={[]}
         incoming={[]}
       />

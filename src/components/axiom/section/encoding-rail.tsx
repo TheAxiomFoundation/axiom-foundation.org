@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import type { RuleEncodingData, RuleReference } from "@/lib/supabase";
 import type { InlineReference } from "@/lib/axiom/inline-references";
 import {
   refsForChunk,
   type EncodedRuleLink,
-  type RailRuleGroup,
 } from "@/lib/axiom/section-page";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
@@ -38,7 +36,6 @@ export function EncodingRail({
   isRepealed,
   chunks,
   encodedRules,
-  allGroups,
   outgoing,
   incoming,
 }: {
@@ -48,16 +45,13 @@ export function EncodingRail({
   isRepealed: boolean;
   chunks: RailChunk[];
   encodedRules: EncodedRuleLink[];
-  allGroups: RailRuleGroup[];
   outgoing: InlineReference[];
   incoming: RuleReference[];
 }) {
-  const [follow, setFollow] = useState(true);
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
-  const canFollow = chunks.length > 0;
-  const mode: "node" | "overview" | "all" =
-    follow && canFollow ? (activeChunk ? "node" : "overview") : "all";
+  const mode: "node" | "overview" | "flat" =
+    chunks.length === 0 ? "flat" : activeChunk ? "node" : "overview";
   // rule name → the first subsection it cites; rule cards use this
   // to link back into the reading column.
   const textAnchors = Object.fromEntries(
@@ -68,16 +62,11 @@ export function EncodingRail({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {mode === "node"
-            ? `Encoding · ${activeChunk!.designator}`
-            : "Encoding"}
-        </p>
-        {canFollow && (
-          <ModeToggle follow={follow} onChange={setFollow} />
-        )}
-      </div>
+      <p className="mb-4 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {mode === "node"
+          ? `Encoding · ${activeChunk!.designator}`
+          : "Encoding"}
+      </p>
 
       {mode === "node" ? (
         <NodeView
@@ -101,6 +90,8 @@ export function EncodingRail({
           incoming={incoming}
         />
       ) : (
+        // No parseable subsection structure — flat rule list plus the
+        // section-level citation graph.
         <div className="space-y-8">
           <RuleSpecTab
             encoding={encoding}
@@ -109,7 +100,6 @@ export function EncodingRail({
             citationPath={citationPath}
             isRepealed={isRepealed}
             showSummary={false}
-            ruleGroups={allGroups}
             textAnchors={textAnchors}
           />
           {(outgoing.length > 0 || incoming.length > 0) && (
@@ -119,47 +109,6 @@ export function EncodingRail({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ModeToggle({
-  follow,
-  onChange,
-}: {
-  follow: boolean;
-  onChange: (follow: boolean) => void;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label="Encoding rail mode"
-      className="flex rounded border border-[var(--color-rule)] font-mono text-[10px] uppercase tracking-wider"
-    >
-      <button
-        type="button"
-        aria-pressed={follow}
-        onClick={() => onChange(true)}
-        className={`px-2 py-1 cursor-pointer transition-colors ${
-          follow
-            ? "bg-[var(--color-code-bg)] text-[var(--color-ink)]"
-            : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-        }`}
-      >
-        Follow
-      </button>
-      <button
-        type="button"
-        aria-pressed={!follow}
-        onClick={() => onChange(false)}
-        className={`px-2 py-1 cursor-pointer border-l border-[var(--color-rule)] transition-colors ${
-          !follow
-            ? "bg-[var(--color-code-bg)] text-[var(--color-ink)]"
-            : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-        }`}
-      >
-        All
-      </button>
     </div>
   );
 }

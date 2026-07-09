@@ -106,7 +106,7 @@ export function EncodingRail({
           />
           {(outgoing.length > 0 || incoming.length > 0) && (
             <div className="border-t border-[var(--color-rule)] pt-6">
-              <ReferencesPanel outgoing={outgoing} incoming={incoming} />
+              <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
             </div>
           )}
         </div>
@@ -197,7 +197,7 @@ function NodeView({
       />
       {nodeOutgoing.length > 0 && (
         <div className="border-t border-[var(--color-rule)] pt-6">
-          <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} />
+          <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} hrefPrefix="/axiom/v2" />
         </div>
       )}
     </div>
@@ -271,7 +271,7 @@ function OverviewView({
       )}
       {(outgoing.length > 0 || incoming.length > 0) && (
         <div className="border-t border-[var(--color-rule)] pt-6">
-          <ReferencesPanel outgoing={outgoing} incoming={incoming} />
+          <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
         </div>
       )}
     </div>

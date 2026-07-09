@@ -36,6 +36,9 @@ interface RuleBodyProps {
   refs: RuleReference[];
   citationPath?: string;
   testId?: string | null;
+  /** Route prefix for spliced citation links — the v2 reader passes
+   *  "/axiom/v2" so navigation stays inside the new surface. */
+  hrefPrefix?: string;
 }
 
 interface Range {
@@ -340,7 +343,15 @@ function parseBodyBlocks(body: string): BodyBlock[] {
   return blocks;
 }
 
-function Citation({ ref, text }: { ref: InlineReference; text: string }) {
+function Citation({
+  ref,
+  text,
+  hrefPrefix = "",
+}: {
+  ref: InlineReference;
+  text: string;
+  hrefPrefix?: string;
+}) {
   // Incoming refs carry offsets into the citing (target) body; pass them
   // through as a ``mark`` query so the target page lands on the exact
   // passage. ``mt`` carries the cited text so the target can verify the
@@ -351,7 +362,7 @@ function Citation({ ref, text }: { ref: InlineReference; text: string }) {
           ref.citation_text
         )}`
       : "";
-  const href = `/${ref.other_citation_path}${markQuery}`;
+  const href = `${hrefPrefix}/${ref.other_citation_path}${markQuery}`;
   const title = ref.inferred
     ? `Inferred link to ${ref.other_citation_path}`
     : ref.target_resolved
@@ -372,11 +383,13 @@ function SourceLead({
   segments,
   firstMarkOffset,
   firstMarkRef,
+  hrefPrefix,
 }: {
   line: TextLine;
   segments: Array<Segment & { marked: boolean }>;
   firstMarkOffset: number | null;
   firstMarkRef: MutableRefObject<HTMLElement | null>;
+  hrefPrefix: string;
 }) {
   const match = line.text.match(/^(\s*)(Sources?:)(\s*)/i);
   if (!match) {
@@ -388,6 +401,7 @@ function SourceLead({
           end: line.end,
           firstMarkOffset,
           firstMarkRef,
+          hrefPrefix,
         })}
       </>
     );
@@ -405,6 +419,7 @@ function SourceLead({
           end: leadEnd,
           firstMarkOffset,
           firstMarkRef,
+          hrefPrefix,
         })}
       </strong>
       {match[3]}
@@ -414,6 +429,7 @@ function SourceLead({
         end: line.end,
         firstMarkOffset,
         firstMarkRef,
+        hrefPrefix,
       })}
     </>
   );
@@ -477,11 +493,13 @@ function renderTextBlock({
   segments,
   firstMarkOffset,
   firstMarkRef,
+  hrefPrefix,
 }: {
   block: Extract<BodyBlock, { type: "text" }>;
   segments: Array<Segment & { marked: boolean }>;
   firstMarkOffset: number | null;
   firstMarkRef: MutableRefObject<HTMLElement | null>;
+  hrefPrefix: string;
 }): ReactNode {
   const paragraphs = splitTextParagraphs(block);
 
@@ -505,6 +523,7 @@ function renderTextBlock({
                   segments={segments}
                   firstMarkOffset={firstMarkOffset}
                   firstMarkRef={firstMarkRef}
+                  hrefPrefix={hrefPrefix}
                 />
               </span>
             ))}
@@ -521,12 +540,14 @@ function renderInlineSegments({
   end,
   firstMarkOffset,
   firstMarkRef,
+  hrefPrefix,
 }: {
   segments: Array<Segment & { marked: boolean }>;
   start: number;
   end: number;
   firstMarkOffset: number | null;
   firstMarkRef: MutableRefObject<HTMLElement | null>;
+  hrefPrefix: string;
 }): ReactNode[] {
   const nodes: ReactNode[] = [];
   for (const seg of segments) {
@@ -539,7 +560,7 @@ function renderInlineSegments({
     const text = seg.text.slice(localStart, localEnd);
     const inner =
       seg.kind === "ref" && seg.ref ? (
-        <Citation ref={seg.ref} text={text} />
+        <Citation ref={seg.ref} text={text} hrefPrefix={hrefPrefix} />
       ) : (
         text
       );
@@ -568,6 +589,7 @@ export function RuleBody({
   refs,
   citationPath,
   testId = "rule-body-inline",
+  hrefPrefix = "",
 }: RuleBodyProps) {
   const searchParams = useSearchParams();
   const markString = searchParams?.get("mark") ?? null;
@@ -627,6 +649,7 @@ export function RuleBody({
             segments,
             firstMarkOffset,
             firstMarkRef,
+            hrefPrefix,
           });
         }
         return (
@@ -667,6 +690,7 @@ export function RuleBody({
                               end: cell.end,
                               firstMarkOffset,
                               firstMarkRef,
+                              hrefPrefix,
                             })}
                       </td>
                     ))}

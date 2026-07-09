@@ -96,6 +96,7 @@ function ProvisionBlock({
       {rule.body && (
         <div className="mt-2">
           <RuleBody
+            hrefPrefix="/axiom/v2"
             body={rule.body}
             refs={[]}
             citationPath={rule.citation_path ?? undefined}
@@ -166,6 +167,7 @@ function ChunkBlock({
       <EncodedRuleChips rules={chunkRules} />
       <div className="mt-1">
         <RuleBody
+          hrefPrefix="/axiom/v2"
           body={chunk.text}
           refs={refsForChunk(data.rootRefs, chunk.text)}
           citationPath={data.root.citation_path ?? undefined}
@@ -272,6 +274,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             {data.intro && (
               <div className="mt-6">
                 <RuleBody
+                  hrefPrefix="/axiom/v2"
                   body={data.intro}
                   refs={refsForChunk(data.rootRefs, data.intro)}
                   citationPath={data.root.citation_path ?? undefined}
@@ -286,6 +289,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           data.root.body && (
             <div className="mt-6">
               <RuleBody
+                hrefPrefix="/axiom/v2"
                 body={data.root.body}
                 refs={data.rootRefs}
                 citationPath={data.root.citation_path ?? undefined}

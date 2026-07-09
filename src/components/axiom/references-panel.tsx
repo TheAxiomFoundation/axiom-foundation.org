@@ -52,7 +52,13 @@ export function formatCitationLabel(path: string): string {
   return path;
 }
 
-function RefItem({ ref }: { ref: InlineReference }) {
+function RefItem({
+  ref,
+  hrefPrefix = "",
+}: {
+  ref: InlineReference;
+  hrefPrefix?: string;
+}) {
   // Incoming refs carry offsets into the citing rule's body; pass
   // them through as ``?mark=start-end`` so the target page scrolls
   // to and highlights the exact citing passage. ``mt`` carries the
@@ -64,7 +70,7 @@ function RefItem({ ref }: { ref: InlineReference }) {
           ref.citation_text
         )}`
       : "";
-  const href = `/${ref.other_citation_path}${markQuery}`;
+  const href = `${hrefPrefix}/${ref.other_citation_path}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);
   const resolved = ref.direction === "incoming" ? true : ref.target_resolved;
 
@@ -106,11 +112,13 @@ function RefGroup({
   subtitle,
   refs,
   isFirst,
+  hrefPrefix = "",
 }: {
   title: string;
   subtitle: string;
   refs: InlineReference[];
   isFirst: boolean;
+  hrefPrefix?: string;
 }) {
   if (refs.length === 0) return null;
   return (
@@ -121,7 +129,11 @@ function RefGroup({
       </p>
       <ul className="divide-y divide-[var(--color-rule-subtle)] m-0 p-0 list-none">
         {refs.map((ref, i) => (
-          <RefItem key={`${ref.direction}-${i}-${ref.other_citation_path}`} ref={ref} />
+          <RefItem
+            key={`${ref.direction}-${i}-${ref.other_citation_path}`}
+            ref={ref}
+            hrefPrefix={hrefPrefix}
+          />
         ))}
       </ul>
     </section>
@@ -131,9 +143,13 @@ function RefGroup({
 export function ReferencesPanel({
   outgoing,
   incoming,
+  hrefPrefix = "",
 }: {
   outgoing: InlineReference[];
   incoming: RuleReference[];
+  /** Route prefix for citation links — the v2 reader passes
+   *  "/axiom/v2" so navigation stays inside the new surface. */
+  hrefPrefix?: string;
 }) {
   if (outgoing.length === 0 && incoming.length === 0) return null;
 
@@ -144,12 +160,14 @@ export function ReferencesPanel({
         title="References"
         subtitle={`This rule cites ${outgoing.length} other ${outgoing.length === 1 ? "rule" : "rules"}.`}
         refs={outgoing}
+        hrefPrefix={hrefPrefix}
       />
       <RefGroup
         isFirst={outgoing.length === 0}
         title="Referenced by"
         subtitle={`${incoming.length} other ${incoming.length === 1 ? "rule cites" : "rules cite"} this one.`}
         refs={incoming}
+        hrefPrefix={hrefPrefix}
       />
     </div>
   );

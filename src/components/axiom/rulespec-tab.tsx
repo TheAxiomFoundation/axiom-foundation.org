@@ -41,6 +41,7 @@ export function RuleSpecTab({
   citationPath,
   isRepealed,
   showSummary = true,
+  ruleGroups,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -54,6 +55,10 @@ export function RuleSpecTab({
   /** The module summary is usually a verbatim source excerpt; hide
    *  it on surfaces that already render the full source text. */
   showSummary?: boolean;
+  /** Optional document-ordered grouping of rule cards (v2 section
+   *  reader): each group renders under a subsection header. Rules
+   *  not named in any group trail under "Other". */
+  ruleGroups?: Array<{ label: string; ruleNames: string[] }>;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -157,18 +162,25 @@ export function RuleSpecTab({
           {showSummary && doc!.module.summary && (
             <Summary text={doc!.module.summary} />
           )}
-          {doc!.rules.length > 0 && (
-            <div className="space-y-6">
-              <div className="eyebrow">Rules</div>
-              {doc!.rules.map((rule) => (
-                <RuleCard
-                  key={rule.name}
-                  rule={rule}
-                  tests={testsByRule.get(rule.name) ?? []}
-                />
-              ))}
-            </div>
-          )}
+          {doc!.rules.length > 0 &&
+            (ruleGroups && ruleGroups.length > 0 ? (
+              <GroupedRules
+                rules={doc!.rules}
+                groups={ruleGroups}
+                testsByRule={testsByRule}
+              />
+            ) : (
+              <div className="space-y-6">
+                <div className="eyebrow">Rules</div>
+                {doc!.rules.map((rule) => (
+                  <RuleCard
+                    key={rule.name}
+                    rule={rule}
+                    tests={testsByRule.get(rule.name) ?? []}
+                  />
+                ))}
+              </div>
+            ))}
           {doc!.parseErrors.length > 0 && (
             <ParseErrorsBlock errors={doc!.parseErrors} />
           )}
@@ -197,6 +209,64 @@ export function RuleSpecTab({
 // ----------------------------------------------------------------------------
 // Sub-components
 // ----------------------------------------------------------------------------
+
+/**
+ * Rule cards grouped to mirror the source document's subsection
+ * order. Groups render in the given order; any parsed rule not named
+ * in a group trails under "Other" so nothing silently disappears.
+ */
+function GroupedRules({
+  rules,
+  groups,
+  testsByRule,
+}: {
+  rules: RuleSpecRule[];
+  groups: Array<{ label: string; ruleNames: string[] }>;
+  testsByRule: Map<string, RuleSpecTestCase[]>;
+}) {
+  const byName = new Map(rules.map((rule) => [rule.name, rule]));
+  const grouped = new Set(groups.flatMap((group) => group.ruleNames));
+  const leftovers = rules.filter((rule) => !grouped.has(rule.name));
+  const sections = [
+    ...groups
+      .map((group) => ({
+        label: group.label,
+        rules: group.ruleNames
+          .map((name) => byName.get(name))
+          .filter((rule): rule is RuleSpecRule => Boolean(rule)),
+      }))
+      .filter((group) => group.rules.length > 0),
+    ...(leftovers.length > 0 ? [{ label: "Other", rules: leftovers }] : []),
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="eyebrow">Rules</div>
+      {sections.map((section) => (
+        <section key={section.label} className="space-y-4">
+          <div className="flex items-baseline justify-between gap-2 border-b border-[var(--color-rule)] pb-1.5">
+            <span
+              className="text-sm text-[var(--color-ink)]"
+              style={{ fontFamily: "var(--f-serif)" }}
+            >
+              {section.label}
+            </span>
+            <span className="font-mono text-[10px] text-[var(--color-ink-muted)]">
+              {section.rules.length}
+            </span>
+          </div>
+          {section.rules.map((rule) => (
+            <RuleCard
+              key={rule.name}
+              rule={rule}
+              tests={testsByRule.get(rule.name) ?? []}
+            />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
 
 function SourceHeader({
   filePath,

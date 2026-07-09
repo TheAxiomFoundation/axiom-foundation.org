@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  buildRailGroups,
   refsForChunk,
   type BodyChunk,
   type SectionPageData,
@@ -327,6 +328,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             citationPath={data.root.citation_path}
             isRepealed={Boolean(data.root.repeal_date)}
             showSummary={false}
+            ruleGroups={buildRailGroups(data.bodyChunks, data.encodedRules)}
           />
         </section>
         {(outgoing.length > 0 || incoming.length > 0) && (

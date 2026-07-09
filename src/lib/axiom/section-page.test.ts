@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Rule } from "@/lib/supabase";
 import type { RuleReference } from "@/lib/supabase";
 import {
+  buildRailGroups,
   buildSectionToc,
   compareCitationPaths,
   mapRulesToSubsections,
@@ -9,6 +10,8 @@ import {
   relativeDesignator,
   splitBodyIntoSubsections,
   subtreeAnchor,
+  type BodyChunk,
+  type EncodedRuleLink,
   type SectionProvision,
 } from "./section-page";
 
@@ -269,6 +272,59 @@ describe("mapRulesToSubsections", () => {
     expect(mapRulesToSubsections("us/statute/26/32", "not: yaml: [")).toEqual(
       []
     );
+  });
+});
+
+describe("buildRailGroups", () => {
+  const chunk = (anchor: string, label: string): BodyChunk => ({
+    anchor,
+    designator: `(${anchor})`,
+    label,
+    text: "",
+    start: 0,
+  });
+  const rule = (name: string, anchors: string[]): EncodedRuleLink => ({
+    name,
+    kind: "derived",
+    anchors,
+  });
+
+  it("groups rules under their first-cited subsection in document order", () => {
+    const groups = buildRailGroups(
+      [chunk("a", "(a) Allowance"), chunk("b", "(b) Percentages")],
+      [
+        rule("eitc_maximum", ["a", "b"]),
+        rule("eitc_phase_in_rates", ["b"]),
+        rule("eitc_phased_in", ["a"]),
+      ]
+    );
+    expect(groups.map((g) => g.label)).toEqual([
+      "(a) Allowance",
+      "(b) Percentages",
+    ]);
+    expect(groups[0].ruleNames).toEqual(["eitc_maximum", "eitc_phased_in"]);
+    expect(groups[1].ruleNames).toEqual(["eitc_phase_in_rates"]);
+  });
+
+  it("trails unanchored rules in an Other sources group", () => {
+    const groups = buildRailGroups(
+      [chunk("a", "(a)")],
+      [rule("in_a", ["a"]), rule("external", [])]
+    );
+    expect(groups.at(-1)?.label).toBe("Other sources");
+    expect(groups.at(-1)?.ruleNames).toEqual(["external"]);
+  });
+
+  it("omits subsections with no rules", () => {
+    const groups = buildRailGroups(
+      [chunk("a", "(a)"), chunk("b", "(b)")],
+      [rule("in_a", ["a"])]
+    );
+    expect(groups.map((g) => g.anchor)).toEqual(["a"]);
+  });
+
+  it("returns empty when there are no chunks", () => {
+    expect(buildRailGroups([], [rule("x", ["a"])])).toEqual([]);
   });
 });
 

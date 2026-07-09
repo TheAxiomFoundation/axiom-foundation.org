@@ -234,6 +234,48 @@ export function mapRulesToSubsections(
   });
 }
 
+/** A document-ordered group of rail rule cards for one subsection. */
+export interface RailRuleGroup {
+  /** Subsection anchor, or null for the trailing "other" group. */
+  anchor: string | null;
+  label: string;
+  ruleNames: string[];
+}
+
+/**
+ * Order the encoding rail to mirror the document: one group per
+ * subsection (document order), each rule filed under the first
+ * subsection its source cites so every card renders exactly once
+ * and #rule-<name> anchors stay unique. Rules that don't cite a
+ * subsection of this section trail in "Other sources".
+ */
+export function buildRailGroups(
+  chunks: BodyChunk[],
+  encodedRules: EncodedRuleLink[]
+): RailRuleGroup[] {
+  if (chunks.length === 0 || encodedRules.length === 0) return [];
+  const byAnchor = new Map<string, string[]>(
+    chunks.map((chunk) => [chunk.anchor, []])
+  );
+  const other: string[] = [];
+  for (const rule of encodedRules) {
+    const primary = rule.anchors.find((anchor) => byAnchor.has(anchor));
+    if (primary) byAnchor.get(primary)!.push(rule.name);
+    else other.push(rule.name);
+  }
+  const groups: RailRuleGroup[] = chunks
+    .filter((chunk) => (byAnchor.get(chunk.anchor) ?? []).length > 0)
+    .map((chunk) => ({
+      anchor: chunk.anchor,
+      label: chunk.label,
+      ruleNames: byAnchor.get(chunk.anchor)!,
+    }));
+  if (other.length > 0) {
+    groups.push({ anchor: null, label: "Other sources", ruleNames: other });
+  }
+  return groups;
+}
+
 const LABEL_PREVIEW_LEN = 56;
 
 function chunkLabel(designator: string, text: string): string {
@@ -241,10 +283,11 @@ function chunkLabel(designator: string, text: string): string {
   let rest = firstLine.replace(/^\([^)]+\)\s*/, "").trim();
   if (!rest) return designator;
   // The corpus flattens each subsection to one line, so the USLM
-  // heading runs straight into the first nested marker: "(a)
-  // Allowance of credit (1) In general …". Cutting at that marker
-  // recovers the clean heading.
-  const nested = rest.search(/\s\((?:\d+|[A-Z])\)\s/);
+  // heading runs straight into the first nested marker or chapeau:
+  // "(a) Allowance of credit (1) In general …", "(b) Percentages
+  // and amounts For purposes of subsection (a)—". Cutting at those
+  // boundaries recovers the clean heading.
+  const nested = rest.search(/\s\((?:\d+|[A-Z])\)\s|\sFor purposes of\b/);
   if (nested > 0) rest = rest.slice(0, nested).trim();
   if (rest.length <= LABEL_PREVIEW_LEN) return `${designator} ${rest}`;
   const cut = rest.slice(0, LABEL_PREVIEW_LEN);

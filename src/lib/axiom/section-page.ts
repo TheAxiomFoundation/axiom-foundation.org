@@ -183,13 +183,15 @@ export function buildSectionToc(
   return rootEntries;
 }
 
-/** An encoded rule tied back to the subsection it implements. */
+/** An encoded rule tied back to the subsections it implements. */
 export interface EncodedRuleLink {
   name: string;
   kind: string | null;
-  /** Top-level subsection anchor ("a", "b", …) or null when the
-   *  rule's source doesn't cite a subsection of this section. */
-  anchor: string | null;
+  /** Top-level subsection anchors ("a", "b", …) cited by the rule's
+   *  source; empty when it doesn't cite a subsection of this
+   *  section. Rules often cite several — eitc_maximum implements
+   *  32(a)(2)(A) using the tables in 32(b). */
+  anchors: string[];
 }
 
 function escapeRegExp(text: string): string {
@@ -211,16 +213,23 @@ export function mapRulesToSubsections(
   if (!doc) return [];
   const section = citationPath.split("/").at(-1) ?? "";
   if (!section) return [];
+  // A source like "26 USC 32(a), 32(c)(1)(E), 32(i)" cites several
+  // subsections; capture the letter after every "<section>(" token.
   const sourceRe = new RegExp(
-    `(?:§+\\s*)?${escapeRegExp(section)}\\s*\\(([a-z]{1,2})\\)`
+    `(?:§+\\s*)?${escapeRegExp(section)}\\s*\\(([a-z]{1,2})\\)`,
+    "g"
   );
   return doc.rules.map((rule) => {
     const source = rule.source ?? "";
-    const match = source.match(sourceRe);
+    const anchors = Array.from(
+      new Set(
+        Array.from(source.matchAll(sourceRe), (match) => match[1])
+      )
+    );
     return {
       name: rule.name,
       kind: rule.kind ?? null,
-      anchor: match ? match[1] : null,
+      anchors,
     };
   });
 }

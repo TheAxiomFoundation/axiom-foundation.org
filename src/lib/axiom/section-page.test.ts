@@ -232,15 +232,36 @@ describe("mapRulesToSubsections", () => {
 
   it("maps rules to their top-level subsection anchors", () => {
     const links = mapRulesToSubsections("us/statute/26/32", yaml);
-    expect(links.find((l) => l.name === "eitc_phase_in_rates")?.anchor).toBe(
-      "b"
-    );
-    expect(links.find((l) => l.name === "eitc_eligible")?.anchor).toBe("c");
+    expect(
+      links.find((l) => l.name === "eitc_phase_in_rates")?.anchors
+    ).toEqual(["b"]);
+    expect(links.find((l) => l.name === "eitc_eligible")?.anchors).toEqual([
+      "c",
+    ]);
+  });
+
+  it("collects every subsection a multi-source rule cites", () => {
+    const multi = [
+      "format: rulespec/v1",
+      "module:",
+      "  name: eitc",
+      "rules:",
+      "  - name: eitc_allowed",
+      "    kind: derived",
+      "    source: 26 USC 32(a), 32(c)(1)(E), 32(i), 32(k)",
+      "    versions:",
+      "      - effective_from: '2026-01-01'",
+      "        formula: 'x'",
+    ].join("\n");
+    const links = mapRulesToSubsections("us/statute/26/32", multi);
+    expect(links[0].anchors).toEqual(["a", "c", "i", "k"]);
   });
 
   it("leaves rules citing other sections unanchored", () => {
     const links = mapRulesToSubsections("us/statute/26/32", yaml);
-    expect(links.find((l) => l.name === "dependent_rule")?.anchor).toBeNull();
+    expect(links.find((l) => l.name === "dependent_rule")?.anchors).toEqual(
+      []
+    );
   });
 
   it("returns empty for null or unparseable content", () => {

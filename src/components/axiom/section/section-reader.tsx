@@ -141,8 +141,8 @@ function ChunkBlock({
   data: SectionPageData;
 }) {
   const focused = data.focusAnchor === chunk.anchor;
-  const chunkRules = data.encodedRules.filter(
-    (rule) => rule.anchor === chunk.anchor
+  const chunkRules = data.encodedRules.filter((rule) =>
+    rule.anchors.includes(chunk.anchor)
   );
   return (
     <section

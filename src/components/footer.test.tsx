@@ -17,22 +17,24 @@ describe('Footer', () => {
 
   it('renders tagline', () => {
     render(<Footer />)
-    expect(screen.getByText(/the world.*rules, encoded/i)).toBeInTheDocument()
+    expect(screen.getByText(/computable law for all/i)).toBeInTheDocument()
   })
 
   it('renders navigation links', () => {
     render(<Footer />)
     expect(screen.getByText('About')).toBeInTheDocument()
-    expect(screen.getByText('GitHub')).toBeInTheDocument()
+    expect(screen.getByText('Team')).toBeInTheDocument()
     expect(screen.getByText('Contact')).toBeInTheDocument()
     expect(screen.getByText('Privacy')).toBeInTheDocument()
+    // GitHub link-outs are pulled back in Round 1.
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
   })
 
   it('links to correct destinations', () => {
     render(<Footer />)
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
+    expect(screen.getByText('Team').closest('a')).toHaveAttribute('href', '/team')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
-    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/TheAxiomFoundation')
     expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
   })
 })

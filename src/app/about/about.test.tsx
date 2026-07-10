@@ -1,11 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 
-// Mock next/image
-vi.mock('next/image', () => ({
-  default: (props: any) => <img {...props} />,
-}))
-
 // Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
@@ -14,40 +9,46 @@ vi.mock('next/link', () => ({
 import AboutPage from '@/app/about/page'
 
 describe('AboutPage', () => {
-  it('renders the page title', () => {
+  it('renders the page title and descriptor', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /about the axiom foundation/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /about axiom/i })).toBeInTheDocument()
+    expect(screen.getByText(/machine-readable encodings of the/i)).toBeInTheDocument()
   })
 
-  it('renders the mission section', () => {
+  it('renders the Why section', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /our mission/i })).toBeInTheDocument()
-    expect(screen.getByText(/machine-readable, verifiable/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^why$/i })).toBeInTheDocument()
+    expect(screen.getByText(/written in prose/i)).toBeInTheDocument()
   })
 
-  it('renders the what we do section with Axiom, RuleSpec, and Encoder cards', () => {
+  it('renders the what-we-build cards', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /what we do/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Axiom' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /what we build/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'The Axiom App' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'RuleSpec' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Encoder' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'The Encoder' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Validation' })).toBeInTheDocument()
   })
 
-  it('renders the team section with founder info', () => {
+  it('renders where-we-come-from with PolicyEngine lineage', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /team/i })).toBeInTheDocument()
-    expect(screen.getByAltText('Max Ghenis')).toBeInTheDocument()
-    expect(screen.getByText(/PolicyEngine/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /where we come from/i })).toBeInTheDocument()
+    expect(screen.getByText(/PolicyEngine infrastructure/i)).toBeInTheDocument()
   })
 
-  it('renders the contact section', () => {
+  it('links to the team page', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /contact/i })).toBeInTheDocument()
+    expect(screen.getByText(/meet the team/i).closest('a')).toHaveAttribute('href', '/team')
+  })
+
+  it('renders the get-in-touch section with the contact address', () => {
+    render(<AboutPage />)
+    expect(screen.getByRole('heading', { name: /get in touch/i })).toBeInTheDocument()
     expect(screen.getByText('hello@axiom-foundation.org')).toBeInTheDocument()
   })
 
-  it('renders GitHub link in team section', () => {
+  it('does not link out to GitHub in Round 1', () => {
     render(<AboutPage />)
-    expect(screen.getByText('github.com/TheAxiomFoundation')).toBeInTheDocument()
+    expect(screen.queryByText(/github\.com/i)).not.toBeInTheDocument()
   })
 })

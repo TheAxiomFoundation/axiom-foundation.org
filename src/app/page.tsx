@@ -1,3 +1,4 @@
+import { AnnouncementBanner } from "@/components/landing/announcement-banner";
 import { Hero } from "@/components/landing/hero";
 import { EncodingMarquee } from "@/components/landing/encoding-marquee";
 import { TheGapSection } from "@/components/landing/the-gap-section";
@@ -11,6 +12,7 @@ export default function Home() {
   return (
     <>
       <CitationNetwork3D />
+      <AnnouncementBanner />
       <Hero />
       <EncodingMarquee />
       <TheGapSection />

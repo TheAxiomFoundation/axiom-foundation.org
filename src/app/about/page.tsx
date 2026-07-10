@@ -1,65 +1,63 @@
-import Image from "next/image";
-import { CheckIcon } from "@/components/icons";
+import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About — Axiom Foundation",
+  description:
+    "Axiom Foundation publishes open, machine-readable encodings of the world's rules, starting with tax and benefit policy — cited, time-aware, and executable.",
+};
+
+const BUILD = [
+  {
+    title: "The Axiom App",
+    desc: "Explore the law: fetch and cite source documents, inspect the RuleSpec encodings that make them executable, and trace the logic through the computation graph. Every value cites its statute; every clause carries an effective date.",
+  },
+  {
+    title: "RuleSpec",
+    desc: "The open format for encoding statutes and regulations as executable, cited rules.",
+  },
+  {
+    title: "The Encoder",
+    desc: "An AI-assisted pipeline that reads source law, drafts encodings subsection by subsection, and logs every decision with its provenance.",
+  },
+  {
+    title: "Validation",
+    desc: "Encodings are cross-checked against independent engines, including PolicyEngine and TAXSIM. Open isn't enough; the point is that you can check our work.",
+  },
+];
 
 export default function AboutPage() {
   return (
     <div className="relative z-1 py-32 px-8">
       <div className="max-w-[800px] mx-auto">
-        <header className="text-center mb-16">
-          <h1 className="heading-page mb-6">
-            About the Axiom Foundation
-          </h1>
-          <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed max-w-[600px] mx-auto">
-            The world&apos;s rules, encoded. Axiom Foundation is the nonprofit
-            home of The Axiom Project, with Axiom Labs building the applied
-            layer on top of the canonical rules core.
+        <header className="mb-16">
+          <h1 className="heading-page mb-6">About Axiom</h1>
+          <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed">
+            Axiom Foundation publishes open, machine-readable encodings of the
+            world&apos;s rules, starting with tax and benefit policy &mdash;
+            statutes, regulations, and policy rules turned into cited,
+            time-aware, executable code that anyone can run, audit, or reform.
           </p>
         </header>
 
         <section className="mb-16">
-          <h2 className="heading-sub mb-4">
-            Our mission
-          </h2>
+          <h2 className="heading-sub mb-4">Why</h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Our mission is to make legal rules machine-readable, verifiable,
-            and accessible to everyone. The Axiom Project focuses on the bounded
-            public-good core: source documents, encoded rules, provenance, and
-            validation. Axiom Labs builds intake, packaging, and other applied
-            tooling on top. We&apos;re a fiscally sponsored project of the{" "}
-            <a
-              href="https://psl-foundation.org"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              PSL Foundation
-            </a>
-            .
+            The rules that decide who gets food assistance, health coverage, and
+            tax credits are written in prose &mdash; then re-implemented,
+            separately and privately, inside every eligibility system,
+            calculator, and policy tool that needs them. The interpretation
+            lives in closed code: hard to verify, harder to fix, duplicated
+            everywhere. Axiom publishes that layer in the open, so there is one
+            cited, checkable source for what a rule actually computes.
           </p>
         </section>
 
         <section className="mb-16">
-          <h2 className="heading-sub mb-6">
-            How we&apos;re organized
-          </h2>
+          <h2 className="heading-sub mb-6">What we build</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
-            {[
-              {
-                title: "Axiom Foundation",
-                desc: "The nonprofit steward: long-term governance, funding, community, and public accountability.",
-              },
-              {
-                title: "The Axiom Project",
-                desc: "The bounded core: canonical rules encodings, provenance, compilers, and validation.",
-              },
-              {
-                title: "Axiom Labs",
-                desc: "The applied layer: reference intake flows, adaptive questioning pilots, and delivery tooling built on top of the core.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="card-edition p-6"
-              >
+            {BUILD.map((card) => (
+              <div key={card.title} className="card-edition p-6">
                 <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
                   {card.title}
                 </h3>
@@ -69,92 +67,49 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mt-6">
+            We also build demonstrations on top of this layer &mdash; previews
+            of what open, computable law makes possible. The layer underneath is
+            the product.
+          </p>
         </section>
 
         <section className="mb-16">
-          <h2 className="heading-sub mb-6">
-            What we do
-          </h2>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
-            {[
-              {
-                title: "Axiom",
-                desc: "Open platform for exploring encoded law. The corpus covers statutes, regulations, guidance, and policy documents, with source documents, RuleSpec encodings, and validation results linked in one app.",
-              },
-              {
-                title: "RuleSpec",
-                desc: "RuleSpec DSL for encoding statutes with citations, temporal versioning, and tests. Purpose-built for legal encoding.",
-              },
-              {
-                title: "Encoder",
-                desc: "AI-powered encoding pipeline with 3-tier validation. Automated statute encoding with CI testing, oracle validation, and LLM review.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="card-edition p-6"
-              >
-                <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
-                  {card.title}
-                </h3>
-                <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
-                  {card.desc}
-                </p>
-              </div>
-            ))}
-          </div>
+          <h2 className="heading-sub mb-4">Where we come from</h2>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+            Axiom builds on six years of PolicyEngine infrastructure &mdash;
+            tax-and-benefit models used by researchers, governments, and
+            benefit-navigation tools in the US and UK. That foundation is what
+            our encodings are verified against, and where our team learned what
+            it takes to keep rules correct at scale.
+          </p>
         </section>
 
         <section className="mb-16">
-          <h2 className="heading-sub mb-6">Team</h2>
-          <div className="flex gap-8 items-start max-md:flex-col">
-            <Image
-              src="https://maxghenis.com/images/headshot.png"
-              alt="Max Ghenis"
-              width={120}
-              height={120}
-              className="rounded-full shrink-0"
-            />
-            <div>
-              <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
-                The Axiom Foundation is led by{" "}
-                <a
-                  href="https://maxghenis.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Max Ghenis
-                </a>
-                , who also founded PolicyEngine. We&apos;re an open-source
-                community project and welcome contributors from all backgrounds
-                &mdash; developers, policy experts, legal researchers, and
-                anyone passionate about making rules more transparent and
-                accessible.
-              </p>
-              <div className="flex items-center gap-2 font-body text-sm text-[var(--color-ink-secondary)]">
-                <CheckIcon className="w-4 h-4 text-[var(--color-success)]" />
-                <span>
-                  Join us on{" "}
-                  <a
-                    href="https://github.com/TheAxiomFoundation"
-                    className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
-                  >
-                    github.com/TheAxiomFoundation
-                  </a>
-                </span>
-              </div>
-            </div>
-          </div>
+          <h2 className="heading-sub mb-4">How we&apos;re organized</h2>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+            Axiom Foundation is a fiscally sponsored project of the PSL
+            Foundation. Our code, our data, and our encoding decisions are
+            public.
+          </p>
+        </section>
+
+        <section className="mb-16">
+          <h2 className="heading-sub mb-4">Team</h2>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
+            Axiom is led by Max Ghenis (CEO) and Ariel Kennan (President), with
+            product led by Pavel Makarchuk.
+          </p>
+          <Link
+            href="/team"
+            className="inline-flex items-center gap-2 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+          >
+            Meet the team &rarr;
+          </Link>
         </section>
 
         <section>
-          <h2 className="heading-sub mb-4">
-            Contact
-          </h2>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
-            Have questions or want to get involved? We&apos;d love to hear from
-            you.
-          </p>
+          <h2 className="heading-sub mb-4">Get in touch</h2>
           <div className="inline-block px-6 py-3 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
             <a
               href="mailto:hello@axiom-foundation.org"

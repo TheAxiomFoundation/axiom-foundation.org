@@ -26,13 +26,17 @@ const serif = Newsreader({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Axiom Foundation — The world's rules, encoded",
+  title: "Axiom Foundation — Computable law for all",
   description:
-    "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
+    "Open, machine-readable encodings of the world's rules, starting with tax and benefit policy. Cited, time-aware, and executable, so anyone can run, audit, or reform them.",
   openGraph: {
     title: "Axiom Foundation",
-    description: "The world's rules, encoded.",
-    images: ["/og-image.png"],
+    // Round 1 tease — shares should carry the launch date. Update at launch.
+    description:
+      "Launching publicly July 28, 2026. Open, machine-readable encodings of the world's rules — starting with tax and benefit policy.",
+    // TODO(⛳): design a proper launch OG card before Jul 13 — the icon is a
+    // stopgap so shares don't 404 (og-image.png was never added to /public).
+    images: ["/axiom-icon-1024.png"],
   },
 };
 

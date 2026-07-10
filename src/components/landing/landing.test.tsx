@@ -48,7 +48,7 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /two layers, both in the open/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /open infrastructure for u\.s\. law/i }),
+      screen.getByRole('heading', { name: /the primary text, gathered/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /encoded so they can be computed/i }),
@@ -91,15 +91,10 @@ describe('Landing sections', () => {
   it('renders the foundation coda with public-interest framing', () => {
     render(<FoundationSection />)
     expect(screen.getByRole('heading', { name: /doing the public-interest work/i })).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /encode your jurisdiction/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /validate our work/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /underwrite the public layer/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/fiscally sponsored project of the/i)).toBeInTheDocument()
+    // Contributor/GitHub asks are pulled back in Round 1 — only hello@ + internal links remain.
+    expect(screen.getByText(/get in touch/i)).toBeInTheDocument()
+    expect(screen.getByText(/meet the team/i)).toBeInTheDocument()
   })
 })
 

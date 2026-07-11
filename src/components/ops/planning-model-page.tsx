@@ -624,7 +624,9 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             >
               file an issue
             </a>
-            . Related: <Link href="/ops">operations dashboard</Link>.
+            . Related: <Link href="/ops/planning/scenarios">forward scenarios</Link>{" "}
+            (price, capability, throughput, cloud scaling) ·{" "}
+            <Link href="/ops">operations dashboard</Link>.
           </p>
         </section>
       </div>

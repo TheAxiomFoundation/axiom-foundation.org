@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import PlanningPage, { metadata } from "@/app/ops/planning/page";
+import PlanningPage, { metadata } from "@/app/ops/planning/scenarios/page";
 
 describe("Encoding scale planning page", () => {
   it("keeps the hidden route out of search indexing", () => {

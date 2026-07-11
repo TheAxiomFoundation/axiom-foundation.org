@@ -91,4 +91,19 @@ describe("PlanningModelPage", () => {
     expect(screen.getAllByText("[D]").length).toBeGreaterThan(2);
     expect(screen.getAllByText("[A]").length).toBeGreaterThan(1);
   });
+
+  it("maps the four slots where marginal compute plugs in", () => {
+    render(<PlanningModelPage />);
+    expect(
+      screen.getByRole("heading", { name: "Where marginal compute plugs in" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Generation waves — finish Tier A, then Tier B."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Encoder qualification — the standing quarterly bake-off."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Cross-family judging.")).toBeInTheDocument();
+    expect(screen.getByText("The development fleet.")).toBeInTheDocument();
+  });
 });

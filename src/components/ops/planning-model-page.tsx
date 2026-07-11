@@ -233,7 +233,26 @@ export function PlanningModelPage() {
             reads the provision from an immutable, cryptographically pinned
             corpus release, writes the module, runs a deterministic gate
             battery (schema, citation resolution, dependency closure, oracle
-            conformance where one exists), and iterates. Encoders are chosen
+            conformance where one exists), and iterates. The module is the
+            provision-level increment every figure below counts — for
+            example,{" "}
+            <a
+              href="https://app.axiom-foundation.org/us/statute/26/24"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              26 U.S.C. § 24
+            </a>{" "}
+            (the child tax credit) or{" "}
+            <a
+              href="https://app.axiom-foundation.org/us-co/regulation/10-ccr-2506-1/4.110"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              10 CCR 2506-1 § 4.110
+            </a>{" "}
+            (Colorado food assistance), browsable with citations and tests in
+            the Axiom app. Encoders are chosen
             empirically by production bake-off — gate pass-rates on the live
             task mix, never benchmark reputation. Today gpt-5.6-terra is the
             pinned encoder (gpt-5.5 was the workhorse for 3,289 of the 3,582

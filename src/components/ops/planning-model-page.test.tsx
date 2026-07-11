@@ -46,7 +46,7 @@ describe("PLANNING_MODEL arithmetic", () => {
     for (const model of m.models) {
       const perPass =
         (m.mix.fresh * model.prices.input +
-          m.mix.cachedRead * 0.1 * model.prices.input +
+          m.mix.cachedRead * model.prices.cached +
           m.mix.output * model.prices.output) /
         1e6;
       const standard = perPass * attemptsWithHardFail;
@@ -79,6 +79,17 @@ describe("PlanningModelPage", () => {
     expect(screen.getByText("A — oracle universe")).toBeInTheDocument();
     expect(screen.getByText("C — full statutory breadth")).toBeInTheDocument();
     expect(screen.getByText("Opus 4.8")).toBeInTheDocument();
+    // Both vendors are first-class rows with production status
+    expect(screen.getByText("gpt-5.6-terra")).toBeInTheDocument();
+    expect(screen.getByText("pinned production encoder")).toBeInTheDocument();
+    expect(
+      screen.getByText("OpenAI — native token units [M]"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Anthropic — constant-token normalization, ≈+30% pending a native count [A]",
+      ),
+    ).toBeInTheDocument();
     // $0.501 appears twice: Opus 4.8 standard and Fable 5 Batch
     expect(screen.getAllByText("$0.501")).toHaveLength(2);
     // Corrected development-usage figures

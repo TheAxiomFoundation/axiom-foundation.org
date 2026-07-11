@@ -270,7 +270,7 @@ The hard-fail allocation assumes failed citations consume the same average token
 
 Batch processing completes asynchronously, so it fits queued generation and retry work better than latency-sensitive repair loops. Interactive failures can stay on standard service while the bulk queue uses Batch.
 
-These Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables: a batch item is one request and one response, with no tool round-trips, so the current agentic dispatch cannot run on the Batch API and meters at standard rates — about twice the Batch figures **[A]**. Flex-tier availability for the pinned encoder is the drop-in alternative to verify before building the single-shot path.
+These Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables: a batch item is one request and one response, with no tool round-trips, so the current agentic dispatch cannot run on the Batch API and meters at standard rates — about twice the Batch figures **[A]**. OpenAI's [flex service tier](https://developers.openai.com/api/docs/guides/flex-processing) prices the gpt-5.5 and gpt-5.6 family — including the pinned encoder — at Batch rates on the synchronous API **[M]**, so the agentic dispatch can reach these economics without the single-shot path, subject to beta capacity limits (uncharged 429s with backoff) and longer timeouts.
 
 ### 5.3 Elastic CI
 
@@ -336,6 +336,7 @@ The current observed subscription allocation is higher—**$0.17–$0.24/module 
 - [OpenAI pricing](https://developers.openai.com/api/docs/pricing), accessed 2026-07-11 **[M]**.
 - [OpenAI Batch guide](https://developers.openai.com/api/docs/guides/batch#overview), accessed 2026-07-11 **[M]**.
 - [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching), accessed 2026-07-11 **[M]**.
+- [OpenAI flex processing](https://developers.openai.com/api/docs/guides/flex-processing), accessed 2026-07-11 **[M]**.
 - [GPT-4](https://openai.com/index/gpt-4-research/), OpenAI, 2023-03-14 **[M]**.
 - [Introducing Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/), OpenAI, 2024-08-06 **[M]**.
 - [Welcome to LLMflation](https://a16z.com/llmflation-llm-inference-cost/), a16z, 2024-11-12 **[M, historical analysis]**.

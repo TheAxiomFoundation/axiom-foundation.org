@@ -890,8 +890,11 @@
         "cost_provenance": "D"
       }
     ],
-    "batch_execution_note": "Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables; the current agentic dispatch cannot run on the Batch API and meters at standard rates, about twice the Batch figures. Flex-tier availability for the pinned encoder is the drop-in alternative to verify.",
-    "batch_execution_provenance": "A"
+    "batch_execution_note": "Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables; the current agentic dispatch cannot run on the Batch API and meters at standard rates, about twice the Batch figures.",
+    "batch_execution_provenance": "A",
+    "flex_note": "OpenAI's flex service tier prices the gpt-5.5 and gpt-5.6 family — including the pinned encoder — at Batch rates on the synchronous API, so the agentic dispatch can reach these economics without the single-shot path, subject to beta capacity limits and longer timeouts.",
+    "flex_provenance": "M",
+    "flex_source_id": "openai_flex"
   },
   "non_token_costs": [
     {
@@ -992,6 +995,13 @@
       "url": "https://hai.stanford.edu/ai-index/2025-ai-index-report",
       "accessed": "2026-07-11",
       "note": "Constant-capability inference cost decline at GPT-3.5-level MMLU performance"
+    },
+    {
+      "id": "openai_flex",
+      "title": "OpenAI flex processing",
+      "url": "https://developers.openai.com/api/docs/guides/flex-processing",
+      "accessed": "2026-07-11",
+      "note": "Batch-rate pricing on the synchronous API for supported models"
     },
     {
       "id": "github_runner_pricing",

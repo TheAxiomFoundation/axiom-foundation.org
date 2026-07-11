@@ -883,6 +883,9 @@ export function EncodingScalePlanningPage() {
           <p className="mt-3 max-w-[960px] text-sm leading-6 text-[var(--color-ink-secondary)]">
             {model.cloud_scaling.batch_execution_note}{" "}
             <Provenance code={model.cloud_scaling.batch_execution_provenance} />
+            {" "}{model.cloud_scaling.flex_note}{" "}
+            <SourceLink id={model.cloud_scaling.flex_source_id} />{" "}
+            <Provenance code={model.cloud_scaling.flex_provenance} />
           </p>
 
           <p className="mt-4 max-w-[960px] border-l-2 border-[var(--color-accent)] pl-4 text-xs leading-5 text-[var(--color-ink-secondary)]">

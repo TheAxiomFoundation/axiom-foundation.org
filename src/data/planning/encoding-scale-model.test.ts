@@ -33,6 +33,38 @@ describe("encoding scale model arithmetic", () => {
     }
   });
 
+  it("ties the capability bar and anchor to their list prices", () => {
+    const bar = model.capability_bar;
+    expect(bar.realized_substitution_factor).toBeCloseTo(
+      bar.displaced.input_per_million /
+        bar.current_cheapest_passing.input_per_million,
+      6
+    );
+    expect(bar.realized_substitution_factor).toBeCloseTo(
+      bar.displaced.output_per_million /
+        bar.current_cheapest_passing.output_per_million,
+      6
+    );
+    expect(
+      bar.failed_cheaper_tier.input_per_million
+    ).toBeLessThan(bar.current_cheapest_passing.input_per_million);
+
+    const anchor = model.capability_anchor;
+    expect(anchor.input_ratio).toBeCloseTo(
+      anchor.flagship.input_per_million /
+        anchor.small_tier_today.input_per_million,
+      6
+    );
+    expect(anchor.output_ratio).toBeCloseTo(
+      anchor.flagship.output_per_million /
+        anchor.small_tier_today.output_per_million,
+      6
+    );
+    for (const trend of model.price_trend_evidence) {
+      expect(trend.headline.length).toBeGreaterThan(0);
+    }
+  });
+
   it("applies each price-decline scenario consistently", () => {
     for (const scenario of model.price_decline_scenarios) {
       for (const row of scenario.rows) {

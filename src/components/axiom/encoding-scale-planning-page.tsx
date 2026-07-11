@@ -431,6 +431,26 @@ export function EncodingScalePlanningPage() {
           detail="Constant token volume"
         >
           <p className="max-w-[920px] text-sm leading-6 text-[var(--color-ink-secondary)]">
+            {model.capability_bar.definition}{" "}
+            <Provenance code={model.capability_bar.definition_provenance} />{" "}
+            Today that is {model.capability_bar.current_cheapest_passing.model} at{" "}
+            {formatCurrency(model.capability_bar.current_cheapest_passing.input_per_million, 2)}/
+            {formatCurrency(model.capability_bar.current_cheapest_passing.output_per_million, 2)}{" "}
+            per million tokens <Provenance code="M" />; its July swap-in
+            displaced {model.capability_bar.displaced.model} at{" "}
+            {formatCurrency(model.capability_bar.displaced.input_per_million, 2)}/
+            {formatCurrency(model.capability_bar.displaced.output_per_million, 2)} — a
+            realized {model.capability_bar.realized_substitution_factor}× price cut
+            at constant task capability{" "}
+            <Provenance code={model.capability_bar.realized_substitution_provenance} />.
+            The cheaper {model.capability_bar.failed_cheaper_tier.model} tier
+            ({formatCurrency(model.capability_bar.failed_cheaper_tier.input_per_million, 2)}/
+            {formatCurrency(model.capability_bar.failed_cheaper_tier.output_per_million, 2)})
+            did not pass the same bake-off <Provenance code="M" />.{" "}
+            {model.capability_bar.note}
+          </p>
+
+          <p className="mt-3 max-w-[920px] text-sm leading-6 text-[var(--color-ink-secondary)]">
             Public prices show step changes rather than a smooth curve. The
             {" "}{gpt4oMay.date} GPT-4o launch was priced at{" "}
             {formatCurrency(gpt4oMay.input_per_million, 2)}/
@@ -442,12 +462,13 @@ export function EncodingScalePlanningPage() {
               .map((scenario) => `${scenario.annual_decline_factor}×`)
               .join(", ")}{" "}
             annual factors are planning assumptions <Provenance code="A" />
-            {" "}applied to the inherited system-token cost.{" "}
+            {" "}applied to the price of that bar, not to any one model's list
+            price.{" "}
             {model.pricing_context_note}{" "}
             <Provenance code={model.pricing_context_provenance} />
           </p>
 
-          <TableFrame label="Historical model prices">
+          <TableFrame label="Flagship lineage list prices">
             <table className="w-full min-w-[780px] text-sm">
               <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
                 <tr>
@@ -493,15 +514,35 @@ export function EncodingScalePlanningPage() {
                   <Provenance code={trend.provenance} />
                 </p>
                 <p className="tnum mt-2 text-2xl font-light text-[var(--color-ink)]">
-                  {"observed_decline_factor" in trend
-                    ? `${trend.observed_decline_factor}×/year`
-                    : `${trend.low_decline_factor}×–${trend.high_decline_factor}×/year`}
+                  {trend.headline}
                 </p>
                 <p className="mt-2 text-xs leading-5 text-[var(--color-ink-secondary)]">
                   {trend.note}
                 </p>
               </div>
             ))}
+            <div className="border-t border-[var(--color-rule-strong)] pt-4">
+              <p className="text-sm text-[var(--color-ink)]">
+                Capability migration to small tiers{" "}
+                <Provenance code={model.capability_anchor.ratio_provenance} />
+              </p>
+              <p className="tnum mt-2 text-2xl font-light text-[var(--color-ink)]">
+                {integer.format(model.capability_anchor.input_ratio)}× input ·{" "}
+                {integer.format(model.capability_anchor.output_ratio)}× output
+              </p>
+              <p className="mt-2 text-xs leading-5 text-[var(--color-ink-secondary)]">
+                {model.capability_anchor.flagship.model} listed{" "}
+                {formatCurrency(model.capability_anchor.flagship.input_per_million, 2)}/
+                {formatCurrency(model.capability_anchor.flagship.output_per_million, 2)}
+                {" "}in {model.capability_anchor.flagship.date}; the smallest
+                current tier, {model.capability_anchor.small_tier_today.model},
+                lists{" "}
+                {formatCurrency(model.capability_anchor.small_tier_today.input_per_million, 2)}/
+                {formatCurrency(model.capability_anchor.small_tier_today.output_per_million, 2)}
+                {" "}<Provenance code="M" />. {model.capability_anchor.equivalence_note}{" "}
+                <Provenance code={model.capability_anchor.equivalence_provenance} />
+              </p>
+            </div>
           </div>
 
           <h3 className="mt-9 text-base font-medium text-[var(--color-ink)]">
@@ -837,6 +878,11 @@ export function EncodingScalePlanningPage() {
             The hard-fail allocation assumes failed citations consume the same
             average token workload as successful citations{" "}
             <Provenance code={model.cloud_scaling.batch_generation.hard_fail_equal_workload_provenance} />.
+          </p>
+
+          <p className="mt-3 max-w-[960px] text-sm leading-6 text-[var(--color-ink-secondary)]">
+            {model.cloud_scaling.batch_execution_note}{" "}
+            <Provenance code={model.cloud_scaling.batch_execution_provenance} />
           </p>
 
           <p className="mt-4 max-w-[960px] border-l-2 border-[var(--color-accent)] pl-4 text-xs leading-5 text-[var(--color-ink-secondary)]">

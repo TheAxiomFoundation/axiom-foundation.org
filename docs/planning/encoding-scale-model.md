@@ -14,7 +14,7 @@ Every model input and output carries one of these labels:
 
 - The canonical stock is **4,103 modules [M]**. The central completion denominators are **24,000 [D]** for Tier A, **53,000 [D]** for Tier B, and **350,000 [A]** for Tier C.
 - The recent trajectory supports **about 100 merged modules/day [D]**, with a recent peak of **138/day [M]**. The earlier bulk-import figure is not a sustainable-capacity measure.
-- The inherited central system-token proxy is **$0.90 per merged module [D]** in 2026. At constant token volume, a **5× annual price decline [A]** takes that to **$0.18 [D]** in 2027 and **$0.036 [D]** in 2028 before capability effects.
+- The inherited central system-token proxy is **$0.90 per merged module [D]** in 2026. At constant token volume, a **5× annual price decline [A]** takes that to **$0.18 [D]** in 2027 and **$0.036 [D]** in 2028 before capability effects. The decline applies to the price of encoder-sufficient capability — the cheapest model that passes the production bake-off — realized through quarterly swaps, not to any one model's list price.
 - Under the central combined path—**5× annual price decline [A]**, retry and hard-fail improvement, and throughput rising from **100 [D]** to **300 [A]** to **1,000 [A]** modules/day—system-token cost falls from **$0.90 [D]** to **$0.140 [D]** to **$0.023 [D]** per merge.
 - Calendar time is governed by merge throughput, not token price. Tier A takes **199 days [D]** at 100/day, **66 days [D]** at 300/day, or **20 days [D]** at 1,000/day.
 - Reproducible cloud execution has a central all-Batch lower-bound reuse cost of **$0.437 per merged module [D]**, including the current hard-fail allocation, the system-token proxy, and a paid-equivalent CI shadow cost but excluding unallocated cache-write premiums. That is about **$44/day [D]** at 100 merges, **$131/day [D]** at 300, and **$437/day [D]** at 1,000. A one-write-per-pass sensitivity raises the total to **$0.472/module [D]**.
@@ -144,10 +144,13 @@ The historical anchors need one date correction:
 - GPT-4 launched in 2023-03 at **$30 input / $60 output per 1M tokens [M]**, from OpenAI's [GPT-4 announcement](https://openai.com/index/gpt-4-research/).
 - GPT-4o launched in 2024-05 at **$5 / $15 [M]**. The **$2.50 / $10 [M]** snapshot arrived in 2024-08, not May; OpenAI's [Structured Outputs announcement](https://openai.com/index/introducing-structured-outputs-in-the-api/) states that the August snapshot cut input price by **50% [M]** and output price by **33% [M]** from the May snapshot.
 - On 2026-07-11, OpenAI's short-context band lists gpt-5.5 at **$5 / $30 [M]**, gpt-5.6-terra at **$2.50 / $15 [M]**, and gpt-5.6-luna at **$1 / $6 [M]**. Batch prices are exactly half. The measured representative request mix falls within this band. See [OpenAI pricing](https://developers.openai.com/api/docs/pricing) and the [Batch guide](https://developers.openai.com/api/docs/guides/batch#overview).
+- Also on 2026-07-11, the smallest current tier, gpt-5.4-nano, lists **$0.20 / $1.25 [M]** — **150× / 48× [D]** below GPT-4's 2023-03 launch price. Fixed-threshold analyses show frontier-level task performance migrating into small tiers within one to two years; the capability-equivalence claim rests on that literature, not on an Axiom measurement **[A]**.
 
-Historical constant-capability research spans or exceeds the scenarios used here. A 2024 a16z analysis estimated a **10× annual decline [M, historical estimate]**, while warning that the timescale may change. Epoch AI measured **9×–900× annual declines [M]** across benchmark thresholds, with a **50× median [M]**, and cautioned that the fastest recent declines may not persist. The forward factors below remain assumptions, not extrapolated facts.
+Historical constant-capability research spans or exceeds the scenarios used here. Stanford's 2025 AI Index measured GPT-3.5-level (MMLU 64.8) inference falling from **$20.00 to $0.07 per million tokens [M]** between November 2022 and October 2024 — a **more-than-280× decline in about two years [M]**. A 2024 a16z analysis estimated a **10× annual decline [M, historical estimate]**, while warning that the timescale may change. Epoch AI measured **9×–900× annual declines [M]** across benchmark thresholds, with a **50× median [M]**, and cautioned that the fastest recent declines may not persist. The forward factors below remain assumptions, not extrapolated facts.
 
 ### 2.2 Method
+
+**What is being forecast.** The forecast quantity is the price of encoder-sufficient capability: the cheapest model that passes the quarterly production bake-off on the live task mix, not the list price of any fixed model **[A]**. The July 2026 swap realized this once: gpt-5.6-terra (**$2.50 / $15 [M]**) displaced gpt-5.5 (**$5 / $30 [M]**) at equal bake-off quality — a **2× [D]** price cut at constant task capability. The still-cheaper gpt-5.6-luna tier (**$1 / $6 [M]**) did not pass the same bake-off, so its lower price is not yet realizable here. Benchmark-equivalence is not swap-readiness, and that task-transfer friction is why the central **5× [A]** planning factor sits well inside Epoch's **50×/year historical median [M]**.
 
 For annual price-decline factor `d`:
 
@@ -180,7 +183,7 @@ Each year is a **counterfactual start-year snapshot [A]** against the same 2026-
 | Aggressive [A] | 2027 | 10× [A] | $0.090 [D] | $1,791 [D] | $4,401 [D] | $31,131 [D] |
 | Aggressive [A] | 2028 | 10× [A] | $0.009 [D] | $179 [D] | $440 [D] | $3,113 [D] |
 
-The table should not be read as a vendor-price forecast. It asks what happens if Axiom can swap quarterly into models that deliver the required capability at progressively lower effective prices.
+The table should not be read as a vendor-price forecast. It asks what happens if Axiom can keep swapping into the cheapest model that clears the bake-off bar at progressively lower effective prices, on the section 3 cadence.
 
 ## 3. Capability improvements
 
@@ -267,6 +270,8 @@ The hard-fail allocation assumes failed citations consume the same average token
 
 Batch processing completes asynchronously, so it fits queued generation and retry work better than latency-sensitive repair loops. Interactive failures can stay on standard service while the bulk queue uses Batch.
 
+These Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables: a batch item is one request and one response, with no tool round-trips, so the current agentic dispatch cannot run on the Batch API and meters at standard rates — about twice the Batch figures **[A]**. Flex-tier availability for the pinned encoder is the drop-in alternative to verify before building the single-shot path.
+
 ### 5.3 Elastic CI
 
 Recent run telemetry for this repository and `rulespec-us` was unavailable during analysis, so CI time uses the requested **2–6 minutes per merged pull request [A]**, with **4 minutes [A]** central.
@@ -317,7 +322,7 @@ The current observed subscription allocation is higher—**$0.17–$0.24/module 
 ## 6. Interpretation and limits
 
 1. **The denominator dominates long-horizon uncertainty.** Tier C's roughly **2× range [A]** matters more than another decimal place in token cost.
-2. **Price scenarios are capability-adjusted service scenarios.** The **2× / 5× / 10× annual factors [A]** assume quarterly model substitution, not guaranteed price cuts to one model.
+2. **Price scenarios are capability-adjusted service scenarios.** The **2× / 5× / 10× annual factors [A]** assume quarterly model substitution, not guaranteed price cuts to one model. Substitution is gated by the production bake-off, not benchmark equivalence: the cheaper luna tier failed the July bake-off while terra passed **[M]**.
 3. **Capability evidence is uneven.** The **3,289-run sample [M]** is robust; the newer-model samples of **8–16 runs [M]** are directional.
 4. **The capability workload factor is a proxy.** It converts retry and hard-fail improvements into machine workload but excludes the labor intensity of the remaining structural tail.
 5. **Throughput needs engineering.** The **300/day and 1,000/day rates [A]** require hermetic inputs, batchable pull requests, selective tests, and CI parallelism. Better models do not create this capacity alone.
@@ -335,5 +340,6 @@ The current observed subscription allocation is higher—**$0.17–$0.24/module 
 - [Introducing Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/), OpenAI, 2024-08-06 **[M]**.
 - [Welcome to LLMflation](https://a16z.com/llmflation-llm-inference-cost/), a16z, 2024-11-12 **[M, historical analysis]**.
 - [LLM inference prices have fallen rapidly but unequally across tasks](https://epoch.ai/data-insights/llm-inference-price-trends), Epoch AI, 2025-03-12 **[M, historical analysis]**.
+- [The 2025 AI Index Report](https://hai.stanford.edu/ai-index/2025-ai-index-report), Stanford HAI, accessed 2026-07-11 **[M, historical analysis]**.
 - [GitHub Actions runner pricing](https://docs.github.com/en/billing/reference/actions-runner-pricing), accessed 2026-07-11 **[M]**.
 - [GitHub-hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), accessed 2026-07-11 **[M]**.

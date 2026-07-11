@@ -34,7 +34,7 @@
     },
     {
       "id": "sustainable_rate",
-      "label": "Sustainable merge rate",
+      "label": "Recent merge rate",
       "value": 100,
       "unit": "modules/day",
       "provenance": "D",
@@ -45,7 +45,7 @@
       "label": "2026 system-token proxy",
       "value": 0.9,
       "unit": "USD/module",
-      "provenance": "D",
+      "provenance": "A",
       "detail": "Central inherited planning value"
     },
     {
@@ -207,7 +207,7 @@
       "low": 0.6,
       "high": 1.65,
       "unit": "USD/merged module",
-      "provenance": "D",
+      "provenance": "A",
       "multiplier": 3,
       "multiplier_provenance": "D",
       "basis": {
@@ -221,7 +221,7 @@
         "ratio_provenance": "D",
         "note": "The module-PR count is approximate because a small number of repository counts were sampled after rate limiting."
       },
-      "note": "The multiplier carries surrounding oracle, corpus, and infrastructure work into a token planning proxy. It is not a literal measurement of token use."
+      "note": "The multiplier carries surrounding oracle, corpus, and infrastructure work into a token planning proxy. It is not a literal measurement of token use. The $0.60-$1.65 band spans the models and service tiers in production during the window at the measured token load, times the 3.0x proxy; the $0.90 center is a planning midpoint within that band, above the currently attainable $0.403 all-Batch system cost, so price forecasts start conservative. Treating merged pull requests as equal token workloads is an assumption."
     }
   },
   "tiers": [
@@ -358,8 +358,8 @@
       "provenance": "M"
     },
     {
-      "statement": "State manuals contribute about 85% of Tier A and extrapolate from a small measured set of states.",
-      "value": 0.85,
+      "statement": "State benefit programs contribute about 83% of unrounded central Tier A and extrapolate from a small measured set of states.",
+      "value": 0.83,
       "unit": "share of Tier A",
       "provenance": "D"
     },
@@ -367,6 +367,10 @@
       "statement": "Tier C is deliberately wide because the in-scope provision universe and encodable share are assumed.",
       "value": 2,
       "unit": "approximate uncertainty factor",
+      "provenance": "A"
+    },
+    {
+      "statement": "Tier remainders subtract the full canonical stock from every tier, treating it as in-scope; roughly 18% of the stock is non-US country modules, so remaining-module counts are understated by up to about 4%.",
       "provenance": "A"
     }
   ],

@@ -33,6 +33,38 @@ describe("encoding scale model arithmetic", () => {
     }
   });
 
+  it("derives every model cost row from the token mix and its prices", () => {
+    const passTokens = (metric: string) =>
+      model.unit_economics.representative_pass.find(
+        (row) => row.metric === metric
+      )!.value;
+    const fresh = passTokens("Fresh input");
+    const cachedIn = passTokens("Cached input");
+    const output = passTokens("Output");
+    const retry = model.unit_economics.retry_multiplier.value;
+
+    for (const row of model.unit_economics.model_costs) {
+      const costPerPass =
+        (fresh * row.input_per_million +
+          cachedIn * row.cached_input_per_million +
+          output * row.output_per_million) /
+        1_000_000;
+      expect(row.cost_per_pass).toBeCloseTo(costPerPass, 5);
+      expect(row.cost_per_merged_module).toBeCloseTo(costPerPass * retry, 5);
+    }
+
+    const ci = model.cloud_scaling.ci;
+    const prEquivalents = ci.merged_prs_in_window / ci.merged_modules_in_window;
+    expect(ci.shadow_cost_per_module_low).toBeCloseTo(
+      prEquivalents * ci.minutes_per_merged_pr_low * ci.runner_rate_per_minute,
+      6
+    );
+    expect(ci.shadow_cost_per_module_high).toBeCloseTo(
+      prEquivalents * ci.minutes_per_merged_pr_high * ci.runner_rate_per_minute,
+      6
+    );
+  });
+
   it("ties the capability bar and anchor to their list prices", () => {
     const bar = model.capability_bar;
     expect(bar.realized_substitution_factor).toBeCloseTo(

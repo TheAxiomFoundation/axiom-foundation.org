@@ -440,9 +440,10 @@ export function EncodingScalePlanningPage() {
             displaced {model.capability_bar.displaced.model} at{" "}
             {formatCurrency(model.capability_bar.displaced.input_per_million, 2)}/
             {formatCurrency(model.capability_bar.displaced.output_per_million, 2)} — a
-            realized {model.capability_bar.realized_substitution_factor}× price cut
+            realized {model.capability_bar.realized_substitution_factor}× list-price cut
             at constant task capability{" "}
-            <Provenance code={model.capability_bar.realized_substitution_provenance} />.
+            <Provenance code={model.capability_bar.realized_substitution_provenance} />
+            {" "}(directional — the raw bake-off artifact is unavailable).
             The cheaper {model.capability_bar.failed_cheaper_tier.model} tier
             ({formatCurrency(model.capability_bar.failed_cheaper_tier.input_per_million, 2)}/
             {formatCurrency(model.capability_bar.failed_cheaper_tier.output_per_million, 2)})
@@ -523,7 +524,7 @@ export function EncodingScalePlanningPage() {
             ))}
             <div className="border-t border-[var(--color-rule-strong)] pt-4">
               <p className="text-sm text-[var(--color-ink)]">
-                Capability migration to small tiers{" "}
+                Small-tier list-price ratio{" "}
                 <Provenance code={model.capability_anchor.ratio_provenance} />
               </p>
               <p className="tnum mt-2 text-2xl font-light text-[var(--color-ink)]">
@@ -534,8 +535,8 @@ export function EncodingScalePlanningPage() {
                 {model.capability_anchor.flagship.model} listed{" "}
                 {formatCurrency(model.capability_anchor.flagship.input_per_million, 2)}/
                 {formatCurrency(model.capability_anchor.flagship.output_per_million, 2)}
-                {" "}in {model.capability_anchor.flagship.date}; the smallest
-                current tier, {model.capability_anchor.small_tier_today.model},
+                {" "}in {model.capability_anchor.flagship.date}; a current
+                small tier, {model.capability_anchor.small_tier_today.model},
                 lists{" "}
                 {formatCurrency(model.capability_anchor.small_tier_today.input_per_million, 2)}/
                 {formatCurrency(model.capability_anchor.small_tier_today.output_per_million, 2)}
@@ -946,8 +947,8 @@ export function EncodingScalePlanningPage() {
                 <tr>
                   <TableHead>Scenario</TableHead>
                   <TableHead align="right">Merged/day</TableHead>
-                  <TableHead align="right">Direct Batch/day</TableHead>
-                  <TableHead align="right">System tokens/day</TableHead>
+                  <TableHead align="right">Direct gen/day (subset)</TableHead>
+                  <TableHead align="right">System cost/day (incl. direct)</TableHead>
                   <TableHead align="right">CI shadow/day</TableHead>
                   <TableHead align="right">Total/day</TableHead>
                   <TableHead align="right">Total/module</TableHead>

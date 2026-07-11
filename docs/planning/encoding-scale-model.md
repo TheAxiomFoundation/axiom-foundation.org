@@ -53,7 +53,7 @@ The run database contains **3,582 encoder runs [M]**, of which **3,380 [M]** car
 | First-pass band | 63%–73% | [M] |
 | Hard-fail tail | 27% | [M] |
 
-Representative fresh input is **48,970 median input tokens [M] − 18,688 median cached-input tokens [M] = 30,282 [D]**. It is a billing-mix estimate, not a separately observed median.
+Representative fresh input is **48,970 median input tokens [M] − 18,688 median cached-input tokens [M] = 30,282 [D]**. It is a billing-mix estimate, not a separately observed median. The three billing components are independently calculated representative values and do not sum to the 54,674 total-token median.
 
 Using the representative billing mix, live 2026-07-11 short-context prices, and the **1.43 retry multiplier [M]** (the measured request mix falls within that price band):
 
@@ -66,7 +66,7 @@ Using the representative billing mix, live 2026-07-11 short-context prices, and 
 
 The direct-cost table allocates successful-citation retries but not the failed tail. It also allocates **zero cache-write tokens per representative pass [A]** because write/reuse telemetry is unavailable; it treats cache creation as amortized across reuse. OpenAI's [prompt-caching guide](https://developers.openai.com/api/docs/guides/prompt-caching) documents separate cache-write accounting for newer models. The usage field is a prompt-token detail, so the sensitivity reclassifies written tokens from the ordinary input rate rather than adding the full write rate again. It assumes **one write/pass [A]** of **18,688 tokens/write [A]**, matching the measured **18,688-token cached-prefix scale [M]**. Reclassifying that prefix on terra Batch from **$1.25/M [M]** to **$1.5625/M [M]** adds **$0.00584/pass [D]** before retries and hard-fail allocation, or **$0.01144/accepted module [D]** after both. Treat the displayed terra costs as lower bounds pending write/reuse measurement.
 
-The inherited system-token planning band is **$0.60–$1.65 per merged module [D]**, with **$0.90 [D]** as the central value. Flat-rate developer subscriptions have cost **$0.17–$0.24/module [D]** at observed partial utilization and **$0.02–$0.07/module [D]** when saturated. The weekly allowance binds before local compute.
+The inherited system-token planning band is **$0.60–$1.65 per merged module [D]**, spanning the models and service tiers in production during the window at the measured token load, times the 3.0× proxy. The **$0.90 central value is a planning midpoint within that band [A]**, sitting above the currently attainable **$0.403 [D]** all-Batch system cost (section 5.2), so the price forecasts start conservative. Treating merged pull requests as equal token workloads is likewise an assumption **[A]**. Flat-rate developer subscriptions have cost **$0.17–$0.24/module [D]** at observed partial utilization and **$0.02–$0.07/module [D]** when saturated. The weekly allowance binds before local compute.
 
 ### 1.3 Coverage tiers
 
@@ -89,7 +89,7 @@ unrounded Tier A                   15,500 / 24,100 / 34,600 [D]
 published Tier A                   15,500 / 24,000 / 35,000 [D]
 ```
 
-The state-benefit term contributes **about 85% of Tier A [D]** and extrapolates from a small measured set of states, so it drives the Tier A range.
+The state-benefit term contributes **about 83% of unrounded central Tier A [D]** and extrapolates from a small measured set of states, so it drives the Tier A range. Tier remainders subtract the full canonical stock from every tier, treating it as in-scope; roughly 18% of the stock is non-US country modules, so remaining-module counts are understated by up to about 4% **[A]**.
 
 Tier B arithmetic:
 
@@ -144,13 +144,13 @@ The historical anchors need one date correction:
 - GPT-4 launched in 2023-03 at **$30 input / $60 output per 1M tokens [M]**, from OpenAI's [GPT-4 announcement](https://openai.com/index/gpt-4-research/).
 - GPT-4o launched in 2024-05 at **$5 / $15 [M]**. The **$2.50 / $10 [M]** snapshot arrived in 2024-08, not May; OpenAI's [Structured Outputs announcement](https://openai.com/index/introducing-structured-outputs-in-the-api/) states that the August snapshot cut input price by **50% [M]** and output price by **33% [M]** from the May snapshot.
 - On 2026-07-11, OpenAI's short-context band lists gpt-5.5 at **$5 / $30 [M]**, gpt-5.6-terra at **$2.50 / $15 [M]**, and gpt-5.6-luna at **$1 / $6 [M]**. Batch prices are exactly half. The measured representative request mix falls within this band. See [OpenAI pricing](https://developers.openai.com/api/docs/pricing) and the [Batch guide](https://developers.openai.com/api/docs/guides/batch#overview).
-- Also on 2026-07-11, the smallest current tier, gpt-5.4-nano, lists **$0.20 / $1.25 [M]** — **150× / 48× [D]** below GPT-4's 2023-03 launch price. Fixed-threshold analyses show frontier-level task performance migrating into small tiers within one to two years; the capability-equivalence claim rests on that literature, not on an Axiom measurement **[A]**.
+- Also on 2026-07-11, a current small tier, gpt-5.4-nano, lists **$0.20 / $1.25 [M]** — a selected list-price ratio of **150× input / 48× output [D]** below GPT-4's 2023-03 launch price. Fixed-threshold analyses show frontier-level task performance migrating into small tiers within one to two years; the capability-equivalence claim rests on that literature, not on an Axiom measurement **[A]**.
 
 Historical constant-capability research spans or exceeds the scenarios used here. Stanford's 2025 AI Index measured GPT-3.5-level (MMLU 64.8) inference falling from **$20.00 to $0.07 per million tokens [M]** between November 2022 and October 2024 — a **more-than-280× decline in about two years [M]**. A 2024 a16z analysis estimated a **10× annual decline [M, historical estimate]**, while warning that the timescale may change. Epoch AI measured **9×–900× annual declines [M]** across benchmark thresholds, with a **50× median [M]**, and cautioned that the fastest recent declines may not persist. The forward factors below remain assumptions, not extrapolated facts.
 
 ### 2.2 Method
 
-**What is being forecast.** The forecast quantity is the price of encoder-sufficient capability: the cheapest model that passes the quarterly production bake-off on the live task mix, not the list price of any fixed model **[A]**. The July 2026 swap realized this once: gpt-5.6-terra (**$2.50 / $15 [M]**) displaced gpt-5.5 (**$5 / $30 [M]**) at equal bake-off quality — a **2× [D]** price cut at constant task capability. The still-cheaper gpt-5.6-luna tier (**$1 / $6 [M]**) did not pass the same bake-off, so its lower price is not yet realizable here. Benchmark-equivalence is not swap-readiness, and that task-transfer friction is why the central **5× [A]** planning factor sits well inside Epoch's **50×/year historical median [M]**.
+**What is being forecast.** The forecast quantity is the price of encoder-sufficient capability: the cheapest model that passes the quarterly production bake-off on the live task mix, not the list price of any fixed model **[A]**. The July 2026 swap realized this once: gpt-5.6-terra (**$2.50 / $15 [M]**) displaced gpt-5.5 (**$5 / $30 [M]**) at equal measured quality on the July bake-off — a **2× [D]** list-price cut at constant task capability. The raw bake-off artifact is unavailable, so the equal-quality reading is directional (section 3.1) and is treated here as one realized substitution **[A]**. The still-cheaper gpt-5.6-luna tier (**$1 / $6 [M]**) did not pass the same bake-off, so its lower price is not yet realizable here. Benchmark-equivalence is not swap-readiness, and that task-transfer friction is why the central **5× [A]** planning factor sits well inside Epoch's **50×/year historical median [M]**.
 
 For annual price-decline factor `d`:
 
@@ -270,7 +270,7 @@ The hard-fail allocation assumes failed citations consume the same average token
 
 Batch processing completes asynchronously, so it fits queued generation and retry work better than latency-sensitive repair loops. Interactive failures can stay on standard service while the bulk queue uses Batch.
 
-These Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables: a batch item is one request and one response, with no tool round-trips, so the current agentic dispatch cannot run on the Batch API and meters at standard rates — about twice the Batch figures **[A]**. OpenAI's [flex service tier](https://developers.openai.com/api/docs/guides/flex-processing) prices the gpt-5.5 and gpt-5.6 family — including the pinned encoder — at Batch rates on the synchronous API **[M]**, so the agentic dispatch can reach these economics without the single-shot path, subject to beta capacity limits (uncharged 429s with backoff) and longer timeouts.
+These Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables: a batch item is one request and one response, with no client-side tool round-trips, so the current agentic dispatch cannot run as-is on the Batch API and meters at standard rates — about twice the Batch figures **[A]**. OpenAI's [flex service tier](https://developers.openai.com/api/docs/guides/flex-processing) prices the gpt-5.5 and gpt-5.6 family — including the pinned encoder — at Batch rates on the synchronous API **[M]**, so the agentic dispatch can reach these economics without the single-shot path, subject to beta capacity limits (uncharged 429s with backoff) and longer timeouts.
 
 ### 5.3 Elastic CI
 
@@ -297,7 +297,7 @@ These rows apply the same per-module economics at three throughput levels. They 
 
 They are lower-bound cache-reuse cases: base costs allocate **zero write premiums [A]** because cache-write telemetry is unavailable. Direct Batch cost allocates the **27% hard-fail tail [M]** across accepted output by dividing successful-citation cost by **73% [D]**. This allocation assumes failed citations consume the same average token workload as successful citations **[A]**. The cache sensitivity assumes **one write/pass [A]** of **18,688 fresh-input tokens/write [A]**, matching the **18,688-token cached-prefix scale [M]**. Repricing those tokens from the live **$1.25/M Batch input rate [M]** to the **$1.5625/M write rate [M]** gives a **$0.3125/M incremental premium [D]**, adds **$0.034/system module [D]** after retry and hard-fail allocation, and raises the all-Batch total from **$0.437 to $0.472/module [D]**.
 
-| Scenario | Merged/day | Direct Batch/day | System tokens/day | CI shadow/day | Total/day | Total/module |
+| Scenario | Merged/day | Direct generation/day (subset) | System cost/day (incl. direct) | CI shadow/day | Total/day | Total/module |
 |---|---:|---:|---:|---:|---:|---:|
 | Current throughput | 100 [D] | $13.45 [D] | $40.34 [D] | $3.39 [D] | $43.73 [D] | $0.437 [D] |
 | Expanded | 300 [A] | $40.34 [D] | $121.02 [D] | $10.17 [D] | $131.19 [D] | $0.437 [D] |

@@ -117,4 +117,20 @@ describe("PlanningModelPage", () => {
     expect(screen.getByText("Cross-family judging.")).toBeInTheDocument();
     expect(screen.getByText("The development fleet.")).toBeInTheDocument();
   });
+
+  it("links example rule modules so the increment is concrete", () => {
+    render(<PlanningModelPage />);
+    expect(
+      screen.getByRole("link", { name: "26 U.S.C. § 24" }),
+    ).toHaveAttribute(
+      "href",
+      "https://app.axiom-foundation.org/us/statute/26/24",
+    );
+    expect(
+      screen.getByRole("link", { name: "10 CCR 2506-1 § 4.110" }),
+    ).toHaveAttribute(
+      "href",
+      "https://app.axiom-foundation.org/us-co/regulation/10-ccr-2506-1/4.110",
+    );
+  });
 });

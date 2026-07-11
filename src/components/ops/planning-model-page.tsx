@@ -447,6 +447,66 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
         </section>
 
         <section className="mb-14">
+          <SectionHeading>Where marginal compute plugs in</SectionHeading>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
+            Everything above is the demand side. Marginal capacity — metered
+            credits or negotiated throughput, from any vendor whose model
+            clears the bake-off — converts into published, verifiable output
+            in four places. Quantities reference the tables above; they are
+            worked in Claude units to match the translation and price
+            identically in any vendor&apos;s units.
+          </p>
+          <ol className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed space-y-4 list-decimal pl-5">
+            <li>
+              <strong className="text-[var(--color-ink)]">
+                Generation waves — finish Tier A, then Tier B.
+              </strong>{" "}
+              ≈6.4B system-proxy tokens completes Tier A; ≈15.7B cumulative
+              completes Tier B <Provenance kind="D" />. The loop fits
+              Batch-class queued single-shot waves — each pass is an
+              independent request, so encoder iterations run as staged waves{" "}
+              <Provenance kind="A" /> — with interactive repair at standard
+              tier. At the table&apos;s Batch rates, Tier A generation is
+              $3.0–29.9k depending on model tier <Provenance kind="D" />; the
+              budget is the small term. Merge and verification throughput
+              governs the calendar, assumed to ramp from ~100 toward ~200+
+              modules/day as pipeline hardening lands <Provenance kind="A" />.
+            </li>
+            <li>
+              <strong className="text-[var(--color-ink)]">
+                Encoder qualification — the standing quarterly bake-off.
+              </strong>{" "}
+              Any candidate model qualifies on the live production mix:
+              grounding-failure rate, cost per accepted module, and
+              wall-clock, in about a week of drain time <Provenance kind="D" />
+              . Results are publishable either way. This is the empirical gate
+              between the price table above and production use.
+            </li>
+            <li>
+              <strong className="text-[var(--color-ink)]">
+                Cross-family judging.
+              </strong>{" "}
+              Every audit-logged encoder run is adjudicated by a model family
+              different from the one that generated it. Judging is
+              adjudication-dense — the slot where frontier capability binds
+              hardest — and is carried inside the 3.0× system proxy{" "}
+              <Provenance kind="D" />.
+            </li>
+            <li>
+              <strong className="text-[var(--color-ink)]">
+                The development fleet.
+              </strong>{" "}
+              The separate line above — roughly $80k/month sustained at
+              list-price equivalent, an operator-wide upper bound{" "}
+              <Provenance kind="D" /> — builds the ingest, verification, and
+              merge-train infrastructure that is the actual budget driver. It
+              runs on flat-rate developer subscriptions today and is expected
+              to scale roughly linearly with team size <Provenance kind="A" />.
+            </li>
+          </ol>
+        </section>
+
+        <section className="mb-14">
           <SectionHeading>Method and provenance</SectionHeading>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
             Measured figures come from encoder run records and session logs as

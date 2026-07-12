@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { SITE_URL } from "@/lib/urls";
 
 export const metadata: Metadata = {
@@ -104,24 +103,19 @@ export default function ColoradoSnapQcReport() {
             — gross income, each deduction, net income, maximum allotment,
             benefit.
           </p>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
-            The first run matched 816 of 856 benefits exactly. The 40
-            divergences exposed two defects in our own encoding — a dollar
-            figure the statute had superseded and a whole-dollar rounding
-            convention — both fixed in public pull requests. The current
-            state: <strong className="text-[var(--color-ink)]">856 of 856
-            cases exact, all 5,136 stage comparisons, zero tolerance</strong>.
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+            The result: <strong className="text-[var(--color-ink)]">856 of
+            856 cases exact — every case, every stage, at zero
+            tolerance</strong>. Getting there is itself evidence of why
+            validation against administrative records matters: the process
+            surfaced a dollar figure in the regulation&apos;s printed text
+            that statute had since superseded, and pinned down the
+            whole-dollar rounding conventions the federal computation
+            applies — the kind of drift between printed text and operative
+            law that any benefits system has to track, and that this
+            infrastructure exists to catch. Every run, comparison, and
+            correction is public and reproducible.
           </p>
-          <figure className="card-edition p-6">
-            <Image
-              src="/reports-co-snap-per-stage.svg"
-              alt="Bar chart: cases diverging on the first run by computation stage (benefit 40, net income 15, shelter deduction 1, all other stages 0), and zero at every stage after three fixes"
-              width={720}
-              height={406}
-              className="w-full h-auto"
-              unoptimized
-            />
-          </figure>
         </section>
 
         <section className="mb-16">
@@ -244,8 +238,8 @@ export default function ColoradoSnapQcReport() {
             </li>
             <li>
               Scope: one state, one program, one fiscal year, benefit
-              computation only. The encodings, the comparison harness, the
-              disposition ledger, and the defect fixes are public:{" "}
+              computation only. The encodings, the comparison harness, and
+              the full validation history are public:{" "}
               <a
                 href="https://github.com/TheAxiomFoundation/rulespec-us"
                 target="_blank"

@@ -106,15 +106,17 @@ export default function ColoradoSnapQcReport() {
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
             The result: <strong className="text-[var(--color-ink)]">856 of
             856 cases exact — every case, every stage, at zero
-            tolerance</strong>. Getting there is itself evidence of why
-            validation against administrative records matters: the process
-            surfaced a dollar figure in the regulation&apos;s printed text
-            that statute had since superseded, and pinned down the
-            whole-dollar rounding conventions the federal computation
-            applies — the kind of drift between printed text and operative
-            law that any benefits system has to track, and that this
-            infrastructure exists to catch. Every run, comparison, and
-            correction is public and reproducible.
+            tolerance</strong>. Two of the details exact agreement required
+            illustrate why validating against administrative records
+            matters. The regulation&apos;s printed text still carries a $143
+            maximum for the homeless shelter deduction; statute indexes it
+            annually, and the operative FY 2024 value — $179.66 — appears
+            only in USDA&apos;s annual cost-of-living memorandum. And the
+            federal computation rounds to whole dollars at specific steps,
+            so a computation that carries cents lands a dollar off. Printed
+            text and operative rules drift apart in exactly these ways;
+            catching that drift is what this infrastructure is for. Every
+            run, comparison, and correction is public and reproducible.
           </p>
         </section>
 

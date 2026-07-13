@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 
 export const metadata: Metadata = {
   title: "About — Axiom Foundation",
@@ -9,116 +10,165 @@ export const metadata: Metadata = {
 
 const BUILD = [
   {
+    n: "01",
     title: "The Axiom App",
     desc: "Explore the law: fetch and cite source documents, inspect the RuleSpec encodings that make them executable, and trace the logic through the computation graph. Every value cites its statute; every clause carries an effective date.",
   },
   {
+    n: "02",
     title: "RuleSpec",
     desc: "The open format for encoding statutes and regulations as executable, cited rules.",
   },
   {
+    n: "03",
     title: "The Encoder",
     desc: "An AI-assisted pipeline that reads source law, drafts encodings subsection by subsection, and logs every decision with its provenance.",
   },
   {
+    n: "04",
     title: "Validation",
     desc: "Encodings are cross-checked against independent engines, including PolicyEngine and TAXSIM. Open isn't enough; the point is that you can check our work.",
   },
 ];
 
+/** Editorial two-column band: mono label left, prose right. */
+function ProseBand({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Reveal className="border-t border-[var(--color-rule)] py-12 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:gap-12">
+      <h2 className="m-0 font-display text-[1.35rem] font-light tracking-[0.02em] leading-snug text-[var(--color-ink)] md:pt-0.5">
+        <span aria-hidden className="mb-3 hidden h-px w-7 bg-[var(--color-accent)] md:block" />
+        {label}
+      </h2>
+      <div>{children}</div>
+    </Reveal>
+  );
+}
+
 export default function AboutPage() {
   return (
-    <div className="relative z-1 py-32 px-8">
-      <div className="max-w-[800px] mx-auto">
-        <header className="mb-16">
-          <h1 className="heading-page mb-6">About Axiom</h1>
-          <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed">
+    <div className="relative z-1 pt-32 pb-24 px-8">
+      <div className="max-w-[960px] mx-auto">
+        {/* Header — descriptor as the lede */}
+        <Reveal className="mb-20 max-w-[760px]">
+          <h1 className="heading-page mb-7">About Axiom</h1>
+          <p className="font-body text-[1.35rem] text-[var(--color-ink-secondary)] leading-[1.65] text-pretty">
             Axiom Foundation publishes open, machine-readable encodings of the
             world&apos;s rules, starting with tax and benefit policy &mdash;
-            statutes, regulations, and policy rules turned into cited,
-            time-aware, executable code that anyone can run, audit, or reform.
+            statutes, regulations, and policy rules turned into{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              cited, time-aware, executable code
+            </span>{" "}
+            that anyone can run, audit, or reform.
           </p>
-        </header>
+        </Reveal>
 
-        <section className="mb-16">
-          <h2 className="heading-sub mb-4">Why</h2>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+        <ProseBand label="Why">
+          <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
             The rules that decide who gets food assistance, health coverage, and
             tax credits are written in prose &mdash; then re-implemented,
             separately and privately, inside every eligibility system,
             calculator, and policy tool that needs them. The interpretation
             lives in closed code: hard to verify, harder to fix, duplicated
-            everywhere. Axiom publishes that layer in the open, so there is one
-            cited, checkable source for what a rule actually computes.
+            everywhere. Axiom publishes that layer in the open, so there is{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              one cited, checkable source for what a rule actually computes
+            </span>
+            .
           </p>
-        </section>
+        </ProseBand>
 
-        <section className="mb-16">
-          <h2 className="heading-sub mb-6">What we build</h2>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
+        {/* What we build — numbered edition cards */}
+        <Reveal className="border-t border-[var(--color-rule)] py-12">
+          <h2 className="m-0 mb-8 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
+            <span aria-hidden className="mb-3 block h-px w-7 bg-[var(--color-accent)]" />
+            What we build
+          </h2>
+          <RevealGroup
+            className="grid gap-5 sm:grid-cols-2"
+            staggerChildren={0.08}
+          >
             {BUILD.map((card) => (
-              <div key={card.title} className="card-edition p-6">
-                <h3 className="font-body text-lg text-[var(--color-ink)] mb-2">
+              <RevealItem
+                key={card.n}
+                as="div"
+                className="card-edition p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1"
+              >
+                <div className="flex items-baseline justify-between mb-4">
+                  <span className="font-mono text-[0.65rem] tracking-[0.18em] text-[var(--color-ink-muted)]">
+                    {card.n}
+                  </span>
+                  <span className="h-px flex-1 mx-4 bg-[var(--color-rule-subtle)]" />
+                </div>
+                <h3 className="font-display text-[1.25rem] font-light tracking-[0.02em] text-[var(--color-ink)] mb-3 leading-snug">
                   {card.title}
                 </h3>
-                <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
+                <p className="m-0 font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed">
                   {card.desc}
                 </p>
-              </div>
+              </RevealItem>
             ))}
-          </div>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mt-6">
+          </RevealGroup>
+          <p className="mt-8 mb-0 text-center font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
             We also build demonstrations on top of this layer &mdash; previews
-            of what open, computable law makes possible. The layer underneath is
-            the product.
+            of what open, computable law makes possible.{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              The layer underneath is the product.
+            </span>
           </p>
-        </section>
+        </Reveal>
 
-        <section className="mb-16">
-          <h2 className="heading-sub mb-4">Where we come from</h2>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+        <ProseBand label="Where we come from">
+          <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
             Axiom builds on six years of PolicyEngine infrastructure &mdash;
             tax-and-benefit models used by researchers, governments, and
             benefit-navigation tools in the US and UK. That foundation is what
             our encodings are verified against, and where our team learned what
             it takes to keep rules correct at scale.
           </p>
-        </section>
+        </ProseBand>
 
-        <section className="mb-16">
-          <h2 className="heading-sub mb-4">How we&apos;re organized</h2>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+        <ProseBand label="How we're organized">
+          <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
             Axiom Foundation is a fiscally sponsored project of the PSL
             Foundation. Our code, our data, and our encoding decisions are
             public.
           </p>
-        </section>
+        </ProseBand>
 
-        <section className="mb-16">
-          <h2 className="heading-sub mb-4">Team</h2>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
+        <ProseBand label="Team">
+          <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
             Axiom is led by Max Ghenis (CEO) and Ariel Kennan (President), with
             product led by Pavel Makarchuk.
           </p>
           <Link
             href="/team"
-            className="inline-flex items-center gap-2 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+            className="mt-5 inline-flex items-center gap-2 rounded-md border border-[var(--color-rule)] px-5 py-2.5 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
           >
             Meet the team &rarr;
           </Link>
-        </section>
+        </ProseBand>
 
-        <section>
-          <h2 className="heading-sub mb-4">Get in touch</h2>
-          <div className="inline-block px-6 py-3 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md">
+        {/* Get in touch — quiet closing card */}
+        <Reveal className="border-t border-[var(--color-rule)] pt-16 text-center">
+          <h2 className="m-0 mb-5 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
+            <span aria-hidden className="mx-auto mb-3 block h-px w-7 bg-[var(--color-accent)]" />
+            Get in touch
+          </h2>
+          <div className="inline-block px-7 py-3.5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md transition-transform duration-300 hover:-translate-y-0.5">
             <a
               href="mailto:hello@axiom-foundation.org"
-              className="font-mono text-[var(--color-accent)] text-[0.95rem]"
+              className="font-mono text-[var(--color-accent)] text-[0.95rem] no-underline hover:underline"
             >
               hello@axiom-foundation.org
             </a>
           </div>
-        </section>
+        </Reveal>
       </div>
     </div>
   );

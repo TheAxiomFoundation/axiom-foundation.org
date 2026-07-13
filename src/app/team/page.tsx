@@ -34,7 +34,7 @@ const MEMBERS = [
     linkedin: "https://www.linkedin.com/in/pavel-makarchuk",
     bio: [
       "Pavel leads the product and applications layer that turns Axiom from a technically credible rules stack into something partners can actually use. At PolicyEngine he became one of the deepest hands-on contributors to U.S. tax-and-benefit encoding work, shipping rules, reviewing edge cases, and managing contributor throughput across a sprawling production codebase.",
-      "He also led PolicyEngine's source-corpus pilot collaboration with the Atlanta Federal Reserve, storing and validating hundreds of federal and North Carolina source documents to prove the source-archive and document-linking model in practice. That work sits directly upstream of Axiom's app challenge: how do encoded rules, source provenance, and real implementation detail become tools that governments, partners, and downstream applications can actually trust?",
+      "He also led PolicyEngine's validation partnerships: a source-corpus pilot with the Atlanta Federal Reserve, storing and validating hundreds of federal and state source documents to prove the source-archive and document-linking model in practice, and model validation with NBER, cross-checking calculations against TAXSIM over thousands of representative cases. That work sits directly upstream of Axiom's app challenge: how do encoded rules, source provenance, and real implementation detail become tools that governments, partners, and downstream applications can actually trust?",
     ],
   },
 ];

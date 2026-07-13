@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Team — Axiom Foundation",
   description:
-    "The people behind Axiom — a small team that has spent years making policy rules computable, in government, in research, and in open source.",
+    "The founding team of Axiom — we've spent years making policy rules computable, in government, in research, and in open source.",
 };
 
 // TODO(⛳): confirm LinkedIn URLs with each subject before ship.
@@ -44,10 +44,11 @@ export default function TeamPage() {
     <div className="relative z-1 py-32 px-8">
       <div className="max-w-[800px] mx-auto">
         <header className="mb-16">
-          <h1 className="heading-page mb-6">Team</h1>
+          <h1 className="heading-page mb-6">Founding team</h1>
           <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed">
-            We&apos;re a small team that has spent years making policy rules
-            computable &mdash; in government, in research, and in open source.
+            We&apos;re the founding team of Axiom &mdash; and we&apos;ve spent
+            years making policy rules computable, in government, in research,
+            and in open source.
           </p>
         </header>
 

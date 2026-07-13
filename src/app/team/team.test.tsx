@@ -11,7 +11,7 @@ import TeamPage from '@/app/team/page'
 describe('TeamPage', () => {
   it('renders the page title', () => {
     render(<TeamPage />)
-    expect(screen.getByRole('heading', { name: /^team$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^founding team$/i })).toBeInTheDocument()
   })
 
   it('renders all three team members with titles', () => {

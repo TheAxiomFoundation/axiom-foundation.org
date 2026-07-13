@@ -12,7 +12,7 @@ const APPLICATIONS = [
     n: "02",
     title: "Ground truth for AI",
     body:
-      "Models keep getting asked policy questions. RuleSpec gives them a key — verifiable answers grounded in actual statute, useful for both training and inference.",
+      "Models keep getting asked policy questions. Axiom gives them a key — verifiable answers grounded in actual law, useful for both training and inference.",
     actor: "for AI labs",
   },
   {

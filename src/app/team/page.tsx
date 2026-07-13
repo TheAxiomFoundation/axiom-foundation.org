@@ -11,12 +11,13 @@ export const metadata: Metadata = {
 const MEMBERS = [
   {
     name: "Max Ghenis",
-    // Bio rewritten and fact-confirmed by Max 2026-07-12 (Round1-Website-Copy.md §3).
+    // Bio rewritten and fact-confirmed by Max 2026-07-12, receipts revised
+    // by him 2026-07-13 (Round1-Website-Copy.md §3).
     title: "Chief Executive Officer and Founder",
     image: "https://maxghenis.com/images/headshot.png",
     linkedin: "https://www.linkedin.com/in/maxghenis",
     bio: [
-      "Max founded Axiom to make the law itself an open, verifiable codebase, and he builds its machinery: the encoder pipeline, the RuleSpec format, and the verification method behind every published rule. He is co-founder and CEO of PolicyEngine, the open-source platform that computes how tax and benefit policy reaches households and whole populations in the US and UK — used by the Joint Economic Committee, the Bureau of Economic Analysis, and 10 Downing Street, and by members of the DC Council and New York Senate. He also built PolicyBench, a public benchmark that grades AI models against exact computations of the law. Before Axiom, he founded the UBI Center, whose team published 60+ open studies of universal basic income and cash transfers, and spent eight years in data science at Google and YouTube. He holds an M.S. in Data, Economics, and Development Policy from MIT and a B.S. in operations research from UC Berkeley.",
+      "Max founded Axiom to make the law itself an open, verifiable codebase, and he builds its machinery: the encoder pipeline, the RuleSpec format, and the verification method behind every published rule. He is co-founder and CEO of PolicyEngine, the open-source platform that computes how tax and benefit policy reaches households and whole populations in the US and UK — piloted by HM Treasury alongside its internal model, used at 10 Downing Street, the Joint Economic Committee, and the Bureau of Economic Analysis, and powering benefit screeners that reach families in four US states. He also built PolicyBench, a public benchmark that grades AI models against exact computations of the law. Before Axiom, he founded the UBI Center, whose team published 60+ open studies of universal basic income and cash transfers, and spent eight years in data science at Google and YouTube. He holds an M.S. in Data, Economics, and Development Policy from MIT and a B.S. in operations research from UC Berkeley.",
     ],
   },
   {

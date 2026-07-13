@@ -17,10 +17,11 @@ describe('AnnouncementBanner', () => {
   it('renders the launch eyebrow and headline', () => {
     render(<AnnouncementBanner />)
     expect(screen.getByText(/public launch/i)).toBeInTheDocument()
-    expect(screen.getByText(/july 28, 2026/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /see what computable law makes possible/i }),
+      screen.getByRole('heading', { name: /axiom foundation goes public on july 28/i }),
     ).toBeInTheDocument()
+    // The date lives in the headline only — the eyebrow doesn't repeat it.
+    expect(screen.queryByText('July 28, 2026')).not.toBeInTheDocument()
   })
 
   it('renders the subhead inviting the virtual briefing', () => {
@@ -28,11 +29,11 @@ describe('AnnouncementBanner', () => {
     expect(screen.getByText(/join the virtual briefing/i)).toBeInTheDocument()
   })
 
-  it('renders all three launch actions', () => {
+  it('renders the two launch actions', () => {
     render(<AnnouncementBanner />)
     expect(screen.getByText('Join the launch event')).toBeInTheDocument()
-    expect(screen.getByText('Register for the briefing')).toBeInTheDocument()
-    expect(screen.getByText('Get launch updates')).toBeInTheDocument()
+    expect(screen.getByText('Get updates')).toBeInTheDocument()
+    expect(screen.queryByText('Register for the briefing')).not.toBeInTheDocument()
   })
 
   it('renders the countdown with all four units', () => {

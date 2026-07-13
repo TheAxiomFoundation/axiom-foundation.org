@@ -206,17 +206,17 @@ canvas[aria-hidden] {
    unlayered but more specific than the bare `a`, so they win cleanly
    for colour, underline, and hover without !important. */
 .announce-cta {
-  color: #fde68a;
+  color: var(--color-ink);
   text-decoration: none;
 }
 .announce-cta:hover {
   color: #fffbeb;
 }
 .announce-link {
-  color: #d6d3d1;
+  color: var(--color-ink-secondary);
   text-decoration: none;
 }
 .announce-link:hover {
-  color: #fbbf24;
+  color: var(--color-accent);
 }
 

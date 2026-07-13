@@ -4,13 +4,13 @@
  * they update everywhere at once.
  */
 
-// TODO(#58/#60): swap in the live webinar/briefing registration URL before ship.
-export const BRIEFING_URL = "#";
+// "Join the launch event" — the virtual briefing / webinar.
+// TODO(#58/#60): swap in the live webinar registration URL before ship.
+export const LAUNCH_EVENT_URL = "#";
 
-// TODO: swap in the live launch-event RSVP URL before ship.
-export const LIVE_EVENT_URL = "#";
-
-// TODO(#38): swap for the real newsletter signup if one is wired before ship.
+// "Get updates" — MailChimp signup.
+// TODO(#38): swap in the MailChimp signup URL before ship; the mailto
+// is the interim fallback so the button is never dead.
 export const UPDATES_URL =
   "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates";
 

@@ -30,10 +30,11 @@ describe('AboutPage', () => {
     expect(screen.getByRole('heading', { name: 'Validation' })).toBeInTheDocument()
   })
 
-  it('renders where-we-come-from with PolicyEngine lineage', () => {
+  it('renders how-we-verify and the founding-team band', () => {
     render(<AboutPage />)
-    expect(screen.getByRole('heading', { name: /where we come from/i })).toBeInTheDocument()
-    expect(screen.getByText(/PolicyEngine infrastructure/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /how we verify/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /founding team/i })).toBeInTheDocument()
+    expect(screen.getByText(/founding team is Max Ghenis/i)).toBeInTheDocument()
   })
 
   it('links to the team page', () => {

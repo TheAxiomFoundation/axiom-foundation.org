@@ -123,13 +123,16 @@ export default function AboutPage() {
           </p>
         </Reveal>
 
-        <ProseBand label="Where we come from">
+        <ProseBand label="How we verify">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            Axiom builds on six years of PolicyEngine infrastructure &mdash;
-            tax-and-benefit models used by researchers, governments, and
-            benefit-navigation tools in the US and UK. That foundation is what
-            our encodings are verified against, and where our team learned what
-            it takes to keep rules correct at scale.
+            Every encoding is cross-checked against independent engines,
+            including PolicyEngine and TAXSIM. Open isn&apos;t enough &mdash;
+            the point is that{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              you can check our work
+            </span>
+            . Our team has spent years keeping tax-and-benefit rules correct at
+            scale, in government, research, and open source.
           </p>
         </ProseBand>
 
@@ -141,10 +144,10 @@ export default function AboutPage() {
           </p>
         </ProseBand>
 
-        <ProseBand label="Team">
+        <ProseBand label="Founding team">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Axiom is led by Max Ghenis (CEO) and Ariel Kennan (President), with
-            product led by Pavel Makarchuk.
+            Axiom&apos;s founding team is Max Ghenis (CEO and Founder), Ariel
+            Kennan (President), and Pavel Makarchuk (Product Lead).
           </p>
           <Link
             href="/team"

@@ -11,11 +11,12 @@ export const metadata: Metadata = {
 const MEMBERS = [
   {
     name: "Max Ghenis",
-    title: "Chief Executive Officer & Founder",
+    // Bio rewritten and fact-confirmed by Max 2026-07-12 (Round1-Website-Copy.md §3).
+    title: "Chief Executive Officer and Founder",
     image: "https://maxghenis.com/images/headshot.png",
     linkedin: "https://www.linkedin.com/in/maxghenis",
     bio: [
-      "Max founded Axiom to make the law itself an open, verifiable codebase. He is the co-founder and CEO of PolicyEngine, the open-source nonprofit platform that computes personalized and population-level impacts of tax and benefit reforms in the US and UK — used by government bodies including the Joint Economic Committee, the DC Council, and the New York Senate, and by researchers at NBER, Georgetown, and the University of Michigan. He previously founded the UBI Center, an open-source think tank whose team produced 60+ studies of universal basic income and cash-transfer policy, and spent eight years at Google and YouTube in data science and analytics leadership. He holds an M.S. in Data, Economics, and Development Policy from MIT. At Axiom he leads the technical work: the encoder pipeline, the RuleSpec format, and the verification method behind every published rule.",
+      "Max founded Axiom to make the law itself an open, verifiable codebase, and he builds its machinery: the encoder pipeline, the RuleSpec format, and the verification method behind every published rule. He is co-founder and CEO of PolicyEngine, the open-source platform that computes how tax and benefit policy reaches households and whole populations in the US and UK — used by the Joint Economic Committee, the Bureau of Economic Analysis, and 10 Downing Street, and by members of the DC Council and New York Senate. He also built PolicyBench, a public benchmark that grades AI models against exact computations of the law. Before Axiom, he founded the UBI Center, whose team published 60+ open studies of universal basic income and cash transfers, and spent eight years in data science at Google and YouTube. He holds an M.S. in Data, Economics, and Development Policy from MIT and a B.S. in operations research from UC Berkeley.",
     ],
   },
   {

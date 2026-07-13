@@ -6,7 +6,7 @@ export function FoundationSection() {
   return (
     <section
       id="foundation"
-      className="section-tint-cream section-mark relative z-1 py-32 px-8"
+      className="section-tint-cream relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
         <Reveal className="text-center max-w-[720px] mx-auto">

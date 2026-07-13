@@ -27,7 +27,7 @@ const BUILD = [
   {
     n: "04",
     title: "Validation",
-    desc: "Encodings are cross-checked against independent engines, including PolicyEngine and TAXSIM. Open isn't enough; the point is that you can check our work.",
+    desc: "Encodings are cross-checked against independent engines. Open isn't enough; the point is that you can check our work.",
   },
 ];
 
@@ -125,9 +125,10 @@ export default function AboutPage() {
 
         <ProseBand label="How we verify">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            Every encoding is cross-checked against independent engines,
-            including PolicyEngine and TAXSIM. Open isn&apos;t enough &mdash;
-            the point is that{" "}
+            Every encoding is cross-checked against independent engines and
+            datasets: PolicyEngine, TAXSIM, UKMOD, EUROMOD, SOUTHMOD, the PSL
+            Tax-Calculator, and SNAP quality-control data. Open isn&apos;t
+            enough &mdash; the point is that{" "}
             <span className="serif-italic text-[var(--color-ink)]">
               you can check our work
             </span>

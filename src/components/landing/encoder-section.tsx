@@ -199,7 +199,7 @@ export function EncoderSection() {
   return (
     <section
       id="encoder"
-      className="section-tint-cream section-mark section-mark-left relative z-1 py-32 px-8"
+      className="section-tint-cream relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
         <Reveal className="text-center mb-16">
@@ -214,7 +214,7 @@ export function EncoderSection() {
             An AI-driven pipeline reads a statute, encodes it section by
             section, and runs the result against{" "}
             <span className="serif-italic text-[var(--color-ink)]">
-              PolicyEngine and TAXSIM
+              oracles like PolicyEngine and TAXSIM
             </span>{" "}
             before any human signs off.
           </p>
@@ -243,7 +243,7 @@ export function EncoderSection() {
               n: "03",
               label: "Verify",
               body:
-                "CI checks, oracle comparison against PolicyEngine and TAXSIM, reviewer agents that explain any discrepancy.",
+                "CI checks, comparison against independent oracles, reviewer agents that explain any discrepancy.",
             },
           ].map((step) => (
             <RevealItem

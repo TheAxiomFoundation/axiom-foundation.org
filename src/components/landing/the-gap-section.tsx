@@ -4,7 +4,7 @@ export function TheGapSection() {
   return (
     <section
       id="gap"
-      className="section-mark relative z-1 py-32 px-8"
+      className="relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
         <Reveal className="text-center mb-16">

@@ -125,38 +125,6 @@ canvas[aria-hidden] {
   color: var(--color-accent);
 }
 
-/* Faint editorial glyph anchored to a section corner — reads as
-   paper marginalia rather than chrome. The glyph is configurable via
-   `--mark-glyph` so different sections can carry a different
-   typographic anchor (§ for legal, ¶ for prose, etc.). */
-.section-mark {
-  --mark-glyph: "§";
-  position: relative;
-  isolation: isolate;
-}
-.section-mark::after {
-  content: var(--mark-glyph);
-  position: absolute;
-  bottom: -2rem;
-  right: -1rem;
-  font-family: var(--f-serif);
-  font-style: italic;
-  font-size: clamp(12rem, 24vw, 22rem);
-  line-height: 0.8;
-  color: var(--color-ink);
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: -1;
-  user-select: none;
-}
-.section-mark.section-mark-left::after {
-  right: auto;
-  left: -1rem;
-}
-.section-mark-pilcrow { --mark-glyph: "¶"; }
-.section-mark-ampersand { --mark-glyph: "&"; }
-.section-mark-asterism { --mark-glyph: "⁂"; }
-
 /* ── Launch announcement card ──
    A dark "official notice" invitation that opens the home page above the
    cream hero. The near-black surface + amber glow reuse the site's

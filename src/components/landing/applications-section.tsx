@@ -35,7 +35,7 @@ export function ApplicationsSection() {
   return (
     <section
       id="applications"
-      className="section-mark section-mark-pilcrow section-mark-left relative z-1 py-32 px-8"
+      className="relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
         <Reveal className="text-center mb-20">
@@ -47,10 +47,10 @@ export function ApplicationsSection() {
             One encoding. Many places to use it.
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[640px] mx-auto leading-relaxed">
-            The point of doing this once, openly, is so it stops having to be
-            done a thousand times in private &mdash;{" "}
+            Encode a rule once, in the open, and everyone can build on it
+            &mdash;{" "}
             <span className="serif-italic text-[var(--color-ink)]">
-              wrongly, expensively, and out of sight
+              correctly, affordably, and in plain sight
             </span>
             .
           </p>

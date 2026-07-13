@@ -7,7 +7,7 @@
 // "Join the launch event" — the virtual briefing / webinar (#58/#60,
 // same registration link as launch/Event-Comms.md).
 export const LAUNCH_EVENT_URL =
-  "https://zoom.us/webinar/register/WN_8yti1yYqRHaET0Wa8Iu9ug";
+  "https://zoom.us/webinar/register/WN_8yti1yYqRHaET0Wa8Iu9ug#/registration";
 
 // "Get updates" — MailChimp signup.
 // TODO(#38): swap in the MailChimp signup URL before ship; the mailto

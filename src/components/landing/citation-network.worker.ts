@@ -531,10 +531,10 @@ function drawFrame() {
   const fade = Math.max(0, Math.min(1, fadeRaw));
   const disappearRaw = (smoothScroll - 0.86) / 0.10;
   const disappear = Math.max(0, Math.min(1, disappearRaw));
-  // Past the first screen the graph recedes hard (0.6 → 0.08) so it
+  // Past the first screen the graph recedes hard (0.6 → 0.11) so it
   // reads as texture behind the prose sections, not a competing layer;
   // it then fully dissolves near the page bottom.
-  const graphOpacity = GRAPH_BASE_OPACITY * (1 - fade * 0.87) * (1 - disappear);
+  const graphOpacity = GRAPH_BASE_OPACITY * (1 - fade * 0.82) * (1 - disappear);
   if (graphOpacity < 0.005) return;
   ctx.globalAlpha = graphOpacity;
 

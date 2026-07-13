@@ -56,31 +56,52 @@ export function ApplicationsSection() {
           </p>
         </Reveal>
 
+        {/* Fanned deck: cards overlap like a spread hand — every card
+            stays readable, and the hovered one straightens, lifts, and
+            comes to the front. Base tilt/arc live in CSS vars so the
+            hover transform can override them from a class (inline
+            transforms would win over hover classes). */}
         <RevealGroup
-          className="grid gap-6 md:grid-cols-2 max-w-[1080px] mx-auto"
+          className="flex flex-col items-stretch md:flex-row md:items-end md:justify-center max-w-[1200px] mx-auto pt-2 pb-4"
           staggerChildren={0.1}
         >
-          {APPLICATIONS.map((app) => (
-            <RevealItem
-              key={app.n}
-              className="card-edition p-8 flex flex-col transition-transform duration-300 hover:-translate-y-1"
-            >
-              <div className="flex items-baseline justify-between mb-5">
-                <span className="serif-italic text-[0.95rem] text-[var(--color-ink-muted)]">
-                  {app.actor}
-                </span>
-                <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)]">
-                  {app.n}
-                </span>
-              </div>
-              <h3 className="font-body text-[1.15rem] font-medium text-[var(--color-ink)] mb-3 leading-snug">
-                {app.title}
-              </h3>
-              <p className="font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
-                {app.body}
-              </p>
-            </RevealItem>
-          ))}
+          {APPLICATIONS.map((app, i) => {
+            const tilt = ["-2.5deg", "-0.8deg", "0.8deg", "2.5deg"][i];
+            const arc = ["6px", "0px", "0px", "6px"][i];
+            return (
+              <RevealItem
+                key={app.n}
+                className={`group relative md:w-[310px] md:shrink-0 hover:z-40 ${
+                  i > 0 ? "-mt-6 md:mt-0 md:-ml-7" : ""
+                }`}
+              >
+                <div
+                  style={
+                    {
+                      "--tilt": tilt,
+                      "--arc": arc,
+                    } as React.CSSProperties
+                  }
+                  className="card-edition p-7 flex h-full flex-col bg-[var(--color-paper-elevated)] shadow-[0_10px_30px_-18px_rgba(28,25,23,0.35)] transition-all duration-300 [transform:rotate(var(--tilt))_translateY(var(--arc))] group-hover:[transform:rotate(0deg)_translateY(calc(var(--arc)-18px))_scale(1.04)] group-hover:shadow-[0_28px_60px_-24px_rgba(28,25,23,0.5)]"
+                >
+                  <div className="flex items-baseline justify-between mb-5">
+                    <span className="serif-italic text-[0.95rem] text-[var(--color-ink-muted)]">
+                      {app.actor}
+                    </span>
+                    <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)]">
+                      {app.n}
+                    </span>
+                  </div>
+                  <h3 className="font-body text-[1.15rem] font-medium text-[var(--color-ink)] mb-3 leading-snug">
+                    {app.title}
+                  </h3>
+                  <p className="font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
+                    {app.body}
+                  </p>
+                </div>
+              </RevealItem>
+            );
+          })}
         </RevealGroup>
       </div>
     </section>

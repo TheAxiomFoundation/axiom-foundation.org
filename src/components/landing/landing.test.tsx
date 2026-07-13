@@ -53,9 +53,11 @@ describe('Landing sections', () => {
     expect(
       screen.getByRole('heading', { name: /encoded so they can be computed/i }),
     ).toBeInTheDocument()
+    // Round 1 pull-back: the PTC worked example is hidden until the
+    // Jul 28 reveal (SHOW_WORKED_EXAMPLE in encoded-law-section).
     expect(
-      screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: /aca premium tax credit, three eras/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders the encoder section with terminal + steps', () => {

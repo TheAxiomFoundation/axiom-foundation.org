@@ -51,6 +51,11 @@ const PTC_TIMELINE = [
   },
 ];
 
+// Round 1 pull-back: the worked example (PTC three-eras table) is
+// hidden for the pre-launch tease. Flip to true for the Jul 28
+// reveal — the data and markup below are kept intact.
+const SHOW_WORKED_EXAMPLE = false;
+
 export function EncodedLawSection() {
   return (
     <section
@@ -102,7 +107,8 @@ export function EncodedLawSection() {
           ))}
         </RevealGroup>
 
-        {/* Worked example */}
+        {/* Worked example — hidden in Round 1, returns at launch */}
+        {SHOW_WORKED_EXAMPLE && (
         <Reveal className="max-w-[920px] mx-auto" amount={0.15}>
           <div className="text-center mb-10">
             <span className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)]">
@@ -168,6 +174,7 @@ export function EncodedLawSection() {
             Pass a date, get the rule that applied.
           </p>
         </Reveal>
+        )}
       </div>
     </section>
   );

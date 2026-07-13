@@ -19,8 +19,8 @@ export function FoundationSection() {
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed">
             Everything we publish &mdash; code, data, and the decisions behind
-            them &mdash; is open. Axiom is a fiscally sponsored project of the
-            PSL Foundation.
+            them &mdash; is open. Axiom Foundation is a fiscally sponsored
+            project of the PSL Foundation.
           </p>
 
           <a

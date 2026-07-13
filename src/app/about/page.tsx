@@ -75,7 +75,8 @@ export default function AboutPage() {
             separately and privately, inside every eligibility system,
             calculator, and policy tool that needs them. The interpretation
             lives in closed code: hard to verify, harder to fix, duplicated
-            everywhere. Axiom publishes that layer in the open, so there is{" "}
+            everywhere. Axiom Foundation publishes that layer in the open, so
+            there is{" "}
             <span className="serif-italic text-[var(--color-ink)]">
               one cited, checkable source for what a rule actually computes
             </span>
@@ -147,8 +148,9 @@ export default function AboutPage() {
 
         <ProseBand label="Founding team">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Axiom&apos;s founding team is Max Ghenis (CEO and Founder), Ariel
-            Kennan (President), and Pavel Makarchuk (Product Lead).
+            Axiom Foundation&apos;s founding team is Max Ghenis (CEO and
+            Founder), Ariel Kennan (President), and Pavel Makarchuk (Product
+            Lead).
           </p>
           <Link
             href="/team"

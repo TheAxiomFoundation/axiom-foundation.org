@@ -52,7 +52,10 @@ export default function RootLayout({
       className={`${mono.variable} ${GeistSans.variable} ${serif.variable}`}
     >
       <head>
+        {/* Favicons from the axiom-brand kit (w350 tile). */}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/axiom-icon-180.png" />
       </head>
       <body>
         <GoogleAnalytics />

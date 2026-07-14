@@ -9,6 +9,9 @@ export interface FooterProps {
   renderLink?: RenderLinkComponent;
   /** Logo image src. Defaults to "/logos/axiom-foundation.svg". */
   logoSrc?: string;
+  /** Newsletter signup URL for the "Get updates" link. The site passes
+   *  UPDATES_URL from src/lib/launch.ts so banner + footer stay in sync. */
+  updatesUrl?: string;
 }
 
 const LINK_CLASS =
@@ -20,6 +23,7 @@ export function Footer({
   baseUrl = "",
   renderLink: LinkComponent,
   logoSrc,
+  updatesUrl = "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates",
 }: FooterProps = {}) {
   const resolvedLogoSrc = logoSrc
     ? logoSrc
@@ -91,6 +95,7 @@ export function Footer({
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
               <li>{renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}</li>
+              <li>{renderFooterLink(updatesUrl, "Get updates")}</li>
               <li>{renderFooterLink("/privacy", "Privacy")}</li>
             </ul>
           </div>

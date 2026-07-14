@@ -51,7 +51,7 @@ export function EncodingMarquee() {
             reduceMotion
               ? undefined
               : {
-                  duration: 48,
+                  duration: 64,
                   ease: "linear",
                   repeat: Infinity,
                 }

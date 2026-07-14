@@ -35,7 +35,7 @@ export function TheGapSection() {
             connection between them does not.
           </p>
           <p>
-            <span className="font-bold text-[var(--color-ink)]">Axiom Foundation</span>{" "}
+            <span className="font-bold text-[var(--color-ink)]">The Axiom Foundation</span>{" "}
             publishes that layer &mdash; statute by statute, citation by
             citation as rules as code &mdash; in the open, free for anyone to
             use.
@@ -69,7 +69,7 @@ export function TheGapSection() {
               label: "Why now",
               lines: [
                 "AI needs ground truth",
-                "Models are answering policy questions",
+                "People are asking models policy questions",
                 "There has to be an answer key",
               ],
             },

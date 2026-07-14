@@ -19,9 +19,18 @@ describe("Footer", () => {
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Team")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
+    expect(screen.getByText("Get updates")).toBeInTheDocument();
     expect(screen.getByText("Privacy")).toBeInTheDocument();
     // GitHub link-outs are pulled back in Round 1.
     expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+  });
+
+  it("points Get updates at the provided updatesUrl", () => {
+    render(<Footer updatesUrl="https://example.us1.list-manage.com/subscribe" />);
+    expect(screen.getByText("Get updates")).toHaveAttribute(
+      "href",
+      "https://example.us1.list-manage.com/subscribe",
+    );
   });
 
   it("applies baseUrl to internal links", () => {

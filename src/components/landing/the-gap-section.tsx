@@ -4,7 +4,7 @@ export function TheGapSection() {
   return (
     <section
       id="gap"
-      className="section-mark relative z-1 py-32 px-8"
+      className="relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
         <Reveal className="text-center mb-16">
@@ -13,7 +13,7 @@ export function TheGapSection() {
             I &middot; The gap
           </span>
           <h2 className="heading-section mb-6 mt-2">
-            The laws that govern everyday life are not online
+            Law for the digital era
           </h2>
         </Reveal>
 
@@ -35,7 +35,7 @@ export function TheGapSection() {
             connection between them does not.
           </p>
           <p>
-            <span className="font-bold text-[var(--color-ink)]">Axiom Foundation</span>{" "}
+            <span className="font-bold text-[var(--color-ink)]">The Axiom Foundation</span>{" "}
             publishes that layer &mdash; statute by statute, citation by
             citation as rules as code &mdash; in the open, free for anyone to
             use.
@@ -69,7 +69,7 @@ export function TheGapSection() {
               label: "Why now",
               lines: [
                 "AI needs ground truth",
-                "Models are answering policy questions",
+                "People are asking models policy questions",
                 "There has to be an answer key",
               ],
             },

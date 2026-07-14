@@ -9,6 +9,9 @@ export interface FooterProps {
   renderLink?: RenderLinkComponent;
   /** Logo image src. Defaults to "/logos/axiom-foundation.svg". */
   logoSrc?: string;
+  /** Newsletter signup URL for the "Get updates" link. The site passes
+   *  UPDATES_URL from src/lib/launch.ts so banner + footer stay in sync. */
+  updatesUrl?: string;
 }
 
 const LINK_CLASS =
@@ -18,9 +21,9 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Footer({
   baseUrl = "",
-  appUrl = "https://app.axiom-foundation.org",
   renderLink: LinkComponent,
   logoSrc,
+  updatesUrl = "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates",
 }: FooterProps = {}) {
   const resolvedLogoSrc = logoSrc
     ? logoSrc
@@ -68,11 +71,11 @@ export function Footer({
               className="text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed max-w-[280px]"
               style={{ fontFamily: "var(--f-serif)", fontStyle: "italic" }}
             >
-              The world&apos;s rules, encoded.
+              Computable law for all.
             </p>
             <p className="text-[0.8rem] text-[var(--color-ink-muted)] mt-4 leading-relaxed max-w-[280px]">
-              Open, machine-readable U.S. law &mdash; statutes, regulations,
-              and agency guidance, freely licensed.
+              Open, machine-readable encodings of the world&apos;s rules
+              &mdash; starting with tax and benefit policy.
             </p>
           </div>
 
@@ -82,9 +85,7 @@ export function Footer({
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
               <li>{renderFooterLink("/about", "About")}</li>
-              <li>{renderFooterLink(appUrl, "Axiom platform")}</li>
-              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-rules-engine", "RuleSpec")}</li>
-              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-encode", "Encoder")}</li>
+              <li>{renderFooterLink("/team", "Team")}</li>
             </ul>
           </div>
 
@@ -93,8 +94,8 @@ export function Footer({
               Connect
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
-              <li>{renderFooterLink("https://github.com/TheAxiomFoundation", "GitHub")}</li>
               <li>{renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}</li>
+              <li>{renderFooterLink(updatesUrl, "Get updates")}</li>
               <li>{renderFooterLink("/privacy", "Privacy")}</li>
             </ul>
           </div>

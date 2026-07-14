@@ -1,19 +1,18 @@
 import type { MetadataRoute } from "next";
-import { AXIOM_SITEMAP_CHUNKS } from "@/lib/sitemap-config";
 import { SITE_URL } from "@/lib/urls";
 
 /**
- * Open policy — we actively want axiom rule pages to be crawled and
- * indexed so external citations (papers, LLM retrieval, policy tools)
- * can resolve them. The sitemap below enumerates every ingested
- * citation_path.
+ * Round 1 pull-back — the site is a pre-launch tease (Home · About ·
+ * Team). Product pages and per-rule corpus pages are noindexed via
+ * per-page metadata; the sitemap only lists the three public pages.
+ *
+ * At the Jul 28 launch, restore the chunked rule sitemaps (see
+ * git history + `AXIOM_SITEMAP_CHUNKS`) so encoded rule pages are
+ * crawled and indexed again.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: "*", allow: "/" }],
-    sitemap: Array.from(
-      { length: AXIOM_SITEMAP_CHUNKS },
-      (_, id) => `${SITE_URL}/sitemap/${id}.xml`
-    ),
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

@@ -7,7 +7,7 @@ export default function PrivacyPage() {
             Privacy policy
           </h1>
           <p className="font-mono text-sm text-[var(--color-ink-muted)]">
-            Last updated: May 2026
+            Last updated: July 2026
           </p>
         </header>
 
@@ -36,11 +36,23 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="heading-sub mb-4">
+              Events and newsletters
+            </h2>
+            <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
+              We use Zoom for event registration and MailChimp for newsletters.
+              We ask for name, organization affiliation, and email addresses as
+              part of registering. We do not share or sell your information.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="heading-sub mb-4">
               Third-party services
             </h2>
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
               Vercel (hosting), GitHub (code hosting), Supabase (database for experiment tracking),
-              PostHog and Google Analytics (usage analytics)
+              PostHog and Google Analytics (usage analytics), Zoom (event registration),
+              MailChimp (newsletters)
             </p>
           </section>
 
@@ -48,15 +60,9 @@ export default function PrivacyPage() {
             <h2 className="heading-sub mb-4">
               Open source
             </h2>
+            {/* Round 1 pull-back — GitHub link-out returns at the Jul 28 launch. */}
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-              All our code is open source at{" "}
-              <a
-                href="https://github.com/TheAxiomFoundation"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                github.com/TheAxiomFoundation
-              </a>
+              All our code is open source.
             </p>
           </section>
 

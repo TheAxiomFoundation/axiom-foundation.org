@@ -56,64 +56,32 @@ describe('Nav', () => {
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
 
-  it('renders navigation links', () => {
+  it('renders the Round 1 navigation links (About, Team only)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
-    expect(screen.getByText('Axiom')).toBeInTheDocument()
-    expect(screen.getByText('Why')).toBeInTheDocument()
-    expect(screen.getByText('Encoding')).toBeInTheDocument()
-    expect(screen.getByText('Encoder')).toBeInTheDocument()
-    expect(screen.queryByText('.yaml')).not.toBeInTheDocument()
-    expect(screen.queryByText('Encoding runs')).not.toBeInTheDocument()
-    expect(screen.getByText('About')).toBeInTheDocument()
-    expect(screen.getByText('Docs')).toBeInTheDocument()
-  })
-
-  it('renders anchor links on landing page (pathname /) as bare hashes', () => {
-    mockUsePathname.mockReturnValue('/')
-    render(<NavClient />)
-    const encodingLink = screen.getByText('Encoding')
-    expect(encodingLink.closest('a')).toHaveAttribute('href', '#encoded')
-    const encoderLink = screen.getByText('Encoder')
-    expect(encoderLink.closest('a')).toHaveAttribute('href', '#encoder')
-  })
-
-  it('renders anchor links as relative paths on non-landing pages', () => {
-    mockUsePathname.mockReturnValue('/about')
-    render(<NavClient />)
-    const encodingLink = screen.getByText('Encoding')
-    expect(encodingLink.closest('a')).toHaveAttribute('href', '/#encoded')
+    expect(screen.getAllByText('About').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
+    // Product-page + external links are pulled back in Round 1.
+    expect(screen.queryByText('Axiom')).not.toBeInTheDocument()
+    expect(screen.queryByText('Encoding')).not.toBeInTheDocument()
+    expect(screen.queryByText('Docs')).not.toBeInTheDocument()
   })
 
   it('highlights active link on /about', () => {
     mockUsePathname.mockReturnValue('/about')
     render(<NavClient />)
-    const aboutLink = screen.getByText('About')
+    const aboutLink = screen.getAllByText('About')[0]
     expect(aboutLink.closest('a')).toHaveClass('is-active')
   })
 
-  it('renders GitHub icon link', () => {
+  it('does not render a GitHub icon link', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
     const links = screen.getAllByRole('link')
     const githubLink = links.find(
       (l) => l.getAttribute('href') === 'https://github.com/TheAxiomFoundation',
     )
-    expect(githubLink).toBeInTheDocument()
-  })
-
-  it('renders Axiom link to the app subdomain by default', () => {
-    mockUsePathname.mockReturnValue('/')
-    render(<NavClient />)
-    const axiomLink = screen.getByText('Axiom')
-    expect(axiomLink.closest('a')).toHaveAttribute('href', 'https://app.axiom-foundation.org')
-  })
-
-  it('supports the in-site app route for preview-safe navigation', () => {
-    mockUsePathname.mockReturnValue('/')
-    render(<NavClient appUrl="/axiom" />)
-    const axiomLink = screen.getByText('Axiom')
-    expect(axiomLink.closest('a')).toHaveAttribute('href', '/axiom')
+    expect(githubLink).toBeUndefined()
   })
 
   it('renders hamburger button for mobile', () => {
@@ -128,8 +96,8 @@ describe('Nav', () => {
     render(<NavClient />)
     const button = screen.getByLabelText('Open menu')
     fireEvent.click(button)
-    const axiomLinks = screen.getAllByText('Axiom')
-    expect(axiomLinks.length).toBe(2)
+    // About appears in both the desktop nav and the mobile drawer.
+    expect(screen.getAllByText('About').length).toBe(2)
     expect(screen.getByLabelText('Close menu')).toBeInTheDocument()
   })
 
@@ -137,12 +105,12 @@ describe('Nav', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
     fireEvent.click(screen.getByLabelText('Open menu'))
-    const axiomLinks = screen.getAllByText('Axiom')
-    fireEvent.click(axiomLinks[1])
-    expect(screen.getAllByText('Axiom').length).toBe(1)
+    const aboutLinks = screen.getAllByText('About')
+    fireEvent.click(aboutLinks[1])
+    expect(screen.getAllByText('About').length).toBe(1)
   })
 
-  it('renders app-host marketing links as absolute URLs from the first render', () => {
+  it('renders marketing links as absolute URLs from the first render', () => {
     mockUsePathname.mockReturnValue('/axiom/us')
     render(
       <NavClient
@@ -151,9 +119,9 @@ describe('Nav', () => {
       />,
     )
 
-    expect(screen.getByText('Why').closest('a')).toHaveAttribute(
+    expect(screen.getAllByText('About')[0].closest('a')).toHaveAttribute(
       'href',
-      'https://axiom-foundation.org/#gap',
+      'https://axiom-foundation.org/about',
     )
     expect(screen.getByAltText('Axiom Foundation').closest('a')).toHaveAttribute(
       'href',

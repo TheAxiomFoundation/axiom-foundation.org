@@ -8,6 +8,7 @@ import { Footer, GradientSync } from "@axiom-foundation/ui";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { SITE_URL, axiomAppHref } from "@/lib/urls";
+import { UPDATES_URL } from "@/lib/launch";
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -26,12 +27,16 @@ const serif = Newsreader({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Axiom Foundation — The world's rules, encoded",
+  title: "Axiom Foundation — Computable law for all",
   description:
-    "Machine-readable encodings of statutes, regulations, and policy rules. Ground truth for AI systems. Verifiable by design.",
+    "Open, machine-readable encodings of the world's rules, starting with tax and benefit policy. Cited, time-aware, and executable, so anyone can run, audit, or reform them.",
   openGraph: {
     title: "Axiom Foundation",
-    description: "The world's rules, encoded.",
+    // Round 1 tease — shares should carry the launch date. Update at launch.
+    description:
+      "Launching publicly July 28, 2026. Open, machine-readable encodings of the world's rules — starting with tax and benefit policy.",
+    // Official brand share card (axiom-brand png/social/og-paper-full.png,
+    // 1200×630, w350 lockup on paper).
     images: ["/og-image.png"],
   },
 };
@@ -48,7 +53,10 @@ export default function RootLayout({
       className={`${mono.variable} ${GeistSans.variable} ${serif.variable}`}
     >
       <head>
+        {/* Favicons from the axiom-brand kit (w350 tile). */}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/axiom-icon-180.png" />
       </head>
       <body>
         <GoogleAnalytics />
@@ -56,7 +64,7 @@ export default function RootLayout({
         <GradientSync />
         <NavWrapper />
         <main className="relative z-10">{children}</main>
-        <Footer renderLink={Link} appUrl={axiomAppHref()} />
+        <Footer renderLink={Link} appUrl={axiomAppHref()} updatesUrl={UPDATES_URL} />
       </body>
     </html>
   );

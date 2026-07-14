@@ -125,35 +125,66 @@ canvas[aria-hidden] {
   color: var(--color-accent);
 }
 
-/* Faint editorial glyph anchored to a section corner — reads as
-   paper marginalia rather than chrome. The glyph is configurable via
-   `--mark-glyph` so different sections can carry a different
-   typographic anchor (§ for legal, ¶ for prose, etc.). */
-.section-mark {
-  --mark-glyph: "§";
-  position: relative;
-  isolation: isolate;
+/* ── Launch announcement card ──
+   A dark "official notice" invitation that opens the home page above the
+   cream hero. The near-black surface + amber glow reuse the site's
+   dark-section cadence so the amber CTA and countdown read as the loudest
+   thing on first paint. Motion is restrained: one entrance, a slow glow
+   breath, and a single sheen sweep across the top hairline. */
+
+@keyframes announce-glow {
+  0%, 100% { opacity: 0.55; transform: translate3d(0, 0, 0) scale(1); }
+  50% { opacity: 0.95; transform: translate3d(0, -4%, 0) scale(1.08); }
 }
-.section-mark::after {
-  content: var(--mark-glyph);
-  position: absolute;
-  bottom: -2rem;
-  right: -1rem;
-  font-family: var(--f-serif);
-  font-style: italic;
-  font-size: clamp(12rem, 24vw, 22rem);
-  line-height: 0.8;
+
+@keyframes announce-sheen {
+  0% { transform: translateX(-120%); }
+  55%, 100% { transform: translateX(320%); }
+}
+
+@keyframes announce-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.announce-glow {
+  animation: announce-glow 7s var(--ease-out) infinite;
+}
+
+.announce-sheen {
+  animation: announce-sheen 6.5s var(--ease-out) infinite;
+}
+
+.announce-rise {
+  opacity: 0;
+  animation: announce-rise 0.7s var(--ease-out) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce-glow,
+  .announce-sheen { animation: none; }
+  .announce-rise { opacity: 1; animation: none; }
+}
+
+/* Anchor overrides for the dark announcement card. The shared token
+   sheet sets an unlayered `a { color: var(--color-accent);
+   text-decoration: underline }`, which beats Tailwind's layered
+   utilities — so on the near-black card the CTA text renders in dark
+   brown and underlined (low contrast). These class selectors are also
+   unlayered but more specific than the bare `a`, so they win cleanly
+   for colour, underline, and hover without !important. */
+.announce-cta {
   color: var(--color-ink);
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: -1;
-  user-select: none;
+  text-decoration: none;
 }
-.section-mark.section-mark-left::after {
-  right: auto;
-  left: -1rem;
+.announce-cta:hover {
+  color: #fffbeb;
 }
-.section-mark-pilcrow { --mark-glyph: "¶"; }
-.section-mark-ampersand { --mark-glyph: "&"; }
-.section-mark-asterism { --mark-glyph: "⁂"; }
+.announce-link {
+  color: var(--color-ink-secondary);
+  text-decoration: none;
+}
+.announce-link:hover {
+  color: var(--color-accent);
+}
 

@@ -212,11 +212,8 @@ export function EncoderSection() {
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[640px] mx-auto leading-relaxed">
             An AI-driven pipeline reads a statute, encodes it section by
-            section, and runs the result against{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              oracles like PolicyEngine and TAXSIM
-            </span>{" "}
-            before any human signs off.
+            section, and runs the result against oracles like PolicyEngine
+            and TAXSIM before any human signs off.
           </p>
         </Reveal>
 

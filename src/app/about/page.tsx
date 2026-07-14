@@ -5,7 +5,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 export const metadata: Metadata = {
   title: "About — Axiom Foundation",
   description:
-    "Axiom Foundation publishes open, machine-readable encodings of the world's rules, starting with tax and benefit policy — cited, time-aware, and executable.",
+    "The Axiom Foundation publishes open, machine-readable encodings of the world's rules, starting with tax and benefit policy — cited, time-aware, and executable.",
 };
 
 const BUILD = [
@@ -58,7 +58,7 @@ export default function AboutPage() {
         <Reveal className="mb-20 max-w-[760px]">
           <h1 className="heading-page mb-7">About Axiom</h1>
           <p className="font-body text-[1.35rem] text-[var(--color-ink-secondary)] leading-[1.65] text-pretty">
-            Axiom Foundation publishes open, machine-readable encodings of the
+            The Axiom Foundation publishes open, machine-readable encodings of the
             world&apos;s rules, starting with tax and benefit policy &mdash;
             statutes, regulations, and policy rules turned into{" "}
             <span className="serif-italic text-[var(--color-ink)]">
@@ -75,7 +75,7 @@ export default function AboutPage() {
             separately and privately, inside every eligibility system,
             calculator, and policy tool that needs them. The interpretation
             lives in closed code: hard to verify, harder to fix, duplicated
-            everywhere. Axiom Foundation publishes that layer in the open, so
+            everywhere. The Axiom Foundation publishes that layer in the open, so
             there is{" "}
             <span className="serif-italic text-[var(--color-ink)]">
               one cited, checkable source for what a rule actually computes
@@ -140,7 +140,7 @@ export default function AboutPage() {
 
         <ProseBand label="How we're organized">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            Axiom Foundation is a fiscally sponsored project of the PSL
+            The Axiom Foundation is a fiscally sponsored project of the PSL
             Foundation. Our code, our data, and our encoding decisions are
             public.
           </p>
@@ -148,7 +148,7 @@ export default function AboutPage() {
 
         <ProseBand label="Founding team">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Axiom Foundation&apos;s founding team is Max Ghenis (CEO and
+            The Axiom Foundation&apos;s founding team is Max Ghenis (CEO and
             Founder), Ariel Kennan (President), and Pavel Makarchuk (Product
             Lead).
           </p>

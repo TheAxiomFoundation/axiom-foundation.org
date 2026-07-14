@@ -9,11 +9,9 @@
 export const LAUNCH_EVENT_URL =
   "https://zoom.us/webinar/register/WN_8yti1yYqRHaET0Wa8Iu9ug#/registration";
 
-// "Get updates" — MailChimp signup.
-// TODO(#38): swap in the MailChimp signup URL before ship; the mailto
-// is the interim fallback so the button is never dead.
+// "Get updates" — MailChimp hosted signup form (#38/#66).
 export const UPDATES_URL =
-  "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates";
+  "https://axiom-foundation.us12.list-manage.com/subscribe?u=43b8282de112809c41a3cff2c&id=fbea2dd394";
 
 // Public launch briefing — Tuesday, July 28, 2026, 1:00 PM ET (EDT,
 // UTC-4) per launch/Event-Comms.md; matches the Zoom registration above.

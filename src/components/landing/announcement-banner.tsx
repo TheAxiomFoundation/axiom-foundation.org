@@ -104,7 +104,7 @@ export function AnnouncementBanner() {
               className="announce-rise mt-2.5 font-body text-[clamp(1.35rem,2.2vw,1.75rem)] font-light leading-[1.12] tracking-[-0.01em]"
               style={{ animationDelay: "80ms", color: "var(--color-ink)" }}
             >
-              Axiom Foundation goes public on{" "}
+              The Axiom Foundation goes public on{" "}
               <span
                 className="font-serif italic"
                 style={{ fontFamily: "var(--f-serif)", color: "var(--color-accent)" }}

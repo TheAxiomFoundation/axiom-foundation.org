@@ -12,7 +12,7 @@ const APPLICATIONS = [
     n: "02",
     title: "Ground truth for AI",
     body:
-      "Models keep getting asked policy questions. Axiom Foundation gives them a key — verifiable answers grounded in actual law, useful for both training and inference.",
+      "Models keep getting asked policy questions. The Axiom Foundation gives them a key — verifiable answers grounded in actual law, useful for both training and inference.",
     actor: "for AI labs",
   },
   {

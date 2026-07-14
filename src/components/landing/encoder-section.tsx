@@ -13,8 +13,8 @@ const LINES: TerminalLine[] = [
     delay: 0,
     content: (
       <>
-        <span className="text-[var(--color-success)]">$ </span>
-        <span className="text-[var(--color-ink)] font-medium">
+        <span className="text-[#86efac]">$ </span>
+        <span className="text-[#fafaf9] font-medium">
           axiom encode &quot;26 USC 32&quot;
         </span>
       </>
@@ -28,11 +28,11 @@ const LINES: TerminalLine[] = [
     delay: 0.6,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
-        <span className="text-[var(--color-ink-muted)]">
+        <span className="font-semibold text-[#fbbf24]">[axiom]</span>
+        <span className="text-[#a8a29e]">
           {" "}Loading 26 USC 32...
         </span>
-        <span className="text-[var(--color-ink)] font-medium">
+        <span className="text-[#fafaf9] font-medium">
           {" "}81,247 characters
         </span>
       </>
@@ -42,8 +42,8 @@ const LINES: TerminalLine[] = [
     delay: 0.9,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-warning)]">[axiom]</span>
-        <span className="text-[var(--color-ink-muted)]">
+        <span className="font-semibold text-[#fbbf24]">[axiom]</span>
+        <span className="text-[#a8a29e]">
           {" "}14 subsections extracted
         </span>
       </>
@@ -57,8 +57,8 @@ const LINES: TerminalLine[] = [
     delay: 1.4,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-accent)]">[encode]</span>
-        <span className="text-[var(--color-ink-muted)]">
+        <span className="font-semibold text-[#fdba74]">[encode]</span>
+        <span className="text-[#a8a29e]">
           {" "}Wave 1: (a) (b) (c) (d) (f) (h) (i) (j) (m) (n)
         </span>
       </>
@@ -68,8 +68,8 @@ const LINES: TerminalLine[] = [
     delay: 1.7,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-accent)]">[encode]</span>
-        <span className="text-[var(--color-ink-muted)]">
+        <span className="font-semibold text-[#fdba74]">[encode]</span>
+        <span className="text-[#a8a29e]">
           {" "}Wave 2: (e) (g) (k) (l)
         </span>
         <span className="text-[rgba(255,255,255,0.35)]">
@@ -82,11 +82,11 @@ const LINES: TerminalLine[] = [
     delay: 2.1,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-accent)]">[encode]</span>
-        <span className="inline-block text-[var(--color-accent)]">
+        <span className="font-semibold text-[#fdba74]">[encode]</span>
+        <span className="inline-block text-[#fdba74]">
           {" "}████████████████████
         </span>
-        <span className="text-[var(--color-ink)] font-medium">
+        <span className="text-[#fafaf9] font-medium">
           {" "}14/14 complete
         </span>
       </>
@@ -101,8 +101,8 @@ const LINES: TerminalLine[] = [
     content: (
       <>
         <span className="font-semibold text-[#a78bfa]">[validate]</span>
-        <span className="text-[var(--color-ink-muted)]"> CI:           </span>
-        <span className="text-[var(--color-success)]">14/14 passed</span>
+        <span className="text-[#a8a29e]"> CI:           </span>
+        <span className="text-[#86efac]">14/14 passed</span>
       </>
     ),
   },
@@ -111,8 +111,8 @@ const LINES: TerminalLine[] = [
     content: (
       <>
         <span className="font-semibold text-[#a78bfa]">[validate]</span>
-        <span className="text-[var(--color-ink-muted)]"> PolicyEngine: </span>
-        <span className="text-[var(--color-success)]">12/14 match</span>
+        <span className="text-[#a8a29e]"> PolicyEngine: </span>
+        <span className="text-[#86efac]">14/14 match</span>
       </>
     ),
   },
@@ -121,8 +121,8 @@ const LINES: TerminalLine[] = [
     content: (
       <>
         <span className="font-semibold text-[#a78bfa]">[validate]</span>
-        <span className="text-[var(--color-ink-muted)]"> TAXSIM:       </span>
-        <span className="text-[var(--color-success)]">11/14 match</span>
+        <span className="text-[#a8a29e]"> TAXSIM:       </span>
+        <span className="text-[#86efac]">14/14 match</span>
       </>
     ),
   },
@@ -134,11 +134,11 @@ const LINES: TerminalLine[] = [
     delay: 3.8,
     content: (
       <>
-        <span className="font-semibold text-[var(--color-success)]">[done]</span>
-        <span className="text-[var(--color-success)]">
+        <span className="font-semibold text-[#86efac]">[done]</span>
+        <span className="text-[#86efac]">
           {" "}14 RuleSpec files written to{" "}
         </span>
-        <span className="text-[var(--color-ink)] font-medium">
+        <span className="text-[#fafaf9] font-medium">
           rulespec-us/statutes/26/32/*.yaml
         </span>
       </>
@@ -240,7 +240,7 @@ export function EncoderSection() {
               n: "03",
               label: "Verify",
               body:
-                "CI checks, comparison against independent oracles, reviewer agents that explain any discrepancy.",
+                "Continuous Integration checks, comparison against independent oracles, reviewer agents that explain any discrepancy.",
             },
           ].map((step) => (
             <RevealItem

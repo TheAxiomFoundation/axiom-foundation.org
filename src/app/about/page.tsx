@@ -27,7 +27,7 @@ const BUILD = [
   {
     n: "04",
     title: "Validation",
-    desc: "We cross-check encodings against independent engines. Open isn't enough; the point is that you can check our work.",
+    desc: "The harness that runs every encoding against engines we don't control — and publishes the comparison so anyone can re-run it.",
   },
 ];
 

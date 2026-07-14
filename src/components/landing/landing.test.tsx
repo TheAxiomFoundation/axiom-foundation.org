@@ -36,7 +36,7 @@ describe('Landing sections', () => {
   it('renders the gap section with problem framing', () => {
     render(<TheGapSection />)
     expect(
-      screen.getByRole('heading', { name: /laws that govern everyday life/i }),
+      screen.getByRole('heading', { name: /law for the digital era/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/each system reimplements the law/i)).toBeInTheDocument()
     expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()

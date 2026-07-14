@@ -234,7 +234,7 @@ export function EncoderSection() {
               n: "02",
               label: "Encode",
               body:
-                "An agent per subsection drafts the encoding, citing the section it came from. Conflicts and re-tries are logged.",
+                "An agent per subsection drafts the encoding, citing the section it came from. The pipeline logs every conflict and retry.",
             },
             {
               n: "03",
@@ -267,7 +267,7 @@ export function EncoderSection() {
           as="p"
           className="mt-14 text-center font-body text-[0.95rem] text-[var(--color-ink-muted)] max-w-[640px] mx-auto leading-relaxed"
         >
-          Every encoding decision is logged.{" "}
+          The encoder logs every decision.{" "}
           <span className="serif-italic text-[var(--color-ink-secondary)]">
             Disagreements get explained, not erased.
           </span>

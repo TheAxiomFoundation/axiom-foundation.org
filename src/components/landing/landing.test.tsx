@@ -51,7 +51,7 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /the primary text, gathered/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /encoded so they can be computed/i }),
+      screen.getByRole('heading', { name: /encoded so anyone can compute them/i }),
     ).toBeInTheDocument()
     // Round 1 pull-back: the PTC worked example is hidden until the
     // Jul 28 reveal (SHOW_WORKED_EXAMPLE in encoded-law-section).

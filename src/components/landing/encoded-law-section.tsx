@@ -6,7 +6,7 @@ const LAYERS = [
     kicker: "The source corpus",
     title: "The primary text, gathered and addressable",
     body:
-      "National statutes, regulations, agency guidance, and state law, gathered from official sources — openly licensed, version-controlled, and addressable by citation. The primary text every encoding points back to.",
+      "We gather national statutes, regulations, agency guidance, and state law from official sources — openly licensed, version-controlled, and addressable by citation. The primary text every encoding points back to.",
     bullets: [
       "United States Code (national statutes)",
       "Code of Federal Regulations",
@@ -17,9 +17,9 @@ const LAYERS = [
   {
     n: "02",
     kicker: "Encodings",
-    title: "Encoded so they can be computed",
+    title: "Encoded so anyone can compute them",
     body:
-      "The same rules turned into machine-readable form — every value cites a section, every clause is dated, formulas are executable. Compiles to native code; runs anywhere.",
+      "We turn the same rules into machine-readable form — every value cites a section, every clause is dated, formulas are executable. Compiles to native code; runs anywhere.",
     bullets: [
       "Cited — every value traces to a statute",
       "Time-aware — effective dates on every clause",

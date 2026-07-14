@@ -1,0 +1,1077 @@
+{
+  "as_of": "2026-07-11",
+  "title": "Encoding scale planning",
+  "scope": "Forward-looking token, capability, throughput, and cloud-scaling model for Axiom rule modules.",
+  "forecast_convention": "Each year is a counterfactual start-year snapshot against the same as-of remaining backlog. The tables do not subtract intervening merges and are not a sequential roll-forward.",
+  "forecast_convention_provenance": "A",
+  "pricing_context_note": "The 2026 model rates use OpenAI's short-context price band, which contains the measured representative request mix.",
+  "pricing_context_provenance": "M",
+  "provenance_labels": [
+    {
+      "code": "M",
+      "label": "Measured",
+      "definition": "Observed in Axiom records or read from a live public source."
+    },
+    {
+      "code": "D",
+      "label": "Derived",
+      "definition": "Calculated from measured and explicitly assumed inputs."
+    },
+    {
+      "code": "A",
+      "label": "Assumed",
+      "definition": "A planning choice or forward scenario, not an observed result."
+    }
+  ],
+  "headline_metrics": [
+    {
+      "id": "current_modules",
+      "label": "Current modules",
+      "value": 4103,
+      "unit": "modules",
+      "provenance": "M",
+      "detail": "Canonical deduplicated set"
+    },
+    {
+      "id": "sustainable_rate",
+      "label": "Recent merge rate",
+      "value": 100,
+      "unit": "modules/day",
+      "provenance": "D",
+      "detail": "Recent active-day trajectory"
+    },
+    {
+      "id": "system_token_cost",
+      "label": "2026 system-token proxy",
+      "value": 0.9,
+      "unit": "USD/module",
+      "provenance": "A",
+      "detail": "Central inherited planning value"
+    },
+    {
+      "id": "batch_cloud_cost",
+      "label": "Batch plus elastic CI",
+      "value": 0.437283,
+      "unit": "USD/module",
+      "provenance": "D",
+      "detail": "Reuse case; cache writes excluded"
+    }
+  ],
+  "unit_economics": {
+    "run_sample": {
+      "value": 3582,
+      "unit": "encoder runs",
+      "provenance": "M"
+    },
+    "runs_with_token_data": {
+      "value": 3380,
+      "unit": "runs",
+      "provenance": "M"
+    },
+    "representative_pass": [
+      {
+        "metric": "Total tokens",
+        "value": 54674,
+        "unit": "tokens/pass",
+        "provenance": "M",
+        "note": "Median"
+      },
+      {
+        "metric": "Fresh input",
+        "value": 30282,
+        "unit": "tokens/pass",
+        "provenance": "D",
+        "note": "Median input less median cached input"
+      },
+      {
+        "metric": "Cached input",
+        "value": 18688,
+        "unit": "tokens/pass",
+        "provenance": "M",
+        "note": "Representative billing mix"
+      },
+      {
+        "metric": "Output",
+        "value": 3794,
+        "unit": "tokens/pass",
+        "provenance": "M",
+        "note": "Representative billing mix"
+      },
+      {
+        "metric": "Median duration",
+        "value": 50,
+        "unit": "seconds/pass",
+        "provenance": "M",
+        "note": "Median"
+      },
+      {
+        "metric": "p90 duration",
+        "value": 147,
+        "unit": "seconds/pass",
+        "provenance": "M",
+        "note": "90th percentile"
+      }
+    ],
+    "retry_multiplier": {
+      "value": 1.43,
+      "unit": "runs/merged module",
+      "provenance": "M",
+      "note": "Mean quality attempts to first success"
+    },
+    "first_pass_rate_band": {
+      "low": 0.63,
+      "high": 0.73,
+      "unit": "share",
+      "provenance": "M"
+    },
+    "hard_fail_tail": {
+      "value": 0.27,
+      "unit": "share",
+      "provenance": "M"
+    },
+    "subscription_costs": [
+      {
+        "utilization": "Observed",
+        "low": 0.17,
+        "high": 0.24,
+        "unit": "USD/module",
+        "provenance": "D",
+        "note": "Flat-rate developer subscriptions at partial utilization"
+      },
+      {
+        "utilization": "Saturated",
+        "low": 0.02,
+        "high": 0.07,
+        "unit": "USD/module",
+        "provenance": "D",
+        "note": "Weekly windows bind before local compute"
+      }
+    ],
+    "cache_write_treatment": {
+      "allocated_write_tokens_per_pass": 0,
+      "allocation_provenance": "A",
+      "telemetry_available": false,
+      "telemetry_provenance": "M",
+      "representative_cached_prefix_tokens": 18688,
+      "prefix_provenance": "M",
+      "note": "Cache-write telemetry is unavailable, so base costs treat cache creation as amortized across reuse and allocate no write premium to the representative pass."
+    },
+    "model_costs": [
+      {
+        "model": "gpt-5.5",
+        "service": "Standard",
+        "input_per_million": 5,
+        "cached_input_per_million": 0.5,
+        "output_per_million": 30,
+        "cost_per_pass": 0.274574,
+        "cost_per_merged_module": 0.392641,
+        "price_provenance": "M",
+        "cost_provenance": "D"
+      },
+      {
+        "model": "gpt-5.6-terra",
+        "service": "Standard",
+        "input_per_million": 2.5,
+        "cached_input_per_million": 0.25,
+        "output_per_million": 15,
+        "cost_per_pass": 0.137287,
+        "cost_per_merged_module": 0.19632,
+        "price_provenance": "M",
+        "cost_provenance": "D"
+      },
+      {
+        "model": "gpt-5.6-luna",
+        "service": "Standard",
+        "input_per_million": 1,
+        "cached_input_per_million": 0.1,
+        "output_per_million": 6,
+        "cost_per_pass": 0.054915,
+        "cost_per_merged_module": 0.078528,
+        "price_provenance": "M",
+        "cost_provenance": "D"
+      },
+      {
+        "model": "gpt-5.6-terra",
+        "service": "Batch",
+        "input_per_million": 1.25,
+        "cached_input_per_million": 0.125,
+        "output_per_million": 7.5,
+        "cost_per_pass": 0.068644,
+        "cost_per_merged_module": 0.098160205,
+        "price_provenance": "M",
+        "cost_provenance": "D"
+      }
+    ],
+    "system_token_proxy": {
+      "central": 0.9,
+      "low": 0.6,
+      "high": 1.65,
+      "unit": "USD/merged module",
+      "provenance": "A",
+      "multiplier": 3,
+      "multiplier_provenance": "D",
+      "basis": {
+        "window_start": "2026-06-19",
+        "window_end": "2026-07-10",
+        "all_merged_prs": 1354,
+        "module_prs": 447,
+        "module_prs_approximate": true,
+        "ratio": 3.03,
+        "counts_provenance": "M",
+        "ratio_provenance": "D",
+        "note": "The module-PR count is approximate because a small number of repository counts were sampled after rate limiting."
+      },
+      "note": "The multiplier carries surrounding oracle, corpus, and infrastructure work into a token planning proxy. It is not a literal measurement of token use. The $0.60-$1.65 band spans the models and service tiers in production during the window at the measured token load, times the 3.0x proxy; the $0.90 center is a planning midpoint within that band, above the currently attainable $0.403 all-Batch system cost, so price forecasts start conservative. Treating merged pull requests as equal token workloads is an assumption."
+    }
+  },
+  "tiers": [
+    {
+      "id": "A",
+      "name": "Scored universe",
+      "scope": "Computational statutes and regulations, state income taxes, and core state benefit programs across 51 jurisdictions.",
+      "low_modules": 15500,
+      "central_modules": 24000,
+      "high_modules": 35000,
+      "remaining_central_modules": 19897,
+      "provenance": "D",
+      "components": [
+        {
+          "name": "Federal statutes and regulations",
+          "low": 1000,
+          "central": 1500,
+          "high": 2500,
+          "provenance": "D"
+        },
+        {
+          "name": "State income taxes",
+          "low": 1500,
+          "central": 2600,
+          "high": 4100,
+          "provenance": "D"
+        },
+        {
+          "name": "State benefit programs",
+          "low": 13000,
+          "central": 20000,
+          "high": 28000,
+          "provenance": "D"
+        }
+      ],
+      "all_in_estimate": "Within current program resources; fixed engineering is not estimated here.",
+      "all_in_provenance": "A"
+    },
+    {
+      "id": "B",
+      "name": "Operative detail",
+      "scope": "Tier A plus federal operative guidance and deeper state manuals.",
+      "low_modules": 29000,
+      "central_modules": 53000,
+      "high_modules": 100000,
+      "remaining_central_modules": 48897,
+      "provenance": "D",
+      "components": [
+        {
+          "name": "Tier A",
+          "low": 15500,
+          "central": 24100,
+          "high": 34600,
+          "provenance": "D"
+        },
+        {
+          "name": "Social Security operating guidance",
+          "low": 6000,
+          "central": 13000,
+          "high": 30000,
+          "provenance": "A"
+        },
+        {
+          "name": "Tax administration guidance",
+          "low": 1500,
+          "central": 4000,
+          "high": 10000,
+          "provenance": "A"
+        },
+        {
+          "name": "Health and nutrition guidance",
+          "low": 1500,
+          "central": 4000,
+          "high": 10000,
+          "provenance": "A"
+        },
+        {
+          "name": "Deeper state manuals",
+          "low": 4000,
+          "central": 8000,
+          "high": 15000,
+          "provenance": "D"
+        }
+      ],
+      "all_in_estimate": "$0.5M–$1.5M, dominated by source ingest, verification, and operating capacity rather than tokens.",
+      "all_in_provenance": "A"
+    },
+    {
+      "id": "C",
+      "name": "Full title breadth",
+      "scope": "Full revenue and welfare-title breadth across federal law and 51 jurisdictions.",
+      "low_modules": 130000,
+      "central_modules": 350000,
+      "high_modules": 700000,
+      "remaining_central_modules": 345897,
+      "provenance": "A",
+      "components": [
+        {
+          "name": "Revenue and welfare provision universe",
+          "low": 500000,
+          "central": 700000,
+          "high": 900000,
+          "provenance": "A"
+        },
+        {
+          "name": "Encodable share",
+          "low": 0.25,
+          "central": 0.5,
+          "high": 0.6,
+          "provenance": "A"
+        },
+        {
+          "name": "Modules per encodable provision",
+          "low": 1,
+          "central": 1.2,
+          "high": 1.3,
+          "provenance": "A"
+        }
+      ],
+      "raw_central_formula_modules": 420000,
+      "raw_central_formula_provenance": "D",
+      "planning_midpoint_modules": 350000,
+      "planning_midpoint_provenance": "A",
+      "planning_midpoint_note": "The published central value is an explicit midpoint within the wide range, not a rounded product of the central sub-inputs.",
+      "all_in_estimate": "Single-digit millions, with denominator uncertainty of roughly 2×.",
+      "all_in_provenance": "A"
+    }
+  ],
+  "denominator_caveats": [
+    {
+      "statement": "One module contains about 5.8 rules on average; changing module grain changes every denominator.",
+      "value": 5.8,
+      "unit": "rules/module",
+      "provenance": "M"
+    },
+    {
+      "statement": "State benefit programs contribute about 83% of unrounded central Tier A and extrapolate from a small measured set of states.",
+      "value": 0.83,
+      "unit": "share of Tier A",
+      "provenance": "D"
+    },
+    {
+      "statement": "Tier C is deliberately wide because the in-scope provision universe and encodable share are assumed.",
+      "value": 2,
+      "unit": "approximate uncertainty factor",
+      "provenance": "A"
+    },
+    {
+      "statement": "Tier remainders subtract the full canonical stock from every tier, treating it as in-scope; roughly 18% of the stock is non-US country modules, so remaining-module counts are understated by up to about 4%.",
+      "provenance": "A"
+    }
+  ],
+  "merge_trajectory": {
+    "canonical_counts": [
+      {
+        "date": "2026-07-01",
+        "modules": 3328,
+        "provenance": "M"
+      },
+      {
+        "date": "2026-07-10",
+        "modules": 4103,
+        "provenance": "M"
+      }
+    ],
+    "gross_additions": {
+      "value": 775,
+      "unit": "modules",
+      "provenance": "D"
+    },
+    "pause_day_additions": {
+      "value": 55,
+      "unit": "modules",
+      "provenance": "A",
+      "note": "Approximate amount netted from two deliberate pause days"
+    },
+    "active_days": {
+      "value": 7,
+      "unit": "days",
+      "provenance": "D"
+    },
+    "sustainable_rate": {
+      "value": 100,
+      "unit": "modules/day",
+      "provenance": "D"
+    },
+    "recent_peak": {
+      "value": 138,
+      "unit": "modules/day",
+      "provenance": "M"
+    },
+    "note": "Use the trajectory, not the three-week mean. The earlier one-time bulk-import figure is retracted as a sustainable-capacity measure. CI and the merge train are the binding levers."
+  },
+  "price_history": [
+    {
+      "model": "GPT-4",
+      "date": "2023-03",
+      "input_per_million": 30,
+      "output_per_million": 60,
+      "provenance": "M",
+      "source_id": "openai_gpt4"
+    },
+    {
+      "model": "GPT-4o",
+      "date": "2024-05",
+      "input_per_million": 5,
+      "output_per_million": 15,
+      "provenance": "M",
+      "source_id": "openai_structured_outputs"
+    },
+    {
+      "model": "GPT-4o",
+      "date": "2024-08",
+      "input_per_million": 2.5,
+      "output_per_million": 10,
+      "provenance": "M",
+      "source_id": "openai_structured_outputs"
+    },
+    {
+      "model": "gpt-5.5",
+      "date": "2026-07",
+      "input_per_million": 5,
+      "output_per_million": 30,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "date": "2026-07",
+      "input_per_million": 2.5,
+      "output_per_million": 15,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "date": "2026-07",
+      "input_per_million": 1,
+      "output_per_million": 6,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    }
+  ],
+  "price_decline_scenarios": [
+    {
+      "id": "conservative",
+      "name": "Conservative",
+      "annual_decline_factor": 2,
+      "provenance": "A",
+      "rows": [
+        {
+          "year": 2026,
+          "cost_per_merged_module": 0.9,
+          "tier_a_cost": 17907.3,
+          "tier_b_cost": 44007.3,
+          "tier_c_cost": 311307.3,
+          "provenance": "D"
+        },
+        {
+          "year": 2027,
+          "cost_per_merged_module": 0.45,
+          "tier_a_cost": 8953.65,
+          "tier_b_cost": 22003.65,
+          "tier_c_cost": 155653.65,
+          "provenance": "D"
+        },
+        {
+          "year": 2028,
+          "cost_per_merged_module": 0.225,
+          "tier_a_cost": 4476.825,
+          "tier_b_cost": 11001.825,
+          "tier_c_cost": 77826.825,
+          "provenance": "D"
+        }
+      ]
+    },
+    {
+      "id": "central",
+      "name": "Central",
+      "annual_decline_factor": 5,
+      "provenance": "A",
+      "rows": [
+        {
+          "year": 2026,
+          "cost_per_merged_module": 0.9,
+          "tier_a_cost": 17907.3,
+          "tier_b_cost": 44007.3,
+          "tier_c_cost": 311307.3,
+          "provenance": "D"
+        },
+        {
+          "year": 2027,
+          "cost_per_merged_module": 0.18,
+          "tier_a_cost": 3581.46,
+          "tier_b_cost": 8801.46,
+          "tier_c_cost": 62261.46,
+          "provenance": "D"
+        },
+        {
+          "year": 2028,
+          "cost_per_merged_module": 0.036,
+          "tier_a_cost": 716.292,
+          "tier_b_cost": 1760.292,
+          "tier_c_cost": 12452.292,
+          "provenance": "D"
+        }
+      ]
+    },
+    {
+      "id": "aggressive",
+      "name": "Aggressive",
+      "annual_decline_factor": 10,
+      "provenance": "A",
+      "rows": [
+        {
+          "year": 2026,
+          "cost_per_merged_module": 0.9,
+          "tier_a_cost": 17907.3,
+          "tier_b_cost": 44007.3,
+          "tier_c_cost": 311307.3,
+          "provenance": "D"
+        },
+        {
+          "year": 2027,
+          "cost_per_merged_module": 0.09,
+          "tier_a_cost": 1790.73,
+          "tier_b_cost": 4400.73,
+          "tier_c_cost": 31130.73,
+          "provenance": "D"
+        },
+        {
+          "year": 2028,
+          "cost_per_merged_module": 0.009,
+          "tier_a_cost": 179.073,
+          "tier_b_cost": 440.073,
+          "tier_c_cost": 3113.073,
+          "provenance": "D"
+        }
+      ]
+    }
+  ],
+  "price_trend_evidence": [
+    {
+      "source_id": "ai_index_2025",
+      "observed_decline_factor": 280,
+      "unit": "from November 2022 to October 2024 at GPT-3.5-level MMLU performance",
+      "headline": "280× / 2 years",
+      "provenance": "M",
+      "note": "GPT-3.5-level (MMLU 64.8) inference fell from $20.00 to $0.07 per million tokens between November 2022 and October 2024"
+    },
+    {
+      "source_id": "a16z_llmflation",
+      "observed_decline_factor": 10,
+      "unit": "per year at equivalent performance",
+      "provenance": "M",
+      "note": "Historical estimate with acknowledged methodology limits",
+      "headline": "10×/year"
+    },
+    {
+      "source_id": "epoch_price_trends",
+      "low_decline_factor": 9,
+      "median_decline_factor": 50,
+      "high_decline_factor": 900,
+      "unit": "per year across benchmark thresholds",
+      "provenance": "M",
+      "note": "Historical range; the fastest recent declines may not persist",
+      "headline": "9×–900×/year"
+    }
+  ],
+  "capability_evidence": [
+    {
+      "model": "gpt-5.1",
+      "first_pass_rate": 0.64,
+      "sample_size": 16,
+      "duration_seconds": 52,
+      "provenance": "M",
+      "note": "Small sample"
+    },
+    {
+      "model": "gpt-5.5",
+      "first_pass_rate": 0.67,
+      "sample_size": 3289,
+      "duration_seconds": 53,
+      "provenance": "M",
+      "note": "Workhorse sample"
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "first_pass_rate": 0.62,
+      "sample_size": 8,
+      "duration_seconds": 47,
+      "provenance": "M",
+      "note": "Very small production sample"
+    }
+  ],
+  "bakeoff_evidence": {
+    "speed_improvement": 0.44,
+    "unit": "share faster",
+    "provenance": "M",
+    "note": "The run also recorded one stronger grounding result. The raw artifact is unavailable, so this supports a directional swap hypothesis rather than a general ranking."
+  },
+  "capability_trajectory": [
+    {
+      "year": 2026,
+      "first_pass_rate": 0.67,
+      "first_pass_provenance": "M",
+      "retry_multiplier": 1.43,
+      "retry_provenance": "M",
+      "hard_fail_tail": 0.27,
+      "hard_fail_provenance": "M",
+      "capability_workload_factor": 1,
+      "factor_provenance": "D",
+      "sustainable_merged_per_day": 100,
+      "throughput_provenance": "D"
+    },
+    {
+      "year": 2027,
+      "first_pass_rate": 0.8,
+      "first_pass_provenance": "A",
+      "retry_multiplier": 1.25,
+      "retry_provenance": "A",
+      "hard_fail_tail": 0.18,
+      "hard_fail_provenance": "A",
+      "capability_workload_factor": 0.778185,
+      "factor_provenance": "D",
+      "sustainable_merged_per_day": 300,
+      "throughput_provenance": "A"
+    },
+    {
+      "year": 2028,
+      "first_pass_rate": 0.88,
+      "first_pass_provenance": "A",
+      "retry_multiplier": 1.15,
+      "retry_provenance": "A",
+      "hard_fail_tail": 0.1,
+      "hard_fail_provenance": "A",
+      "capability_workload_factor": 0.652292,
+      "factor_provenance": "D",
+      "sustainable_merged_per_day": 1000,
+      "throughput_provenance": "A"
+    }
+  ],
+  "bakeoff_cadence": {
+    "value": 4,
+    "unit": "bake-offs/year",
+    "provenance": "A",
+    "note": "Quarterly encoder bake-offs are the model-swap checkpoint."
+  },
+  "combined_trajectory": [
+    {
+      "year": 2026,
+      "price_decline_factor_from_2026": 1,
+      "price_provenance": "D",
+      "capability_workload_factor": 1,
+      "capability_provenance": "D",
+      "cost_per_merged_module": 0.9,
+      "richer_context_token_factor": 1,
+      "richer_context_provenance": "D",
+      "stress_cost_per_merged_module": 0.9,
+      "sustainable_merged_per_day": 100,
+      "throughput_provenance": "D",
+      "tier_a_days": 198.97,
+      "tier_b_days": 488.97,
+      "tier_c_days": 3458.97,
+      "provenance": "D"
+    },
+    {
+      "year": 2027,
+      "price_decline_factor_from_2026": 5,
+      "price_provenance": "A",
+      "capability_workload_factor": 0.778185,
+      "capability_provenance": "D",
+      "cost_per_merged_module": 0.140073,
+      "richer_context_token_factor": 1.5,
+      "richer_context_provenance": "A",
+      "stress_cost_per_merged_module": 0.21011,
+      "sustainable_merged_per_day": 300,
+      "throughput_provenance": "A",
+      "tier_a_days": 66.323,
+      "tier_b_days": 162.99,
+      "tier_c_days": 1152.99,
+      "provenance": "D"
+    },
+    {
+      "year": 2028,
+      "price_decline_factor_from_2026": 25,
+      "price_provenance": "D",
+      "capability_workload_factor": 0.652292,
+      "capability_provenance": "D",
+      "cost_per_merged_module": 0.023483,
+      "richer_context_token_factor": 2.25,
+      "richer_context_provenance": "D",
+      "stress_cost_per_merged_module": 0.052836,
+      "sustainable_merged_per_day": 1000,
+      "throughput_provenance": "A",
+      "tier_a_days": 19.897,
+      "tier_b_days": 48.897,
+      "tier_c_days": 345.897,
+      "provenance": "D"
+    }
+  ],
+  "cloud_scaling": {
+    "migration": {
+      "unlocks": "Immutable named corpus releases, repository-owned toolchain pins, hermetic fail-closed resolution, and signed manifests make generation reproducible and parallelizable across cloud workers.",
+      "local_only_today": "Generation still depends on flat-rate developer subscriptions, machine-local orchestration, ambient corpus discovery, mutable current pointers, and machine-specific pins.",
+      "removed_state": "The migration removes ambient corpus and environment state from resolution; local machines can remain optional workers rather than the source of truth."
+    },
+    "batch_generation": {
+      "successful_only_cost_per_merged_module": 0.098160205,
+      "successful_only_cost_provenance": "D",
+      "hard_fail_equal_workload_assumption": true,
+      "hard_fail_equal_workload_provenance": "A",
+      "hard_fail_allocation_factor": 1.369863014,
+      "hard_fail_allocation_provenance": "D",
+      "direct_cost_per_merged_module": 0.134466034,
+      "direct_cost_provenance": "D",
+      "system_multiplier": 3,
+      "system_multiplier_provenance": "D",
+      "system_cost_per_merged_module": 0.403398103,
+      "system_cost_provenance": "D",
+      "base_cost_interpretation": "Includes the current hard-fail allocation; remains a lower-bound cache-reuse case because cache-write telemetry is unavailable.",
+      "note": "Terra Batch at the measured token mix, retry load, and hard-fail allocation, then the inherited system-token proxy. The allocation assumes failed citations consume the same average token workload as successful citations."
+    },
+    "cache_write_sensitivity": {
+      "writes_per_pass": 1,
+      "writes_per_pass_provenance": "A",
+      "reference_cached_prefix_tokens": 18688,
+      "reference_prefix_provenance": "M",
+      "assumed_tokens_per_write": 18688,
+      "assumed_tokens_per_write_provenance": "A",
+      "batch_uncached_input_rate_per_million": 1.25,
+      "batch_write_rate_per_million": 1.5625,
+      "write_rate_provenance": "M",
+      "incremental_write_premium_per_million": 0.3125,
+      "premium_provenance": "D",
+      "added_direct_cost_per_merged_module": 0.01144,
+      "added_system_cost_per_merged_module": 0.03432,
+      "all_batch_total_cost_per_module": 0.4716034,
+      "cost_provenance": "D",
+      "note": "Sensitivity that reclassifies one assumed fresh-input prefix per pass from the uncached-input rate to the cache-write rate."
+    },
+    "ci": {
+      "measurement_status": "Recent run telemetry unavailable during analysis",
+      "measurement_status_provenance": "M",
+      "minutes_per_merged_pr_low": 2,
+      "minutes_per_merged_pr_central": 4,
+      "minutes_per_merged_pr_high": 6,
+      "minutes_provenance": "A",
+      "runner_rate_per_minute": 0.006,
+      "runner_rate_unit": "USD/minute",
+      "runner_rate_provenance": "M",
+      "superseded_runner_anchor_per_minute": 0.008,
+      "superseded_runner_anchor_provenance": "A",
+      "runner_note": "Paid-equivalent two-core Linux reference rate; standard runners for public repositories currently have zero marginal cash price.",
+      "measurement_window_start": "2026-06-19",
+      "measurement_window_end": "2026-07-10",
+      "merged_prs_in_window": 1354,
+      "merged_prs_provenance": "M",
+      "merged_modules_in_window": 959,
+      "merged_modules_provenance": "M",
+      "pr_equivalents_per_module": 1.411887,
+      "pr_ratio_provenance": "D",
+      "shadow_cost_per_module_low": 0.016943,
+      "shadow_cost_per_module_central": 0.033885,
+      "shadow_cost_per_module_high": 0.050828,
+      "shadow_cost_provenance": "D"
+    },
+    "all_batch_scenarios": [
+      {
+        "id": "current",
+        "label": "Current throughput",
+        "merged_per_day": 100,
+        "throughput_provenance": "D",
+        "direct_generation_cost_per_day": 13.4466,
+        "system_token_cost_per_day": 40.3398,
+        "ci_shadow_cost_per_day": 3.3885,
+        "total_cost_per_day": 43.7283,
+        "total_cost_per_module": 0.437283,
+        "cost_provenance": "D"
+      },
+      {
+        "id": "expanded",
+        "label": "Expanded",
+        "merged_per_day": 300,
+        "throughput_provenance": "A",
+        "direct_generation_cost_per_day": 40.3398,
+        "system_token_cost_per_day": 121.0194,
+        "ci_shadow_cost_per_day": 10.1656,
+        "total_cost_per_day": 131.185,
+        "total_cost_per_module": 0.437283,
+        "cost_provenance": "D"
+      },
+      {
+        "id": "elastic",
+        "label": "Elastic",
+        "merged_per_day": 1000,
+        "throughput_provenance": "A",
+        "direct_generation_cost_per_day": 134.466,
+        "system_token_cost_per_day": 403.3981,
+        "ci_shadow_cost_per_day": 33.8853,
+        "total_cost_per_day": 437.2834,
+        "total_cost_per_module": 0.437283,
+        "cost_provenance": "D"
+      }
+    ],
+    "subscription_crossover": {
+      "low": 100,
+      "high": 150,
+      "unit": "sustained modules/day",
+      "provenance": "A",
+      "note": "Operational crossover for the current flat-rate pool: weekly windows begin to bind, so marginal demand moves to Batch. This is a capacity crossover, not a claim that metered generation becomes cheaper."
+    },
+    "current_subscription_reference": {
+      "merged_per_day": 100,
+      "throughput_provenance": "D",
+      "direct_cost_per_module_low": 0.17,
+      "direct_cost_per_module_high": 0.24,
+      "direct_cost_provenance": "D",
+      "system_and_ci_cost_per_module_low": 0.543885,
+      "system_and_ci_cost_per_module_high": 0.753885,
+      "daily_cost_low": 54.3885,
+      "daily_cost_high": 75.3885,
+      "cost_provenance": "D",
+      "note": "Observed partial-utilization allocation with the system-token proxy and central CI shadow cost."
+    },
+    "hybrid_baseload": {
+      "value": 100,
+      "unit": "modules/day",
+      "provenance": "A",
+      "note": "Normalized future steady state: keep fully utilized flat-rate capacity as baseload and use Batch for bursts. This is not the current cash allocation at partial utilization."
+    },
+    "hybrid_scenarios": [
+      {
+        "merged_per_day": 100,
+        "throughput_provenance": "D",
+        "subscription_modules_per_day": 100,
+        "subscription_baseload_provenance": "A",
+        "batch_modules_per_day": 0,
+        "batch_modules_provenance": "D",
+        "daily_cost_low": 9.3885,
+        "daily_cost_high": 24.3885,
+        "cost_per_module_low": 0.093885,
+        "cost_per_module_high": 0.243885,
+        "cost_provenance": "D"
+      },
+      {
+        "merged_per_day": 300,
+        "throughput_provenance": "A",
+        "subscription_modules_per_day": 100,
+        "subscription_baseload_provenance": "A",
+        "batch_modules_per_day": 200,
+        "batch_modules_provenance": "D",
+        "daily_cost_low": 96.8452,
+        "daily_cost_high": 111.8452,
+        "cost_per_module_low": 0.322817,
+        "cost_per_module_high": 0.372817,
+        "cost_provenance": "D"
+      },
+      {
+        "merged_per_day": 1000,
+        "throughput_provenance": "A",
+        "subscription_modules_per_day": 100,
+        "subscription_baseload_provenance": "A",
+        "batch_modules_per_day": 900,
+        "batch_modules_provenance": "D",
+        "daily_cost_low": 402.9436,
+        "daily_cost_high": 417.9436,
+        "cost_per_module_low": 0.402944,
+        "cost_per_module_high": 0.417944,
+        "cost_provenance": "D"
+      }
+    ],
+    "batch_execution_note": "Batch rows assume single-shot generation over hermetically assembled context, which the canonical-provenance migration enables; the current agentic dispatch cannot run on the Batch API and meters at standard rates, about twice the Batch figures.",
+    "batch_execution_provenance": "A",
+    "flex_note": "OpenAI's flex service tier prices the gpt-5.5 and gpt-5.6 family — including the pinned encoder — at Batch rates on the synchronous API, so the agentic dispatch can reach these economics without the single-shot path, subject to beta capacity limits and longer timeouts.",
+    "flex_provenance": "M",
+    "flex_source_id": "openai_flex"
+  },
+  "non_token_costs": [
+    {
+      "name": "Corpus ingest",
+      "detail": "New source-family scrapers, adapters, and durable release production dominate Tier B prerequisites."
+    },
+    {
+      "name": "Verification without oracles",
+      "detail": "Proofs, companion tests, administrative data, and cross-model judging replace direct oracle comparison beyond Tier A."
+    },
+    {
+      "name": "Merge and CI throughput",
+      "detail": "Batch size, sharded conformance, reverse-closure selection, and parallel runners determine the sustainable merge ceiling."
+    },
+    {
+      "name": "Structural hard tail",
+      "detail": "Dense dependency chains and encoder defects require architect-level intervention even as the tail shrinks."
+    },
+    {
+      "name": "Operating capacity",
+      "detail": "Source operations, review, and exception handling—not raw generation—become the staffing constraint at breadth."
+    }
+  ],
+  "sources": [
+    {
+      "id": "axiom_runs",
+      "title": "Axiom encoder run records",
+      "url": null,
+      "accessed": "2026-07-11",
+      "note": "Public-safe aggregate run measurements"
+    },
+    {
+      "id": "axiom_corpus",
+      "title": "Axiom canonical module census and corpus measurements",
+      "url": null,
+      "accessed": "2026-07-10",
+      "note": "Deduplicated module counts and tier arithmetic"
+    },
+    {
+      "id": "openai_pricing",
+      "title": "OpenAI pricing",
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "accessed": "2026-07-11",
+      "note": "Current standard and Batch short-context token prices"
+    },
+    {
+      "id": "openai_batch",
+      "title": "OpenAI Batch guide",
+      "url": "https://developers.openai.com/api/docs/guides/batch#overview",
+      "accessed": "2026-07-11",
+      "note": "50% cost discount and completion window"
+    },
+    {
+      "id": "openai_prompt_caching",
+      "title": "OpenAI prompt caching",
+      "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+      "accessed": "2026-07-11",
+      "note": "Separate cache-write accounting for newer models"
+    },
+    {
+      "id": "openai_gpt4",
+      "title": "GPT-4",
+      "url": "https://openai.com/index/gpt-4-research/",
+      "accessed": "2026-07-11",
+      "note": "March 2023 launch pricing"
+    },
+    {
+      "id": "openai_gpt4o",
+      "title": "Hello GPT-4o",
+      "url": "https://openai.com/index/hello-gpt-4o/",
+      "accessed": "2026-07-11",
+      "note": "May 2024 launch"
+    },
+    {
+      "id": "openai_structured_outputs",
+      "title": "Introducing Structured Outputs",
+      "url": "https://openai.com/index/introducing-structured-outputs-in-the-api/",
+      "accessed": "2026-07-11",
+      "note": "August 2024 GPT-4o price revision"
+    },
+    {
+      "id": "a16z_llmflation",
+      "title": "Welcome to LLMflation",
+      "url": "https://a16z.com/llmflation-llm-inference-cost/",
+      "accessed": "2026-07-11",
+      "note": "Historical 10× annual constant-capability estimate"
+    },
+    {
+      "id": "epoch_price_trends",
+      "title": "LLM inference prices have fallen rapidly but unequally across tasks",
+      "url": "https://epoch.ai/data-insights/llm-inference-price-trends",
+      "accessed": "2026-07-11",
+      "note": "Historical benchmark-threshold price trends"
+    },
+    {
+      "id": "ai_index_2025",
+      "title": "The 2025 AI Index Report",
+      "url": "https://hai.stanford.edu/ai-index/2025-ai-index-report",
+      "accessed": "2026-07-11",
+      "note": "Constant-capability inference cost decline at GPT-3.5-level MMLU performance"
+    },
+    {
+      "id": "openai_flex",
+      "title": "OpenAI flex processing",
+      "url": "https://developers.openai.com/api/docs/guides/flex-processing",
+      "accessed": "2026-07-11",
+      "note": "Batch-rate pricing on the synchronous API for supported models"
+    },
+    {
+      "id": "github_runner_pricing",
+      "title": "GitHub Actions runner pricing",
+      "url": "https://docs.github.com/en/billing/reference/actions-runner-pricing",
+      "accessed": "2026-07-11",
+      "note": "Paid-equivalent runner reference rates"
+    },
+    {
+      "id": "github_public_runners",
+      "title": "GitHub-hosted runners",
+      "url": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+      "accessed": "2026-07-11",
+      "note": "Standard public-repository runner treatment"
+    }
+  ],
+  "capability_bar": {
+    "definition": "The forecast quantity is the price of encoder-sufficient capability: the cheapest model that passes the quarterly production bake-off on the live task mix.",
+    "definition_provenance": "A",
+    "current_cheapest_passing": {
+      "model": "gpt-5.6-terra",
+      "input_per_million": 2.5,
+      "output_per_million": 15,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    },
+    "displaced": {
+      "model": "gpt-5.5",
+      "input_per_million": 5,
+      "output_per_million": 30,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    },
+    "realized_substitution_factor": 2,
+    "realized_substitution_provenance": "D",
+    "failed_cheaper_tier": {
+      "model": "gpt-5.6-luna",
+      "input_per_million": 1,
+      "output_per_million": 6,
+      "provenance": "M",
+      "source_id": "openai_pricing",
+      "note": "Did not pass the July bake-off on the production task mix, so its lower list price is not yet realizable here."
+    },
+    "note": "Benchmark-equivalence is not swap-readiness: the bar is measured on the production task mix, which is why realized declines can lag the fastest constant-capability trendlines."
+  },
+  "capability_anchor": {
+    "flagship": {
+      "model": "GPT-4",
+      "date": "2023-03",
+      "input_per_million": 30,
+      "output_per_million": 60,
+      "provenance": "M",
+      "source_id": "openai_gpt4"
+    },
+    "small_tier_today": {
+      "model": "gpt-5.4-nano",
+      "date": "2026-07",
+      "input_per_million": 0.2,
+      "output_per_million": 1.25,
+      "provenance": "M",
+      "source_id": "openai_pricing"
+    },
+    "input_ratio": 150,
+    "output_ratio": 48,
+    "ratio_provenance": "D",
+    "equivalence_note": "Fixed-threshold analyses show frontier-level task performance migrating into small tiers within one to two years; the capability-equivalence claim rests on that literature, not on an Axiom measurement.",
+    "equivalence_provenance": "A"
+  }
+}

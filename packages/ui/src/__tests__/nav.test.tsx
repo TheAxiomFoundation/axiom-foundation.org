@@ -2,23 +2,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Nav } from "../components/nav";
 
 describe("Nav", () => {
-  it("renders all default navigation links", () => {
+  it("renders the Round 1 navigation links (About, Team only)", () => {
     render(<Nav />);
-    expect(screen.getByText("Axiom")).toBeInTheDocument();
-    expect(screen.getByText("Why")).toBeInTheDocument();
-    expect(screen.getByText("Encoding")).toBeInTheDocument();
-    expect(screen.getByText("Encoder")).toBeInTheDocument();
-    expect(screen.queryByText(".yaml")).not.toBeInTheDocument();
-    expect(screen.getByText("About")).toBeInTheDocument();
-    expect(screen.getByText("Docs")).toBeInTheDocument();
-  });
-
-  it("allows the Axiom app link to be overridden", () => {
-    render(<Nav appUrl="https://app-axiom-preview.vercel.app" />);
-    expect(screen.getByText("Axiom")).toHaveAttribute(
-      "href",
-      "https://app-axiom-preview.vercel.app",
-    );
+    expect(screen.getAllByText("About").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
+    // Product-page + external links are pulled back in Round 1.
+    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
+    expect(screen.queryByText("Docs")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
   });
 
   it("renders the Axiom Foundation logo", () => {
@@ -26,28 +17,15 @@ describe("Nav", () => {
     expect(screen.getByAltText("Axiom Foundation")).toBeInTheDocument();
   });
 
-  it("gives the desktop GitHub icon link an accessible name", () => {
-    render(<Nav />);
-    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/TheAxiomFoundation",
-    );
-  });
-
   it("applies baseUrl to links", () => {
     render(<Nav baseUrl="https://axiom-foundation.org" />);
-    const axiomLink = screen.getAllByText("Axiom")[0];
-    expect(axiomLink).toHaveAttribute(
+    expect(screen.getAllByText("About")[0]).toHaveAttribute(
       "href",
-      "https://app.axiom-foundation.org",
+      "https://axiom-foundation.org/about",
     );
-    expect(screen.getAllByText("Encoder")[0]).toHaveAttribute(
+    expect(screen.getAllByText("Team")[0]).toHaveAttribute(
       "href",
-      "https://axiom-foundation.org/#encoder",
-    );
-    expect(screen.getByText("Docs")).toHaveAttribute(
-      "href",
-      "https://axiom-foundation.org/docs",
+      "https://axiom-foundation.org/team",
     );
   });
 

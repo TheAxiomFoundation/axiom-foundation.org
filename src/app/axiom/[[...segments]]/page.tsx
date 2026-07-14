@@ -42,9 +42,11 @@ export async function generateMetadata({
       title: meta.title,
       description: meta.description,
     },
+    // Round 1 pull-back — the app is unlinked + noindexed until the Jul 28
+    // launch. Restore `index: true, follow: true` at launch.
     robots: {
-      index: true,
-      follow: true,
+      index: false,
+      follow: false,
     },
   };
 }

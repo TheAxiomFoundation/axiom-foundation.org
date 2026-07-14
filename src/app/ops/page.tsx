@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description:
     "Operational dashboard for Axiom corpus coverage, release validation, R2 artifacts, and Supabase indexing.",
   alternates: { canonical: `${SITE_URL}/ops` },
+  // Internal dashboard — never index.
+  robots: { index: false, follow: false },
 };
 
 export default async function OpsPage() {

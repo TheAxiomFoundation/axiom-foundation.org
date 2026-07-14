@@ -36,7 +36,7 @@ describe('Landing sections', () => {
   it('renders the gap section with problem framing', () => {
     render(<TheGapSection />)
     expect(
-      screen.getByRole('heading', { name: /laws that govern everyday life/i }),
+      screen.getByRole('heading', { name: /law for the digital era/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/each system reimplements the law/i)).toBeInTheDocument()
     expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()
@@ -48,14 +48,16 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /two layers, both in the open/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /open infrastructure for u\.s\. law/i }),
+      screen.getByRole('heading', { name: /the primary text, gathered/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /encoded so they can be computed/i }),
+      screen.getByRole('heading', { name: /encoded so anyone can compute them/i }),
     ).toBeInTheDocument()
+    // Round 1 pull-back: the PTC worked example is hidden until the
+    // Jul 28 reveal (SHOW_WORKED_EXAMPLE in encoded-law-section).
     expect(
-      screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: /aca premium tax credit, three eras/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders the encoder section with terminal + steps', () => {
@@ -91,15 +93,12 @@ describe('Landing sections', () => {
   it('renders the foundation coda with public-interest framing', () => {
     render(<FoundationSection />)
     expect(screen.getByRole('heading', { name: /doing the public-interest work/i })).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /encode your jurisdiction/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /validate our work/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: /underwrite the public layer/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/everything we publish/i)).toBeInTheDocument()
+    // The fiscal-sponsorship line was removed (Jul 14).
+    expect(screen.queryByText(/fiscally sponsored/i)).not.toBeInTheDocument()
+    // Contributor/GitHub asks are pulled back in Round 1 — only hello@ + internal links remain.
+    expect(screen.getByText(/get in touch/i)).toBeInTheDocument()
+    expect(screen.getByText(/meet the team/i)).toBeInTheDocument()
   })
 })
 

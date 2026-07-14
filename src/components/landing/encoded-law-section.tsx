@@ -1,36 +1,31 @@
-import Link from "next/link";
-import { ArrowRightIcon } from "@/components/icons";
-import { axiomAppHref } from "@/lib/urls";
 import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 const LAYERS = [
   {
     n: "01",
-    kicker: "Open API",
-    title: "Open infrastructure for U.S. law",
+    kicker: "The source corpus",
+    title: "The primary text, gathered and addressable",
     body:
-      "Federal statutes, federal regulations, IRS guidance, and state tax law — fetched from official sources, addressable by citation, served with provenance and point-in-time metadata. One consistent shape across jurisdictions, free to use, openly licensed.",
+      "We gather national statutes, regulations, agency guidance, and state law from official sources — openly licensed, version-controlled, and addressable by citation. The primary text every encoding points back to.",
     bullets: [
-      "United States Code (federal statutes)",
+      "United States Code (national statutes)",
       "Code of Federal Regulations",
       "IRS revenue procedures, rulings, and notices",
       "State codes and tax law",
     ],
-    cta: { label: "Open Axiom", href: axiomAppHref(), external: true },
   },
   {
     n: "02",
     kicker: "Encodings",
-    title: "Encoded so they can be computed",
+    title: "Encoded so anyone can compute them",
     body:
-      "The same rules turned into machine-readable form — every value cites a section, every clause is dated, formulas are executable. Compiles to native code; runs anywhere.",
+      "We turn the same rules into machine-readable form — every value cites a section, every clause is dated, formulas are executable. Compiles to native code; runs anywhere.",
     bullets: [
       "Cited — every value traces to a statute",
       "Time-aware — effective dates on every clause",
       "Composable — reform a parameter without rewriting",
-      "Verified — cross-checked against PolicyEngine and TAXSIM",
+      "Verified — cross-checked against independent engines",
     ],
-    cta: { label: "Compare formats", href: "/format", external: false },
   },
 ];
 
@@ -55,6 +50,11 @@ const PTC_TIMELINE = [
     desc: "Back to original schedule",
   },
 ];
+
+// Round 1 pull-back: the worked example (PTC three-eras table) is
+// hidden for the pre-launch tease. Flip to true for the Jul 28
+// reveal — the data and markup below are kept intact.
+const SHOW_WORKED_EXAMPLE = false;
 
 export function EncodedLawSection() {
   return (
@@ -98,33 +98,17 @@ export function EncodedLawSection() {
               <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed mb-5">
                 {layer.body}
               </p>
-              <ul className="space-y-1.5 mb-7 m-0 p-0 list-none font-mono text-[0.78rem] text-[var(--color-ink-muted)] tracking-[0.04em]">
+              <ul className="mt-auto space-y-1.5 m-0 p-0 list-none font-mono text-[0.78rem] text-[var(--color-ink-muted)] tracking-[0.04em]">
                 {layer.bullets.map((b) => (
                   <li key={b}>&middot; {b}</li>
                 ))}
               </ul>
-              {layer.cta.external ? (
-                <a
-                  href={layer.cta.href}
-                  className="mt-auto inline-flex items-center gap-2 font-mono text-[0.78rem] tracking-[0.16em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-                >
-                  {layer.cta.label}
-                  <ArrowRightIcon className="w-4 h-4" />
-                </a>
-              ) : (
-                <Link
-                  href={layer.cta.href}
-                  className="mt-auto inline-flex items-center gap-2 font-mono text-[0.78rem] tracking-[0.16em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-                >
-                  {layer.cta.label}
-                  <ArrowRightIcon className="w-4 h-4" />
-                </Link>
-              )}
             </RevealItem>
           ))}
         </RevealGroup>
 
-        {/* Worked example */}
+        {/* Worked example — hidden in Round 1, returns at launch */}
+        {SHOW_WORKED_EXAMPLE && (
         <Reveal className="max-w-[920px] mx-auto" amount={0.15}>
           <div className="text-center mb-10">
             <span className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)]">
@@ -189,20 +173,8 @@ export function EncodedLawSection() {
             </span>{" "}
             Pass a date, get the rule that applied.
           </p>
-
-          <div className="flex justify-center gap-4 mt-12 flex-wrap">
-            <a href={axiomAppHref()} className="btn-primary">
-              See it in Axiom
-              <ArrowRightIcon className="w-5 h-5" />
-            </a>
-            <a
-              href="https://github.com/TheAxiomFoundation/axiom-rules-engine"
-              className="btn-outline"
-            >
-              Spec on GitHub
-            </a>
-          </div>
         </Reveal>
+        )}
       </div>
     </section>
   );

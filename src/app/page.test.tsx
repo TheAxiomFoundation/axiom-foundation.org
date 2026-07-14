@@ -18,7 +18,7 @@ describe('Home page', () => {
     // Hero
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
     // The gap
-    expect(screen.getByRole('heading', { name: /laws that govern everyday life/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /law for the digital era/i })).toBeInTheDocument()
     // What we publish
     expect(screen.getByRole('heading', { name: /two layers, both in the open/i })).toBeInTheDocument()
     // Encoder

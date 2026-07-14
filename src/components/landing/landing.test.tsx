@@ -93,7 +93,9 @@ describe('Landing sections', () => {
   it('renders the foundation coda with public-interest framing', () => {
     render(<FoundationSection />)
     expect(screen.getByRole('heading', { name: /doing the public-interest work/i })).toBeInTheDocument()
-    expect(screen.getByText(/fiscally sponsored project of the/i)).toBeInTheDocument()
+    expect(screen.getByText(/everything we publish/i)).toBeInTheDocument()
+    // The fiscal-sponsorship line was removed (Jul 14).
+    expect(screen.queryByText(/fiscally sponsored/i)).not.toBeInTheDocument()
     // Contributor/GitHub asks are pulled back in Round 1 — only hello@ + internal links remain.
     expect(screen.getByText(/get in touch/i)).toBeInTheDocument()
     expect(screen.getByText(/meet the team/i)).toBeInTheDocument()

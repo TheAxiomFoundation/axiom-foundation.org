@@ -6,9 +6,9 @@ const LAYERS = [
     kicker: "The source corpus",
     title: "The primary text, gathered and addressable",
     body:
-      "Federal statutes, regulations, IRS guidance, and state law, gathered from official sources — openly licensed, version-controlled, and addressable by citation. The primary text every encoding points back to.",
+      "National statutes, regulations, agency guidance, and state law, gathered from official sources — openly licensed, version-controlled, and addressable by citation. The primary text every encoding points back to.",
     bullets: [
-      "United States Code (federal statutes)",
+      "United States Code (national statutes)",
       "Code of Federal Regulations",
       "IRS revenue procedures, rulings, and notices",
       "State codes and tax law",

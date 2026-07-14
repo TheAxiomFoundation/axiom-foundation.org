@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     // Round 1 tease — shares should carry the launch date. Update at launch.
     description:
       "Launching publicly July 28, 2026. Open, machine-readable encodings of the world's rules — starting with tax and benefit policy.",
-    // TODO(⛳): design a proper launch OG card before Jul 13 — the icon is a
-    // stopgap so shares don't 404 (og-image.png was never added to /public).
-    images: ["/axiom-icon-1024.png"],
+    // Official brand share card (axiom-brand png/social/og-paper-full.png,
+    // 1200×630, w350 lockup on paper).
+    images: ["/og-image.png"],
   },
 };
 

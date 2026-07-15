@@ -1,13 +1,5 @@
-"use client";
-
-import { useEffect } from "react";
-import { initPostHog } from "@/lib/analytics";
-
-/* v8 ignore start -- client-only PostHog bootstrap */
+// PostHog is initialized via instrumentation-client.ts (Next.js 15.3+ approach).
+// This component is kept as a no-op so the layout import remains stable.
 export function PostHogProvider() {
-  useEffect(() => {
-    initPostHog();
-  }, []);
   return null;
 }
-/* v8 ignore stop */

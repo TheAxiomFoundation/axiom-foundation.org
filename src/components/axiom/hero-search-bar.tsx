@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCommandPalette } from "./command-palette-provider";
 import { HERO_SUGGESTIONS } from "@/lib/axiom/search-suggestions";
+import { trackAxiomEvent } from "@/lib/analytics";
 
 /**
  * The landing-page search bar — a real input, not a palette trigger.
@@ -43,7 +44,9 @@ export function HeroSearchBar() {
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
-          if (query.trim().length === 0) return;
+          const trimmed = query.trim();
+          if (trimmed.length === 0) return;
+          trackAxiomEvent("hero_search_submitted", { query_length: trimmed.length });
           router.push(fullSearchPath(query));
         }}
         className="group flex w-full items-center gap-3 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-5 py-4 shadow-sm transition-all focus-within:border-[var(--color-accent)] focus-within:shadow-md hover:border-[var(--color-accent)]"

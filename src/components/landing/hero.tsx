@@ -7,9 +7,9 @@ export function Hero() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Shares the first viewport with the announcement card above and
-  // the encoding marquee below: flex-1 fills whatever height remains
-  // so the marquee lands on the viewport's bottom edge.
+  // Shares the first viewport with the encoding marquee below:
+  // flex-1 fills whatever height remains so the marquee lands on
+  // the viewport's bottom edge.
   return (
     <section className="relative z-1 flex flex-1 flex-col justify-center py-10 px-8">
       <div
@@ -36,8 +36,6 @@ export function Hero() {
             , so anyone can run, audit, or reform them.
           </p>
 
-          {/* Registration lives in the announcement card above — the hero
-              pulls readers into the story instead of repeating the CTA. */}
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <a href="#gap" className="btn-primary">
               Why this exists

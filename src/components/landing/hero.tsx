@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
+import { axiomAppHref } from "@/lib/urls";
 
 export function Hero() {
   const [mounted, setMounted] = useState(false);
@@ -37,12 +38,12 @@ export function Hero() {
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <a href="#encoder" className="btn-primary">
-              See the encoder run
+            <a href={axiomAppHref()} className="btn-primary">
+              Explore the law
               <ArrowRightIcon className="w-5 h-5" />
             </a>
-            <a href="#gap" className="btn-outline">
-              Why this exists
+            <a href="#encoder" className="btn-outline">
+              See the encoder run
             </a>
           </div>
         </div>

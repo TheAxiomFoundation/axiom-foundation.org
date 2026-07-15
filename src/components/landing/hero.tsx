@@ -37,12 +37,12 @@ export function Hero() {
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <a href="#gap" className="btn-primary">
-              Why this exists
+            <a href="#encoder" className="btn-primary">
+              See the encoder run
               <ArrowRightIcon className="w-5 h-5" />
             </a>
-            <a href="#encoder" className="btn-outline">
-              See the encoder run
+            <a href="#gap" className="btn-outline">
+              Why this exists
             </a>
           </div>
         </div>

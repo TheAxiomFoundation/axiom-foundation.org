@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { GitHubIcon } from "./icons";
 import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 const NAV_LINK =
@@ -32,10 +33,13 @@ export interface NavProps {
   logoSrc?: string;
 }
 
-// Round 1 pull-back — the site is a pre-launch tease. Nav is Home
-// (logo) · About · Team, with no product-page or external link-outs.
-// Restore the product/section links at the Jul 28 launch.
+// v2 launch nav — the round-1 pre-launch tease (About · Team only)
+// is over; product/section links are back, plus the new Demos page.
 const DEFAULT_LINKS: NavLink[] = [
+  { href: "/#gap", label: "Why" },
+  { href: "/#encoded", label: "Encoding" },
+  { href: "/#encoder", label: "Encoder" },
+  { href: "/demos", label: "Demos" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },
 ];
@@ -44,6 +48,7 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Nav({
   baseUrl = "",
+  appUrl = "https://app.axiom-foundation.org",
   pathname,
   renderLink: LinkComponent,
   extraLinks = [],
@@ -53,8 +58,8 @@ export function Nav({
   const close = useCallback(() => setOpen(false), []);
 
   const navLinks = useMemo(
-    () => [...DEFAULT_LINKS, ...extraLinks],
-    [extraLinks],
+    () => [{ href: appUrl, label: "Axiom" }, ...DEFAULT_LINKS, ...extraLinks],
+    [appUrl, extraLinks],
   );
 
   const resolvedLogoSrc = logoSrc
@@ -102,6 +107,8 @@ export function Nav({
       className="h-9 w-auto shrink-0"
     />
   );
+  const isDocsActive = pathname?.startsWith("/docs") ?? false;
+
   return (
     <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
@@ -122,6 +129,22 @@ export function Nav({
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link))}
+          <a
+            href={resolveHref("/docs", baseUrl)}
+            className={`${NAV_LINK}${isDocsActive ? " is-active" : ""}`}
+          >
+            Docs
+          </a>
+          <a
+            href="https://github.com/TheAxiomFoundation"
+            className="nav-icon gradient-icon"
+            style={{ color: "var(--gc, #1c1917)" }}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+          >
+            <GitHubIcon className="w-5 h-5" />
+          </a>
         </nav>
 
         {/* Hamburger button */}
@@ -153,6 +176,13 @@ export function Nav({
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link, true))}
+          <a
+            href={resolveHref("/docs", baseUrl)}
+            className={`${MOBILE_LINK}${isDocsActive ? " is-active" : ""}`}
+            onClick={close}
+          >
+            Docs
+          </a>
         </nav>
       )}
     </header>

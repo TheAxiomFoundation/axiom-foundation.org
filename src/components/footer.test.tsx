@@ -22,12 +22,13 @@ describe('Footer', () => {
 
   it('renders navigation links', () => {
     render(<Footer />)
+    expect(screen.getByText('Axiom platform')).toBeInTheDocument()
+    expect(screen.getByText('Demos')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Team')).toBeInTheDocument()
+    expect(screen.getByText('GitHub')).toBeInTheDocument()
     expect(screen.getByText('Contact')).toBeInTheDocument()
     expect(screen.getByText('Privacy')).toBeInTheDocument()
-    // GitHub link-outs are pulled back in Round 1.
-    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
   })
 
   it('links to correct destinations', () => {

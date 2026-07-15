@@ -2,14 +2,22 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Nav } from "../components/nav";
 
 describe("Nav", () => {
-  it("renders the Round 1 navigation links (About, Team only)", () => {
+  it("renders the full launch navigation links", () => {
     render(<Nav />);
+    expect(screen.getAllByText("Axiom")[0]).toHaveAttribute(
+      "href",
+      "https://app.axiom-foundation.org",
+    );
+    expect(screen.getAllByText("Why").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Encoding").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Encoder").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Demos").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
-    // Product-page + external links are pulled back in Round 1.
-    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
-    expect(screen.queryByText("Docs")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("Docs").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: "GitHub" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders the Axiom Foundation logo", () => {

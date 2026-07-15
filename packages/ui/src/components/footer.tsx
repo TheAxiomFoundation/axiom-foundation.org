@@ -21,6 +21,7 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Footer({
   baseUrl = "",
+  appUrl = "https://app.axiom-foundation.org",
   renderLink: LinkComponent,
   logoSrc,
   updatesUrl = "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates",
@@ -84,8 +85,12 @@ export function Footer({
               Project
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+              <li>{renderFooterLink(appUrl, "Axiom platform")}</li>
+              <li>{renderFooterLink("/demos", "Demos")}</li>
               <li>{renderFooterLink("/about", "About")}</li>
               <li>{renderFooterLink("/team", "Team")}</li>
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-rules-engine", "RuleSpec")}</li>
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-encode", "Encoder")}</li>
             </ul>
           </div>
 
@@ -94,6 +99,7 @@ export function Footer({
               Connect
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+              <li>{renderFooterLink("https://github.com/TheAxiomFoundation", "GitHub")}</li>
               <li>{renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}</li>
               <li>{renderFooterLink(updatesUrl, "Get updates")}</li>
               <li>{renderFooterLink("/privacy", "Privacy")}</li>

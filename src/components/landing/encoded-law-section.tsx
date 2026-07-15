@@ -51,10 +51,7 @@ const PTC_TIMELINE = [
   },
 ];
 
-// Round 1 pull-back: the worked example (PTC three-eras table) is
-// hidden for the pre-launch tease. Flip to true for the Jul 28
-// reveal — the data and markup below are kept intact.
-const SHOW_WORKED_EXAMPLE = false;
+const SHOW_WORKED_EXAMPLE = true;
 
 export function EncodedLawSection() {
   return (

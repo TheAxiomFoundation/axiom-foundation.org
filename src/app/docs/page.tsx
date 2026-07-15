@@ -7,8 +7,6 @@ export const metadata: Metadata = {
   title: "Documentation — Axiom Foundation",
   description:
     "Canonical Axiom documentation map for architecture, RuleSpec, corpus, claims, and encoder validation.",
-  // Round 1 pull-back — noindexed until the Jul 28 launch.
-  robots: { index: false, follow: false },
 };
 
 const docHomes = [

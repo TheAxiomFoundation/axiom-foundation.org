@@ -56,15 +56,17 @@ describe('Nav', () => {
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
 
-  it('renders the Round 1 navigation links (About, Team only)', () => {
+  it('renders the full launch navigation links', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
+    expect(screen.getAllByText('Axiom').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Why').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Encoding').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Encoder').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Demos').length).toBeGreaterThan(0)
     expect(screen.getAllByText('About').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
-    // Product-page + external links are pulled back in Round 1.
-    expect(screen.queryByText('Axiom')).not.toBeInTheDocument()
-    expect(screen.queryByText('Encoding')).not.toBeInTheDocument()
-    expect(screen.queryByText('Docs')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Docs').length).toBeGreaterThan(0)
   })
 
   it('highlights active link on /about', () => {
@@ -74,14 +76,14 @@ describe('Nav', () => {
     expect(aboutLink.closest('a')).toHaveClass('is-active')
   })
 
-  it('does not render a GitHub icon link', () => {
+  it('renders a GitHub icon link', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
     const links = screen.getAllByRole('link')
     const githubLink = links.find(
       (l) => l.getAttribute('href') === 'https://github.com/TheAxiomFoundation',
     )
-    expect(githubLink).toBeUndefined()
+    expect(githubLink).toBeDefined()
   })
 
   it('renders hamburger button for mobile', () => {

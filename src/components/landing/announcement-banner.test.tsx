@@ -48,4 +48,23 @@ describe('AnnouncementBanner', () => {
     render(<AnnouncementBanner />)
     expect(screen.queryByText(/github/i)).not.toBeInTheDocument()
   })
+
+  describe('after launch', () => {
+    beforeEach(() => {
+      vi.setSystemTime(new Date('2026-07-28T18:00:00Z'))
+    })
+
+    it('flips to the live variant', () => {
+      render(<AnnouncementBanner />)
+      expect(screen.getByText(/now live/i)).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: /axiom foundation is live/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Explore the app')).toBeInTheDocument()
+      expect(screen.getByText('See the demos')).toBeInTheDocument()
+      // Countdown invitation is gone.
+      expect(screen.queryByText('Join the launch event')).not.toBeInTheDocument()
+      expect(screen.queryByText(/goes public on/i)).not.toBeInTheDocument()
+    })
+  })
 })

@@ -16,13 +16,16 @@ describe("Footer", () => {
 
   it("renders all footer links", () => {
     render(<Footer />);
+    expect(screen.getByText("Axiom platform")).toBeInTheDocument();
+    expect(screen.getByText("Demos")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Team")).toBeInTheDocument();
+    expect(screen.getByText("RuleSpec")).toBeInTheDocument();
+    expect(screen.getByText("Encoder")).toBeInTheDocument();
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("Get updates")).toBeInTheDocument();
     expect(screen.getByText("Privacy")).toBeInTheDocument();
-    // GitHub link-outs are pulled back in Round 1.
-    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
   });
 
   it("points Get updates at the provided updatesUrl", () => {
@@ -76,6 +79,6 @@ describe("Footer", () => {
 
     render(<Footer renderLink={TestLink} />);
     const customLinks = screen.getAllByTestId("custom-link");
-    expect(customLinks.length).toBe(3); // About, Team, and Privacy
+    expect(customLinks.length).toBe(4); // Demos, About, Team, and Privacy
   });
 });

@@ -13,7 +13,9 @@ export function initPostHog() {
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     person_profiles: "identified_only",
-    capture_pageview: true,
+    // 'history_change' (not `true`) is required to capture $pageview on
+    // SPA route changes — `true` only captures the initial page load.
+    capture_pageview: "history_change",
     capture_pageleave: true,
     autocapture: false,
     respect_dnt: true,

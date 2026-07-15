@@ -18,6 +18,7 @@ describe("Footer", () => {
     render(<Footer />);
     expect(screen.getByText("Axiom platform")).toBeInTheDocument();
     expect(screen.getByText("Demos")).toBeInTheDocument();
+    expect(screen.getByText("Validation")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Team")).toBeInTheDocument();
     expect(screen.getByText("RuleSpec")).toBeInTheDocument();
@@ -79,6 +80,6 @@ describe("Footer", () => {
 
     render(<Footer renderLink={TestLink} />);
     const customLinks = screen.getAllByTestId("custom-link");
-    expect(customLinks.length).toBe(4); // Demos, About, Team, and Privacy
+    expect(customLinks.length).toBe(5); // Demos, Validation, About, Team, and Privacy
   });
 });

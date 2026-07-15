@@ -2,22 +2,41 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Nav } from "../components/nav";
 
 describe("Nav", () => {
-  it("renders the full launch navigation links", () => {
+  it("renders the full launch navigation links (pages only, no scroll anchors)", () => {
     render(<Nav />);
     expect(screen.getAllByText("Axiom")[0]).toHaveAttribute(
       "href",
       "https://app.axiom-foundation.org",
     );
-    expect(screen.getAllByText("Why").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Encoding").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Encoder").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Demos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Docs").length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("link", { name: "GitHub" }).length,
     ).toBeGreaterThan(0);
+    // Landing scroll anchors live on the page, not in the header.
+    expect(screen.queryByText("Why")).not.toBeInTheDocument();
+    expect(screen.queryByText("Encoding")).not.toBeInTheDocument();
+  });
+
+  it("renders the demos dropdown grouped by segment", () => {
+    render(<Nav />);
+    expect(
+      screen.getAllByText("Small company checker")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#reg-demo");
+    expect(
+      screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#finbot");
+    expect(
+      screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#co-snap-cliffs");
+    expect(screen.getAllByText("For builders").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
+      "href",
+      "/demos",
+    );
   });
 
   it("renders the Axiom Foundation logo", () => {

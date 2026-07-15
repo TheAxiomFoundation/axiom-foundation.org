@@ -41,9 +41,9 @@ export function FoundationSection() {
               kicker: "Verify",
               title: "Validate our work",
               body:
-                "Every encoding is open and cross-checked. Find a discrepancy and we’ll explain why — or fix it.",
-              href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/issues",
-              cta: "Browse open issues",
+                "Every encoding is open and cross-checked against independent oracles. Find a discrepancy and we’ll explain why — or fix it.",
+              href: "/validation",
+              cta: "See how we validate",
               icon: <GitHubIcon className="w-5 h-5" />,
             },
             {

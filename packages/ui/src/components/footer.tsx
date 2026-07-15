@@ -87,6 +87,7 @@ export function Footer({
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
               <li>{renderFooterLink(appUrl, "Axiom platform")}</li>
               <li>{renderFooterLink("/demos", "Demos")}</li>
+              <li>{renderFooterLink("/validation", "Validation")}</li>
               <li>{renderFooterLink("/about", "About")}</li>
               <li>{renderFooterLink("/team", "Team")}</li>
               <li>{renderFooterLink("https://github.com/TheAxiomFoundation/axiom-rules-engine", "RuleSpec")}</li>

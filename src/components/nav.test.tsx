@@ -56,17 +56,27 @@ describe('Nav', () => {
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
 
-  it('renders the full launch navigation links', () => {
+  it('renders the full launch navigation links (pages only, no scroll anchors)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
     expect(screen.getAllByText('Axiom').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Why').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Encoding').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Encoder').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Demos').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Validation').length).toBeGreaterThan(0)
     expect(screen.getAllByText('About').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Docs').length).toBeGreaterThan(0)
+    // Landing scroll anchors live on the page, not in the header.
+    expect(screen.queryByText('Why')).not.toBeInTheDocument()
+    expect(screen.queryByText('Encoding')).not.toBeInTheDocument()
+  })
+
+  it('renders demos dropdown items by segment', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<NavClient />)
+    expect(screen.getAllByText('Small company checker').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Grounded benefits assistant').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Colorado SNAP cliffs').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('All demos').length).toBeGreaterThan(0)
   })
 
   it('highlights active link on /about', () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { GitHubIcon } from "./icons";
+import { ChevronDownIcon, GitHubIcon } from "./icons";
 import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 const NAV_LINK =
@@ -10,9 +10,18 @@ const NAV_LINK =
 const MOBILE_LINK =
   "nav-link text-gradient text-[1.1rem] font-light no-underline block py-2";
 
+const DROPDOWN_ITEM =
+  "block px-4 py-2.5 no-underline text-[0.85rem] font-light text-[var(--color-ink-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-rule-subtle)] transition-colors duration-150 normal-case tracking-normal";
+
 export interface NavLink {
   href: string;
   label: string;
+  /** Kicker shown above the label inside dropdown items (e.g. the
+   *  audience segment a demo serves). */
+  kicker?: string;
+  /** Child links — the entry renders as a dropdown (desktop) or an
+   *  indented group (mobile drawer). The parent href is still a link. */
+  items?: NavLink[];
 }
 
 export interface NavProps {
@@ -33,13 +42,33 @@ export interface NavProps {
   logoSrc?: string;
 }
 
-// v2 launch nav — the round-1 pre-launch tease (About · Team only)
-// is over; product/section links are back, plus the new Demos page.
+// v2 launch nav — every top-level entry navigates to a page (no mixed
+// scroll-anchor/page behavior). The landing sections are reachable
+// through the page itself; demos group by the segment they serve.
 const DEFAULT_LINKS: NavLink[] = [
-  { href: "/#gap", label: "Why" },
-  { href: "/#encoded", label: "Encoding" },
-  { href: "/#encoder", label: "Encoder" },
-  { href: "/demos", label: "Demos" },
+  {
+    href: "/demos",
+    label: "Demos",
+    items: [
+      {
+        href: "/demos#reg-demo",
+        label: "Small company checker",
+        kicker: "For builders",
+      },
+      {
+        href: "/demos#finbot",
+        label: "Grounded benefits assistant",
+        kicker: "For AI",
+      },
+      {
+        href: "/demos#co-snap-cliffs",
+        label: "Colorado SNAP cliffs",
+        kicker: "For analysts",
+      },
+      { href: "/demos", label: "All demos" },
+    ],
+  },
+  { href: "/validation", label: "Validation" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },
 ];
@@ -68,9 +97,13 @@ export function Nav({
       ? `${baseUrl}${DEFAULT_LOGO}`
       : DEFAULT_LOGO;
 
-  function renderNavLink({ href, label }: NavLink, mobile = false) {
+  function renderNavLink(
+    { href, label, kicker }: NavLink,
+    mobile = false,
+    className?: string,
+  ) {
     const isActive = pathname?.startsWith(href) && !href.startsWith("/#");
-    const base = mobile ? MOBILE_LINK : NAV_LINK;
+    const base = className ?? (mobile ? MOBILE_LINK : NAV_LINK);
 
     const isExternal = /^https?:\/\//.test(href) || href.startsWith("mailto:");
     const isHashLink = href.startsWith("/#");
@@ -82,20 +115,66 @@ export function Nav({
       : resolveHref(href, baseUrl);
     // Persistent underline only on routes (active state); hash links and
     // unmatched routes get the standard hover-grow underline from .nav-link.
-    const className = `${base}${isActive && !isHashLink ? " is-active" : ""}`;
+    const resolvedClassName = `${base}${isActive && !isHashLink && !className ? " is-active" : ""}`;
+
+    const content = kicker ? (
+      <span className="block">
+        <span className="block font-mono text-[0.58rem] tracking-[0.16em] uppercase text-[var(--color-ink-muted)]">
+          {kicker}
+        </span>
+        {label}
+      </span>
+    ) : (
+      label
+    );
 
     if (useNativeAnchor) {
       return (
-        <a key={href} href={finalHref} className={className} onClick={close}>
-          {label}
+        <a key={href} href={finalHref} className={resolvedClassName} onClick={close}>
+          {content}
         </a>
       );
     }
 
     return (
-      <LinkComponent key={href} href={href} className={className} onClick={close}>
-        {label}
+      <LinkComponent key={href} href={href} className={resolvedClassName} onClick={close}>
+        {content}
       </LinkComponent>
+    );
+  }
+
+  function renderDesktopEntry(link: NavLink) {
+    if (!link.items?.length) return renderNavLink(link);
+    return (
+      <div key={link.href} className="relative group">
+        <span className="flex items-center gap-1">
+          {renderNavLink(link)}
+          <ChevronDownIcon
+            className="w-3.5 h-3.5 text-[var(--color-ink-muted)] transition-transform duration-150 group-hover:rotate-180"
+            aria-hidden
+          />
+        </span>
+        {/* pt-2 bridges the hover gap between trigger and panel */}
+        <div className="absolute left-1/2 top-full hidden -translate-x-1/2 pt-3 group-hover:block group-focus-within:block">
+          <div className="min-w-[240px] rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
+            {link.items.map((item) =>
+              renderNavLink(item, false, DROPDOWN_ITEM),
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMobileEntry(link: NavLink) {
+    if (!link.items?.length) return renderNavLink(link, true);
+    return (
+      <div key={link.href}>
+        {renderNavLink(link, true)}
+        <div className="ml-4 border-l border-[var(--color-rule-subtle)] pl-4">
+          {link.items.map((item) => renderNavLink(item, true))}
+        </div>
+      </div>
     );
   }
 
@@ -128,7 +207,7 @@ export function Nav({
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
-          {navLinks.map((link) => renderNavLink(link))}
+          {navLinks.map((link) => renderDesktopEntry(link))}
           <a
             href={resolveHref("/docs", baseUrl)}
             className={`${NAV_LINK}${isDocsActive ? " is-active" : ""}`}
@@ -175,7 +254,7 @@ export function Nav({
       {/* Mobile drawer */}
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
-          {navLinks.map((link) => renderNavLink(link, true))}
+          {navLinks.map((link) => renderMobileEntry(link))}
           <a
             href={resolveHref("/docs", baseUrl)}
             className={`${MOBILE_LINK}${isDocsActive ? " is-active" : ""}`}

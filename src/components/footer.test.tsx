@@ -24,6 +24,7 @@ describe('Footer', () => {
     render(<Footer />)
     expect(screen.getByText('Axiom platform')).toBeInTheDocument()
     expect(screen.getByText('Demos')).toBeInTheDocument()
+    expect(screen.getByText('Validation')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Team')).toBeInTheDocument()
     expect(screen.getByText('GitHub')).toBeInTheDocument()

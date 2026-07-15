@@ -67,7 +67,7 @@ export default function DemosPage() {
 
         <div className="flex flex-col gap-16">
           {DEMOS.map((demo) => (
-            <Reveal key={demo.slug} as="section" className="scroll-mt-28">
+            <Reveal key={demo.slug} as="section" id={demo.slug} className="scroll-mt-28">
               <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
                 <div>
                   <span className="font-mono text-[0.65rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)] block mb-2">

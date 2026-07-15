@@ -63,6 +63,11 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "weekly",
   },
   {
+    url: `${SITE_URL}/validation`,
+    priority: 0.6,
+    changeFrequency: "monthly",
+  },
+  {
     url: `${SITE_URL}/format`,
     priority: 0.5,
     changeFrequency: "monthly",

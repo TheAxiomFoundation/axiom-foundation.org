@@ -21,7 +21,7 @@ interface Demo {
 const DEMOS: Demo[] = [
   {
     slug: "reg-demo",
-    kicker: "In-browser computation",
+    kicker: "For builders · in-browser computation",
     title: "Small company checker",
     body:
       "Companies Act 2006 s.382, computed in your browser from the Axiom encoding — cited, time-aware, executable. No data leaves the page.",
@@ -30,7 +30,7 @@ const DEMOS: Demo[] = [
   },
   {
     slug: "finbot",
-    kicker: "Grounded AI",
+    kicker: "For AI labs · grounded answers",
     title: "Axiom-grounded benefits assistant",
     body:
       "An AI assistant on top of the Axiom rules engine — SNAP calculations for Colorado, California, and New York, every answer with citations, side by side with the ungrounded model.",
@@ -39,7 +39,7 @@ const DEMOS: Demo[] = [
   },
   {
     slug: "co-snap-cliffs",
-    kicker: "Policy analysis",
+    kicker: "For government · policy analysis",
     title: "Colorado SNAP cliffs",
     body:
       "Adjust Colorado SNAP parameters and watch how benefit cliffs shift — reform without rewriting, on the same encoding the calculators run.",

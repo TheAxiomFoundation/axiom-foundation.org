@@ -21,8 +21,12 @@ describe("Nav", () => {
     expect(screen.queryByText("Encoding")).not.toBeInTheDocument();
   });
 
-  it("renders the demos dropdown grouped by segment", () => {
+  it("renders the demos dropdown grouped by stakeholder", () => {
     render(<Nav />);
+    // Group headers mirror the demo-gallery taxonomy in axiom-demo-shell.
+    expect(screen.getAllByText("Builders").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AI labs").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Government").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Small company checker")[0].closest("a"),
     ).toHaveAttribute("href", "/demos#reg-demo");
@@ -32,7 +36,6 @@ describe("Nav", () => {
     expect(
       screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
     ).toHaveAttribute("href", "/demos#co-snap-cliffs");
-    expect(screen.getAllByText("For builders").length).toBeGreaterThan(0);
     expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
       "href",
       "/demos",

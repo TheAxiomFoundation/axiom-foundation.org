@@ -22,6 +22,10 @@ export interface NavLink {
   /** Child links — the entry renders as a dropdown (desktop) or an
    *  indented group (mobile drawer). The parent href is still a link. */
   items?: NavLink[];
+  /** Stakeholder-grouped child links (mirrors the demo-gallery
+   *  taxonomy in axiom-demo-shell). Renders group headers between
+   *  items; takes precedence over `items` when both are set. */
+  groups?: { label: string; items: NavLink[] }[];
 }
 
 export interface NavProps {
@@ -49,23 +53,31 @@ const DEFAULT_LINKS: NavLink[] = [
   {
     href: "/demos",
     label: "Demos",
-    items: [
+    // Stakeholder grouping mirrors the demo-gallery taxonomy in
+    // axiom-demo-shell (Builders / AI labs / Government).
+    groups: [
       {
-        href: "/demos#reg-demo",
-        label: "Small company checker",
-        kicker: "For builders",
+        label: "Builders",
+        items: [
+          { href: "/demos#reg-demo", label: "Small company checker" },
+        ],
       },
       {
-        href: "/demos#finbot",
-        label: "Grounded benefits assistant",
-        kicker: "For AI",
+        label: "AI labs",
+        items: [
+          { href: "/demos#finbot", label: "Grounded benefits assistant" },
+        ],
       },
       {
-        href: "/demos#co-snap-cliffs",
-        label: "Colorado SNAP cliffs",
-        kicker: "For analysts",
+        label: "Government",
+        items: [
+          { href: "/demos#co-snap-cliffs", label: "Colorado SNAP cliffs" },
+        ],
       },
-      { href: "/demos", label: "All demos" },
+      {
+        label: "",
+        items: [{ href: "/demos", label: "All demos" }],
+      },
     ],
   },
   { href: "/validation", label: "Validation" },
@@ -143,8 +155,47 @@ export function Nav({
     );
   }
 
+  function renderGroupHeader(label: string, mobile = false) {
+    return (
+      <div
+        key={`group-${label}`}
+        className={`font-mono text-[0.58rem] tracking-[0.18em] uppercase text-[var(--color-ink-muted)] ${
+          mobile ? "pt-3 pb-1" : "px-4 pt-3 pb-1"
+        }`}
+      >
+        {label}
+      </div>
+    );
+  }
+
+  function dropdownEntries(link: NavLink, mobile: boolean) {
+    const renderItem = (item: NavLink) =>
+      mobile
+        ? renderNavLink(item, true)
+        : renderNavLink(item, false, DROPDOWN_ITEM);
+
+    if (!link.groups?.length) return (link.items ?? []).map(renderItem);
+
+    const entries: React.ReactNode[] = [];
+    link.groups.forEach((group, i) => {
+      if (group.label) {
+        entries.push(renderGroupHeader(group.label, mobile));
+      } else if (i > 0) {
+        entries.push(
+          <div
+            key={`sep-${i}`}
+            className={`my-2 h-px bg-[var(--color-rule-subtle)] ${mobile ? "" : "mx-4"}`}
+            aria-hidden
+          />,
+        );
+      }
+      group.items.forEach((item) => entries.push(renderItem(item)));
+    });
+    return entries;
+  }
+
   function renderDesktopEntry(link: NavLink) {
-    if (!link.items?.length) return renderNavLink(link);
+    if (!link.items?.length && !link.groups?.length) return renderNavLink(link);
     return (
       <div key={link.href} className="relative group">
         <span className="flex items-center gap-1">
@@ -154,12 +205,10 @@ export function Nav({
             aria-hidden
           />
         </span>
-        {/* pt-2 bridges the hover gap between trigger and panel */}
+        {/* pt-3 bridges the hover gap between trigger and panel */}
         <div className="absolute left-1/2 top-full hidden -translate-x-1/2 pt-3 group-hover:block group-focus-within:block">
           <div className="min-w-[240px] rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
-            {link.items.map((item) =>
-              renderNavLink(item, false, DROPDOWN_ITEM),
-            )}
+            {dropdownEntries(link, false)}
           </div>
         </div>
       </div>
@@ -167,12 +216,13 @@ export function Nav({
   }
 
   function renderMobileEntry(link: NavLink) {
-    if (!link.items?.length) return renderNavLink(link, true);
+    if (!link.items?.length && !link.groups?.length)
+      return renderNavLink(link, true);
     return (
       <div key={link.href}>
         {renderNavLink(link, true)}
         <div className="ml-4 border-l border-[var(--color-rule-subtle)] pl-4">
-          {link.items.map((item) => renderNavLink(item, true))}
+          {dropdownEntries(link, true)}
         </div>
       </div>
     );

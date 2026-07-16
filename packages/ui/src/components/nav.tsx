@@ -210,8 +210,13 @@ export function Nav({
             aria-hidden
           />
         </span>
-        {/* pt-3 bridges the hover gap between trigger and panel */}
-        <div className="absolute left-1/2 top-full hidden -translate-x-1/2 pt-3 group-hover:block group-focus-within:block">
+        {/* pt-3 bridges the hover gap between trigger and panel.
+            Visibility (not display) so the fade + rise can animate;
+            pointer-events gate off-state hover traps under the panel. */}
+        <div
+          className="pointer-events-none invisible absolute left-1/2 top-full -translate-x-1/2 translate-y-1.5 pt-3 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+          style={{ transitionTimingFunction: "var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1))" }}
+        >
           <div className="min-w-[240px] rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
             {dropdownEntries(link, false)}
           </div>

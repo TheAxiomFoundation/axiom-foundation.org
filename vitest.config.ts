@@ -14,6 +14,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Under full-suite parallel load, a file's cold transform/import
+    // time (10s+ on a busy machine) is billed to its first test; the
+    // 5s default then fails runs that are actually healthy. Actual
+    // test bodies here run in milliseconds.
+    testTimeout: 20_000,
     exclude: ['src/_old_pages/**', 'node_modules/**', '**/node_modules/**'],
     coverage: {
       provider: 'v8',

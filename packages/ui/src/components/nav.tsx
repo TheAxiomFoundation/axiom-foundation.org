@@ -199,6 +199,47 @@ export function Nav({
     return entries;
   }
 
+  /** Grouped desktop panel — one column per stakeholder, unlabeled
+   *  groups (e.g. "All demos") as a footer row under a hairline. */
+  function renderGroupedPanel(groups: NonNullable<NavLink["groups"]>) {
+    const columns = groups.filter((g) => g.label);
+    const footer = groups.filter((g) => !g.label);
+    return (
+      <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
+        <div className="flex gap-10">
+          {columns.map((group) => (
+            <div key={group.label} className="min-w-[140px]">
+              <div className="mb-3 font-mono text-[0.58rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)]">
+                {group.label}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) =>
+                  renderNavLink(
+                    item,
+                    false,
+                    "block whitespace-nowrap py-1.5 no-underline text-[0.85rem] font-light normal-case tracking-normal text-[var(--color-ink-secondary)] hover:text-[var(--color-accent)] transition-colors duration-150",
+                  ),
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {footer.length > 0 && (
+          <div className="mt-5 border-t border-[var(--color-rule-subtle)] pt-3.5">
+            {footer.reduce<NavLink[]>((acc, g) => acc.concat(g.items), []).map(
+              (item) =>
+                renderNavLink(
+                  item,
+                  false,
+                  "inline-flex items-center gap-1.5 no-underline font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors duration-150",
+                ),
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderDesktopEntry(link: NavLink) {
     if (!link.items?.length && !link.groups?.length) return renderNavLink(link);
     return (
@@ -220,9 +261,13 @@ export function Nav({
             transformOrigin: "top center",
           }}
         >
-          <div className="min-w-[240px] rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
-            {dropdownEntries(link, false)}
-          </div>
+          {link.groups?.length ? (
+            renderGroupedPanel(link.groups)
+          ) : (
+            <div className="min-w-[240px] rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] py-2 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
+              {dropdownEntries(link, false)}
+            </div>
+          )}
         </div>
       </div>
     );

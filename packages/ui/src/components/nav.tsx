@@ -19,9 +19,6 @@ export interface NavLink {
   /** Kicker shown above the label inside dropdown items (e.g. the
    *  audience segment a demo serves). */
   kicker?: string;
-  /** Tiny superscript tag after the label (e.g. "beta") — tempers
-   *  expectations for preview surfaces without cluttering the tab. */
-  badge?: string;
   /** Child links — the entry renders as a dropdown (desktop) or an
    *  indented group (mobile drawer). The parent href is still a link. */
   items?: NavLink[];
@@ -53,10 +50,10 @@ export interface NavProps {
 // scroll-anchor/page behavior). The landing sections are reachable
 // through the page itself; demos group by the segment they serve.
 const DEFAULT_LINKS: NavLink[] = [
+  { href: "/validation", label: "Validation" },
   {
     href: "/demos",
     label: "What's possible",
-    badge: "beta",
     // Stakeholder grouping mirrors the demo-gallery taxonomy in
     // axiom-demo-shell (Builders / AI labs / Government).
     groups: [
@@ -89,7 +86,6 @@ const DEFAULT_LINKS: NavLink[] = [
       },
     ],
   },
-  { href: "/validation", label: "Validation" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },
 ];
@@ -119,7 +115,7 @@ export function Nav({
       : DEFAULT_LOGO;
 
   function renderNavLink(
-    { href, label, kicker, badge }: NavLink,
+    { href, label, kicker }: NavLink,
     mobile = false,
     className?: string,
   ) {
@@ -138,26 +134,15 @@ export function Nav({
     // unmatched routes get the standard hover-grow underline from .nav-link.
     const resolvedClassName = `${base}${isActive && !isHashLink && !className ? " is-active" : ""}`;
 
-    const labelWithBadge = badge ? (
-      <>
-        {label}
-        <sup className="ml-1 font-mono text-[0.55rem] uppercase tracking-[0.12em] text-[var(--color-accent)]">
-          {badge}
-        </sup>
-      </>
-    ) : (
-      label
-    );
-
     const content = kicker ? (
       <span className="block">
         <span className="block font-mono text-[0.58rem] tracking-[0.16em] uppercase text-[var(--color-ink-muted)]">
           {kicker}
         </span>
-        {labelWithBadge}
+        {label}
       </span>
     ) : (
-      labelWithBadge
+      label
     );
 
     if (useNativeAnchor) {

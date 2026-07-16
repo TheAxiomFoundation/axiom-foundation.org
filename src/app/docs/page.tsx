@@ -10,15 +10,10 @@ export const metadata: Metadata = {
     "Canonical Axiom documentation map for architecture, RuleSpec, corpus, claims, and encoder validation.",
 };
 
+// Ordered by pipeline: source corpus → claims → the RuleSpec format
+// and its time model → encoding contracts → where rules live →
+// cross-engine validation.
 const docHomes = [
-  {
-    name: "Cross-system architecture",
-    owner: "axiom-architecture",
-    location: "axiom-architecture-one.vercel.app",
-    description:
-      "Interactive map of how Axiom's source, claim, RuleSpec, encoder, runtime, and app layers fit together.",
-    href: "https://axiom-architecture-one.vercel.app",
-  },
   {
     name: "Signed corpus releases",
     owner: "axiom-corpus",
@@ -26,6 +21,30 @@ const docHomes = [
     description:
       "The immutable named-release model: content-addressed artifacts, signature verification, and transactional activation of the serving projection.",
     href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md",
+  },
+  {
+    name: "Source claims format",
+    owner: "axiom-corpus",
+    location: "docs/claims-format.md",
+    description:
+      "Thin, reviewed, evidence-backed assertions about what a source span says — the layer between raw text and executable rules.",
+    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/claims-format.md",
+  },
+  {
+    name: "The RuleSpec schema",
+    owner: "axiom-rules-engine",
+    location: "docs/rulespec.md",
+    description:
+      "The canonical authoring and interchange schema for rules — the format every encoding is written in.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/rulespec.md",
+  },
+  {
+    name: "Bitemporal semantics",
+    owner: "axiom-rules-engine",
+    location: "docs/bitemporal.md",
+    description:
+      "Valid time vs. assessment time — how effective-dated versions work today and where the second time axis is headed.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/bitemporal.md",
   },
   {
     name: "RuleSpec proof validation",
@@ -42,6 +61,14 @@ const docHomes = [
     description:
       "Source-ordering and source-graph plan for encoding statutes, regulations, guidance, and downstream manuals.",
     href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/upstream-first-encoding-plan.md",
+  },
+  {
+    name: "Jurisdiction repositories",
+    owner: "axiom-rules-engine",
+    location: "docs/jurisdiction-repos.md",
+    description:
+      "Where the actual rules live: the rulespec-* repos hold canonical rule content; the engine repo stays runtime and schema only.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/jurisdiction-repos.md",
   },
   {
     name: "Oracle adapters & comparisons",
@@ -132,7 +159,7 @@ export default function DocsPage() {
         </Reveal>
 
         {/* The invariant, as a full-width strip instead of a squeezed sidebar */}
-        <Reveal className="mb-20 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-7 py-5">
+        <Reveal className="mb-16 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-7 py-5">
           <p className="m-0 font-body text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)]">
             <span className="font-mono text-[0.62rem] tracking-[0.18em] uppercase text-[var(--color-accent)] mr-3">
               The invariant
@@ -141,6 +168,34 @@ export default function DocsPage() {
             is computation. The encoder validates the evidence path between
             them.
           </p>
+        </Reveal>
+
+        {/* Live architecture map — embedded, not a list entry */}
+        <Reveal as="section" className="mb-20">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
+            <h2 className="heading-section m-0">The architecture, live</h2>
+            <a
+              href="https://axiom-architecture-one.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+            >
+              Open full size
+              <ArrowRightIcon className="w-4 h-4" />
+            </a>
+          </div>
+          <p className="mb-6 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            How the source, claim, RuleSpec, encoder, runtime, and app layers
+            fit together &mdash; explore the map directly.
+          </p>
+          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+            <iframe
+              src="https://axiom-architecture-one.vercel.app"
+              title="Cross-system architecture map"
+              loading="lazy"
+              className="block w-full h-[560px] border-0"
+            />
+          </div>
         </Reveal>
 
         {/* Canonical docs */}

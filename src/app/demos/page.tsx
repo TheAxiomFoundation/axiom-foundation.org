@@ -102,7 +102,7 @@ export default function DemosPage() {
         <Reveal className="mb-16 max-w-[760px]">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
-            Demos &middot; The application layer
+            What&apos;s possible &middot; The application layer
           </span>
           <h1 className="heading-page mb-6 mt-2">Built on the open layer</h1>
           <p className="font-body text-[1.2rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">

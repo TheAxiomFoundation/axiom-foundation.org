@@ -8,7 +8,9 @@ describe("Nav", () => {
       "href",
       "https://app.axiom-foundation.org",
     );
-    expect(screen.getAllByText("Demos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);
+    // The preview surface carries a small beta tag.
+    expect(screen.getAllByText("beta")[0].tagName).toBe("SUP");
     expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Team").length).toBeGreaterThan(0);

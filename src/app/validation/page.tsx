@@ -75,6 +75,18 @@ export default function ValidationPage() {
             </span>
             , and publish the comparisons so anyone can re-run them.
           </p>
+
+          <div className="mt-8">
+            <a
+              href="https://axiom-oracles.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+            >
+              Open the validation dashboard
+              <ArrowRightIcon className="w-5 h-5" />
+            </a>
+          </div>
         </Reveal>
 
         <Reveal className="mb-20">

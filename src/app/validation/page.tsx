@@ -69,11 +69,8 @@ export default function ValidationPage() {
           <p className="font-body text-[1.2rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
             Open isn&apos;t enough &mdash; an encoding you can read but
             can&apos;t test is still a claim. We run every published rule
-            against{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              independent engines we don&apos;t control
-            </span>
-            , and publish the comparisons so anyone can re-run them.
+            against independent engines we don&apos;t control, and publish
+            the comparisons so anyone can re-run them.
           </p>
 
           <div className="mt-8">

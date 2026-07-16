@@ -17,13 +17,15 @@ describe("DocsPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /canonical docs live with the system that enforces them/i,
+        name: /docs live with the system that enforces them/i,
       })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /documentation homes/i })
     ).toBeInTheDocument();
-    expect(screen.getByText(/repo-owned engineering docs/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/docs live in the repo that owns the code or contract/i)
+    ).toBeInTheDocument();
     expect(screen.getAllByText("axiom-corpus").length).toBeGreaterThan(0);
     expect(screen.getAllByText("axiom-encode").length).toBeGreaterThan(0);
   });

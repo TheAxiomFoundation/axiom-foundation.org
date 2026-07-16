@@ -298,8 +298,6 @@ export function Nav({
       className="h-9 w-auto shrink-0"
     />
   );
-  const isDocsActive = pathname?.startsWith("/docs") ?? false;
-
   return (
     <header className="fixed top-0 left-0 right-0 z-100 py-3 nav-bar">
       <div className="max-w-[1280px] mx-auto px-8 flex items-center justify-between">
@@ -320,12 +318,6 @@ export function Nav({
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderDesktopEntry(link))}
-          <a
-            href={resolveHref("/docs", baseUrl)}
-            className={`${NAV_LINK}${isDocsActive ? " is-active" : ""}`}
-          >
-            Docs
-          </a>
           <a
             href="https://github.com/TheAxiomFoundation"
             className="nav-icon gradient-icon"
@@ -367,13 +359,6 @@ export function Nav({
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderMobileEntry(link))}
-          <a
-            href={resolveHref("/docs", baseUrl)}
-            className={`${MOBILE_LINK}${isDocsActive ? " is-active" : ""}`}
-            onClick={close}
-          >
-            Docs
-          </a>
         </nav>
       )}
     </header>

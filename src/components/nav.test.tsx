@@ -64,10 +64,11 @@ describe('Nav', () => {
     expect(screen.getAllByText('Validation').length).toBeGreaterThan(0)
     expect(screen.getAllByText('About').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Docs').length).toBeGreaterThan(0)
-    // Landing scroll anchors live on the page, not in the header.
+    // Landing scroll anchors live on the page, not in the header;
+    // Docs is footer-only (contributor audience).
     expect(screen.queryByText('Why')).not.toBeInTheDocument()
     expect(screen.queryByText('Encoding')).not.toBeInTheDocument()
+    expect(screen.queryByText('Docs')).not.toBeInTheDocument()
   })
 
   it('renders demos dropdown items by segment', () => {

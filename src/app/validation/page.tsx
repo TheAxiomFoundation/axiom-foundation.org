@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 
@@ -188,6 +189,15 @@ export default function ValidationPage() {
               Report a discrepancy
             </a>
           </div>
+          <p className="mt-8 mb-0 font-body text-[0.85rem] text-[var(--color-ink-muted)]">
+            Looking for the engineering contracts behind this?{" "}
+            <Link
+              href="/docs"
+              className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] no-underline"
+            >
+              Documentation &rarr;
+            </Link>
+          </p>
         </Reveal>
       </div>
     </div>

@@ -209,8 +209,12 @@ export function Nav({
         <div className="flex gap-10">
           {columns.map((group) => (
             <div key={group.label} className="min-w-[140px]">
-              <div className="mb-3 font-mono text-[0.58rem] tracking-[0.2em] uppercase text-[var(--color-ink-muted)]">
+              <div className="mb-3 font-mono text-[0.7rem] font-semibold tracking-[0.18em] uppercase text-[var(--color-ink)]">
                 {group.label}
+                <span
+                  aria-hidden
+                  className="mt-1.5 block h-px w-5 bg-[var(--color-accent)]"
+                />
               </div>
               <div className="flex flex-col gap-0.5">
                 {group.items.map((item) =>

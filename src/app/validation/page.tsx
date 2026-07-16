@@ -173,15 +173,6 @@ export default function ValidationPage() {
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
             <a
-              href="https://github.com/TheAxiomFoundation/axiom-oracles"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-            >
-              Explore axiom-oracles
-              <ArrowRightIcon className="w-5 h-5" />
-            </a>
-            <a
               href="https://github.com/TheAxiomFoundation/axiom-rules-engine/issues"
               target="_blank"
               rel="noopener noreferrer"

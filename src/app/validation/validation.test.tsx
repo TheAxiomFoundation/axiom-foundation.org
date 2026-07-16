@@ -41,14 +41,8 @@ describe('ValidationPage', () => {
     ).toHaveAttribute('href', 'https://axiom-oracles.vercel.app')
   })
 
-  it('links into the axiom-oracles harness', () => {
+  it('links to the discrepancy tracker', () => {
     render(<ValidationPage />)
-    expect(
-      screen.getByRole('link', { name: /explore axiom-oracles/i }),
-    ).toHaveAttribute(
-      'href',
-      'https://github.com/TheAxiomFoundation/axiom-oracles',
-    )
     expect(
       screen.getByRole('link', { name: /report a discrepancy/i }),
     ).toHaveAttribute(

@@ -217,7 +217,7 @@ export function Nav({
                   renderNavLink(
                     item,
                     false,
-                    "block whitespace-nowrap py-1.5 no-underline text-[0.85rem] font-light normal-case tracking-normal text-[var(--color-ink-secondary)] hover:text-[var(--color-accent)] transition-colors duration-150",
+                    "block whitespace-nowrap rounded px-2.5 py-1.5 -mx-2.5 no-underline text-[0.85rem] font-light normal-case tracking-normal text-[var(--color-ink-secondary)] transition-all duration-150 hover:translate-x-0.5 hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)]",
                   ),
                 )}
               </div>

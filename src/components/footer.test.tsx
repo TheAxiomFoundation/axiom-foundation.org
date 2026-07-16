@@ -25,9 +25,9 @@ describe('Footer', () => {
     expect(screen.getByText('Axiom platform')).toBeInTheDocument()
     expect(screen.getByText('Demos')).toBeInTheDocument()
     expect(screen.getByText('Validation')).toBeInTheDocument()
+    expect(screen.getByText('Docs')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Team')).toBeInTheDocument()
-    expect(screen.getByText('GitHub')).toBeInTheDocument()
     expect(screen.getByText('Contact')).toBeInTheDocument()
     expect(screen.getByText('Privacy')).toBeInTheDocument()
   })
@@ -37,6 +37,10 @@ describe('Footer', () => {
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
     expect(screen.getByText('Team').closest('a')).toHaveAttribute('href', '/team')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
-    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
+    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', '/contact')
+    expect(screen.getByLabelText('LinkedIn')).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/company/axiom-foundation',
+    )
   })
 })

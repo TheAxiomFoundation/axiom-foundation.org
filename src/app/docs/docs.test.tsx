@@ -24,8 +24,23 @@ describe("DocsPage", () => {
       screen.getByRole("heading", { name: /documentation homes/i })
     ).toBeInTheDocument();
     expect(screen.getByText(/repo-owned engineering docs/i)).toBeInTheDocument();
-    expect(screen.getByText("axiom-corpus")).toBeInTheDocument();
+    expect(screen.getAllByText("axiom-corpus").length).toBeGreaterThan(0);
     expect(screen.getAllByText("axiom-encode").length).toBeGreaterThan(0);
+  });
+
+  it("indexes the signed-release and oracle docs", () => {
+    render(<DocsPage />);
+    expect(
+      screen.getByRole("link", { name: /signed corpus releases/i })
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md"
+    );
+    expect(
+      screen.getByRole("link", { name: /oracle adapters/i })
+    ).toHaveAttribute("href", "https://github.com/TheAxiomFoundation/axiom-oracles");
+    // The internal lab notebook stays in the repo, not on the index.
+    expect(screen.queryByText(/methods log/i)).not.toBeInTheDocument();
   });
 
   it("links to canonical repo docs and related maps", () => {

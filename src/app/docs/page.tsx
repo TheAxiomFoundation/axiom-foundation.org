@@ -12,12 +12,19 @@ export const metadata: Metadata = {
 const docHomes = [
   {
     name: "Cross-system architecture",
-    owner: "axiom-foundation.org",
-    location: "/docs",
+    owner: "axiom-architecture",
+    location: "axiom-architecture-one.vercel.app",
     description:
-      "Public index for how Axiom's source, claim, RuleSpec, encoder, runtime, and app layers fit together.",
-    href: "/docs",
-    internal: true,
+      "Interactive map of how Axiom's source, claim, RuleSpec, encoder, runtime, and app layers fit together.",
+    href: "https://axiom-architecture-one.vercel.app",
+  },
+  {
+    name: "Signed corpus releases",
+    owner: "axiom-corpus",
+    location: "docs/named-release-publication.md",
+    description:
+      "The immutable named-release model: content-addressed artifacts, signature verification, and transactional activation of the serving projection.",
+    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md",
   },
   {
     name: "RuleSpec proof validation",
@@ -36,20 +43,12 @@ const docHomes = [
     href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/upstream-first-encoding-plan.md",
   },
   {
-    name: "Encoder methods log",
-    owner: "axiom-encode",
-    location: "docs/axiom-encode-methods-log.md",
+    name: "Oracle adapters & comparisons",
+    owner: "axiom-oracles",
+    location: "README.md",
     description:
-      "Harness changes, hypotheses, and validation evidence for benchmark-relevant encoder work.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/axiom-encode-methods-log.md",
-  },
-  {
-    name: "PolicyEngine oracle registry",
-    owner: "axiom-encode",
-    location: "docs/policyengine-oracle-registry.md",
-    description:
-      "Mapping and validation notes for comparing RuleSpec outputs to PolicyEngine where the concepts line up.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/policyengine-oracle-registry.md",
+      "The cross-engine validation harness behind the validation dashboard — adapters, concept-keyed cases, and mismatch reports.",
+    href: "https://github.com/TheAxiomFoundation/axiom-oracles",
   },
 ];
 
@@ -112,13 +111,6 @@ function DocLink({
     </>
   );
 
-  if (doc.internal) {
-    return (
-      <Link href={doc.href} className={classes}>
-        {content}
-      </Link>
-    );
-  }
   return (
     <a
       href={doc.href}

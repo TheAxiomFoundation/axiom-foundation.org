@@ -19,14 +19,27 @@ describe("Footer", () => {
     expect(screen.getByText("Axiom platform")).toBeInTheDocument();
     expect(screen.getByText("Demos")).toBeInTheDocument();
     expect(screen.getByText("Validation")).toBeInTheDocument();
+    expect(screen.getByText("Docs")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Team")).toBeInTheDocument();
-    expect(screen.getByText("RuleSpec")).toBeInTheDocument();
-    expect(screen.getByText("Encoder")).toBeInTheDocument();
-    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.getByText("Privacy")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("Get updates")).toBeInTheDocument();
-    expect(screen.getByText("Privacy")).toBeInTheDocument();
+    expect(
+      screen.getByText("hello@axiom-foundation.org"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders social icon links", () => {
+    render(<Footer />);
+    expect(screen.getByLabelText("GitHub")).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation",
+    );
+    expect(screen.getByLabelText("LinkedIn")).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/company/axiom-foundation",
+    );
   });
 
   it("points Get updates at the provided updatesUrl", () => {
@@ -55,7 +68,7 @@ describe("Footer", () => {
 
   it("does not apply baseUrl to external links", () => {
     render(<Footer baseUrl="https://axiom-foundation.org" />);
-    expect(screen.getByText("Contact")).toHaveAttribute(
+    expect(screen.getByText("hello@axiom-foundation.org")).toHaveAttribute(
       "href",
       "mailto:hello@axiom-foundation.org",
     );
@@ -80,6 +93,7 @@ describe("Footer", () => {
 
     render(<Footer renderLink={TestLink} />);
     const customLinks = screen.getAllByTestId("custom-link");
-    expect(customLinks.length).toBe(5); // Demos, Validation, About, Team, and Privacy
+    // Demos, Validation, Docs, About, Team, Privacy, and Contact
+    expect(customLinks.length).toBe(7);
   });
 });

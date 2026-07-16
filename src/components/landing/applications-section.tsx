@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowRightIcon } from "@/components/icons";
 import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 const APPLICATIONS = [
@@ -84,17 +82,6 @@ export function ApplicationsSection() {
             </RevealItem>
           ))}
         </RevealGroup>
-
-        <Reveal className="mt-14 text-center">
-          <p className="m-0 mb-5 font-body text-[0.95rem] text-[var(--color-ink-muted)] max-w-[560px] mx-auto leading-relaxed">
-            Not hypothetical &mdash; these run today, on the published
-            encodings.
-          </p>
-          <Link href="/demos" className="btn-outline">
-            See the live demos
-            <ArrowRightIcon className="w-5 h-5" />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

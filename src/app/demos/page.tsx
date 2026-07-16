@@ -18,6 +18,8 @@ interface Demo {
   embed: boolean;
 }
 
+// Ordered by stakeholder (Builders / AI labs / Government) — the same
+// taxonomy the header dropdown and the axiom-demo-shell gallery use.
 const DEMOS: Demo[] = [
   {
     slug: "reg-demo",
@@ -29,6 +31,24 @@ const DEMOS: Demo[] = [
     embed: true,
   },
   {
+    slug: "form-builder",
+    kicker: "For builders · compose",
+    title: "Form Builder",
+    body:
+      "Partner intake forms powered by Axiom inputs, outputs, and explanations — compose a screener from the encoded rules.",
+    url: "https://dashboard-builder-flax.vercel.app",
+    embed: false,
+  },
+  {
+    slug: "architecture",
+    kicker: "For builders · the stack",
+    title: "Architecture map",
+    body:
+      "The concept registry, adapters, and engines behind every encoding — how the pieces of the Axiom stack fit together.",
+    url: "https://axiom-architecture-one.vercel.app",
+    embed: false,
+  },
+  {
     slug: "finbot",
     kicker: "For AI labs · grounded answers",
     title: "Axiom-grounded benefits assistant",
@@ -38,12 +58,39 @@ const DEMOS: Demo[] = [
     embed: true,
   },
   {
+    slug: "guidance-impact",
+    kicker: "For AI labs · agentic diff",
+    title: "Guidance impact visualizer",
+    body:
+      "An agentic legal diff — see coverage outcomes shift as agency guidance changes, reconciled against the primary sources.",
+    url: "https://guidance-impact-visualizer.vercel.app",
+    embed: false,
+  },
+  {
+    slug: "workflow-checker",
+    kicker: "For government · caseworker path",
+    title: "Colorado SNAP workflow checker",
+    body:
+      "Colorado SNAP processing rules (10 CCR 2506-1) mapped to RuleSpec — check the caseworker path against the encoded rules.",
+    url: "https://co-snap-workflow-checker.vercel.app",
+    embed: false,
+  },
+  {
     slug: "co-snap-cliffs",
     kicker: "For government · policy analysis",
     title: "Colorado SNAP cliffs",
     body:
       "Adjust Colorado SNAP parameters and watch how benefit cliffs shift — reform without rewriting, on the same encoding the calculators run.",
     url: "https://axiom-co-snap.vercel.app",
+    embed: false,
+  },
+  {
+    slug: "microsim",
+    kicker: "For government · population scale",
+    title: "Microsimulation",
+    body:
+      "Score federal and state reforms against the Enhanced CPS — population-level impacts from the same encodings that answer household questions.",
+    url: "https://axiom-microsim.vercel.app",
     embed: false,
   },
 ];

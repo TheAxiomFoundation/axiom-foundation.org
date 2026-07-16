@@ -60,18 +60,23 @@ const DEFAULT_LINKS: NavLink[] = [
         label: "Builders",
         items: [
           { href: "/demos#reg-demo", label: "Small company checker" },
+          { href: "/demos#form-builder", label: "Form Builder" },
+          { href: "/demos#architecture", label: "Architecture map" },
         ],
       },
       {
         label: "AI labs",
         items: [
           { href: "/demos#finbot", label: "Grounded benefits assistant" },
+          { href: "/demos#guidance-impact", label: "Guidance impact visualizer" },
         ],
       },
       {
         label: "Government",
         items: [
+          { href: "/demos#workflow-checker", label: "SNAP workflow checker" },
           { href: "/demos#co-snap-cliffs", label: "Colorado SNAP cliffs" },
+          { href: "/demos#microsim", label: "Microsimulation" },
         ],
       },
       {

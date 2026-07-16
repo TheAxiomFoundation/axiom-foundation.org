@@ -3,7 +3,7 @@
 import posthog from "posthog-js";
 
 /* v8 ignore start -- env-dependent capture */
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_KEY;
 
 // ---- Custom axiom events ----
 

@@ -165,13 +165,23 @@ export default function ValidationPage() {
 
         <Reveal className="border-t border-[var(--color-rule)] pt-12 text-center">
           <p className="m-0 mb-6 font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed max-w-[640px] mx-auto">
-            The adapters, concept bindings, and comparison harness are open
-            source.{" "}
+            The comparison harness is open, and every engine behind a thin
+            adapter makes the whole ecosystem harder to fool. If you maintain
+            a calculator, a screener, or an eligibility system,{" "}
             <span className="serif-italic text-[var(--color-ink)]">
-              Don&apos;t trust it &mdash; check it.
+              plug it in and put us to the test.
             </span>
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
+            <a
+              href="https://github.com/TheAxiomFoundation/axiom-oracles"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+            >
+              Contribute an oracle
+              <ArrowRightIcon className="w-5 h-5" />
+            </a>
             <a
               href="https://github.com/TheAxiomFoundation/axiom-rules-engine/issues"
               target="_blank"

@@ -544,7 +544,7 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             <Provenance kind="D" />, and July to date paces at about
             $175k/month <Provenance kind="D" />; the complete months before
             were $39.0k (May) and $31.9k (June) <Provenance kind="M" /> —
-            demand roughly tripled in July as the encoding lanes and the
+            July is pacing at about 5.5× June as the encoding lanes and the
             launch push scaled up. The Claude-family line — the larger of the
             two over the trailing 30 days — is cache-read dominated: 37.0B
             cache-read versus 0.07B fresh input tokens July 1–15, plus 1.5B

@@ -13,6 +13,7 @@
 
 const DEFAULT_BASE = "https://axiom-api-eta.vercel.app/v1";
 const REQUEST_TIMEOUT_MS = 4000;
+const CALCULATE_TIMEOUT_MS = 15000;
 const REVALIDATE_SECONDS = 600;
 
 export interface RuntimePackageSummary {
@@ -93,6 +94,65 @@ export async function listRuntimePackages(): Promise<RuntimePackageSummary[]> {
     "/runtime/packages"
   );
   return data?.packages ?? [];
+}
+
+export interface RuntimePackageDetail extends RuntimePackageSummary {
+  default_period?: string;
+  sample_request?: unknown;
+  outputs?: Array<{ name: string; legal_id: string; alias_for?: string }>;
+}
+
+export async function getRuntimePackage(
+  jurisdiction: string,
+  programId: string
+): Promise<RuntimePackageDetail | null> {
+  const data = await runtimeGet<{ package: RuntimePackageDetail }>(
+    `/runtime/packages/${encodeURIComponent(jurisdiction)}/${encodeURIComponent(
+      programId
+    )}`
+  );
+  return data?.package ?? null;
+}
+
+export interface CalculateTraceEntry {
+  rule_id: string;
+  variable: string;
+  value: number | string | boolean | null;
+  sources: string[];
+}
+
+export interface CalculateResult {
+  outputs: Record<string, number | string | boolean | null>;
+  trace?: CalculateTraceEntry[];
+}
+
+/** POST /v1/calculate. Uncached — every run executes. */
+export async function runCalculate(
+  request: unknown
+): Promise<CalculateResult | null> {
+  if (!isRuntimeApiConfigured()) return null;
+  const key = process.env.AXIOM_RUNTIME_API_KEY;
+  try {
+    const response = await fetch(`${apiBase()}/calculate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(key ? { "x-api-key": key } : {}),
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(CALCULATE_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const envelope = (await response.json()) as {
+      status?: string;
+      data?: CalculateResult;
+    };
+    if (envelope.status !== "ok" || !envelope.data?.outputs) return null;
+    return envelope.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function getProgramGraph(

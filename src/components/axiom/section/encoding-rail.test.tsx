@@ -206,14 +206,16 @@ describe("EncodingRail", () => {
         programs={programs}
       />
     );
-    // Overview: both programs listed.
+    // Overview: both families listed — co-snap folds into the "snap"
+    // family with a CO jurisdiction chip.
     expect(screen.getByTestId("rail-programs")).toBeInTheDocument();
     expect(screen.getByText("us-eitc")).toBeInTheDocument();
-    expect(screen.getByText("co-snap")).toBeInTheDocument();
-    // Each row deep-links into the graph viewer, scoped to the
-    // program and focused on this provision's rules.
-    const link = screen.getByText("co-snap").closest("a");
-    const href = new URL(link!.getAttribute("href")!);
+    expect(screen.getByText("snap")).toBeInTheDocument();
+    expect(screen.queryByText("co-snap")).not.toBeInTheDocument();
+    // Each jurisdiction chip deep-links into the graph viewer, scoped
+    // to the program and focused on this provision's rules.
+    const chip = screen.getByText("CO").closest("a");
+    const href = new URL(chip!.getAttribute("href")!);
     expect(href.searchParams.get("program")).toBe("us-co/co-snap");
     expect(href.searchParams.get("focus")).toBe("us:statutes/26/32");
 
@@ -221,7 +223,7 @@ describe("EncodingRail", () => {
     scrollTo({ a: -200, b: 900 });
     await waitFor(() => {
       expect(screen.getByText("us-eitc")).toBeInTheDocument();
-      expect(screen.queryByText("co-snap")).not.toBeInTheDocument();
+      expect(screen.queryByText("snap")).not.toBeInTheDocument();
     });
   });
 

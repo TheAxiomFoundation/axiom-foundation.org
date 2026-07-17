@@ -14,6 +14,7 @@ import {
 } from "@/lib/axiom/runtime/graph-links";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
+import { RunSample } from "./run-sample";
 import { useActiveAnchor } from "./use-active-anchor";
 
 export interface RailChunk {
@@ -147,6 +148,25 @@ export function EncodingRail({
  * point for the Run/Graph/Build surfaces; renders nothing when the
  * runtime API is unconfigured or no program touches the provision.
  */
+/**
+ * Family key for grouping: state-prefixed program ids fold into
+ * their base program ("co-snap" in us-co → "snap"), so seven state
+ * SNAP packages render as one row with jurisdiction chips instead of
+ * seven near-identical rows.
+ */
+function programFamily(program: ProvisionProgramCoverage): string {
+  const state = program.jurisdiction.split("-")[1];
+  return state && program.programId.startsWith(`${state}-`)
+    ? program.programId.slice(state.length + 1)
+    : program.programId;
+}
+
+/** Short jurisdiction chip: "us-co" → "CO", "us" → "US", "uk" → "UK". */
+function jurisdictionChip(jurisdiction: string): string {
+  const parts = jurisdiction.split("-");
+  return (parts[1] ?? parts[0]).toUpperCase();
+}
+
 function ProgramsBlock({
   programs,
   citationPath,
@@ -163,34 +183,56 @@ function ProgramsBlock({
   if (visible.length === 0) return null;
   const focus = citationPath ? graphFocusForCitationPath(citationPath) : null;
 
+  const families = new Map<string, ProvisionProgramCoverage[]>();
+  for (const program of visible) {
+    const family = programFamily(program);
+    const group = families.get(family);
+    if (group) group.push(program);
+    else families.set(family, [program]);
+  }
+
   return (
     <nav aria-label="Executable programs" data-testid="rail-programs">
       <div className="eyebrow mb-3">Executable in</div>
-      <ol className="space-y-2">
-        {visible.map((program) => (
-          <li key={`${program.jurisdiction}/${program.programId}`}>
-            <a
-              href={graphViewerUrl(program, focus)}
-              target="_blank"
-              rel="noreferrer"
-              title="View this provision's rules in the program graph"
-              className="block rounded-sm px-1 py-0.5 transition-colors hover:bg-[var(--color-rule)]/40"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
-                  {program.programId}
-                </span>
-                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                  {program.jurisdiction}
-                </span>
-              </div>
-              <div className="mt-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
-                {program.ruleCount}{" "}
-                {program.ruleCount === 1 ? "rule" : "rules"} here ·{" "}
-                {program.mode}
-                {program.status !== "ready" && " · unavailable"} · graph ↗
-              </div>
-            </a>
+      <ol className="space-y-3">
+        {Array.from(families, ([family, group]) => (
+          <li key={family}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
+                {family}
+              </span>
+              <span className="shrink-0 font-mono text-[10px] text-[var(--color-ink-muted)]">
+                {group.length === 1
+                  ? `${group[0].ruleCount} ${group[0].ruleCount === 1 ? "rule" : "rules"} here`
+                  : `${group.length} jurisdictions`}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {group.map((program) => (
+                <a
+                  key={`${program.jurisdiction}/${program.programId}`}
+                  href={graphViewerUrl(program, focus)}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`${program.programId} (${program.jurisdiction}): ${program.ruleCount} ${program.ruleCount === 1 ? "rule" : "rules"} from this section · ${program.mode} — view in graph`}
+                  className={`rounded-sm border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] ${
+                    program.status === "ready"
+                      ? "text-[var(--color-ink-secondary)]"
+                      : "text-[var(--color-ink-muted)] opacity-60"
+                  }`}
+                >
+                  {jurisdictionChip(program.jurisdiction)}
+                </a>
+              ))}
+            </div>
+            {(() => {
+              const runnable = group.find(
+                (program) => program.status === "ready"
+              );
+              return runnable ? (
+                <RunSample program={runnable} sectionFocus={focus} />
+              ) : null;
+            })()}
           </li>
         ))}
       </ol>

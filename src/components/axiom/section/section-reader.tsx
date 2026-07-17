@@ -10,7 +10,7 @@ import { RuleBody } from "@/components/axiom/rule-body";
 import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
-import { CitationJump } from "./citation-jump";
+import { PaletteTrigger } from "@/components/axiom/palette-trigger";
 import { CitationPreviewLayer } from "./citation-preview";
 import { TraceProvider } from "./trace-context";
 import { ChunkTraceChips } from "./chunk-trace";
@@ -296,7 +296,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
         {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Breadcrumbs data={data} />
-          <CitationJump />
+          <PaletteTrigger variant="compact" />
         </div>
 
         <header className="border-b border-[var(--color-rule)] pb-5">

@@ -153,7 +153,10 @@ export async function resolveDisplayContext(rule: Rule): Promise<DisplayContext>
 // ---- Pagination ----
 
 const PAGE_SIZE = 100;
-const TREE_QUERY_TIMEOUT_MS = 2500;
+// Generous enough to survive cold starts (dev compile, cold
+// serverless + cold Postgres) — 2.5s produced spurious "Navigation
+// data is temporarily unavailable" on first loads.
+const TREE_QUERY_TIMEOUT_MS = 6000;
 const PREFIX_SCAN_PAGE_SIZE = 1000;
 const PREFIX_SCAN_MAX_ROWS = 10000;
 const ROOT_SCAN_PAGE_SIZE = 1000;

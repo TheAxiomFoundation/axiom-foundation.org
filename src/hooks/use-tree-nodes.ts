@@ -90,6 +90,9 @@ export function useTreeNodes(
   // fetch whose token no longer matches ``inflight.current`` is
   // silently dropped on resolution.
   const inflight = useRef(0);
+  // Cache key whose initial load already got its one automatic
+  // retry — prevents retry loops when the backend is genuinely down.
+  const retriedKeyRef = useRef<string | null>(null);
 
   const [stateKey, setStateKey] = useState(
     matchingInitialState ? cacheKey : ""
@@ -194,6 +197,17 @@ export function useTreeNodes(
       }
     } catch (err) {
       if (token !== inflight.current) return;
+      // One automatic retry on a fresh (non-append) load: the common
+      // failure is a cold-start timeout that succeeds moments later,
+      // and surfacing "temporarily unavailable" for that reads as
+      // broken navigation.
+      if (!append && retriedKeyRef.current !== cacheKey) {
+        retriedKeyRef.current = cacheKey;
+        setTimeout(() => {
+          if (token === inflight.current) fetchNodes(segs, pageNum, append);
+        }, 750);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to fetch");
       setStateKey(cacheKey);
     } finally {

@@ -347,6 +347,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           encodedRules={data.encodedRules}
           outgoing={outgoing}
           incoming={incoming}
+          programs={data.programs}
         />
       </aside>
     </div>

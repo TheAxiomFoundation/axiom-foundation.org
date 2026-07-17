@@ -1,0 +1,134 @@
+import {
+  listRuntimePackages,
+  getProgramGraph,
+  isRuntimeApiConfigured,
+  type GraphRuleNode,
+} from "@/lib/axiom/runtime/api";
+
+/**
+ * The provision ↔ program join: which executable runtime packages
+ * contain rules derived from a given corpus provision.
+ *
+ * Graph rule nodes carry durable repo-backed file IDs
+ * ("us:statutes/7/2017/a") while corpus rows carry citation paths
+ * ("us/statute/7/2017"), so the join is a tolerant segment match:
+ * same jurisdiction, doc type equal modulo plural, node path at or
+ * below the section path. Runs app-side from graph payloads today; a
+ * registry-built coverage endpoint in axiom-api is the planned
+ * replacement once Encoding Registry v1 lands.
+ */
+
+export interface ProvisionProgramCoverage {
+  jurisdiction: string;
+  programId: string;
+  mode: "fixture" | "compiled";
+  status: "ready" | "unavailable";
+  /** Rule nodes in the program derived from this provision. */
+  ruleCount: number;
+  /** Top-level subsection anchors ("a", "b", …) those rules cite. */
+  anchors: string[];
+  /** Rule names for display, capped at RULE_NAME_CAP. */
+  ruleNames: string[];
+}
+
+/** Registry sweep bound — the registry is small today; if it grows
+ *  past this the join must move server-side rather than raising it. */
+const MAX_PACKAGES = 12;
+const RULE_NAME_CAP = 8;
+
+function normalizeDocType(segment: string): string {
+  return segment.toLowerCase().replace(/s$/, "");
+}
+
+/**
+ * Match a graph node's fileLegalId against a section citation path.
+ * Returns null when the node is outside the section, otherwise the
+ * top-level subsection anchor the node sits under (or null at the
+ * section root).
+ */
+export function matchLegalId(
+  fileLegalId: string,
+  citationPath: string
+): { anchor: string | null } | null {
+  const colon = fileLegalId.indexOf(":");
+  if (colon <= 0) return null;
+  const legalJurisdiction = fileLegalId.slice(0, colon).toLowerCase();
+  const legalSegments = fileLegalId
+    .slice(colon + 1)
+    .split("/")
+    .filter(Boolean);
+
+  const citationSegments = citationPath.split("/").filter(Boolean);
+  // citationPath = slug / docType / …section segments
+  if (citationSegments.length < 3 || legalSegments.length < 2) return null;
+  const [slug, docType, ...sectionSegments] = citationSegments;
+  const [legalDocType, ...legalRest] = legalSegments;
+
+  if (legalJurisdiction !== slug.toLowerCase()) return null;
+  if (normalizeDocType(legalDocType) !== normalizeDocType(docType)) {
+    return null;
+  }
+  if (legalRest.length < sectionSegments.length) return null;
+  for (let i = 0; i < sectionSegments.length; i++) {
+    if (legalRest[i].toLowerCase() !== sectionSegments[i].toLowerCase()) {
+      return null;
+    }
+  }
+
+  const tail = legalRest[sectionSegments.length];
+  return { anchor: tail && /^[a-z]{1,2}$/.test(tail) ? tail : null };
+}
+
+function coverageFromRules(
+  rules: GraphRuleNode[],
+  citationPath: string
+): { ruleCount: number; anchors: string[]; ruleNames: string[] } | null {
+  const anchors = new Set<string>();
+  const ruleNames: string[] = [];
+  let ruleCount = 0;
+  for (const rule of rules) {
+    const match = matchLegalId(rule.fileLegalId, citationPath);
+    if (!match) continue;
+    ruleCount++;
+    if (match.anchor) anchors.add(match.anchor);
+    if (ruleNames.length < RULE_NAME_CAP) ruleNames.push(rule.name);
+  }
+  if (ruleCount === 0) return null;
+  return { ruleCount, anchors: Array.from(anchors).sort(), ruleNames };
+}
+
+/**
+ * Sweep the runtime-package registry for programs containing rules
+ * derived from this provision. Resolves to [] when the runtime API
+ * is unconfigured or unreachable — pages render without the block.
+ */
+export async function getProvisionCoverage(
+  citationPath: string
+): Promise<ProvisionProgramCoverage[]> {
+  if (!isRuntimeApiConfigured()) return [];
+  const packages = (await listRuntimePackages()).slice(0, MAX_PACKAGES);
+  if (packages.length === 0) return [];
+
+  const graphs = await Promise.all(
+    packages.map((pkg) =>
+      getProgramGraph(pkg.jurisdiction, pkg.program_id).catch(() => null)
+    )
+  );
+
+  const coverage: ProvisionProgramCoverage[] = [];
+  packages.forEach((pkg, index) => {
+    const graph = graphs[index];
+    if (!graph) return;
+    const matched = coverageFromRules(graph.rules, citationPath);
+    if (!matched) return;
+    coverage.push({
+      jurisdiction: pkg.jurisdiction,
+      programId: pkg.program_id,
+      mode: pkg.mode,
+      status: pkg.status,
+      ...matched,
+    });
+  });
+
+  return coverage.sort((a, b) => b.ruleCount - a.ruleCount);
+}

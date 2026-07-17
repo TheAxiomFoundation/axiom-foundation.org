@@ -6,6 +6,7 @@ import {
   refsForChunk,
   type EncodedRuleLink,
 } from "@/lib/axiom/section-page";
+import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
@@ -38,6 +39,7 @@ export function EncodingRail({
   encodedRules,
   outgoing,
   incoming,
+  programs = [],
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -47,6 +49,7 @@ export function EncodingRail({
   encodedRules: EncodedRuleLink[];
   outgoing: InlineReference[];
   incoming: RuleReference[];
+  programs?: ProvisionProgramCoverage[];
 }) {
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
@@ -75,6 +78,7 @@ export function EncodingRail({
           isRepealed={isRepealed}
           encodedRules={encodedRules}
           outgoing={outgoing}
+          programs={programs}
         />
       ) : mode === "overview" ? (
         <OverviewView
@@ -86,6 +90,7 @@ export function EncodingRail({
           encodedRules={encodedRules}
           outgoing={outgoing}
           incoming={incoming}
+          programs={programs}
         />
       ) : (
         // No parseable subsection structure — flat rule list plus the
@@ -100,6 +105,7 @@ export function EncodingRail({
             showSummary={false}
             textAnchors={textAnchors}
           />
+          <ProgramsBlock programs={programs} />
           {(outgoing.length > 0 || incoming.length > 0) && (
             <div className="border-t border-[var(--color-rule)] pt-6">
               <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
@@ -108,6 +114,55 @@ export function EncodingRail({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Programs containing rules derived from this provision — the
+ * provision↔program join from the runtime-package registry. Entry
+ * point for the Run/Graph/Build surfaces; renders nothing when the
+ * runtime API is unconfigured or no program touches the provision.
+ */
+function ProgramsBlock({
+  programs,
+  anchor,
+}: {
+  programs: ProvisionProgramCoverage[];
+  /** When set, only programs with rules under this subsection. */
+  anchor?: string;
+}) {
+  const visible = anchor
+    ? programs.filter((program) => program.anchors.includes(anchor))
+    : programs;
+  if (visible.length === 0) return null;
+
+  return (
+    <nav aria-label="Executable programs" data-testid="rail-programs">
+      <div className="eyebrow mb-3">Executable in</div>
+      <ol className="space-y-2">
+        {visible.map((program) => (
+          <li
+            key={`${program.jurisdiction}/${program.programId}`}
+            className="rounded-sm px-1 py-0.5"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
+                {program.programId}
+              </span>
+              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                {program.jurisdiction}
+              </span>
+            </div>
+            <div className="mt-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
+              {program.ruleCount}{" "}
+              {program.ruleCount === 1 ? "rule" : "rules"} here ·{" "}
+              {program.mode}
+              {program.status !== "ready" && " · unavailable"}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 
@@ -120,6 +175,7 @@ function NodeView({
   isRepealed,
   encodedRules,
   outgoing,
+  programs,
 }: {
   chunk: RailChunk;
   encoding: RuleEncodingData | null;
@@ -128,6 +184,7 @@ function NodeView({
   isRepealed: boolean;
   encodedRules: EncodedRuleLink[];
   outgoing: InlineReference[];
+  programs: ProvisionProgramCoverage[];
 }) {
   const ruleNames = encodedRules
     .filter((rule) => rule.anchors.includes(chunk.anchor))
@@ -156,6 +213,7 @@ function NodeView({
         includeUngrouped={false}
         textAnchors={textAnchors}
       />
+      <ProgramsBlock programs={programs} anchor={chunk.anchor} />
       {nodeOutgoing.length > 0 && (
         <div className="border-t border-[var(--color-rule)] pt-6">
           <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} hrefPrefix="/axiom/v2" />
@@ -175,6 +233,7 @@ function OverviewView({
   encodedRules,
   outgoing,
   incoming,
+  programs,
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -184,6 +243,7 @@ function OverviewView({
   encodedRules: EncodedRuleLink[];
   outgoing: InlineReference[];
   incoming: RuleReference[];
+  programs: ProvisionProgramCoverage[];
 }) {
   const sectionWide = encodedRules
     .filter((rule) => rule.anchors.length === 0)
@@ -207,6 +267,7 @@ function OverviewView({
         }
         includeUngrouped={false}
       />
+      <ProgramsBlock programs={programs} />
       {encodedRules.length > 0 && (
         <nav aria-label="Rules by subsection" data-testid="rail-subsection-map">
           <div className="eyebrow mb-3">Rules by subsection</div>

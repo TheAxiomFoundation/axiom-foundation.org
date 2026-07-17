@@ -171,6 +171,60 @@ describe("EncodingRail", () => {
     expect(screen.getByText("rule_for_b")).toBeInTheDocument();
   });
 
+  it("lists executable programs in the overview and scopes them per node", async () => {
+    const programs = [
+      {
+        jurisdiction: "us",
+        programId: "us-eitc",
+        mode: "compiled" as const,
+        status: "ready" as const,
+        ruleCount: 3,
+        anchors: ["a", "b"],
+        ruleNames: ["eitc_amount"],
+      },
+      {
+        jurisdiction: "us-co",
+        programId: "co-snap",
+        mode: "fixture" as const,
+        status: "ready" as const,
+        ruleCount: 1,
+        anchors: ["b"],
+        ruleNames: ["snap_x"],
+      },
+    ];
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        programs={programs}
+      />
+    );
+    // Overview: both programs listed.
+    expect(screen.getByTestId("rail-programs")).toBeInTheDocument();
+    expect(screen.getByText("us-eitc")).toBeInTheDocument();
+    expect(screen.getByText("co-snap")).toBeInTheDocument();
+
+    // Reading (a): only the program with rules under (a) remains.
+    scrollTo({ a: -200, b: 900 });
+    await waitFor(() => {
+      expect(screen.getByText("us-eitc")).toBeInTheDocument();
+      expect(screen.queryByText("co-snap")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders no programs block when coverage is empty", () => {
+    placeSections({ a: 500, b: 1500 });
+    renderRail();
+    expect(screen.queryByTestId("rail-programs")).not.toBeInTheDocument();
+  });
+
   it("shows an empty state for subsections nothing cites", async () => {
     renderRail();
     scrollTo({ a: -200, b: 900 });

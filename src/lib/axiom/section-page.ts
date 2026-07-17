@@ -14,6 +14,10 @@ import {
 import { getProvisionByCitationPath } from "@/lib/axiom/navigation-index/read";
 import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
+import {
+  getProvisionCoverage,
+  type ProvisionProgramCoverage,
+} from "@/lib/axiom/runtime/coverage";
 
 /**
  * Data assembly for the v2 server-rendered section page: one reading
@@ -88,6 +92,12 @@ export interface SectionPageData {
   encoding: RuleEncodingData | null;
   /** Rules from ``encoding`` mapped to their subsection anchors. */
   encodedRules: EncodedRuleLink[];
+  /**
+   * Executable runtime packages containing rules derived from this
+   * provision (the provision↔program join). Empty when the runtime
+   * API is unconfigured.
+   */
+  programs: ProvisionProgramCoverage[];
   /**
    * Set when the requested path was deeper than the ingested corpus
    * row (e.g. …/26/32/a on a section-granular corpus): the section
@@ -442,11 +452,14 @@ export async function getSectionPageData(
   }
   if (!root) return null;
 
-  const [subtree, rootRefs, node, encoding] = await Promise.all([
+  const [subtree, rootRefs, node, encoding, programs] = await Promise.all([
     getSubtreeProvisions(citationPath),
     getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
     getNavigationNode(citationPath),
     getRuleEncoding(root.id).catch(() => null),
+    getProvisionCoverage(citationPath).catch(
+      () => [] as ProvisionProgramCoverage[]
+    ),
   ]);
 
   const rootDepth = citationPath.split("/").length;
@@ -493,6 +506,7 @@ export async function getSectionPageData(
       citationPath,
       encoding?.rulespec_content ?? null
     ),
+    programs,
     focusAnchor,
     prev,
     next,

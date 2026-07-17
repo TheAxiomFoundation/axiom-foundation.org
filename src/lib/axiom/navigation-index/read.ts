@@ -257,17 +257,25 @@ export async function getNavigationIndexChildren({
 export async function getNavigationIndexNode(
   path: string
 ): Promise<NavigationNodeRow | null> {
+  // Not maybeSingle(): the index has shipped duplicate rows for a
+  // path (us/statute/26 appeared twice after a partial re-ingestion,
+  // one copy with a corrupted sort_key), and maybeSingle() turns
+  // that into a 503 for the whole subtree. Order by sort_key
+  // descending so the canonically-sorted row wins deterministically;
+  // the duplicate itself is an upstream corpus bug.
   const result = await withTimeout(
     supabaseCorpus
       .from("navigation_nodes")
       .select("*")
       .eq("path", path)
-      .maybeSingle(),
+      .order("sort_key", { ascending: false })
+      .limit(1),
     NAVIGATION_QUERY_TIMEOUT_MS
   );
   if (!result) throw new NavigationIndexUnavailableError();
   if (result.error) throw new NavigationIndexUnavailableError();
-  return (result.data as NavigationNodeRow | null) ?? null;
+  const rows = (result.data ?? []) as NavigationNodeRow[];
+  return rows[0] ?? null;
 }
 
 export async function getNavigationIndexPrefixRows({

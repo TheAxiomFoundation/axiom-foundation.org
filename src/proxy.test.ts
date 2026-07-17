@@ -13,19 +13,20 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "https://app.axiom-foundation.org/axiom/us/statute/7"
+      "https://app.axiom-foundation.org/axiom/v2/us/statute/7"
     );
   });
 
-  it("routes section-depth statute/regulation paths to the v2 reader", () => {
+  it("routes every jurisdiction-rooted path to the v2 surface", () => {
     for (const [path, expected] of [
       ["/us/statute/26/164", "/axiom/v2/us/statute/26/164"],
       ["/us/statute/7/2017/a", "/axiom/v2/us/statute/7/2017/a"],
       ["/us-co/regulation/10-ccr-2506-1/4.207.3", "/axiom/v2/us-co/regulation/10-ccr-2506-1/4.207.3"],
-      // Browse depth and unverified doc types stay on v1.
-      ["/us/statute/26", "/axiom/us/statute/26"],
-      ["/us/statute", "/axiom/us/statute"],
-      ["/us/policy/usda/snap", "/axiom/us/policy/usda/snap"],
+      // Browse depths render the v2 list view.
+      ["/us/statute/26", "/axiom/v2/us/statute/26"],
+      ["/us/statute", "/axiom/v2/us/statute"],
+      ["/us", "/axiom/v2/us"],
+      ["/us/policy/usda/snap", "/axiom/v2/us/policy/usda/snap"],
     ] as const) {
       const response = proxy(
         request(
@@ -134,7 +135,7 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://localhost:4944/axiom/us-co/statute"
+      "http://localhost:4944/axiom/v2/us-co/statute"
     );
   });
 
@@ -144,7 +145,7 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://localhost:4944/axiom/uk/legislation"
+      "http://localhost:4944/axiom/v2/uk/legislation"
     );
   });
 
@@ -154,7 +155,7 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://app.localhost:4944/axiom/canada/regulation"
+      "http://app.localhost:4944/axiom/v2/canada/regulation"
     );
   });
 

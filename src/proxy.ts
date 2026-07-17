@@ -12,17 +12,13 @@ const APP_HOST = "app.axiom-foundation.org";
 // unchanged so the dev server can also serve the marketing site.
 const APP_ROOT_PREFIX_RE = /^\/(?:us|uk|ca|canada|us-[a-z]{2})(?:\/|$)/;
 
-// Section-depth statute/regulation paths (jurisdiction/doc-type/
-// title/section…) render the v2 reader — the launch surface of the
-// app rebuild. Browse levels (three segments or fewer) and doc
-// types the reader hasn't been verified on yet stay on the v1 tree
-// browser.
-const V2_SECTION_PATH_RE =
-  /^\/(?:us|uk|ca|canada|us-[a-z]{2})\/(?:statute|regulation)\/[^/]+\/.+/;
-
+// Every jurisdiction-rooted path renders the v2 surface — browse
+// levels (jurisdiction / doc type / title) get the v2 list view,
+// section depth and deeper the v2 reader. The app root ("/") stays
+// on the v1 landing until it is rebuilt.
 function appPagePath(pathname: string): string {
   if (pathname === "/") return "/axiom";
-  return V2_SECTION_PATH_RE.test(pathname)
+  return APP_ROOT_PREFIX_RE.test(pathname)
     ? `/axiom/v2${pathname}`
     : `/axiom${pathname}`;
 }

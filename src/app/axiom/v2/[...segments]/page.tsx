@@ -7,6 +7,11 @@ import {
 } from "@/lib/axiom/metadata";
 import { getSectionPageData } from "@/lib/axiom/section-page";
 import { SectionReader } from "@/components/axiom/section/section-reader";
+import {
+  getBrowsePageData,
+  MAX_BROWSE_SEGMENTS,
+} from "@/lib/axiom/browse-page";
+import { BrowseView } from "@/components/axiom/section/browse-view";
 
 /**
  * v2 section reader — the first server-rendered surface of the app
@@ -39,12 +44,20 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { segments } = await params;
-  const meta = await getAxiomRuleMetadata(decodeSegments(segments));
+  const decoded = decodeSegments(segments);
+  if (decoded.length <= MAX_BROWSE_SEGMENTS) {
+    return {
+      title: `${decoded.join("/")} · Axiom`,
+      robots: { index: false, follow: true },
+    };
+  }
+  const meta = await getAxiomRuleMetadata(decoded);
   return {
     title: meta.title,
     description: meta.description,
-    // Canonical stays on the v1 rule URL while this is a preview.
     alternates: { canonical: meta.canonicalUrl },
+    // Launch flip: the whole /axiom subtree is noindexed until the
+    // Jul 28 reveal (see src/app/axiom/layout.tsx).
     robots: { index: false, follow: true },
   };
 }
@@ -52,6 +65,15 @@ export async function generateMetadata({
 export default async function SectionPage({ params }: PageProps) {
   const { segments } = await params;
   const decoded = decodeSegments(segments);
+
+  // Browse depth (jurisdiction / doc type / title) renders the list
+  // view; section depth and deeper renders the reader.
+  if (decoded.length <= MAX_BROWSE_SEGMENTS) {
+    const browse = await getBrowsePageData(decoded);
+    if (!browse) notFound();
+    return <BrowseView data={browse} />;
+  }
+
   const [data, meta] = await Promise.all([
     getSectionPageData(decoded),
     getAxiomRuleMetadata(decoded),

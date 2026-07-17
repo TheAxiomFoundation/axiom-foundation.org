@@ -7,6 +7,10 @@ import {
   type EncodedRuleLink,
 } from "@/lib/axiom/section-page";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
+import {
+  graphFocusForCitationPath,
+  graphViewerUrl,
+} from "@/lib/axiom/runtime/graph-links";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
@@ -105,7 +109,7 @@ export function EncodingRail({
             showSummary={false}
             textAnchors={textAnchors}
           />
-          <ProgramsBlock programs={programs} />
+          <ProgramsBlock programs={programs} citationPath={citationPath} />
           {(outgoing.length > 0 || incoming.length > 0) && (
             <div className="border-t border-[var(--color-rule)] pt-6">
               <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
@@ -125,9 +129,11 @@ export function EncodingRail({
  */
 function ProgramsBlock({
   programs,
+  citationPath,
   anchor,
 }: {
   programs: ProvisionProgramCoverage[];
+  citationPath: string | null;
   /** When set, only programs with rules under this subsection. */
   anchor?: string;
 }) {
@@ -135,30 +141,36 @@ function ProgramsBlock({
     ? programs.filter((program) => program.anchors.includes(anchor))
     : programs;
   if (visible.length === 0) return null;
+  const focus = citationPath ? graphFocusForCitationPath(citationPath) : null;
 
   return (
     <nav aria-label="Executable programs" data-testid="rail-programs">
       <div className="eyebrow mb-3">Executable in</div>
       <ol className="space-y-2">
         {visible.map((program) => (
-          <li
-            key={`${program.jurisdiction}/${program.programId}`}
-            className="rounded-sm px-1 py-0.5"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
-                {program.programId}
-              </span>
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                {program.jurisdiction}
-              </span>
-            </div>
-            <div className="mt-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
-              {program.ruleCount}{" "}
-              {program.ruleCount === 1 ? "rule" : "rules"} here ·{" "}
-              {program.mode}
-              {program.status !== "ready" && " · unavailable"}
-            </div>
+          <li key={`${program.jurisdiction}/${program.programId}`}>
+            <a
+              href={graphViewerUrl(program, focus)}
+              target="_blank"
+              rel="noreferrer"
+              title="View this provision's rules in the program graph"
+              className="block rounded-sm px-1 py-0.5 transition-colors hover:bg-[var(--color-rule)]/40"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
+                  {program.programId}
+                </span>
+                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                  {program.jurisdiction}
+                </span>
+              </div>
+              <div className="mt-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
+                {program.ruleCount}{" "}
+                {program.ruleCount === 1 ? "rule" : "rules"} here ·{" "}
+                {program.mode}
+                {program.status !== "ready" && " · unavailable"} · graph ↗
+              </div>
+            </a>
           </li>
         ))}
       </ol>
@@ -213,7 +225,7 @@ function NodeView({
         includeUngrouped={false}
         textAnchors={textAnchors}
       />
-      <ProgramsBlock programs={programs} anchor={chunk.anchor} />
+      <ProgramsBlock programs={programs} citationPath={citationPath} anchor={chunk.anchor} />
       {nodeOutgoing.length > 0 && (
         <div className="border-t border-[var(--color-rule)] pt-6">
           <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} hrefPrefix="/axiom/v2" />
@@ -267,7 +279,7 @@ function OverviewView({
         }
         includeUngrouped={false}
       />
-      <ProgramsBlock programs={programs} />
+      <ProgramsBlock programs={programs} citationPath={citationPath} />
       {encodedRules.length > 0 && (
         <nav aria-label="Rules by subsection" data-testid="rail-subsection-map">
           <div className="eyebrow mb-3">Rules by subsection</div>

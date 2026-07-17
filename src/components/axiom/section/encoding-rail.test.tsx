@@ -210,6 +210,12 @@ describe("EncodingRail", () => {
     expect(screen.getByTestId("rail-programs")).toBeInTheDocument();
     expect(screen.getByText("us-eitc")).toBeInTheDocument();
     expect(screen.getByText("co-snap")).toBeInTheDocument();
+    // Each row deep-links into the graph viewer, scoped to the
+    // program and focused on this provision's rules.
+    const link = screen.getByText("co-snap").closest("a");
+    const href = new URL(link!.getAttribute("href")!);
+    expect(href.searchParams.get("program")).toBe("us-co/co-snap");
+    expect(href.searchParams.get("focus")).toBe("us:statutes/26/32");
 
     // Reading (a): only the program with rules under (a) remains.
     scrollTo({ a: -200, b: 900 });

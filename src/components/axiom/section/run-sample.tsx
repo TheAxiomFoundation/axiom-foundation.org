@@ -1,16 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
+import { useTraceRun, type TraceRun } from "./trace-context";
 
 interface RunResponse {
   outputs: Record<string, number | string | boolean | null>;
-  trace: Array<{
-    rule_id: string;
-    variable: string;
-    value: number | string | boolean | null;
-    sources: string[];
-  }>;
+  trace: TraceRun["trace"];
   period: string | null;
   sample: boolean;
 }
@@ -24,17 +20,33 @@ function formatValue(value: number | string | boolean | null): string {
   return String(value);
 }
 
+function runParamFor(program: ProvisionProgramCoverage): string {
+  return `${program.jurisdiction}/${program.programId}`;
+}
+
+/** Reflect the active run in the URL so the computation is shareable;
+ *  ?run=us-co/co-snap re-executes the sample on load. */
+function syncRunParam(value: string | null) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (value) url.searchParams.set("run", value);
+  else url.searchParams.delete("run");
+  window.history.replaceState({}, "", url.toString());
+}
+
 /**
- * F2 slice 0: execute a program's canonical sample household through
- * the hosted engine and show its default outputs in the rail. Each
- * output that traces back to the section being read gets a "§ here"
- * marker — the seed of the full trace overlay.
+ * F2: execute a program's canonical sample household through the
+ * hosted engine. Outputs render in the rail; the trace is published
+ * to TraceProvider so the reading column lights up the subsections
+ * that produced values; the run is URL-addressable via ?run=.
  */
 export function RunSample({
-  program,
+  programs,
   sectionFocus,
 }: {
-  program: ProvisionProgramCoverage;
+  /** The family group's runnable programs; the first is the default,
+   *  and a ?run= permalink can select any of them. */
+  programs: ProvisionProgramCoverage[];
   /** File-legal-id prefix of the section being read
    *  ("us:statutes/7/2017"), for marking outputs it produced. */
   sectionFocus: string | null;
@@ -42,8 +54,14 @@ export function RunSample({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(false);
   const [result, setResult] = useState<RunResponse | null>(null);
+  const [activeProgram, setActiveProgram] =
+    useState<ProvisionProgramCoverage | null>(null);
+  const { setRun } = useTraceRun();
+  const autoRan = useRef(false);
+  const program = activeProgram ?? programs[0];
 
-  const run = async () => {
+  const runProgram = useCallback(async (target: ProvisionProgramCoverage) => {
+    setActiveProgram(target);
     setRunning(true);
     setError(false);
     try {
@@ -51,17 +69,47 @@ export function RunSample({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          jurisdiction: program.jurisdiction,
-          program_id: program.programId,
+          jurisdiction: target.jurisdiction,
+          program_id: target.programId,
         }),
       });
       if (!response.ok) throw new Error(String(response.status));
-      setResult((await response.json()) as RunResponse);
+      const data = (await response.json()) as RunResponse;
+      setResult(data);
+      setRun({
+        jurisdiction: target.jurisdiction,
+        programId: target.programId,
+        period: data.period,
+        outputs: data.outputs,
+        trace: data.trace,
+      });
+      syncRunParam(runParamFor(target));
     } catch {
       setError(true);
     } finally {
       setRunning(false);
     }
+  }, [setRun]);
+
+  // ?run=<jurisdiction>/<program> permalinks re-execute on load —
+  // whichever program in this family the param names.
+  useEffect(() => {
+    if (autoRan.current || typeof window === "undefined") return;
+    const requested = new URL(window.location.href).searchParams.get("run");
+    const match = programs.find(
+      (candidate) => requested === runParamFor(candidate)
+    );
+    if (match) {
+      autoRan.current = true;
+      void runProgram(match);
+    }
+  }, [programs, runProgram]);
+
+  const clear = () => {
+    setResult(null);
+    setActiveProgram(null);
+    setRun(null);
+    syncRunParam(null);
   };
 
   const fromThisSection = (variable: string): boolean => {
@@ -77,10 +125,10 @@ export function RunSample({
 
   return (
     <div data-testid="run-sample" className="mt-1.5">
-      {!result && (
+      {!result && program && (
         <button
           type="button"
-          onClick={run}
+          onClick={() => runProgram(program)}
           disabled={running}
           data-testid="run-sample-button"
           className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] hover:underline disabled:cursor-default disabled:text-[var(--color-ink-muted)]"
@@ -107,7 +155,7 @@ export function RunSample({
             </span>
             <button
               type="button"
-              onClick={() => setResult(null)}
+              onClick={clear}
               className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
               title="Clear result"
             >

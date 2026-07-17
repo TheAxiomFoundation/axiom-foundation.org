@@ -37,7 +37,7 @@ describe("RunSample", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("runs the sample and renders outputs with section markers", async () => {
-    render(<RunSample program={PROGRAM} sectionFocus="us:statutes/7/2017" />);
+    render(<RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />);
     fireEvent.click(screen.getByTestId("run-sample-button"));
     await waitFor(() =>
       expect(screen.getByTestId("run-sample-result")).toBeInTheDocument()
@@ -59,7 +59,7 @@ describe("RunSample", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 502 })
     );
-    render(<RunSample program={PROGRAM} sectionFocus={null} />);
+    render(<RunSample programs={[PROGRAM]} sectionFocus={null} />);
     fireEvent.click(screen.getByTestId("run-sample-button"));
     await waitFor(() =>
       expect(

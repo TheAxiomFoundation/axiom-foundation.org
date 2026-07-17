@@ -226,11 +226,11 @@ function ProgramsBlock({
               ))}
             </div>
             {(() => {
-              const runnable = group.find(
+              const runnable = group.filter(
                 (program) => program.status === "ready"
               );
-              return runnable ? (
-                <RunSample program={runnable} sectionFocus={focus} />
+              return runnable.length > 0 ? (
+                <RunSample programs={runnable} sectionFocus={focus} />
               ) : null;
             })()}
           </li>

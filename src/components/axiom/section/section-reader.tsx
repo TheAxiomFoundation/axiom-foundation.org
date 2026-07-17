@@ -12,6 +12,9 @@ import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
 import { CitationJump } from "./citation-jump";
 import { CitationPreviewLayer } from "./citation-preview";
+import { TraceProvider } from "./trace-context";
+import { ChunkTraceChips } from "./chunk-trace";
+import { graphFocusForCitationPath } from "@/lib/axiom/runtime/graph-links";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -80,9 +83,11 @@ function AnchorLink({ anchor }: { anchor: string }) {
 function ProvisionBlock({
   provision,
   citationPath,
+  sectionFocus,
 }: {
   provision: SectionProvision;
   citationPath: string;
+  sectionFocus: string | null;
 }) {
   const { rule, anchor, designator, relativeDepth } = provision;
   const heading = rule.heading?.trim();
@@ -102,6 +107,9 @@ function ProvisionBlock({
         {heading && <span>{heading}</span>}
         <AnchorLink anchor={anchor} />
       </HeadingTag>
+      {relativeDepth === 1 && (
+        <ChunkTraceChips anchor={anchor} sectionFocus={sectionFocus} />
+      )}
       {rule.body && (
         <div className="mt-2">
           <RuleBody
@@ -174,6 +182,10 @@ function ChunkBlock({
         <AnchorLink anchor={chunk.anchor} />
       </h2>
       <EncodedRuleChips rules={chunkRules} />
+      <ChunkTraceChips
+        anchor={chunk.anchor}
+        sectionFocus={graphFocusForCitationPath(data.citationPath)}
+      />
       <div className="mt-1">
         <RuleBody
           hrefPrefix="/axiom/v2"
@@ -231,8 +243,10 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const incoming = data.rootRefs.filter(
     (ref) => ref.direction === "incoming"
   );
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
 
   return (
+    <TraceProvider>
     <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
       <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
@@ -316,6 +330,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             key={provision.rule.id}
             provision={provision}
             citationPath={data.citationPath}
+            sectionFocus={sectionFocus}
           />
         ))}
 
@@ -352,5 +367,6 @@ export function SectionReader({ data }: { data: SectionPageData }) {
         />
       </aside>
     </div>
+    </TraceProvider>
   );
 }

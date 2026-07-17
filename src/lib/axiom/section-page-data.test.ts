@@ -217,10 +217,58 @@ describe("getSectionPageData", () => {
     expect(data!.focusAnchor).toBe("a");
   });
 
-  it("returns null when nothing at or above the path is ingested", async () => {
+  it("returns null when nothing at, below, or above the path is ingested", async () => {
     getProvisionByCitationPathMock.mockResolvedValue(null);
+    // The subtree probe (new root-less-section path) finds nothing.
+    queueTables({ current_provisions: [{ data: [], error: null }] });
     const data = await getSectionPageData(["us", "statute", "99", "9999"]);
     expect(data).toBeNull();
+  });
+
+  it("synthesizes a root over an ingested subtree when the section row is missing", async () => {
+    // 42 USC 1396a shape: descendants exist, the section row does not.
+    getProvisionByCitationPathMock.mockResolvedValue(null);
+    queueTables({
+      current_provisions: [
+        {
+          data: [
+            rule("us/statute/42/1396a/a"),
+            rule("us/statute/42/1396a/a/10"),
+            rule("us/statute/42/1396a/e"),
+          ],
+          error: null,
+        },
+      ],
+      navigation_nodes: [
+        {
+          data: {
+            jurisdiction: "us",
+            doc_type: "statute",
+            path: "us/statute/42/1396a",
+            parent_path: "us/statute/42",
+            sort_key: "x",
+            label: "§ 1396a - State plans for medical assistance",
+          },
+          error: null,
+        },
+        // Second navigation lookup (neighbors pass) finds nothing.
+        { data: null, error: null },
+      ],
+    });
+
+    const data = await getSectionPageData(["us", "statute", "42", "1396a"]);
+    expect(data).not.toBeNull();
+    expect(data!.citationPath).toBe("us/statute/42/1396a");
+    expect(data!.root.id).toBe("synthetic:us/statute/42/1396a");
+    expect(data!.root.heading).toBe(
+      "§ 1396a - State plans for medical assistance"
+    );
+    expect(data!.provisions.map((p) => p.anchor)).toEqual([
+      "a",
+      "a-10",
+      "e",
+    ]);
+    expect(data!.toc.map((entry) => entry.anchor)).toEqual(["a", "e"]);
   });
 
   it("returns null for unresolvable paths", async () => {

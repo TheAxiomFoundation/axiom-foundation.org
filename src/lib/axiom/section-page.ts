@@ -403,6 +403,40 @@ export function refsForChunk(
   );
 }
 
+/**
+ * Stand-in section root for paths whose corpus rows exist only below
+ * the section (subsection-granular ingestion with no section row).
+ * The synthetic id never matches a DB row, so encoding lookups fall
+ * through to the citation-path-keyed mirror, which is what actually
+ * serves them.
+ */
+function synthesizeSectionRoot(
+  citationPath: string,
+  resolved: ReturnType<typeof resolveAxiomPath>,
+  navLabel: string | undefined
+): Rule {
+  const segments = citationPath.split("/");
+  return {
+    id: `synthetic:${citationPath}`,
+    jurisdiction: resolved.jurisdiction?.slug ?? segments[0],
+    doc_type: segments[1] ?? "statute",
+    parent_id: null,
+    level: segments.length - 1,
+    ordinal: null,
+    heading: navLabel ?? null,
+    body: null,
+    effective_date: null,
+    repeal_date: null,
+    source_url: null,
+    source_path: null,
+    citation_path: citationPath,
+    rulespec_path: null,
+    has_rulespec: false,
+    created_at: "",
+    updated_at: "",
+  };
+}
+
 async function getSubtreeProvisions(
   citationPath: string
 ): Promise<{ provisions: Rule[]; truncated: boolean }> {
@@ -499,6 +533,21 @@ export async function getSectionPageData(
   let root = await getProvisionByCitationPath(requestedPath).catch(() => null);
   let citationPath = requestedPath;
   let focusAnchor: string | null = null;
+  let prefetchedSubtree: Awaited<
+    ReturnType<typeof getSubtreeProvisions>
+  > | null = null;
+  if (!root) {
+    // Some sections are ingested subsection-granular with no section
+    // row at all (42 USC 1396a: …/1396a/e/15 exists, …/1396a does
+    // not). Climbing up would skip past them — probe the subtree
+    // first and synthesize a root over it.
+    const probe = await getSubtreeProvisions(requestedPath);
+    if (probe.provisions.length > 0) {
+      const navNode = await getNavigationNode(requestedPath);
+      root = synthesizeSectionRoot(requestedPath, resolved, navNode?.label);
+      prefetchedSubtree = probe;
+    }
+  }
   if (!root) {
     for (let end = ruleSegments.length - 1; end >= 2; end--) {
       const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
@@ -517,7 +566,7 @@ export async function getSectionPageData(
 
   const [subtree, rootRefs, node, sectionEncoding, programs] =
     await Promise.all([
-      getSubtreeProvisions(citationPath),
+      prefetchedSubtree ?? getSubtreeProvisions(citationPath),
       getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
       getNavigationNode(citationPath),
       getSectionEncoding(root.id, citationPath).catch(() => ({

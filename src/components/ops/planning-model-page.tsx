@@ -10,6 +10,7 @@ import Link from "next/link";
  */
 export const PLANNING_MODEL = {
   asOf: "2026-07-11",
+  devAsOf: "2026-07-16",
   // Measured encoder base
   runs: 3_582,
   tokensPerPass: 55_000, // [M] ~55k total tokens per pass
@@ -170,15 +171,16 @@ export const PLANNING_MODEL = {
       today: "dev fleet (main loops) + cross-family judging",
     },
   ],
-  // Development-fleet usage — corrected dashboard figures (pipeline audited 2026-07-11)
+  // Development-fleet usage — strict-accounting dashboard figures
+  // (methodology hardened 2026-07-12; complete days through 2026-07-15)
   devUsage: [
-    { window: "Trailing 7 days", claude: 28.6, codex: 19.0, total: 47.6 },
-    { window: "Trailing 30 days", claude: 43.8, codex: 37.7, total: 81.5 },
+    { window: "Trailing 7 days", claude: 26.6, codex: 30.2, total: 56.8 },
+    { window: "Trailing 30 days", claude: 58.9, codex: 42.1, total: 101.0 },
     {
       window: "Lifetime (since 2025-11-30)",
-      claude: 64.9,
-      codex: 204.2,
-      total: 269.1,
+      claude: 82.9,
+      codex: 94.0,
+      total: 176.9,
     },
   ],
 };
@@ -221,8 +223,9 @@ export function PlanningModelPage() {
             with the provenance discipline we use everywhere: every figure is
             labeled <Provenance kind="M" /> measured, <Provenance kind="D" />{" "}
             derived, or <Provenance kind="A" /> assumed, and the arithmetic is
-            shown so anything here can be recomputed. Figures as of{" "}
-            <span className="font-mono">{m.asOf}</span>.
+            shown so anything here can be recomputed. Encoder figures as of{" "}
+            <span className="font-mono">{m.asOf}</span>; usage figures as of{" "}
+            <span className="font-mono">{m.devAsOf}</span>.
           </p>
         </header>
 
@@ -486,17 +489,20 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             prices — no vendor discounts; cache reads and cache writes at
             their own rates), and an independent local recount over the raw
             session logs; both count cache-creation. The dashboard pipeline
-            was audited and rebuilt on 2026-07-11 — per-event dating, global
-            message dedup, session-resume replays excluded, repriced from
-            pinned list-price tables — with the audit trail public in the
+            was audited and rebuilt on 2026-07-11, then hardened on
+            2026-07-12 with the recount&apos;s adversarially reviewed rules —
+            per-event dating, global message dedup, fork-replay prefixes
+            excluded structurally, counter resets summed as billing epochs,
+            streamed usage deduplicated last-wins, repriced from pinned
+            list-price tables — with the audit trail public in the
             dashboard&apos;s data repository <Provenance kind="M" />. The two
-            methods agree within about 10% on every complete month and about
-            4% on the lifetime total; where they differ on recent months, the
-            dashboard is the lower number, so the table below is the
-            conservative line <Provenance kind="M" />. These figures cover the
-            operator&apos;s full multi-project workload — Axiom is the
-            dominant share this summer but is not isolated here, so treat them
-            as a verified operator-wide upper bound <Provenance kind="M" />.
+            methods now agree to the token on most complete months and within
+            about 2% on the rest; the residual is sessions the recount
+            excludes as private, which the dashboard includes{" "}
+            <Provenance kind="M" />. These figures cover the
+            operator&apos;s full multi-project workload — Axiom&apos;s share
+            is substantial but not isolated here, so treat them as a verified
+            operator-wide upper bound <Provenance kind="M" />.
             Actual cash cost today is borne on flat-rate developer
             subscriptions.
           </p>
@@ -504,7 +510,7 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
                 <tr>
-                  <th className={`${thBase} text-left`}>Window (as of {m.asOf}) [M]</th>
+                  <th className={`${thBase} text-left`}>Window (as of {m.devAsOf}) [M]</th>
                   <th className={`${thBase} text-right`}>Claude-family</th>
                   <th className={`${thBase} text-right`}>codex/OpenAI</th>
                   <th className={`${thBase} text-right`}>Total API-equivalent</th>
@@ -534,17 +540,18 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             </table>
           </div>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            The sustained pace is roughly $80k/month (the trailing-30-day
-            line) <Provenance kind="D" />, with July to date annualizing at
-            about twice that <Provenance kind="D" />; the complete months
-            before it were $95.9k (May) and $66.2k (June){" "}
-            <Provenance kind="M" />. The Claude-family line — now the larger
-            of the two — is cache-read dominated: 27.6B cache-read versus
-            0.05B fresh input tokens in July, plus 1.0B of cache writes{" "}
-            <Provenance kind="M" />. Prompt-caching economics, not list input
-            price, drive this line. This is one operator plus agent fleets;
-            scaling with team size is expected to be roughly linear{" "}
-            <Provenance kind="A" />.
+            The trailing-30-day line is roughly $100k/month{" "}
+            <Provenance kind="D" />, and July to date paces at about
+            $175k/month <Provenance kind="D" />; the complete months before
+            were $39.0k (May) and $31.9k (June) <Provenance kind="M" /> —
+            demand roughly tripled in July as the encoding lanes and the
+            launch push scaled up. The Claude-family line — the larger of the
+            two over the trailing 30 days — is cache-read dominated: 37.0B
+            cache-read versus 0.07B fresh input tokens July 1–15, plus 1.5B
+            of cache writes <Provenance kind="M" />. Prompt-caching
+            economics, not list input price, drive this line. This is one
+            operator plus agent fleets; scaling with team size is expected to
+            be roughly linear <Provenance kind="A" />.
           </p>
         </section>
 
@@ -597,8 +604,9 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
               <strong className="text-[var(--color-ink)]">
                 The development fleet.
               </strong>{" "}
-              The separate line above — roughly $80k/month sustained at
-              list-price equivalent, an operator-wide upper bound{" "}
+              The separate line above — roughly $100k/month trailing-30 at
+              list-price equivalent, with July pacing higher, an
+              operator-wide upper bound{" "}
               <Provenance kind="D" /> — builds the ingest, verification, and
               merge-train infrastructure that is the actual budget driver. It
               runs on flat-rate developer subscriptions today and is expected
@@ -610,8 +618,9 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
         <section className="mb-14">
           <SectionHeading>Method and provenance</SectionHeading>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Measured figures come from encoder run records and session logs as
-            of {m.asOf}. Claude figures are constant-token normalizations
+            Measured figures come from encoder run records as of {m.asOf} and
+            session logs as of {m.devAsOf}. Claude figures are constant-token
+            normalizations
             pending a native tokenizer count (≈+30%). Development-usage
             figures are operator-wide, not project-attributed. Nothing here is
             a commitment; the model exists so capacity conversations can start

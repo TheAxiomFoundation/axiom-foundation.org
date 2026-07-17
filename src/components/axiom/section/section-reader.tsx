@@ -42,14 +42,9 @@ function formatDate(value: string | null): string | null {
 }
 
 function Breadcrumbs({ data }: { data: SectionPageData }) {
-  // Section-depth crumbs and deeper (jurisdiction/doctype/title/
-  // section = 4+ segments) stay in the v2 reader; title and above go
-  // to the v1 tree browser, which remains the browse surface until
-  // v2 grows browse pages.
-  const v2Href = (href: string) => {
-    const path = href.replace(/^\//, "");
-    return path.split("/").length >= 4 ? `/axiom/v2/${path}` : href;
-  };
+  // Bare citation-path hrefs are canonical: the proxy routes
+  // section-depth paths to this reader and browse levels to the v1
+  // tree browser.
   return (
     <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
@@ -62,7 +57,7 @@ function Breadcrumbs({ data }: { data: SectionPageData }) {
               </span>
             ) : (
               <Link
-                href={v2Href(item.href)}
+                href={item.href}
                 className="hover:text-[var(--color-ink)] transition-colors"
               >
                 {item.label}
@@ -120,8 +115,7 @@ function ProvisionBlock({
       {rule.body && (
         <div className="mt-2">
           <RuleBody
-            hrefPrefix="/axiom/v2"
-            body={rule.body}
+                        body={rule.body}
             refs={[]}
             citationPath={rule.citation_path ?? undefined}
             testId={null}
@@ -205,7 +199,7 @@ function ChunkBlock({
     >
       <h2 className="mt-8 flex items-baseline gap-2">
         <Link
-          href={`/axiom/v2/${data.citationPath}/${chunk.anchor}`}
+          href={`/${data.citationPath}/${chunk.anchor}`}
           className="font-mono text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
           title={`Open ${data.citationPath}/${chunk.anchor}`}
         >
@@ -216,7 +210,7 @@ function ChunkBlock({
       {focused && (
         <SubsectionActions
           citationLabel={formatLegalCitation(data.citationPath, chunk.anchor)}
-          href={`/axiom/v2/${data.citationPath}/${chunk.anchor}`}
+          href={`/${data.citationPath}/${chunk.anchor}`}
           graphHref={graphHref}
           builderHref={builderHref}
         />
@@ -225,8 +219,7 @@ function ChunkBlock({
       <ChunkTraceChips anchor={chunk.anchor} sectionFocus={sectionFocus} />
       <div className="mt-1">
         <RuleBody
-          hrefPrefix="/axiom/v2"
-          body={chunk.text}
+                    body={chunk.text}
           refs={refsForChunk(data.rootRefs, chunk.text)}
           citationPath={data.root.citation_path ?? undefined}
           testId={null}
@@ -245,7 +238,7 @@ function NeighborNav({ data }: { data: SectionPageData }) {
     >
       {data.prev ? (
         <Link
-          href={`/axiom/v2/${data.prev.citationPath}`}
+          href={`/${data.prev.citationPath}`}
           rel="prev"
           className="max-w-[45%] truncate text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors"
         >
@@ -256,7 +249,7 @@ function NeighborNav({ data }: { data: SectionPageData }) {
       )}
       {data.next ? (
         <Link
-          href={`/axiom/v2/${data.next.citationPath}`}
+          href={`/${data.next.citationPath}`}
           rel="next"
           className="max-w-[45%] truncate text-right text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors"
         >
@@ -338,8 +331,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             {data.intro && (
               <div className="mt-6">
                 <RuleBody
-                  hrefPrefix="/axiom/v2"
-                  body={data.intro}
+                                    body={data.intro}
                   refs={refsForChunk(data.rootRefs, data.intro)}
                   citationPath={data.root.citation_path ?? undefined}
                 />
@@ -353,8 +345,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           data.root.body && (
             <div className="mt-6">
               <RuleBody
-                hrefPrefix="/axiom/v2"
-                body={data.root.body}
+                                body={data.root.body}
                 refs={data.rootRefs}
                 citationPath={data.root.citation_path ?? undefined}
               />

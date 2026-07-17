@@ -144,7 +144,7 @@ export function EncodingRail({
           <ProgramsBlock programs={programs} citationPath={citationPath} />
           {(outgoing.length > 0 || incoming.length > 0) && (
             <div className="border-t border-[var(--color-rule)] pt-6">
-              <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
+              <ReferencesPanel outgoing={outgoing} incoming={incoming} />
             </div>
           )}
         </div>
@@ -307,7 +307,7 @@ function NodeView({
       <ProgramsBlock programs={programs} citationPath={citationPath} anchor={chunk.anchor} />
       {nodeOutgoing.length > 0 && (
         <div className="border-t border-[var(--color-rule)] pt-6">
-          <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} hrefPrefix="/axiom/v2" />
+          <ReferencesPanel outgoing={nodeOutgoing} incoming={[]} />
         </div>
       )}
     </div>
@@ -390,7 +390,7 @@ function OverviewView({
       )}
       {(outgoing.length > 0 || incoming.length > 0) && (
         <div className="border-t border-[var(--color-rule)] pt-6">
-          <ReferencesPanel outgoing={outgoing} incoming={incoming} hrefPrefix="/axiom/v2" />
+          <ReferencesPanel outgoing={outgoing} incoming={incoming} />
         </div>
       )}
     </div>

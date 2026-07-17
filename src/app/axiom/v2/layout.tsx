@@ -2,8 +2,8 @@ import { CommandPaletteProvider } from "@/components/axiom/command-palette-provi
 
 /**
  * The v2 reader subtree shares one command palette (⌘K + the trigger
- * in the section header). Section-depth results navigate within v2;
- * shallower browse paths still land on the v1 tree browser.
+ * in the section header). Results use bare citation paths — the
+ * proxy routes section depth to this reader, browse depth to v1.
  */
 export default function AxiomV2Layout({
   children,
@@ -11,7 +11,7 @@ export default function AxiomV2Layout({
   children: React.ReactNode;
 }) {
   return (
-    <CommandPaletteProvider hrefPrefix="/axiom/v2">
+    <CommandPaletteProvider>
       {children}
     </CommandPaletteProvider>
   );

@@ -12,6 +12,21 @@ const APP_HOST = "app.axiom-foundation.org";
 // unchanged so the dev server can also serve the marketing site.
 const APP_ROOT_PREFIX_RE = /^\/(?:us|uk|ca|canada|us-[a-z]{2})(?:\/|$)/;
 
+// Section-depth statute/regulation paths (jurisdiction/doc-type/
+// title/section…) render the v2 reader — the launch surface of the
+// app rebuild. Browse levels (three segments or fewer) and doc
+// types the reader hasn't been verified on yet stay on the v1 tree
+// browser.
+const V2_SECTION_PATH_RE =
+  /^\/(?:us|uk|ca|canada|us-[a-z]{2})\/(?:statute|regulation)\/[^/]+\/.+/;
+
+function appPagePath(pathname: string): string {
+  if (pathname === "/") return "/axiom";
+  return V2_SECTION_PATH_RE.test(pathname)
+    ? `/axiom/v2${pathname}`
+    : `/axiom${pathname}`;
+}
+
 function cleanHost(request: NextRequest): string {
   return (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
 }
@@ -65,7 +80,7 @@ export function proxy(request: NextRequest) {
     }
 
     const target = request.nextUrl.clone();
-    target.pathname = pathname === "/" ? "/axiom" : `/axiom${pathname}`;
+    target.pathname = appPagePath(pathname);
     return NextResponse.rewrite(target);
   }
 
@@ -82,7 +97,7 @@ export function proxy(request: NextRequest) {
   // for free, so rewrite jurisdiction-rooted paths here too.
   if (isLocalDevHost(host) && APP_ROOT_PREFIX_RE.test(pathname)) {
     const target = request.nextUrl.clone();
-    target.pathname = `/axiom${pathname}`;
+    target.pathname = appPagePath(pathname);
     return NextResponse.rewrite(target);
   }
 

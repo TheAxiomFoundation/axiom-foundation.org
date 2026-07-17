@@ -46,7 +46,7 @@ function mountOverlay() {
 
 describe("trace overlay", () => {
   beforeEach(() => {
-    window.history.replaceState({}, "", "/axiom/v2/us/statute/7/2017");
+    window.history.replaceState({}, "", "/us/statute/7/2017");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, json: async () => RUN_RESPONSE })
@@ -58,7 +58,7 @@ describe("trace overlay", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+      "/us/statute/7/2017?run=us-co/co-snap"
     );
     mountOverlay();
     await waitFor(() =>
@@ -85,7 +85,7 @@ describe("trace overlay", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+      "/us/statute/7/2017?run=us-co/co-snap"
     );
     mountOverlay();
     await waitFor(() =>
@@ -99,7 +99,7 @@ describe("trace overlay", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+      "/us/statute/7/2017?run=us-co/co-snap"
     );
     render(
       <TraceProvider>
@@ -128,7 +128,7 @@ describe("trace overlay", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-al/snap"
+      "/us/statute/7/2017?run=us-al/snap"
     );
     mountOverlay();
     await new Promise((resolve) => setTimeout(resolve, 20));

@@ -12,7 +12,7 @@ vi.mock("@/lib/axiom/navigation-index/read", () => ({
 
 function addCiteLink(path: string): HTMLAnchorElement {
   const link = document.createElement("a");
-  link.href = `/axiom/v2/${path}`;
+  link.href = `/${path}`;
   link.setAttribute("data-cite", path);
   link.textContent = path;
   document.body.appendChild(link);
@@ -53,7 +53,7 @@ describe("CitationPreviewLayer", () => {
     expect(card).toHaveTextContent("Effective 2026-01-01");
     expect(screen.getByText("Open →")).toHaveAttribute(
       "href",
-      "/axiom/v2/us/statute/26/152"
+      "/us/statute/26/152"
     );
   });
 

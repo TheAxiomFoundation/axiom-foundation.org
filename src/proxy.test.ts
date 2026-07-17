@@ -17,6 +17,37 @@ describe("proxy", () => {
     );
   });
 
+  it("routes section-depth statute/regulation paths to the v2 reader", () => {
+    for (const [path, expected] of [
+      ["/us/statute/26/164", "/axiom/v2/us/statute/26/164"],
+      ["/us/statute/7/2017/a", "/axiom/v2/us/statute/7/2017/a"],
+      ["/us-co/regulation/10-ccr-2506-1/4.207.3", "/axiom/v2/us-co/regulation/10-ccr-2506-1/4.207.3"],
+      // Browse depth and unverified doc types stay on v1.
+      ["/us/statute/26", "/axiom/us/statute/26"],
+      ["/us/statute", "/axiom/us/statute"],
+      ["/us/policy/usda/snap", "/axiom/us/policy/usda/snap"],
+    ] as const) {
+      const response = proxy(
+        request(
+          `https://app.axiom-foundation.org${path}`,
+          "app.axiom-foundation.org"
+        )
+      );
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://app.axiom-foundation.org${expected}`
+      );
+    }
+  });
+
+  it("applies the same v2 routing on localhost", () => {
+    const response = proxy(
+      request("http://localhost:3000/us/statute/26/164", "localhost")
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "http://localhost:3000/axiom/v2/us/statute/26/164"
+    );
+  });
+
   it("redirects site /axiom paths to the clean app subdomain URL", () => {
     const response = proxy(
       request("https://axiom-foundation.org/axiom/us/statute/7", "axiom-foundation.org")

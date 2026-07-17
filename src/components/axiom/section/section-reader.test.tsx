@@ -106,7 +106,7 @@ describe("SectionReader", () => {
     // Chunk sections with designator links into their own URLs.
     expect(screen.getByTitle("Open us/statute/26/32/a")).toHaveAttribute(
       "href",
-      "/axiom/v2/us/statute/26/32/a"
+      "/us/statute/26/32/a"
     );
     // Encoded-as chip deep-links into the rail.
     expect(screen.getByText("eitc_phased_in")).toHaveAttribute(
@@ -141,7 +141,7 @@ describe("SectionReader", () => {
     );
     expect(crumbs.getByText("§ 32")).toHaveAttribute(
       "href",
-      "/axiom/v2/us/statute/26/32"
+      "/us/statute/26/32"
     );
     // Leaf crumb is the current page, not a link.
     expect(crumbs.getByText("(b)").tagName).toBe("SPAN");

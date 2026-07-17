@@ -40,7 +40,7 @@ describe("RunSample", () => {
   });
 
   it("renders nothing without a ?run= permalink — no inline run button", () => {
-    window.history.replaceState({}, "", "/axiom/v2/us/statute/7/2017");
+    window.history.replaceState({}, "", "/us/statute/7/2017");
     const { container } = render(
       <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
     );
@@ -52,7 +52,7 @@ describe("RunSample", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+      "/us/statute/7/2017?run=us-co/co-snap"
     );
     render(<RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />);
     await waitFor(() =>
@@ -78,7 +78,7 @@ describe("RunSample", () => {
     window.history.replaceState(
       {},
       "",
-      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+      "/us/statute/7/2017?run=us-co/co-snap"
     );
     render(<RunSample programs={[PROGRAM]} sectionFocus={null} />);
     await waitFor(() =>

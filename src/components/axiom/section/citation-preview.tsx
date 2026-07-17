@@ -143,13 +143,13 @@ export function CitationPreviewLayer() {
     >
       <p className="m-0 flex items-baseline justify-between gap-2">
         <a
-          href={`/axiom/v2/${card.path}`}
+          href={`/${card.path}`}
           className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
         >
           {card.path}
         </a>
         <a
-          href={`/axiom/v2/${card.path}`}
+          href={`/${card.path}`}
           className="shrink-0 font-mono text-[11px] text-[var(--color-accent)] no-underline hover:underline"
         >
           Open →

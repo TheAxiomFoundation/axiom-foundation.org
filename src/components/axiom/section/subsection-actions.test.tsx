@@ -11,7 +11,7 @@ describe("SubsectionActions", () => {
     render(
       <SubsectionActions
         citationLabel="7 U.S.C. § 2017(a)"
-        href="/axiom/v2/us/statute/7/2017/a"
+        href="/us/statute/7/2017/a"
         graphHref={null}
         builderHref={null}
       />
@@ -21,7 +21,7 @@ describe("SubsectionActions", () => {
       expect(screen.getByText("copied ✓")).toBeInTheDocument()
     );
     expect(writeText).toHaveBeenCalledWith(
-      `7 U.S.C. § 2017(a) — ${window.location.origin}/axiom/v2/us/statute/7/2017/a`
+      `7 U.S.C. § 2017(a) — ${window.location.origin}/us/statute/7/2017/a`
     );
   });
 
@@ -32,7 +32,7 @@ describe("SubsectionActions", () => {
     render(
       <SubsectionActions
         citationLabel="7 U.S.C. § 2017(a)"
-        href="/axiom/v2/us/statute/7/2017/a"
+        href="/us/statute/7/2017/a"
         graphHref="https://example.test/graph"
         builderHref="https://example.test/builder"
       />

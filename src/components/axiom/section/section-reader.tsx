@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  railChunksFromProvisions,
   refsForChunk,
   type BodyChunk,
   type SectionPageData,
@@ -10,7 +11,6 @@ import { RuleBody } from "@/components/axiom/rule-body";
 import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
-import { PaletteTrigger } from "@/components/axiom/palette-trigger";
 import { CitationPreviewLayer } from "./citation-preview";
 import { TraceProvider } from "./trace-context";
 import { ChunkTraceChips } from "./chunk-trace";
@@ -287,9 +287,8 @@ export function SectionReader({ data }: { data: SectionPageData }) {
       <article data-testid="section-reader">
         <CitationPreviewLayer />
         {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4">
           <Breadcrumbs data={data} />
-          <PaletteTrigger variant="compact" />
         </div>
 
         <header className="border-b border-[var(--color-rule)] pb-5">
@@ -381,12 +380,16 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           jurisdiction={data.root.jurisdiction}
           citationPath={data.root.citation_path}
           isRepealed={Boolean(data.root.repeal_date)}
-          chunks={data.bodyChunks.map((chunk) => ({
-            anchor: chunk.anchor,
-            designator: chunk.designator,
-            label: chunk.label,
-            text: chunk.text,
-          }))}
+          chunks={
+            data.bodyChunks.length > 0
+              ? data.bodyChunks.map((chunk) => ({
+                  anchor: chunk.anchor,
+                  designator: chunk.designator,
+                  label: chunk.label,
+                  text: chunk.text,
+                }))
+              : railChunksFromProvisions(data.provisions)
+          }
           encodedRules={data.encodedRules}
           outgoing={outgoing}
           incoming={incoming}

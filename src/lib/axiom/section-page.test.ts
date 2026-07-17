@@ -4,6 +4,7 @@ import type { RuleReference } from "@/lib/supabase";
 import {
   buildSectionToc,
   compareCitationPaths,
+  railChunksFromProvisions,
   mapRulesToSubsections,
   refsForChunk,
   relativeDesignator,
@@ -26,6 +27,24 @@ function provision(
     relativeDepth: subPath.split("/").length,
   };
 }
+
+describe("railChunksFromProvisions", () => {
+  it("aggregates each top-level provision with its subtree text", () => {
+    const provisions = [
+      { ...provision("d", "Limitation"), rule: { heading: "Limitation", citation_path: `${ROOT}/d`, body: "(d) chapeau" } as Rule },
+      { ...provision("d/2"), rule: { heading: null, citation_path: `${ROOT}/d/2`, body: "(2) nested text" } as Rule },
+      { ...provision("e", "Definitions"), rule: { heading: "Definitions", citation_path: `${ROOT}/e`, body: "(e) body" } as Rule },
+    ];
+    const chunks = railChunksFromProvisions(provisions);
+    expect(chunks.map((chunk: { anchor: string }) => chunk.anchor)).toEqual([
+      "d",
+      "e",
+    ]);
+    expect(chunks[0].label).toBe("(d) Limitation");
+    expect(chunks[0].text).toContain("(2) nested text");
+    expect(chunks[1].text).toBe("(e) body");
+  });
+});
 
 describe("compareCitationPaths", () => {
   it("orders numeric segments numerically, not lexicographically", () => {

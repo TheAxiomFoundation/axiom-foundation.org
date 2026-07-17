@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { BrowsePageData } from "@/lib/axiom/browse-page";
-import { PaletteTrigger } from "@/components/axiom/palette-trigger";
 
 /**
  * v2 browse page — the levels above a section (jurisdiction, doc
  * type, title) rendered in the reader's visual language: breadcrumb
- * row with the palette trigger, a quiet header, and a single reading-
- * width list of children. Bare citation-path hrefs are canonical;
+ * row, a quiet header, and a single reading-width list of children.
+ * Search lives in the nav's top right. Bare citation-path hrefs are canonical;
  * the proxy sends section depth to the reader and browse depth back
  * here.
  */
@@ -50,9 +49,8 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4">
         <Breadcrumbs data={data} />
-        <PaletteTrigger variant="compact" />
       </div>
 
       <header className="border-b border-[var(--color-rule)] pb-5">

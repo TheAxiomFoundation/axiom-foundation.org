@@ -266,6 +266,47 @@ export function applyFileAnchors(
   });
 }
 
+/**
+ * Rail scroll-spy chunks for corpus-row-backed sections. Body-parsed
+ * sections hand the rail their BodyChunks; sections with real
+ * descendant rows previously handed it nothing, leaving the rail
+ * stuck in flat "everything" mode with no follow behavior. Each
+ * top-level provision becomes one chunk whose text aggregates its
+ * whole subtree, so per-node reference scoping keeps working.
+ */
+export function railChunksFromProvisions(
+  provisions: SectionProvision[]
+): Array<{ anchor: string; designator: string; label: string; text: string }> {
+  const chunks: Array<{
+    anchor: string;
+    designator: string;
+    label: string;
+    text: string;
+  }> = [];
+  let current: (typeof chunks)[number] | null = null;
+  for (const provision of provisions) {
+    if (provision.relativeDepth === 1) {
+      const heading = provision.rule.heading?.trim();
+      current = {
+        anchor: provision.anchor,
+        designator: provision.designator,
+        label: heading
+          ? `${provision.designator} ${heading}`
+          : provision.designator,
+        text: provision.rule.body ?? "",
+      };
+      chunks.push(current);
+    } else if (
+      current &&
+      provision.anchor.startsWith(`${current.anchor}-`) &&
+      provision.rule.body
+    ) {
+      current.text += `\n${provision.rule.body}`;
+    }
+  }
+  return chunks;
+}
+
 const LABEL_PREVIEW_LEN = 56;
 
 function chunkLabel(designator: string, text: string): string {

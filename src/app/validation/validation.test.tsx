@@ -34,10 +34,14 @@ describe('ValidationPage', () => {
     }
   })
 
-  it('links to the validation dashboard from the header', () => {
+  it('embeds the live validation dashboard', () => {
     render(<ValidationPage />)
+    expect(screen.getByTitle('Validation dashboard')).toHaveAttribute(
+      'src',
+      'https://axiom-oracles.vercel.app',
+    )
     expect(
-      screen.getByRole('link', { name: /open the validation dashboard/i }),
+      screen.getByRole('link', { name: /open full size/i }),
     ).toHaveAttribute('href', 'https://axiom-oracles.vercel.app')
   })
 

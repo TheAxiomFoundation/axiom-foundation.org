@@ -74,16 +74,33 @@ export default function ValidationPage() {
             the comparisons so anyone can re-run them.
           </p>
 
-          <div className="mt-8">
+        </Reveal>
+
+        {/* Live dashboard — embedded, mirrors the docs architecture embed */}
+        <Reveal as="section" className="mb-20">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
+            <h2 className="heading-section m-0">The dashboard, live</h2>
             <a
               href="https://axiom-oracles.vercel.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary"
+              className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
             >
-              Open the validation dashboard
-              <ArrowRightIcon className="w-5 h-5" />
+              Open full size
+              <ArrowRightIcon className="w-4 h-4" />
             </a>
+          </div>
+          <p className="mb-6 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            Cross-engine comparisons as they stand &mdash; every divergence is
+            a question about the law or its encoding.
+          </p>
+          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+            <iframe
+              src="https://axiom-oracles.vercel.app"
+              title="Validation dashboard"
+              loading="lazy"
+              className="block w-full h-[560px] border-0"
+            />
           </div>
         </Reveal>
 

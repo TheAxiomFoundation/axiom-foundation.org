@@ -23,7 +23,7 @@ export function Footer({
   baseUrl = "",
   renderLink: LinkComponent,
   logoSrc,
-  updatesUrl = "mailto:hello@axiom-foundation.org?subject=Axiom%20launch%20updates",
+  updatesUrl = "mailto:hello@axiom.org?subject=Axiom%20launch%20updates",
 }: FooterProps = {}) {
   const resolvedLogoSrc = logoSrc
     ? logoSrc
@@ -94,7 +94,7 @@ export function Footer({
               Connect
             </h3>
             <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
-              <li>{renderFooterLink("mailto:hello@axiom-foundation.org", "Contact")}</li>
+              <li>{renderFooterLink("mailto:hello@axiom.org", "Contact")}</li>
               <li>{renderFooterLink(updatesUrl, "Get updates")}</li>
               <li>{renderFooterLink("/privacy", "Privacy")}</li>
             </ul>

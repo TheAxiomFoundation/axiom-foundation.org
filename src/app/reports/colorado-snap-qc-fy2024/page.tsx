@@ -270,8 +270,8 @@ export default function ColoradoSnapQcReport() {
             <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed">
               Questions, or interested in running this for your state or
               program:{" "}
-              <a href="mailto:hello@axiom-foundation.org">
-                hello@axiom-foundation.org
+              <a href="mailto:hello@axiom.org">
+                hello@axiom.org
               </a>
             </p>
           </div>

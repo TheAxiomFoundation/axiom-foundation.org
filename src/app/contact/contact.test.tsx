@@ -15,8 +15,8 @@ describe('ContactPage', () => {
   it('lists the direct channels', () => {
     render(<ContactPage />)
     expect(
-      screen.getByRole('link', { name: /hello@axiom-foundation\.org/i }),
-    ).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
+      screen.getByRole('link', { name: /hello@axiom\.org/i }),
+    ).toHaveAttribute('href', 'mailto:hello@axiom.org')
     expect(
       screen.getByRole('link', { name: /axiom foundation/i }),
     ).toHaveAttribute(

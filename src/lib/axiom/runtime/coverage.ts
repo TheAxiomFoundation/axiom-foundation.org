@@ -31,9 +31,10 @@ export interface ProvisionProgramCoverage {
   ruleNames: string[];
 }
 
-/** Registry sweep bound — the registry is small today; if it grows
- *  past this the join must move server-side rather than raising it. */
-const MAX_PACKAGES = 12;
+/** Registry sweep bound — the live registry holds 16 packages today
+ *  (9 with graphs); if it outgrows this, the join must move
+ *  server-side into axiom-api rather than raising the cap. */
+const MAX_PACKAGES = 32;
 const RULE_NAME_CAP = 8;
 
 function normalizeDocType(segment: string): string {

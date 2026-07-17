@@ -45,8 +45,14 @@ export interface ProgramGraph {
   terminalOutputs: string[];
 }
 
+/**
+ * Configured means either a key (hosted API) or an explicit base
+ * override (a local axiom-api instance, which runs without auth).
+ */
 export function isRuntimeApiConfigured(): boolean {
-  return Boolean(process.env.AXIOM_RUNTIME_API_KEY);
+  return Boolean(
+    process.env.AXIOM_RUNTIME_API_KEY || process.env.AXIOM_RUNTIME_API_BASE
+  );
 }
 
 function apiBase(): string {
@@ -63,9 +69,10 @@ function apiBase(): string {
  */
 async function runtimeGet<T>(path: string): Promise<T | null> {
   if (!isRuntimeApiConfigured()) return null;
+  const key = process.env.AXIOM_RUNTIME_API_KEY;
   try {
     const response = await fetch(`${apiBase()}${path}`, {
-      headers: { "x-api-key": process.env.AXIOM_RUNTIME_API_KEY as string },
+      headers: key ? { "x-api-key": key } : undefined,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       next: { revalidate: REVALIDATE_SECONDS },
     });

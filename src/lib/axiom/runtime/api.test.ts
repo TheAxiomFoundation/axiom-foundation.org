@@ -22,8 +22,9 @@ describe("runtime api client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("is unconfigured without an API key and makes no requests", async () => {
+  it("is unconfigured without a key or base override and makes no requests", async () => {
     vi.stubEnv("AXIOM_RUNTIME_API_KEY", "");
+    vi.stubEnv("AXIOM_RUNTIME_API_BASE", "");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -31,6 +32,21 @@ describe("runtime api client", () => {
     expect(await listRuntimePackages()).toEqual([]);
     expect(await getProgramGraph("us-co", "co-snap")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("treats a keyless base override (local axiom-api) as configured and omits the auth header", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "");
+    vi.stubEnv("AXIOM_RUNTIME_API_BASE", "http://localhost:8787/v1");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okEnvelope({ packages: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(isRuntimeApiConfigured()).toBe(true);
+    await listRuntimePackages();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8787/v1/runtime/packages");
+    expect(init.headers).toBeUndefined();
   });
 
   it("lists packages, unwrapping the success envelope", async () => {

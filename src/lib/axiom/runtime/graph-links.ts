@@ -54,6 +54,21 @@ export function ruleGraphFocus(
   return `${jurisdictionSlug}:${filePath.replace(/\.yaml$/, "")}#${ruleName}`;
 }
 
+const DEFAULT_BUILDER_BASE = "https://dashboard-builder-flax.vercel.app";
+
+/**
+ * Deep link into the dashboard builder with this rule preselected as
+ * an output — "use this encoding in a calculator". The builder
+ * resolves which curated program contains the rule, so no program
+ * coordinates are needed here.
+ */
+export function builderUrlForRule(ruleLegalId: string): string {
+  const base = (
+    process.env.NEXT_PUBLIC_BUILDER_URL ?? DEFAULT_BUILDER_BASE
+  ).replace(/\/$/, "");
+  return `${base}/?output=${encodeURIComponent(ruleLegalId)}`;
+}
+
 export function graphViewerUrl(
   program: { jurisdiction: string; programId: string },
   focus: string | null

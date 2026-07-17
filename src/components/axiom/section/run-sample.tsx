@@ -123,20 +123,18 @@ export function RunSample({
     );
   };
 
+  // No inline run affordance: running belongs to builder-configured
+  // scenarios and ?run= permalinks, not a canned-sample button in the
+  // rail. This island exists to execute permalinks and render their
+  // results (design call 2026-07-17).
+  if (!result && !running && !error) return null;
+
   return (
     <div data-testid="run-sample" className="mt-1.5">
-      {!result && program && (
-        <button
-          type="button"
-          onClick={() => runProgram(program)}
-          disabled={running}
-          data-testid="run-sample-button"
-          className="cursor-pointer border-0 bg-transparent p-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)] hover:underline disabled:cursor-default disabled:text-[var(--color-ink-muted)]"
-        >
-          {running
-            ? "running…"
-            : `run sample household · ${program.jurisdiction} ▶`}
-        </button>
+      {running && (
+        <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          running {program ? runParamFor(program) : "scenario"}…
+        </p>
       )}
       {error && (
         <p className="mt-1 font-mono text-[10px] text-[var(--color-ink-muted)]">

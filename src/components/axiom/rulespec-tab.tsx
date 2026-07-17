@@ -46,6 +46,7 @@ export function RuleSpecTab({
   showHeader = true,
   textAnchors,
   graphLinkForRule,
+  builderLinkForRule,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -76,6 +77,8 @@ export function RuleSpecTab({
   /** rule name → graph-viewer deep link (the rule's legal ID as
    *  focus); when it returns a URL the card shows a "graph" link. */
   graphLinkForRule?: (ruleName: string) => string | null;
+  /** rule name → dashboard-builder deep link (use as output). */
+  builderLinkForRule?: (ruleName: string) => string | null;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -190,6 +193,7 @@ export function RuleSpecTab({
                 includeUngrouped={includeUngrouped}
                 textAnchors={textAnchors}
                 graphLinkForRule={graphLinkForRule}
+                builderLinkForRule={builderLinkForRule}
               />
             ) : (
               <div className="space-y-6">
@@ -201,6 +205,7 @@ export function RuleSpecTab({
                     tests={testsByRule.get(rule.name) ?? []}
                     textAnchor={textAnchors?.[rule.name]}
                     graphHref={graphLinkForRule?.(rule.name) ?? null}
+                    builderHref={builderLinkForRule?.(rule.name) ?? null}
                   />
                 ))}
               </div>
@@ -246,6 +251,7 @@ function GroupedRules({
   includeUngrouped = true,
   textAnchors,
   graphLinkForRule,
+  builderLinkForRule,
 }: {
   rules: RuleSpecRule[];
   groups: Array<{ label: string; ruleNames: string[] }>;
@@ -253,6 +259,7 @@ function GroupedRules({
   includeUngrouped?: boolean;
   textAnchors?: Record<string, string>;
   graphLinkForRule?: (ruleName: string) => string | null;
+  builderLinkForRule?: (ruleName: string) => string | null;
 }) {
   const byName = new Map(rules.map((rule) => [rule.name, rule]));
   const grouped = new Set(groups.flatMap((group) => group.ruleNames));
@@ -298,6 +305,7 @@ function GroupedRules({
               tests={testsByRule.get(rule.name) ?? []}
               textAnchor={textAnchors?.[rule.name]}
               graphHref={graphLinkForRule?.(rule.name) ?? null}
+              builderHref={builderLinkForRule?.(rule.name) ?? null}
             />
           ))}
         </section>
@@ -410,6 +418,7 @@ function RuleCard({
   tests,
   textAnchor,
   graphHref = null,
+  builderHref = null,
 }: {
   rule: RuleSpecRule;
   tests: RuleSpecTestCase[];
@@ -418,6 +427,8 @@ function RuleCard({
   textAnchor?: string;
   /** Graph-viewer deep link focused on this rule's node. */
   graphHref?: string | null;
+  /** Builder deep link with this rule preselected as an output. */
+  builderHref?: string | null;
 }) {
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
@@ -462,6 +473,18 @@ function RuleCard({
                 className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
               >
                 graph ↗
+              </a>
+            )}
+            {builderHref && (
+              <a
+                href={builderHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Use this rule as a calculator output in the builder"
+                data-testid="rule-builder-link"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                use in builder ↗
               </a>
             )}
           </div>

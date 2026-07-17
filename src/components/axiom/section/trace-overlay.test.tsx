@@ -54,11 +54,13 @@ describe("trace overlay", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it("lights up the traced subsection after a run and clears on ×", async () => {
+  it("lights up the traced subsection after a permalink run and clears on ×", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+    );
     mountOverlay();
-    expect(screen.queryByTestId("trace-chips-a")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("run-sample-button"));
     await waitFor(() =>
       expect(screen.getByTestId("trace-chips-a")).toBeInTheDocument()
     );

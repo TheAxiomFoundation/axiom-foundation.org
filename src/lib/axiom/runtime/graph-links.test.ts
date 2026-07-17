@@ -1,9 +1,22 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
+  builderUrlForRule,
   graphFocusForCitationPath,
   graphViewerUrl,
   ruleGraphFocus,
 } from "./graph-links";
+
+describe("builderUrlForRule", () => {
+  it("links the builder with the rule preselected as an output", () => {
+    const url = new URL(
+      builderUrlForRule("us:statutes/7/2017/a#snap_regular_month_allotment")
+    );
+    expect(url.origin).toBe("https://dashboard-builder-flax.vercel.app");
+    expect(url.searchParams.get("output")).toBe(
+      "us:statutes/7/2017/a#snap_regular_month_allotment"
+    );
+  });
+});
 
 describe("ruleGraphFocus", () => {
   it("builds the full legal id from slug, file path, and rule name", () => {

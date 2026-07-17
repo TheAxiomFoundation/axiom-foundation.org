@@ -8,6 +8,7 @@ import {
 } from "@/lib/axiom/section-page";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import {
+  builderUrlForRule,
   graphFocusForCitationPath,
   graphViewerUrl,
   ruleGraphFocus,
@@ -84,6 +85,13 @@ export function EncodingRail({
       programs[0];
     return graphViewerUrl(program, ruleGraphFocus(slug, filePath, ruleName));
   };
+  // "Use this rule as an output" — the builder resolves the program
+  // itself, so this needs only the rule's legal ID.
+  const builderLinkForRule = (ruleName: string): string | null => {
+    const filePath = ruleFiles[ruleName];
+    if (!filePath || !slug) return null;
+    return builderUrlForRule(ruleGraphFocus(slug, filePath, ruleName));
+  };
 
   return (
     <div>
@@ -102,6 +110,7 @@ export function EncodingRail({
           outgoing={outgoing}
           programs={programs}
           graphLinkForRule={graphLinkForRule}
+          builderLinkForRule={builderLinkForRule}
         />
       ) : mode === "overview" ? (
         <OverviewView
@@ -115,6 +124,7 @@ export function EncodingRail({
           incoming={incoming}
           programs={programs}
           graphLinkForRule={graphLinkForRule}
+          builderLinkForRule={builderLinkForRule}
         />
       ) : (
         // No parseable subsection structure — flat rule list plus the
@@ -129,6 +139,7 @@ export function EncodingRail({
             showSummary={false}
             textAnchors={textAnchors}
             graphLinkForRule={graphLinkForRule}
+            builderLinkForRule={builderLinkForRule}
           />
           <ProgramsBlock programs={programs} citationPath={citationPath} />
           {(outgoing.length > 0 || incoming.length > 0) && (
@@ -251,6 +262,7 @@ function NodeView({
   outgoing,
   programs,
   graphLinkForRule,
+  builderLinkForRule,
 }: {
   chunk: RailChunk;
   encoding: RuleEncodingData | null;
@@ -261,6 +273,7 @@ function NodeView({
   outgoing: InlineReference[];
   programs: ProvisionProgramCoverage[];
   graphLinkForRule: (ruleName: string) => string | null;
+  builderLinkForRule: (ruleName: string) => string | null;
 }) {
   const ruleNames = encodedRules
     .filter((rule) => rule.anchors.includes(chunk.anchor))
@@ -289,6 +302,7 @@ function NodeView({
         includeUngrouped={false}
         textAnchors={textAnchors}
         graphLinkForRule={graphLinkForRule}
+        builderLinkForRule={builderLinkForRule}
       />
       <ProgramsBlock programs={programs} citationPath={citationPath} anchor={chunk.anchor} />
       {nodeOutgoing.length > 0 && (
@@ -312,6 +326,7 @@ function OverviewView({
   incoming,
   programs,
   graphLinkForRule,
+  builderLinkForRule,
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -323,6 +338,7 @@ function OverviewView({
   incoming: RuleReference[];
   programs: ProvisionProgramCoverage[];
   graphLinkForRule: (ruleName: string) => string | null;
+  builderLinkForRule: (ruleName: string) => string | null;
 }) {
   const sectionWide = encodedRules
     .filter((rule) => rule.anchors.length === 0)
@@ -346,6 +362,7 @@ function OverviewView({
         }
         includeUngrouped={false}
         graphLinkForRule={graphLinkForRule}
+        builderLinkForRule={builderLinkForRule}
       />
       <ProgramsBlock programs={programs} citationPath={citationPath} />
       {encodedRules.length > 0 && (

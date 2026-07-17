@@ -266,6 +266,14 @@ describe("EncodingRail", () => {
     expect(href.searchParams.get("focus")).toBe(
       "us:statutes/26/32/a#rule_for_a"
     );
+    // "Use in builder" carries the same legal id; the builder resolves
+    // the program itself.
+    const builderHref = new URL(
+      screen.getByTestId("rule-builder-link").getAttribute("href")!
+    );
+    expect(builderHref.searchParams.get("output")).toBe(
+      "us:statutes/26/32/a#rule_for_a"
+    );
     // rule_for_b has no known home file → no graph link on its card.
     scrollTo({ a: -1200, b: 100 });
     await waitFor(() =>

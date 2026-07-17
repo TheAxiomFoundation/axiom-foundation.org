@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RunSample } from "./run-sample";
 
@@ -34,19 +34,35 @@ describe("RunSample", () => {
       })
     );
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState({}, "", "/");
+  });
 
-  it("runs the sample and renders outputs with section markers", async () => {
+  it("renders nothing without a ?run= permalink — no inline run button", () => {
+    window.history.replaceState({}, "", "/axiom/v2/us/statute/7/2017");
+    const { container } = render(
+      <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
+    );
+    expect(container.innerHTML).toBe("");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("executes a ?run= permalink and renders outputs with section markers", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+    );
     render(<RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />);
-    fireEvent.click(screen.getByTestId("run-sample-button"));
     await waitFor(() =>
       expect(screen.getByTestId("run-sample-result")).toBeInTheDocument()
     );
     expect(screen.getByText("298")).toBeInTheDocument();
     expect(screen.getByText("yes")).toBeInTheDocument();
-    // snap_benefit_amount traces to this section → marked; the
-    // untraced snap_eligible is not.
-    expect(screen.getByTitle("Computed by rules from this section")).toBeInTheDocument();
+    expect(
+      screen.getByTitle("Computed by rules from this section")
+    ).toBeInTheDocument();
     const [call] = (fetch as ReturnType<typeof vi.fn>).mock.calls;
     expect(JSON.parse(call[1].body)).toEqual({
       jurisdiction: "us-co",
@@ -54,13 +70,17 @@ describe("RunSample", () => {
     });
   });
 
-  it("shows a failure note when the run errors", async () => {
+  it("shows a failure note when a permalink run errors", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 502 })
     );
+    window.history.replaceState(
+      {},
+      "",
+      "/axiom/v2/us/statute/7/2017?run=us-co/co-snap"
+    );
     render(<RunSample programs={[PROGRAM]} sectionFocus={null} />);
-    fireEvent.click(screen.getByTestId("run-sample-button"));
     await waitFor(() =>
       expect(
         screen.getByText("run failed — engine unavailable")

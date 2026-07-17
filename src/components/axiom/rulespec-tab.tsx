@@ -433,6 +433,7 @@ function RuleCard({
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
   const meta = ruleMeta(rule);
+  const title = ruleTitle(rule);
   return (
     <article
       id={anchor}
@@ -442,11 +443,16 @@ function RuleCard({
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h3 className="m-0 font-mono text-sm font-semibold text-[var(--color-ink)] break-all">
-              {ruleTitle(rule)}
+              {title}
             </h3>
-            <code className="mt-1 block font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
-              #{rule.name}
-            </code>
+            {/* The technical id repeats the title verbatim for plain
+                derived/parameter rules — only show it when it adds
+                information (relation-kind rules with derived titles). */}
+            {title !== rule.name && (
+              <code className="mt-1 block font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
+                #{rule.name}
+              </code>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1">
             {rule.kind && (

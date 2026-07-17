@@ -29,6 +29,14 @@ vi.mock("@/lib/axiom/navigation-index/read", () => ({
   getProvisionByCitationPath: getProvisionByCitationPathMock,
 }));
 
+// The descendant-file aggregation has its own tests
+// (section-encoding.test.ts); here it stays inert so the primary
+// getRuleEncoding path drives the assertions.
+vi.mock("@/lib/axiom/rulespec/repo-listing", () => ({
+  findEncodedDescendants: vi.fn(async () => []),
+  fetchEncodedFile: vi.fn(async () => null),
+}));
+
 vi.mock("@/lib/tree-data", () => ({
   resolveAxiomPath: (segments: string[]) =>
     segments.length >= 2

@@ -1,7 +1,6 @@
 import {
   supabaseCorpus,
   getRuleReferences,
-  getRuleEncoding,
   type Rule,
   type RuleReference,
   type RuleEncodingData,
@@ -18,6 +17,7 @@ import {
   getProvisionCoverage,
   type ProvisionProgramCoverage,
 } from "@/lib/axiom/runtime/coverage";
+import { getSectionEncoding } from "@/lib/axiom/section-encoding";
 
 /**
  * Data assembly for the v2 server-rendered section page: one reading
@@ -244,6 +244,26 @@ export function mapRulesToSubsections(
   });
 }
 
+/**
+ * Union file-path-derived anchors (subsection-granular repo files)
+ * into the source-citation-derived links. File anchors are
+ * authoritative — the repo path *is* the legal ID — so they fill in
+ * rules whose ``source`` strings the citation regex can't parse.
+ */
+export function applyFileAnchors(
+  links: EncodedRuleLink[],
+  fileAnchors: Record<string, string[]>
+): EncodedRuleLink[] {
+  return links.map((link) => {
+    const extra = fileAnchors[link.name];
+    if (!extra || extra.length === 0) return link;
+    const anchors = Array.from(new Set([...link.anchors, ...extra]));
+    return anchors.length === link.anchors.length
+      ? link
+      : { ...link, anchors };
+  });
+}
+
 const LABEL_PREVIEW_LEN = 56;
 
 function chunkLabel(designator: string, text: string): string {
@@ -452,15 +472,20 @@ export async function getSectionPageData(
   }
   if (!root) return null;
 
-  const [subtree, rootRefs, node, encoding, programs] = await Promise.all([
-    getSubtreeProvisions(citationPath),
-    getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
-    getNavigationNode(citationPath),
-    getRuleEncoding(root.id).catch(() => null),
-    getProvisionCoverage(citationPath).catch(
-      () => [] as ProvisionProgramCoverage[]
-    ),
-  ]);
+  const [subtree, rootRefs, node, sectionEncoding, programs] =
+    await Promise.all([
+      getSubtreeProvisions(citationPath),
+      getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
+      getNavigationNode(citationPath),
+      getSectionEncoding(root.id, citationPath).catch(() => ({
+        encoding: null,
+        fileAnchors: {},
+      })),
+      getProvisionCoverage(citationPath).catch(
+        () => [] as ProvisionProgramCoverage[]
+      ),
+    ]);
+  const encoding = sectionEncoding.encoding;
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -502,9 +527,9 @@ export async function getSectionPageData(
     toc,
     rootRefs,
     encoding,
-    encodedRules: mapRulesToSubsections(
-      citationPath,
-      encoding?.rulespec_content ?? null
+    encodedRules: applyFileAnchors(
+      mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
+      sectionEncoding.fileAnchors
     ),
     programs,
     focusAnchor,

@@ -230,6 +230,11 @@ describe("getSectionEncoding", () => {
       "earned_income",
     ]);
     expect(result.fileAnchors).toEqual({ earned_income: ["c"] });
+    // Each rule's home file survives the merge.
+    expect(result.ruleFiles).toEqual({
+      eitc_amount: "statutes/26/32.yaml",
+      earned_income: "statutes/26/32/c/2.yaml",
+    });
     // Mirror hit → no telemetry lookup, no GitHub reads.
     expect(getRuleEncodingMock).not.toHaveBeenCalled();
     expect(findEncodedDescendantsMock).not.toHaveBeenCalled();
@@ -250,6 +255,9 @@ describe("getSectionEncoding", () => {
       "registry:statutes/7/2017/a.yaml"
     );
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
+    expect(result.ruleFiles).toEqual({
+      snap_allotment: "statutes/7/2017/a.yaml",
+    });
   });
 
   it("falls back to the legacy path when the mirror query fails", async () => {

@@ -98,6 +98,8 @@ export interface SectionPageData {
    * API is unconfigured.
    */
   programs: ProvisionProgramCoverage[];
+  /** Rule name → repo file path (the file half of its legal ID). */
+  ruleFiles: Record<string, string>;
   /**
    * Set when the requested path was deeper than the ingested corpus
    * row (e.g. …/26/32/a on a section-granular corpus): the section
@@ -480,6 +482,7 @@ export async function getSectionPageData(
       getSectionEncoding(root.id, citationPath).catch(() => ({
         encoding: null,
         fileAnchors: {},
+        ruleFiles: {},
       })),
       getProvisionCoverage(citationPath).catch(
         () => [] as ProvisionProgramCoverage[]
@@ -532,6 +535,7 @@ export async function getSectionPageData(
       sectionEncoding.fileAnchors
     ),
     programs,
+    ruleFiles: sectionEncoding.ruleFiles,
     focusAnchor,
     prev,
     next,

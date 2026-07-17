@@ -39,6 +39,12 @@ export interface SectionEncoding {
    * section-level files.
    */
   fileAnchors: Record<string, string[]>;
+  /**
+   * Repo file path (bucket-rooted, ``statutes/7/2017/a.yaml``) keyed
+   * by rule name — each rule's home file, i.e. the file half of its
+   * durable legal ID. Feeds per-rule graph links.
+   */
+  ruleFiles: Record<string, string>;
 }
 
 /** Bound on files merged per section; deep regulation trees stay
@@ -53,7 +59,15 @@ interface SectionFile {
 }
 
 function emptyResult(encoding: RuleEncodingData | null): SectionEncoding {
-  return { encoding, fileAnchors: {} };
+  // Even a lone primary file yields rule→file provenance so rule
+  // cards can deep-link into the graph.
+  const ruleFiles: Record<string, string> = {};
+  if (encoding?.rulespec_content && encoding.file_path) {
+    for (const rule of parseRuleSpec(encoding.rulespec_content).rules) {
+      ruleFiles[rule.name] ??= encoding.file_path;
+    }
+  }
+  return { encoding, fileAnchors: {}, ruleFiles };
 }
 
 function baseEncoding(
@@ -109,9 +123,11 @@ function assembleSection(
   const seenNames = new Set<string>();
   const ruleRaws: Record<string, unknown>[] = [];
   const fileAnchors: Record<string, string[]> = {};
+  const ruleFiles: Record<string, string> = {};
 
   const sectionDoc = sectionFile ? parseRuleSpec(sectionFile.content) : null;
   for (const rule of sectionDoc?.rules ?? []) {
+    ruleFiles[rule.name] ??= sectionFile!.filePath;
     if (seenNames.has(rule.name)) continue;
     seenNames.add(rule.name);
     ruleRaws.push(rule.raw);
@@ -123,6 +139,7 @@ function assembleSection(
     const doc = parseRuleSpec(file.content);
     const anchor = file.citationPath.slice(prefix.length).split("/")[0] || null;
     for (const rule of doc.rules) {
+      ruleFiles[rule.name] ??= file.filePath;
       if (anchor) {
         const anchors = (fileAnchors[rule.name] ??= []);
         if (!anchors.includes(anchor)) anchors.push(anchor);
@@ -147,6 +164,7 @@ function assembleSection(
         rulespec_content: sectionFile.content,
       },
       fileAnchors,
+      ruleFiles,
     };
   }
   if (!sectionFile && descendants.length === 1) {
@@ -159,6 +177,7 @@ function assembleSection(
         only.content
       ),
       fileAnchors,
+      ruleFiles,
     };
   }
   if (ruleRaws.length === 0) return emptyResult(primaryMeta);
@@ -176,6 +195,7 @@ function assembleSection(
       rulespec_content: mergedContent(citationPath, ruleRaws),
     },
     fileAnchors,
+    ruleFiles,
   };
 }
 

@@ -348,6 +348,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           outgoing={outgoing}
           incoming={incoming}
           programs={data.programs}
+          ruleFiles={data.ruleFiles}
         />
       </aside>
     </div>

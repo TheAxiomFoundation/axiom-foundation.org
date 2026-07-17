@@ -2,7 +2,19 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   graphFocusForCitationPath,
   graphViewerUrl,
+  ruleGraphFocus,
 } from "./graph-links";
+
+describe("ruleGraphFocus", () => {
+  it("builds the full legal id from slug, file path, and rule name", () => {
+    expect(
+      ruleGraphFocus("us", "statutes/7/2017/a.yaml", "snap_regular_month_allotment")
+    ).toBe("us:statutes/7/2017/a#snap_regular_month_allotment");
+    expect(
+      ruleGraphFocus("us-co", "regulations/10-ccr-2506-1/4.207.3.yaml", "co_snap_x")
+    ).toBe("us-co:regulations/10-ccr-2506-1/4.207.3#co_snap_x");
+  });
+});
 
 describe("graphFocusForCitationPath", () => {
   it("maps statute citation paths to plural-bucket legal id prefixes", () => {

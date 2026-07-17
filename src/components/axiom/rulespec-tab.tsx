@@ -45,6 +45,7 @@ export function RuleSpecTab({
   includeUngrouped = true,
   showHeader = true,
   textAnchors,
+  graphLinkForRule,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -72,6 +73,9 @@ export function RuleSpecTab({
   /** rule name → in-page text anchor; when present a rule card links
    *  back to the subsection of the source text it implements. */
   textAnchors?: Record<string, string>;
+  /** rule name → graph-viewer deep link (the rule's legal ID as
+   *  focus); when it returns a URL the card shows a "graph" link. */
+  graphLinkForRule?: (ruleName: string) => string | null;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -185,6 +189,7 @@ export function RuleSpecTab({
                 testsByRule={testsByRule}
                 includeUngrouped={includeUngrouped}
                 textAnchors={textAnchors}
+                graphLinkForRule={graphLinkForRule}
               />
             ) : (
               <div className="space-y-6">
@@ -195,6 +200,7 @@ export function RuleSpecTab({
                     rule={rule}
                     tests={testsByRule.get(rule.name) ?? []}
                     textAnchor={textAnchors?.[rule.name]}
+                    graphHref={graphLinkForRule?.(rule.name) ?? null}
                   />
                 ))}
               </div>
@@ -239,12 +245,14 @@ function GroupedRules({
   testsByRule,
   includeUngrouped = true,
   textAnchors,
+  graphLinkForRule,
 }: {
   rules: RuleSpecRule[];
   groups: Array<{ label: string; ruleNames: string[] }>;
   testsByRule: Map<string, RuleSpecTestCase[]>;
   includeUngrouped?: boolean;
   textAnchors?: Record<string, string>;
+  graphLinkForRule?: (ruleName: string) => string | null;
 }) {
   const byName = new Map(rules.map((rule) => [rule.name, rule]));
   const grouped = new Set(groups.flatMap((group) => group.ruleNames));
@@ -289,6 +297,7 @@ function GroupedRules({
               rule={rule}
               tests={testsByRule.get(rule.name) ?? []}
               textAnchor={textAnchors?.[rule.name]}
+              graphHref={graphLinkForRule?.(rule.name) ?? null}
             />
           ))}
         </section>
@@ -400,12 +409,15 @@ function RuleCard({
   rule,
   tests,
   textAnchor,
+  graphHref = null,
 }: {
   rule: RuleSpecRule;
   tests: RuleSpecTestCase[];
   /** In-page anchor of the source-text subsection this rule
    *  implements — renders a back-link into the reading column. */
   textAnchor?: string;
+  /** Graph-viewer deep link focused on this rule's node. */
+  graphHref?: string | null;
 }) {
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
@@ -438,6 +450,18 @@ function RuleCard({
                 className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
               >
                 ({textAnchor}) in text ↖
+              </a>
+            )}
+            {graphHref && (
+              <a
+                href={graphHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View this rule's node and dependencies in the program graph"
+                data-testid="rule-graph-link"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                graph ↗
               </a>
             )}
           </div>

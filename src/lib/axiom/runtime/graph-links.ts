@@ -41,6 +41,19 @@ export function graphFocusForCitationPath(
   return `${slug}:${bucket}/${rest.join("/")}`;
 }
 
+/**
+ * Full legal ID for one rule: repo file path (already bucket-rooted,
+ * ``-cfr`` included where applicable) + ``#`` + rule name. This is
+ * the ``?focus=`` form that selects a single node in the viewer.
+ */
+export function ruleGraphFocus(
+  jurisdictionSlug: string,
+  filePath: string,
+  ruleName: string
+): string {
+  return `${jurisdictionSlug}:${filePath.replace(/\.yaml$/, "")}#${ruleName}`;
+}
+
 export function graphViewerUrl(
   program: { jurisdiction: string; programId: string },
   focus: string | null

@@ -10,6 +10,7 @@ import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import {
   graphFocusForCitationPath,
   graphViewerUrl,
+  ruleGraphFocus,
 } from "@/lib/axiom/runtime/graph-links";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
@@ -44,6 +45,7 @@ export function EncodingRail({
   outgoing,
   incoming,
   programs = [],
+  ruleFiles = {},
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -54,6 +56,8 @@ export function EncodingRail({
   outgoing: InlineReference[];
   incoming: RuleReference[];
   programs?: ProvisionProgramCoverage[];
+  /** Rule name → repo file path; enables per-rule graph links. */
+  ruleFiles?: Record<string, string>;
 }) {
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
@@ -66,6 +70,19 @@ export function EncodingRail({
       .filter((rule) => rule.anchors.length > 0)
       .map((rule) => [rule.name, rule.anchors[0]])
   );
+  // Per-rule graph deep link: the rule's full legal ID as ?focus=,
+  // opened in a program that contains it (preferring one whose
+  // sampled rule names include it). Null when the rule's home file
+  // is unknown or no program covers this provision.
+  const slug = citationPath?.split("/")[0] ?? null;
+  const graphLinkForRule = (ruleName: string): string | null => {
+    const filePath = ruleFiles[ruleName];
+    if (!filePath || !slug || programs.length === 0) return null;
+    const program =
+      programs.find((candidate) => candidate.ruleNames.includes(ruleName)) ??
+      programs[0];
+    return graphViewerUrl(program, ruleGraphFocus(slug, filePath, ruleName));
+  };
 
   return (
     <div>
@@ -83,6 +100,7 @@ export function EncodingRail({
           encodedRules={encodedRules}
           outgoing={outgoing}
           programs={programs}
+          graphLinkForRule={graphLinkForRule}
         />
       ) : mode === "overview" ? (
         <OverviewView
@@ -95,6 +113,7 @@ export function EncodingRail({
           outgoing={outgoing}
           incoming={incoming}
           programs={programs}
+          graphLinkForRule={graphLinkForRule}
         />
       ) : (
         // No parseable subsection structure — flat rule list plus the
@@ -108,6 +127,7 @@ export function EncodingRail({
             isRepealed={isRepealed}
             showSummary={false}
             textAnchors={textAnchors}
+            graphLinkForRule={graphLinkForRule}
           />
           <ProgramsBlock programs={programs} citationPath={citationPath} />
           {(outgoing.length > 0 || incoming.length > 0) && (
@@ -188,6 +208,7 @@ function NodeView({
   encodedRules,
   outgoing,
   programs,
+  graphLinkForRule,
 }: {
   chunk: RailChunk;
   encoding: RuleEncodingData | null;
@@ -197,6 +218,7 @@ function NodeView({
   encodedRules: EncodedRuleLink[];
   outgoing: InlineReference[];
   programs: ProvisionProgramCoverage[];
+  graphLinkForRule: (ruleName: string) => string | null;
 }) {
   const ruleNames = encodedRules
     .filter((rule) => rule.anchors.includes(chunk.anchor))
@@ -224,6 +246,7 @@ function NodeView({
         ruleGroups={[{ label: chunk.label, ruleNames }]}
         includeUngrouped={false}
         textAnchors={textAnchors}
+        graphLinkForRule={graphLinkForRule}
       />
       <ProgramsBlock programs={programs} citationPath={citationPath} anchor={chunk.anchor} />
       {nodeOutgoing.length > 0 && (
@@ -246,6 +269,7 @@ function OverviewView({
   outgoing,
   incoming,
   programs,
+  graphLinkForRule,
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -256,6 +280,7 @@ function OverviewView({
   outgoing: InlineReference[];
   incoming: RuleReference[];
   programs: ProvisionProgramCoverage[];
+  graphLinkForRule: (ruleName: string) => string | null;
 }) {
   const sectionWide = encodedRules
     .filter((rule) => rule.anchors.length === 0)
@@ -278,6 +303,7 @@ function OverviewView({
             : [{ label: "", ruleNames: [] }]
         }
         includeUngrouped={false}
+        graphLinkForRule={graphLinkForRule}
       />
       <ProgramsBlock programs={programs} citationPath={citationPath} />
       {encodedRules.length > 0 && (

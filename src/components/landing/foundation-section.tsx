@@ -23,10 +23,10 @@ export function FoundationSection() {
           </p>
 
           <a
-            href="mailto:hello@axiom-foundation.org"
+            href="mailto:hello@axiom.org"
             className="mt-10 inline-flex items-center gap-2 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
           >
-            Get in touch &mdash; hello@axiom-foundation.org
+            Get in touch &mdash; hello@axiom.org
             <ArrowRightIcon className="w-4 h-4" />
           </a>
 

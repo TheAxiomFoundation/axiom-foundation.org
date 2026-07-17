@@ -72,8 +72,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
               For privacy questions, email{" "}
-              <a href="mailto:hello@axiom-foundation.org">
-                hello@axiom-foundation.org
+              <a href="mailto:hello@axiom.org">
+                hello@axiom.org
               </a>
             </p>
           </section>

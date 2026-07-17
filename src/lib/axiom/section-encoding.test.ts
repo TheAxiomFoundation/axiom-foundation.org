@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getRuleEncodingMock, findEncodedDescendantsMock, fetchEncodedFileMock } =
-  vi.hoisted(() => ({
-    getRuleEncodingMock: vi.fn(),
-    findEncodedDescendantsMock: vi.fn(),
-    fetchEncodedFileMock: vi.fn(),
-  }));
+const {
+  getRuleEncodingMock,
+  findEncodedDescendantsMock,
+  fetchEncodedFileMock,
+  mirrorFromMock,
+} = vi.hoisted(() => ({
+  getRuleEncodingMock: vi.fn(),
+  findEncodedDescendantsMock: vi.fn(),
+  fetchEncodedFileMock: vi.fn(),
+  mirrorFromMock: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase", () => ({
   getRuleEncoding: getRuleEncodingMock,
+  supabaseEncodings: { from: mirrorFromMock },
 }));
 vi.mock("@/lib/axiom/rulespec/repo-listing", () => ({
   findEncodedDescendants: findEncodedDescendantsMock,
@@ -53,11 +59,34 @@ function encodingRow(filePath: string, content: string) {
 
 const SECTION = "us/statute/26/32";
 
+/** Chainable PostgREST stub: builder methods return the chain, the
+ *  chain is thenable with the given result. */
+function mirrorChain(result: { data: unknown; error: unknown }) {
+  const self: Record<string, unknown> = {};
+  for (const method of ["select", "or", "limit"]) {
+    self[method] = () => self;
+  }
+  self.then = (
+    resolve: (value: unknown) => unknown,
+    reject?: (reason: unknown) => unknown
+  ) => Promise.resolve(result).then(resolve, reject);
+  return self;
+}
+
+function mirrorRows(
+  rows: Array<{ citation_path: string; file_path: string; raw_yaml: string }>
+) {
+  mirrorFromMock.mockReturnValue(mirrorChain({ data: rows, error: null }));
+}
+
 describe("getSectionEncoding", () => {
   beforeEach(() => {
     getRuleEncodingMock.mockReset();
     findEncodedDescendantsMock.mockReset();
     fetchEncodedFileMock.mockReset();
+    mirrorFromMock.mockReset();
+    // Default: mirror is empty → the legacy path drives the test.
+    mirrorRows([]);
   });
 
   it("passes the primary encoding through when there are no descendant files", async () => {
@@ -91,7 +120,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
     expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
     expect(result.encoding?.encoding_run_id).toBe(
-      "github:statutes/7/2017/a.yaml"
+      "registry:statutes/7/2017/a.yaml"
     );
     expect(result.encoding?.rulespec_content).toContain("snap_allotment");
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
@@ -114,7 +143,9 @@ describe("getSectionEncoding", () => {
     });
 
     const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.encoding?.encoding_run_id).toBe(`github-merged:${SECTION}`);
+    expect(result.encoding?.encoding_run_id).toBe(
+      `registry-merged:${SECTION}`
+    );
     expect(result.encoding?.file_path).toBe("statutes/26/32");
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
     expect(doc.parseErrors).toEqual([]);
@@ -173,5 +204,65 @@ describe("getSectionEncoding", () => {
     findEncodedDescendantsMock.mockResolvedValue([]);
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.encoding).toBeNull();
+  });
+
+  it("serves the mirror without touching legacy sources when synced", async () => {
+    mirrorRows([
+      {
+        citation_path: SECTION,
+        file_path: "statutes/26/32.yaml",
+        raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+      },
+      {
+        citation_path: `${SECTION}/c/2`,
+        file_path: "statutes/26/32/c/2.yaml",
+        raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)"),
+      },
+    ]);
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.encoding?.encoding_run_id).toBe(
+      `registry-merged:${SECTION}`
+    );
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual([
+      "eitc_amount",
+      "earned_income",
+    ]);
+    expect(result.fileAnchors).toEqual({ earned_income: ["c"] });
+    // Mirror hit → no telemetry lookup, no GitHub reads.
+    expect(getRuleEncodingMock).not.toHaveBeenCalled();
+    expect(findEncodedDescendantsMock).not.toHaveBeenCalled();
+    expect(fetchEncodedFileMock).not.toHaveBeenCalled();
+  });
+
+  it("serves a lone mirror file directly with its real path", async () => {
+    mirrorRows([
+      {
+        citation_path: "us/statute/7/2017/a",
+        file_path: "statutes/7/2017/a.yaml",
+        raw_yaml: ruleYaml("snap_allotment", "7 USC 2017(a)"),
+      },
+    ]);
+    const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
+    expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
+    expect(result.encoding?.encoding_run_id).toBe(
+      "registry:statutes/7/2017/a.yaml"
+    );
+    expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
+  });
+
+  it("falls back to the legacy path when the mirror query fails", async () => {
+    mirrorFromMock.mockImplementation(() => {
+      throw new Error("schema missing");
+    });
+    const primary = encodingRow(
+      "statutes/26/32.yaml",
+      ruleYaml("eitc_amount", "26 USC 32(a)")
+    );
+    getRuleEncodingMock.mockResolvedValue(primary);
+    findEncodedDescendantsMock.mockResolvedValue([]);
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.encoding).toBe(primary);
   });
 });

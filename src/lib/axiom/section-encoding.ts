@@ -1,5 +1,9 @@
 import yaml from "js-yaml";
-import { getRuleEncoding, type RuleEncodingData } from "@/lib/supabase";
+import {
+  getRuleEncoding,
+  supabaseEncodings,
+  type RuleEncodingData,
+} from "@/lib/supabase";
 import {
   findEncodedDescendants,
   fetchEncodedFile,
@@ -10,14 +14,19 @@ import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 /**
  * Section-level encoding assembly for the v2 reader.
  *
- * The rulespec-* repos are migrating from one YAML per section
- * (``statutes/26/32.yaml``) to one YAML per subsection
- * (``statutes/7/2017/a.yaml``, ``statutes/26/32/c/2.yaml``); the
- * nested layout is already the majority. ``getRuleEncoding`` only
- * walks *up* the hierarchy, so on its own a section page misses
- * every descendant file. This module aggregates them: primary
- * section encoding (DB run or section-level file) plus all encoded
- * descendants, merged into one RuleSpec doc for the rail.
+ * Primary source: ``encodings.rulespec_files`` — a live-synced mirror
+ * of the rulespec-* repos (citation_path, file_path, raw_yaml,
+ * synced_at) — queried with one range scan per section, the same
+ * pattern the corpus text reads use. This replaces request-time
+ * GitHub reads and stops stale ``encoding_runs`` telemetry rows from
+ * shadowing the repo state.
+ *
+ * The repos are subsection-granular where it matters
+ * (``statutes/7/2017/a.yaml``, ``statutes/26/32/c/2.yaml``), so a
+ * section's encoding is the merge of every file at or under its
+ * citation path. The legacy path (encoding_runs content → GitHub
+ * raw walk-up + descendant fetches) survives only as a fallback for
+ * sections the mirror hasn't synced.
  */
 
 export interface SectionEncoding {
@@ -32,16 +41,44 @@ export interface SectionEncoding {
   fileAnchors: Record<string, string[]>;
 }
 
-/** Bound on descendant fetches per section. 26 USC 32 has 1 nested
- *  file today; deep regulation trees stay bounded. Raw fetches are
- *  cached (5 min memory + 1 h Next revalidate), so the steady-state
- *  cost is far below the worst case. */
-const MAX_DESCENDANT_FILES = 24;
+/** Bound on files merged per section; deep regulation trees stay
+ *  bounded. 26 USC 32 has 2 files today. */
+const MAX_SECTION_FILES = 60;
+const QUERY_TIMEOUT_MS = 4000;
 
-function emptyResult(
-  encoding: RuleEncodingData | null
-): SectionEncoding {
+interface SectionFile {
+  citationPath: string;
+  filePath: string;
+  content: string;
+}
+
+function emptyResult(encoding: RuleEncodingData | null): SectionEncoding {
   return { encoding, fileAnchors: {} };
+}
+
+function baseEncoding(
+  runId: string,
+  citation: string,
+  filePath: string,
+  content: string
+): RuleEncodingData {
+  return {
+    encoding_run_id: runId,
+    citation,
+    session_id: null,
+    file_path: filePath,
+    rulespec_content: content,
+    final_scores: null,
+    iterations: null,
+    total_duration_ms: null,
+    agent_type: null,
+    agent_model: null,
+    data_source: null,
+    has_issues: null,
+    note: null,
+    timestamp: null,
+    encoder_version: null,
+  };
 }
 
 function mergedContent(
@@ -58,51 +95,33 @@ function mergedContent(
   );
 }
 
-export async function getSectionEncoding(
-  rootId: string,
-  citationPath: string
-): Promise<SectionEncoding> {
-  const [primary, descendants] = await Promise.all([
-    getRuleEncoding(rootId).catch(() => null),
-    findEncodedDescendants(citationPath).catch(() => [] as EncodedFile[]),
-  ]);
-  const limited = descendants.slice(0, MAX_DESCENDANT_FILES);
-  if (limited.length === 0) return emptyResult(primary);
-
-  const fetched = (
-    await Promise.all(
-      limited.map(async (file) => {
-        const res = await fetchEncodedFile(file.citationPath).catch(
-          () => null
-        );
-        return res ? { file, content: res.content } : null;
-      })
-    )
-  ).filter((item): item is { file: EncodedFile; content: string } =>
-    Boolean(item)
-  );
-  if (fetched.length === 0) return emptyResult(primary);
-
-  // Merge: primary rules first (most specific DB/section source),
-  // then descendant-file rules, deduped by name.
+/**
+ * Merge a section-level doc (optional) with descendant files into
+ * one encoding + file-derived anchors. ``primaryMeta`` (a DB run)
+ * contributes run metadata when present.
+ */
+function assembleSection(
+  citationPath: string,
+  sectionFile: SectionFile | null,
+  descendants: SectionFile[],
+  primaryMeta: RuleEncodingData | null
+): SectionEncoding {
   const seenNames = new Set<string>();
   const ruleRaws: Record<string, unknown>[] = [];
   const fileAnchors: Record<string, string[]> = {};
-  const primaryDoc = primary?.rulespec_content
-    ? parseRuleSpec(primary.rulespec_content)
-    : null;
-  for (const rule of primaryDoc?.rules ?? []) {
+
+  const sectionDoc = sectionFile ? parseRuleSpec(sectionFile.content) : null;
+  for (const rule of sectionDoc?.rules ?? []) {
     if (seenNames.has(rule.name)) continue;
     seenNames.add(rule.name);
     ruleRaws.push(rule.raw);
   }
 
-  const sectionPrefix = `${citationPath}/`;
+  const prefix = `${citationPath}/`;
   let descendantRuleCount = 0;
-  for (const { file, content } of fetched) {
-    const doc = parseRuleSpec(content);
-    const anchor =
-      file.citationPath.slice(sectionPrefix.length).split("/")[0] || null;
+  for (const file of descendants) {
+    const doc = parseRuleSpec(file.content);
+    const anchor = file.citationPath.slice(prefix.length).split("/")[0] || null;
     for (const rule of doc.rules) {
       if (anchor) {
         const anchors = (fileAnchors[rule.name] ??= []);
@@ -114,62 +133,158 @@ export async function getSectionEncoding(
       descendantRuleCount++;
     }
   }
-  // Descendants that only re-state primary rules add no doc content,
-  // but their path-derived anchors still improve the rail mapping.
-  if (descendantRuleCount === 0) return { encoding: primary, fileAnchors };
 
-  // A lone descendant file with no primary needs no synthetic doc —
-  // serve it directly so file_path (GitHub link, sibling tests)
-  // stays real.
-  if (!primary && fetched.length === 1) {
-    const { file, content } = fetched[0];
+  // Single-file sections need no synthetic doc — serve the file
+  // directly so file_path (GitHub link, sibling tests) stays real.
+  if (sectionFile && descendantRuleCount === 0) {
     return {
       encoding: {
-        encoding_run_id: `github:${file.filePath}`,
-        citation: file.citationPath,
-        session_id: null,
-        file_path: file.filePath,
-        rulespec_content: content,
-        final_scores: null,
-        iterations: null,
-        total_duration_ms: null,
-        agent_type: null,
-        agent_model: null,
-        data_source: null,
-        has_issues: null,
-        note: null,
-        timestamp: null,
-        encoder_version: null,
+        ...(primaryMeta ?? baseEncoding("", "", "", "")),
+        encoding_run_id:
+          primaryMeta?.encoding_run_id || `registry:${sectionFile.filePath}`,
+        citation: primaryMeta?.citation || citationPath,
+        file_path: sectionFile.filePath,
+        rulespec_content: sectionFile.content,
       },
       fileAnchors,
     };
   }
+  if (!sectionFile && descendants.length === 1) {
+    const only = descendants[0];
+    return {
+      encoding: baseEncoding(
+        `registry:${only.filePath}`,
+        only.citationPath,
+        only.filePath,
+        only.content
+      ),
+      fileAnchors,
+    };
+  }
+  if (ruleRaws.length === 0) return emptyResult(primaryMeta);
 
-  // Synthetic merged doc. ``file_path`` is the section's repo
-  // directory (no ``.yaml``): the GitHub link resolves to the tree
-  // and the sibling-test probe skips itself (no ``.yaml`` suffix to
-  // rewrite).
-  const bucketDir =
-    primary?.file_path?.replace(/\.yaml$/, "") ??
-    fetched[0].file.filePath.split("/").slice(0, -1).join("/");
+  const bucketDir = sectionFile
+    ? sectionFile.filePath.replace(/\.yaml$/, "")
+    : descendants[0].filePath.split("/").slice(0, -1).join("/");
   return {
     encoding: {
-      encoding_run_id: `github-merged:${citationPath}`,
+      ...(primaryMeta ?? baseEncoding("", "", "", "")),
+      encoding_run_id: `registry-merged:${citationPath}`,
       citation: citationPath,
-      session_id: null,
+      session_id: primaryMeta?.session_id ?? null,
       file_path: bucketDir,
       rulespec_content: mergedContent(citationPath, ruleRaws),
-      final_scores: primary?.final_scores ?? null,
-      iterations: null,
-      total_duration_ms: null,
-      agent_type: primary?.agent_type ?? null,
-      agent_model: primary?.agent_model ?? null,
-      data_source: primary?.data_source ?? null,
-      has_issues: primary?.has_issues ?? null,
-      note: primary?.note ?? null,
-      timestamp: primary?.timestamp ?? null,
-      encoder_version: primary?.encoder_version ?? null,
     },
     fileAnchors,
   };
+}
+
+/**
+ * One range scan over the mirror: the section's own file plus every
+ * descendant, ordered root-first then by path.
+ */
+async function listMirrorFiles(
+  citationPath: string
+): Promise<SectionFile[] | null> {
+  try {
+    const result = await withTimeout(
+      supabaseEncodings
+        .from("rulespec_files")
+        .select("citation_path, file_path, raw_yaml")
+        .or(
+          `citation_path.eq.${citationPath},citation_path.like.${citationPath}/*`
+        )
+        .limit(MAX_SECTION_FILES),
+      QUERY_TIMEOUT_MS,
+      null
+    );
+    if (!result || result.error) return null;
+    const rows = (result.data ?? []) as Array<{
+      citation_path: string;
+      file_path: string;
+      raw_yaml: string | null;
+    }>;
+    return rows
+      .filter((row) => row.raw_yaml && row.raw_yaml.trim().length > 0)
+      .map((row) => ({
+        citationPath: row.citation_path,
+        filePath: row.file_path,
+        content: row.raw_yaml as string,
+      }))
+      .sort((a, b) => a.citationPath.localeCompare(b.citationPath));
+  } catch {
+    return null;
+  }
+}
+
+export async function getSectionEncoding(
+  rootId: string,
+  citationPath: string
+): Promise<SectionEncoding> {
+  const mirror = await listMirrorFiles(citationPath);
+  if (mirror && mirror.length > 0) {
+    const sectionFile =
+      mirror.find((file) => file.citationPath === citationPath) ?? null;
+    const descendants = mirror.filter(
+      (file) => file.citationPath !== citationPath
+    );
+    return assembleSection(citationPath, sectionFile, descendants, null);
+  }
+
+  // Mirror miss (not yet synced, or query failure): legacy path —
+  // encoding_runs content / GitHub raw walk-up, plus descendant
+  // fetches from GitHub.
+  const [primary, repoDescendants] = await Promise.all([
+    getRuleEncoding(rootId).catch(() => null),
+    findEncodedDescendants(citationPath).catch(() => [] as EncodedFile[]),
+  ]);
+  const limited = repoDescendants.slice(0, MAX_SECTION_FILES);
+  if (limited.length === 0) return emptyResult(primary);
+
+  const fetched = (
+    await Promise.all(
+      limited.map(async (file) => {
+        const res = await fetchEncodedFile(file.citationPath).catch(
+          () => null
+        );
+        return res
+          ? {
+              citationPath: file.citationPath,
+              filePath: file.filePath,
+              content: res.content,
+            }
+          : null;
+      })
+    )
+  ).filter((item): item is SectionFile => Boolean(item));
+  if (fetched.length === 0) return emptyResult(primary);
+
+  const sectionFile = primary?.rulespec_content
+    ? {
+        citationPath,
+        filePath: primary.file_path,
+        content: primary.rulespec_content,
+      }
+    : null;
+  return assembleSection(citationPath, sectionFile, fetched, primary);
+}
+
+function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms: number,
+  fallback: T
+): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
 }

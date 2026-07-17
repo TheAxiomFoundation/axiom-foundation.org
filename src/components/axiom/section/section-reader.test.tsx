@@ -66,6 +66,8 @@ function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
     encodedRules: [
       { name: "eitc_phased_in", kind: "derived", anchors: ["a"] },
     ],
+    programs: [],
+    ruleFiles: {},
     focusAnchor: null,
     prev: { citationPath: "us/statute/26/31", label: "§ 31" },
     next: { citationPath: "us/statute/26/33", label: "§ 33" },
@@ -151,6 +153,60 @@ describe("SectionReader", () => {
     expect(focused?.className).toContain("shadow");
     const other = document.getElementById("a");
     expect(other?.className).not.toContain("shadow");
+  });
+
+  it("shows the action row only on the deep-linked subsection", () => {
+    render(
+      <SectionReader
+        data={makeData({
+          focusAnchor: "a",
+          programs: [
+            {
+              jurisdiction: "us",
+              programId: "us-eitc",
+              mode: "compiled",
+              status: "ready",
+              ruleCount: 1,
+              anchors: ["a"],
+              ruleNames: ["eitc_phased_in"],
+            },
+          ],
+          ruleFiles: { eitc_phased_in: "statutes/26/32/a.yaml" },
+        })}
+      />
+    );
+    const rows = screen.getAllByTestId("subsection-actions");
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    // Cite label is the formatted legal citation for the subsection.
+    expect(
+      within(row).getByText("cite · 26 U.S.C. § 32(a)")
+    ).toBeInTheDocument();
+    // Graph opens the covering program focused on this subsection.
+    const graph = within(row).getByText("graph ↗");
+    const graphHref = new URL(graph.getAttribute("href")!);
+    expect(graphHref.searchParams.get("program")).toBe("us/us-eitc");
+    expect(graphHref.searchParams.get("focus")).toBe("us:statutes/26/32/a");
+    // Builder gets the subsection's encoded rule as the output.
+    const builder = within(row).getByText("use in builder ↗");
+    const builderHref = new URL(builder.getAttribute("href")!);
+    expect(builderHref.searchParams.get("output")).toBe(
+      "us:statutes/26/32/a#eitc_phased_in"
+    );
+    // The row belongs to (a); (b) has none.
+    expect(row.closest("section")?.id).toBe("a");
+  });
+
+  it("omits graph and builder actions without coverage, keeping cite", () => {
+    render(<SectionReader data={makeData({ focusAnchor: "b" })} />);
+    const row = screen.getByTestId("subsection-actions");
+    expect(
+      within(row).getByText("cite · 26 U.S.C. § 32(b)")
+    ).toBeInTheDocument();
+    expect(within(row).queryByText("graph ↗")).not.toBeInTheDocument();
+    expect(
+      within(row).queryByText("use in builder ↗")
+    ).not.toBeInTheDocument();
   });
 
   it("renders intro text and the truncation notice", () => {

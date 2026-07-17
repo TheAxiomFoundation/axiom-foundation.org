@@ -14,7 +14,14 @@ import { CitationJump } from "./citation-jump";
 import { CitationPreviewLayer } from "./citation-preview";
 import { TraceProvider } from "./trace-context";
 import { ChunkTraceChips } from "./chunk-trace";
-import { graphFocusForCitationPath } from "@/lib/axiom/runtime/graph-links";
+import { SubsectionActions } from "./subsection-actions";
+import {
+  builderUrlForRule,
+  graphFocusForCitationPath,
+  graphViewerUrl,
+  ruleGraphFocus,
+} from "@/lib/axiom/runtime/graph-links";
+import { formatLegalCitation } from "@/lib/axiom/citation/format";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -162,6 +169,31 @@ function ChunkBlock({
   const chunkRules = data.encodedRules.filter((rule) =>
     rule.anchors.includes(chunk.anchor)
   );
+  // Deep-linked landings get the action row at the heading they were
+  // sent to: cite / graph / builder, computed from the same coverage
+  // data the rail uses.
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
+  const slug = data.citationPath.split("/")[0];
+  const subsectionFocus = sectionFocus ? `${sectionFocus}/${chunk.anchor}` : null;
+  const graphProgram =
+    data.programs.find((program) => program.anchors.includes(chunk.anchor)) ??
+    data.programs[0] ??
+    null;
+  const graphHref =
+    focused && graphProgram && subsectionFocus
+      ? graphViewerUrl(graphProgram, subsectionFocus)
+      : null;
+  const builderRule = chunkRules.find((rule) => data.ruleFiles[rule.name]);
+  const builderHref =
+    focused && builderRule
+      ? builderUrlForRule(
+          ruleGraphFocus(
+            slug,
+            data.ruleFiles[builderRule.name],
+            builderRule.name
+          )
+        )
+      : null;
   return (
     <section
       id={chunk.anchor}
@@ -181,11 +213,16 @@ function ChunkBlock({
         </Link>
         <AnchorLink anchor={chunk.anchor} />
       </h2>
+      {focused && (
+        <SubsectionActions
+          citationLabel={formatLegalCitation(data.citationPath, chunk.anchor)}
+          href={`/axiom/v2/${data.citationPath}/${chunk.anchor}`}
+          graphHref={graphHref}
+          builderHref={builderHref}
+        />
+      )}
       <EncodedRuleChips rules={chunkRules} />
-      <ChunkTraceChips
-        anchor={chunk.anchor}
-        sectionFocus={graphFocusForCitationPath(data.citationPath)}
-      />
+      <ChunkTraceChips anchor={chunk.anchor} sectionFocus={sectionFocus} />
       <div className="mt-1">
         <RuleBody
           hrefPrefix="/axiom/v2"

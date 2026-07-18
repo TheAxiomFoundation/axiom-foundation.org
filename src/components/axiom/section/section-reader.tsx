@@ -84,38 +84,72 @@ function AnchorLink({ anchor }: { anchor: string }) {
 
 function ProvisionBlock({
   provision,
-  citationPath,
+  data,
   sectionFocus,
 }: {
   provision: SectionProvision;
-  citationPath: string;
+  data: SectionPageData;
   sectionFocus: string | null;
 }) {
   const { rule, anchor, designator, relativeDepth } = provision;
   const heading = rule.heading?.trim();
   const HeadingTag = relativeDepth === 1 ? "h2" : "h3";
+  const isTopLevel = relativeDepth === 1;
+  // Top-level provisions get everything a body chunk gets — focus
+  // highlight, action row, encoded-rule chips, and a real subsection
+  // URL on the designator — so the two column shapes behave the same
+  // for readers.
+  const focused = isTopLevel && data.focusAnchor === anchor;
+  const provisionRules = isTopLevel
+    ? data.encodedRules.filter((entry) => entry.anchors.includes(anchor))
+    : [];
+  const { graphHref, builderHref } = focused
+    ? subsectionActionHrefs(data, anchor, provisionRules)
+    : { graphHref: null, builderHref: null };
   return (
-    <section id={anchor} className="group scroll-mt-24">
+    <section
+      id={anchor}
+      className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
+    >
       <HeadingTag
         className={`flex items-baseline gap-2 text-[var(--color-ink)] ${
-          relativeDepth === 1
+          isTopLevel
             ? "mt-10 text-lg font-semibold"
             : "mt-6 text-base font-medium"
         }`}
       >
-        <span className="font-mono text-[0.85em] text-[var(--color-ink-muted)]">
-          {designator}
-        </span>
+        {isTopLevel ? (
+          <Link
+            href={`/${data.citationPath}/${anchor}`}
+            className="font-mono text-[0.85em] text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+            title={`Open ${data.citationPath}/${anchor}`}
+          >
+            {designator}
+          </Link>
+        ) : (
+          <span className="font-mono text-[0.85em] text-[var(--color-ink-muted)]">
+            {designator}
+          </span>
+        )}
         {heading && <span>{heading}</span>}
         <AnchorLink anchor={anchor} />
       </HeadingTag>
-      {relativeDepth === 1 && (
+      {focused && (
+        <SubsectionActions
+          citationLabel={formatLegalCitation(data.citationPath, anchor)}
+          href={`/${data.citationPath}/${anchor}`}
+          graphHref={graphHref}
+          builderHref={builderHref}
+        />
+      )}
+      {isTopLevel && <EncodedRuleChips rules={provisionRules} />}
+      {isTopLevel && (
         <ChunkTraceChips anchor={anchor} sectionFocus={sectionFocus} />
       )}
       {rule.body && (
         <div className="mt-2">
           <RuleBody
-                        body={rule.body}
+            body={rule.body}
             refs={[]}
             citationPath={rule.citation_path ?? undefined}
             testId={null}
@@ -152,6 +186,41 @@ function EncodedRuleChips({ rules }: { rules: SectionPageData["encodedRules"] })
   );
 }
 
+/**
+ * Action-row targets for one top-level subsection: the covering
+ * program's graph focused on it, and its first encoded rule as a
+ * builder output. Shared by both column shapes (body chunks and
+ * corpus provisions) so deep links behave identically.
+ */
+function subsectionActionHrefs(
+  data: SectionPageData,
+  anchor: string,
+  subsectionRules: SectionPageData["encodedRules"]
+): { graphHref: string | null; builderHref: string | null } {
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
+  const slug = data.citationPath.split("/")[0];
+  const graphProgram =
+    data.programs.find((program) => program.anchors.includes(anchor)) ??
+    data.programs[0] ??
+    null;
+  const graphHref =
+    graphProgram && sectionFocus
+      ? graphViewerUrl(graphProgram, `${sectionFocus}/${anchor}`)
+      : null;
+  const builderRule = subsectionRules.find(
+    (rule) => data.ruleFiles[rule.name]
+  );
+  const builderHref = builderRule
+    ? builderUrlForRule(
+        ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
+      )
+    : null;
+  return { graphHref, builderHref };
+}
+
+const FOCUSED_SUBSECTION_CLASS =
+  "rounded-md -mx-3 px-3 pb-3 shadow-[0_0_0_1px_rgba(146,64,14,0.35)] bg-[rgba(146,64,14,0.05)]";
+
 function ChunkBlock({
   chunk,
   data,
@@ -160,42 +229,17 @@ function ChunkBlock({
   data: SectionPageData;
 }) {
   const focused = data.focusAnchor === chunk.anchor;
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const chunkRules = data.encodedRules.filter((rule) =>
     rule.anchors.includes(chunk.anchor)
   );
-  // Deep-linked landings get the action row at the heading they were
-  // sent to: cite / graph / builder, computed from the same coverage
-  // data the rail uses.
-  const sectionFocus = graphFocusForCitationPath(data.citationPath);
-  const slug = data.citationPath.split("/")[0];
-  const subsectionFocus = sectionFocus ? `${sectionFocus}/${chunk.anchor}` : null;
-  const graphProgram =
-    data.programs.find((program) => program.anchors.includes(chunk.anchor)) ??
-    data.programs[0] ??
-    null;
-  const graphHref =
-    focused && graphProgram && subsectionFocus
-      ? graphViewerUrl(graphProgram, subsectionFocus)
-      : null;
-  const builderRule = chunkRules.find((rule) => data.ruleFiles[rule.name]);
-  const builderHref =
-    focused && builderRule
-      ? builderUrlForRule(
-          ruleGraphFocus(
-            slug,
-            data.ruleFiles[builderRule.name],
-            builderRule.name
-          )
-        )
-      : null;
+  const { graphHref, builderHref } = focused
+    ? subsectionActionHrefs(data, chunk.anchor, chunkRules)
+    : { graphHref: null, builderHref: null };
   return (
     <section
       id={chunk.anchor}
-      className={`group scroll-mt-24 ${
-        focused
-          ? "rounded-md -mx-3 px-3 pb-3 shadow-[0_0_0_1px_rgba(146,64,14,0.35)] bg-[rgba(146,64,14,0.05)]"
-          : ""
-      }`}
+      className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
     >
       <h2 className="mt-8 flex items-baseline gap-2">
         <Link
@@ -356,7 +400,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           <ProvisionBlock
             key={provision.rule.id}
             provision={provision}
-            citationPath={data.citationPath}
+            data={data}
             sectionFocus={sectionFocus}
           />
         ))}

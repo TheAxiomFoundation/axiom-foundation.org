@@ -209,6 +209,81 @@ describe("SectionReader", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("gives corpus-row sections the same focus behavior as chunked ones", () => {
+    render(
+      <SectionReader
+        data={makeData({
+          bodyChunks: [],
+          toc: [],
+          provisions: [
+            {
+              rule: {
+                ...ROOT,
+                id: "p-d",
+                heading: "Limitation",
+                body: "(d) text",
+                citation_path: "us/statute/26/32/d",
+              },
+              anchor: "d",
+              designator: "(d)",
+              relativeDepth: 1,
+            },
+            {
+              rule: {
+                ...ROOT,
+                id: "p-d2",
+                heading: null,
+                body: "(2) nested",
+                citation_path: "us/statute/26/32/d/2",
+              },
+              anchor: "d-2",
+              designator: "(d)(2)",
+              relativeDepth: 2,
+            },
+          ],
+          focusAnchor: "d",
+          encodedRules: [
+            { name: "limit_rule", kind: "derived", anchors: ["d"] },
+          ],
+          programs: [
+            {
+              jurisdiction: "us",
+              programId: "us-eitc",
+              mode: "compiled",
+              status: "ready",
+              ruleCount: 1,
+              anchors: ["d"],
+              ruleNames: ["limit_rule"],
+            },
+          ],
+          ruleFiles: { limit_rule: "statutes/26/32/d.yaml" },
+        })}
+      />
+    );
+    // Focus highlight on the top-level provision.
+    expect(document.getElementById("d")?.className).toContain("shadow");
+    expect(document.getElementById("d-2")?.className).not.toContain("shadow");
+    // Action row with the same verbs as chunked sections.
+    const row = screen.getByTestId("subsection-actions");
+    expect(
+      within(row).getByText("cite · 26 U.S.C. § 32(d)")
+    ).toBeInTheDocument();
+    expect(within(row).getByText("graph ↗")).toBeInTheDocument();
+    const builder = within(row).getByText("use in builder ↗");
+    expect(
+      new URL(builder.getAttribute("href")!).searchParams.get("output")
+    ).toBe("us:statutes/26/32/d#limit_rule");
+    // Encoded-as chips and a real subsection URL on the designator.
+    expect(screen.getByText("limit_rule")).toHaveAttribute(
+      "href",
+      "#rule-limit_rule"
+    );
+    expect(screen.getByTitle("Open us/statute/26/32/d")).toHaveAttribute(
+      "href",
+      "/us/statute/26/32/d"
+    );
+  });
+
   it("renders intro text and the truncation notice", () => {
     render(
       <SectionReader

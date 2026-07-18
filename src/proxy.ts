@@ -10,7 +10,11 @@ const APP_HOST = "app.axiom-foundation.org";
 // (``/us/statute/26/3101``) don't 404. Marketing routes (``/``,
 // ``/about``, ``/format`` …) are not in this list and pass through
 // unchanged so the dev server can also serve the marketing site.
-const APP_ROOT_PREFIX_RE = /^\/(?:us|uk|ca|canada|us-[a-z]{2})(?:\/|$)/;
+// Any two-letter jurisdiction slug (optionally state-suffixed) plus
+// the legacy "canada" alias. Hardcoding a jurisdiction list here
+// silently 404'd every newer corpus jurisdiction (nz, be, de, …).
+// No marketing route uses a two-letter root segment.
+const APP_ROOT_PREFIX_RE = /^\/(?:[a-z]{2}(?:-[a-z]{2})?|canada)(?:\/|$)/;
 
 // Every jurisdiction-rooted path renders the v2 surface — browse
 // levels (jurisdiction / doc type / title) get the v2 list view,

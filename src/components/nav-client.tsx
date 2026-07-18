@@ -14,7 +14,7 @@ interface NavClientProps {
  *  search trigger in the nav's top right; marketing pages stay
  *  clean. The palette itself is mounted globally by the root
  *  layout's provider, so ⌘K works everywhere. */
-const APP_PATH_RE = /^\/(?:axiom(?:\/|$)|(?:us|uk|ca|canada|us-[a-z]{2})(?:\/|$))/;
+const APP_PATH_RE = /^\/(?:axiom(?:\/|$)|(?:[a-z]{2}(?:-[a-z]{2})?|canada)(?:\/|$))/;
 
 export function NavClient({ baseUrl, appUrl }: NavClientProps) {
   const pathname = usePathname();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { useTraceRun, type TraceRun } from "./trace-context";
 
@@ -22,6 +22,19 @@ function formatValue(value: number | string | boolean | null): string {
 
 function runParamFor(program: ProvisionProgramCoverage): string {
   return `${program.jurisdiction}/${program.programId}`;
+}
+
+/**
+ * Params already auto-executed this page load. Module-level on
+ * purpose: RunSample unmounts/remounts as the rail's scroll-spy
+ * flips between overview and node views, so a per-mount ref would
+ * re-fire the engine call on every scroll transition.
+ */
+const attemptedRuns = new Set<string>();
+
+/** Test hook: module-level state must reset between test mounts. */
+export function _resetAttemptedRuns() {
+  attemptedRuns.clear();
 }
 
 /** Reflect the active run in the URL so the computation is shareable;
@@ -53,15 +66,27 @@ export function RunSample({
 }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(false);
-  const [result, setResult] = useState<RunResponse | null>(null);
-  const [activeProgram, setActiveProgram] =
-    useState<ProvisionProgramCoverage | null>(null);
-  const { setRun } = useTraceRun();
-  const autoRan = useRef(false);
-  const program = activeProgram ?? programs[0];
+  const { run, setRun } = useTraceRun();
+  // The displayed result lives in the trace context, not local
+  // state, so it survives the rail's overview/node remounts.
+  const contextRun =
+    run &&
+    programs.some(
+      (candidate) =>
+        candidate.jurisdiction === run.jurisdiction &&
+        candidate.programId === run.programId
+    )
+      ? run
+      : null;
+  const program = contextRun
+    ? programs.find(
+        (candidate) =>
+          candidate.jurisdiction === contextRun.jurisdiction &&
+          candidate.programId === contextRun.programId
+      ) ?? programs[0]
+    : programs[0];
 
   const runProgram = useCallback(async (target: ProvisionProgramCoverage) => {
-    setActiveProgram(target);
     setRunning(true);
     setError(false);
     try {
@@ -75,7 +100,6 @@ export function RunSample({
       });
       if (!response.ok) throw new Error(String(response.status));
       const data = (await response.json()) as RunResponse;
-      setResult(data);
       setRun({
         jurisdiction: target.jurisdiction,
         programId: target.programId,
@@ -91,30 +115,34 @@ export function RunSample({
     }
   }, [setRun]);
 
-  // ?run=<jurisdiction>/<program> permalinks re-execute on load —
-  // whichever program in this family the param names.
+  // ?run=<jurisdiction>/<program> permalinks execute once per page
+  // load — whichever program in this family the param names. The
+  // context run doubles as the guard against re-execution after
+  // remounts; attemptedRuns additionally stops failure retry loops.
   useEffect(() => {
-    if (autoRan.current || typeof window === "undefined") return;
+    if (typeof window === "undefined" || contextRun) return;
     const requested = new URL(window.location.href).searchParams.get("run");
+    if (!requested || attemptedRuns.has(requested)) return;
     const match = programs.find(
       (candidate) => requested === runParamFor(candidate)
     );
     if (match) {
-      autoRan.current = true;
+      attemptedRuns.add(requested);
       void runProgram(match);
     }
-  }, [programs, runProgram]);
+  }, [programs, runProgram, contextRun]);
 
   const clear = () => {
-    setResult(null);
-    setActiveProgram(null);
+    if (contextRun) {
+      attemptedRuns.delete(runParamFor(program));
+    }
     setRun(null);
     syncRunParam(null);
   };
 
   const fromThisSection = (variable: string): boolean => {
-    if (!sectionFocus || !result) return false;
-    const entry = result.trace.find((item) => item.variable === variable);
+    if (!sectionFocus || !contextRun) return false;
+    const entry = contextRun.trace.find((item) => item.variable === variable);
     return Boolean(
       entry?.sources.some((source) => {
         const file = source.split("#")[0];
@@ -127,7 +155,7 @@ export function RunSample({
   // scenarios and ?run= permalinks, not a canned-sample button in the
   // rail. This island exists to execute permalinks and render their
   // results (design call 2026-07-17).
-  if (!result && !running && !error) return null;
+  if (!contextRun && !running && !error) return null;
 
   return (
     <div data-testid="run-sample" className="mt-1.5">
@@ -141,15 +169,15 @@ export function RunSample({
           run failed — engine unavailable
         </p>
       )}
-      {result && (
+      {contextRun && (
         <div
           data-testid="run-sample-result"
           className="mt-1.5 rounded-sm border border-[var(--color-rule)] p-2"
         >
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              sample household · {program.jurisdiction}
-              {result.period ? ` · ${result.period}` : ""}
+              sample household · {contextRun.jurisdiction}
+              {contextRun.period ? ` · ${contextRun.period}` : ""}
             </span>
             <button
               type="button"
@@ -161,7 +189,7 @@ export function RunSample({
             </button>
           </div>
           <dl className="m-0 space-y-1">
-            {Object.entries(result.outputs).map(([name, value]) => (
+            {Object.entries(contextRun.outputs).map(([name, value]) => (
               <div key={name} className="flex items-baseline justify-between gap-2">
                 <dt className="min-w-0 truncate font-mono text-[11px] text-[var(--color-ink-secondary)]">
                   {name}

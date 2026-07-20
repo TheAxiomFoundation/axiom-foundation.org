@@ -16,15 +16,23 @@ const APP_HOST = "app.axiom-foundation.org";
 // No marketing route uses a two-letter root segment.
 const APP_ROOT_PREFIX_RE = /^\/(?:[a-z]{2}(?:-[a-z]{2})?|canada)(?:\/|$)/;
 
+// Jurisdictions whose corpus rows navigate by provision_id rather
+// than citation_path (plus the legacy "canada" alias). The v2
+// reader resolves via citation_path only, so these stay on the v1
+// tree browser until their corpora gain citation paths.
+const V1_ONLY_JURISDICTIONS = new Set(["ca", "canada"]);
+
 // Every jurisdiction-rooted path renders the v2 surface — browse
 // levels (jurisdiction / doc type / title) get the v2 list view,
 // section depth and deeper the v2 reader. The app root ("/") stays
 // on the v1 landing until it is rebuilt.
 function appPagePath(pathname: string): string {
   if (pathname === "/") return "/axiom";
-  return APP_ROOT_PREFIX_RE.test(pathname)
-    ? `/axiom/v2${pathname}`
-    : `/axiom${pathname}`;
+  if (!APP_ROOT_PREFIX_RE.test(pathname)) return `/axiom${pathname}`;
+  const slug = pathname.split("/")[1];
+  return V1_ONLY_JURISDICTIONS.has(slug)
+    ? `/axiom${pathname}`
+    : `/axiom/v2${pathname}`;
 }
 
 function cleanHost(request: NextRequest): string {
@@ -91,11 +99,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(target, 308);
   }
 
-  // Local-dev convenience: the breadcrumb hrefs are subdomain-clean
-  // (no ``/axiom`` prefix, because production rewrites them via the
-  // APP_HOST branch above). On localhost we don't get that rewrite
-  // for free, so rewrite jurisdiction-rooted paths here too.
-  if (isLocalDevHost(host) && APP_ROOT_PREFIX_RE.test(pathname)) {
+  // Jurisdiction-rooted paths resolve on every host — localhost,
+  // Vercel preview deployments, and the marketing host (where the
+  // globally mounted palette can navigate to them). App links are
+  // subdomain-clean bare paths; without this rewrite they 404
+  // anywhere the APP_HOST branch above doesn't apply.
+  if (APP_ROOT_PREFIX_RE.test(pathname)) {
     const target = request.nextUrl.clone();
     target.pathname = appPagePath(pathname);
     return NextResponse.rewrite(target);

@@ -37,8 +37,23 @@ export interface ProvisionProgramCoverage {
 const MAX_PACKAGES = 32;
 const RULE_NAME_CAP = 8;
 
+const REPO_DOC_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  policies: "policy",
+};
+
 function normalizeDocType(segment: string): string {
-  return segment.toLowerCase().replace(/s$/, "");
+  const lower = segment.toLowerCase();
+  // "policies" → "policy" (a bare strip-s yields "policie"); other
+  // buckets pluralize regularly.
+  return REPO_DOC_TYPE_ALIASES[lower] ?? lower.replace(/s$/, "");
+}
+
+/** Federal-regulation repo paths carry a "-cfr" title suffix the
+ *  corpus drops ("7-cfr" vs "7"). */
+function titleSegmentsEqual(legal: string, citation: string): boolean {
+  const a = legal.toLowerCase();
+  const b = citation.toLowerCase();
+  return a === b || a === `${b}-cfr`;
 }
 
 /**
@@ -71,9 +86,11 @@ export function matchLegalId(
   }
   if (legalRest.length < sectionSegments.length) return null;
   for (let i = 0; i < sectionSegments.length; i++) {
-    if (legalRest[i].toLowerCase() !== sectionSegments[i].toLowerCase()) {
-      return null;
-    }
+    const equal =
+      i === 0
+        ? titleSegmentsEqual(legalRest[i], sectionSegments[i])
+        : legalRest[i].toLowerCase() === sectionSegments[i].toLowerCase();
+    if (!equal) return null;
   }
 
   const tail = legalRest[sectionSegments.length];

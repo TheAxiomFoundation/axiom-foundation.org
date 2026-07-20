@@ -120,7 +120,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
     expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
     expect(result.encoding?.encoding_run_id).toBe(
-      "registry:statutes/7/2017/a.yaml"
+      "github:statutes/7/2017/a.yaml"
     );
     expect(result.encoding?.rulespec_content).toContain("snap_allotment");
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
@@ -144,7 +144,7 @@ describe("getSectionEncoding", () => {
 
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.encoding?.encoding_run_id).toBe(
-      `registry-merged:${SECTION}`
+      `github:merged:${SECTION}`
     );
     expect(result.encoding?.file_path).toBe("statutes/26/32");
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
@@ -222,7 +222,7 @@ describe("getSectionEncoding", () => {
 
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.encoding?.encoding_run_id).toBe(
-      `registry-merged:${SECTION}`
+      `github:merged:${SECTION}`
     );
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
     expect(doc.rules.map((rule) => rule.name)).toEqual([
@@ -252,7 +252,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
     expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
     expect(result.encoding?.encoding_run_id).toBe(
-      "registry:statutes/7/2017/a.yaml"
+      "github:statutes/7/2017/a.yaml"
     );
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
     expect(result.ruleFiles).toEqual({

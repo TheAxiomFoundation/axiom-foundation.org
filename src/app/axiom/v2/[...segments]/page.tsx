@@ -11,7 +11,10 @@ import {
   getBrowsePageData,
   MAX_BROWSE_SEGMENTS,
 } from "@/lib/axiom/browse-page";
-import { BrowseView } from "@/components/axiom/section/browse-view";
+import {
+  BrowseView,
+  BrowseUnavailable,
+} from "@/components/axiom/section/browse-view";
 
 /**
  * v2 section reader — the first server-rendered surface of the app
@@ -70,6 +73,11 @@ export default async function SectionPage({ params }: PageProps) {
   // view; section depth and deeper renders the reader.
   if (decoded.length <= MAX_BROWSE_SEGMENTS) {
     const browse = await getBrowsePageData(decoded);
+    if (browse === "unavailable") {
+      // Transient backend failure — render a retryable notice, never
+      // a 404 for a valid URL.
+      return <BrowseUnavailable path={decoded.join("/")} />;
+    }
     if (!browse) notFound();
     return <BrowseView data={browse} />;
   }

@@ -50,8 +50,8 @@ describe("getBrowsePageData", () => {
     expect(loadTreeNodesMock).not.toHaveBeenCalled();
   });
 
-  it("returns null when the loader fails", async () => {
+  it("reports backend failures as unavailable, not nonexistence", async () => {
     loadTreeNodesMock.mockRejectedValue(new Error("db down"));
-    expect(await getBrowsePageData(["us"])).toBeNull();
+    expect(await getBrowsePageData(["us"])).toBe("unavailable");
   });
 });

@@ -39,6 +39,25 @@ function Breadcrumbs({ data }: { data: BrowsePageData }) {
   );
 }
 
+/** Transient-failure state: the URL is valid; the navigation index
+ *  didn't answer in time. Distinct from notFound so crawlers and
+ *  users never see a valid level as nonexistent. */
+export function BrowseUnavailable({ path }: { path: string }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16">
+      <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {path}
+      </p>
+      <p
+        className="mt-4 text-sm text-[var(--color-ink-secondary)] leading-relaxed"
+        data-testid="browse-unavailable"
+      >
+        Navigation data is temporarily unavailable — reload in a moment.
+      </p>
+    </div>
+  );
+}
+
 export function BrowseView({ data }: { data: BrowsePageData }) {
   const heading =
     data.currentRule?.heading?.trim() ||

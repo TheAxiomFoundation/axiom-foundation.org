@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { RunSample } from "./run-sample";
+import { RunSample, _resetAttemptedRuns } from "./run-sample";
+import { TraceProvider } from "./trace-context";
 
 const PROGRAM = {
   jurisdiction: "us-co",
@@ -14,6 +15,7 @@ const PROGRAM = {
 
 describe("RunSample", () => {
   beforeEach(() => {
+    _resetAttemptedRuns();
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -42,7 +44,9 @@ describe("RunSample", () => {
   it("renders nothing without a ?run= permalink — no inline run button", () => {
     window.history.replaceState({}, "", "/us/statute/7/2017");
     const { container } = render(
-      <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
+      <TraceProvider>
+        <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
+      </TraceProvider>
     );
     expect(container.innerHTML).toBe("");
     expect(fetch).not.toHaveBeenCalled();
@@ -54,7 +58,11 @@ describe("RunSample", () => {
       "",
       "/us/statute/7/2017?run=us-co/co-snap"
     );
-    render(<RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />);
+    render(
+      <TraceProvider>
+        <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
+      </TraceProvider>
+    );
     await waitFor(() =>
       expect(screen.getByTestId("run-sample-result")).toBeInTheDocument()
     );
@@ -80,7 +88,11 @@ describe("RunSample", () => {
       "",
       "/us/statute/7/2017?run=us-co/co-snap"
     );
-    render(<RunSample programs={[PROGRAM]} sectionFocus={null} />);
+    render(
+      <TraceProvider>
+        <RunSample programs={[PROGRAM]} sectionFocus={null} />
+      </TraceProvider>
+    );
     await waitFor(() =>
       expect(
         screen.getByText("run failed — engine unavailable")

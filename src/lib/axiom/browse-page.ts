@@ -31,20 +31,24 @@ export const MAX_BROWSE_SEGMENTS = 3;
 
 export async function getBrowsePageData(
   segments: string[]
-): Promise<BrowsePageData | null> {
+): Promise<BrowsePageData | "unavailable" | null> {
   if (segments.length === 0 || segments.length > MAX_BROWSE_SEGMENTS) {
     return null;
   }
   const resolved = resolveAxiomPath(segments);
   if (!resolved.jurisdiction) return null;
 
+  // A backend failure must not become a 404: transient
+  // navigation-index outages are common enough that v1 had an error
+  // banner + retry for exactly this.
   const result = await loadTreeNodes({
     dbJurisdictionId: resolved.jurisdiction.slug,
     ruleSegments: resolved.ruleSegments,
     hasCitationPaths: resolved.jurisdiction.hasCitationPaths ?? true,
     encodedOnly: false,
     page: 0,
-  }).catch(() => null);
+  }).catch(() => "unavailable" as const);
+  if (result === "unavailable") return "unavailable";
   if (!result) return null;
 
   return {

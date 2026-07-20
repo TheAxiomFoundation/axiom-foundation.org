@@ -451,9 +451,15 @@ async function getSubtreeProvisions(
     null
   );
   if (!result || result.error) return { provisions: [], truncated: false };
+  // The range scan's upper bound (path + "~") also admits
+  // letter-suffixed sibling sections ("…/1396a/e" sorts inside
+  // ["…/1396/", "…/1396~") because "a" > "/"), so filter to true
+  // descendants — otherwise a nonexistent section synthesizes a page
+  // out of its siblings' provisions.
+  const prefix = `${citationPath}/`;
   const rows = ((result.data ?? []) as Rule[]).filter(
     (row): row is Rule & { citation_path: string } =>
-      Boolean(row.citation_path)
+      Boolean(row.citation_path?.startsWith(prefix))
   );
   rows.sort((a, b) =>
     compareCitationPaths(a.citation_path as string, b.citation_path as string)

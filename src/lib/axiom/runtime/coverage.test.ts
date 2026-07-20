@@ -50,6 +50,24 @@ describe("matchLegalId", () => {
     });
   });
 
+  it("matches federal regulations across the -cfr title suffix", () => {
+    expect(
+      matchLegalId("us:regulations/7-cfr/273/9", "us/regulation/7/273/9")
+    ).toEqual({ anchor: null });
+    expect(
+      matchLegalId("us:regulations/7-cfr/273/9/d", "us/regulation/7/273/9")
+    ).toEqual({ anchor: "d" });
+  });
+
+  it("matches policy documents across the policies bucket", () => {
+    expect(
+      matchLegalId(
+        "us-co:policies/cdhs/snap/fy-2026-benefit-calculation",
+        "us-co/policy/cdhs/snap/fy-2026-benefit-calculation"
+      )
+    ).toEqual({ anchor: null });
+  });
+
   it("rejects jurisdiction mismatches", () => {
     expect(matchLegalId("us-co:statutes/26/32", "us/statute/26/32")).toBeNull();
   });

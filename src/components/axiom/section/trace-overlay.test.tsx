@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TraceProvider } from "./trace-context";
 import { ChunkTraceChips } from "./chunk-trace";
-import { RunSample } from "./run-sample";
+import { RunSample, _resetAttemptedRuns } from "./run-sample";
 
 const PROGRAM = {
   jurisdiction: "us-co",
@@ -46,6 +46,7 @@ function mountOverlay() {
 
 describe("trace overlay", () => {
   beforeEach(() => {
+    _resetAttemptedRuns();
     window.history.replaceState({}, "", "/us/statute/7/2017");
     vi.stubGlobal(
       "fetch",
@@ -122,6 +123,39 @@ describe("trace overlay", () => {
     expect(
       screen.getByText(/sample household · us-co/)
     ).toBeInTheDocument();
+  });
+
+  it("does not re-execute when RunSample remounts mid-scroll", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/us/statute/7/2017?run=us-co/co-snap"
+    );
+    const view = render(
+      <TraceProvider>
+        <RunSample programs={[PROGRAM]} sectionFocus="us:statutes/7/2017" />
+      </TraceProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("run-sample-result")).toBeInTheDocument()
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+    // The rail's scroll-spy remounts RunSample on every overview/node
+    // flip — simulate by rerendering with a changed key. The context
+    // run must keep the result visible without a second engine call.
+    view.rerender(
+      <TraceProvider>
+        <RunSample
+          key="remounted"
+          programs={[PROGRAM]}
+          sectionFocus="us:statutes/7/2017"
+        />
+      </TraceProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("run-sample-result")).toBeInTheDocument()
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("does not auto-run for a non-matching ?run= param", async () => {

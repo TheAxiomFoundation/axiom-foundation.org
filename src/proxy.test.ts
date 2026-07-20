@@ -27,6 +27,12 @@ describe("proxy", () => {
       ["/us/statute", "/axiom/v2/us/statute"],
       ["/us", "/axiom/v2/us"],
       ["/us/policy/usda/snap", "/axiom/v2/us/policy/usda/snap"],
+      // Jurisdictions without citation paths (and the legacy alias)
+      // stay on the v1 tree browser, which navigates by provision_id.
+      ["/ca", "/axiom/ca"],
+      ["/ca/statute/act/1", "/axiom/ca/statute/act/1"],
+      ["/canada", "/axiom/canada"],
+      ["/canada/regulation", "/axiom/canada/regulation"],
     ] as const) {
       const response = proxy(
         request(
@@ -155,7 +161,30 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://app.localhost:4944/axiom/v2/canada/regulation"
+      "http://app.localhost:4944/axiom/canada/regulation"
+    );
+  });
+
+  it("rewrites jurisdiction paths on preview and marketing hosts too", () => {
+    // Vercel preview deployment: internal bare links must resolve.
+    const preview = proxy(
+      request(
+        "https://axiom-foundation-abc123-policy-engine.vercel.app/us/statute/26/32",
+        "axiom-foundation-abc123-policy-engine.vercel.app"
+      )
+    );
+    expect(preview.headers.get("x-middleware-rewrite")).toBe(
+      "https://axiom-foundation-abc123-policy-engine.vercel.app/axiom/v2/us/statute/26/32"
+    );
+    // Marketing host: the globally mounted palette can navigate here.
+    const marketing = proxy(
+      request(
+        "https://axiom-foundation.org/us/statute/26/32",
+        "axiom-foundation.org"
+      )
+    );
+    expect(marketing.headers.get("x-middleware-rewrite")).toBe(
+      "https://axiom-foundation.org/axiom/v2/us/statute/26/32"
     );
   });
 

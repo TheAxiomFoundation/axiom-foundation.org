@@ -158,7 +158,7 @@ function assembleSection(
       encoding: {
         ...(primaryMeta ?? baseEncoding("", "", "", "")),
         encoding_run_id:
-          primaryMeta?.encoding_run_id || `registry:${sectionFile.filePath}`,
+          primaryMeta?.encoding_run_id || `github:${sectionFile.filePath}`,
         citation: primaryMeta?.citation || citationPath,
         file_path: sectionFile.filePath,
         rulespec_content: sectionFile.content,
@@ -171,7 +171,7 @@ function assembleSection(
     const only = descendants[0];
     return {
       encoding: baseEncoding(
-        `registry:${only.filePath}`,
+        `github:${only.filePath}`,
         only.citationPath,
         only.filePath,
         only.content
@@ -188,7 +188,7 @@ function assembleSection(
   return {
     encoding: {
       ...(primaryMeta ?? baseEncoding("", "", "", "")),
-      encoding_run_id: `registry-merged:${citationPath}`,
+      encoding_run_id: `github:merged:${citationPath}`,
       citation: citationPath,
       session_id: primaryMeta?.session_id ?? null,
       file_path: bucketDir,

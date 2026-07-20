@@ -45,7 +45,7 @@ describe('AboutPage', () => {
   it('renders the get-in-touch section with the contact address', () => {
     render(<AboutPage />)
     expect(screen.getByRole('heading', { name: /get in touch/i })).toBeInTheDocument()
-    expect(screen.getByText('hello@axiom-foundation.org')).toBeInTheDocument()
+    expect(screen.getByText('hello@axiom.org')).toBeInTheDocument()
   })
 
   it('does not link out to GitHub in Round 1', () => {

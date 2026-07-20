@@ -25,7 +25,7 @@ export function ContactForm() {
     e.preventDefault();
     const subject = `[${topic}] ${name}${org ? ` — ${org}` : ""}`;
     const body = `${message}\n\n— ${name}${org ? `, ${org}` : ""}`;
-    window.location.href = `mailto:hello@axiom-foundation.org?subject=${encodeURIComponent(
+    window.location.href = `mailto:hello@axiom.org?subject=${encodeURIComponent(
       subject,
     )}&body=${encodeURIComponent(body)}`;
   }
@@ -101,7 +101,7 @@ export function ContactForm() {
           <ArrowRightIcon className="w-5 h-5" />
         </button>
         <p className="mt-3 mb-0 font-body text-[0.8rem] text-[var(--color-ink-muted)]">
-          Opens your mail client addressed to hello@axiom-foundation.org.
+          Opens your mail client addressed to hello@axiom.org.
         </p>
       </div>
     </form>

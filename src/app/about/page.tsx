@@ -166,10 +166,10 @@ export default function AboutPage() {
           </h2>
           <div className="inline-block px-7 py-3.5 bg-[var(--color-paper-elevated)] border border-[var(--color-rule)] rounded-md transition-transform duration-300 hover:-translate-y-0.5">
             <a
-              href="mailto:hello@axiom-foundation.org"
+              href="mailto:hello@axiom.org"
               className="font-mono text-[var(--color-accent)] text-[0.95rem] no-underline hover:underline"
             >
-              hello@axiom-foundation.org
+              hello@axiom.org
             </a>
           </div>
         </Reveal>

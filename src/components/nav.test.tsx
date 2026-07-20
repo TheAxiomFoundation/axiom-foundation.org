@@ -17,7 +17,7 @@ import { appHrefForHost, marketingOriginForHost } from '@/components/nav-wrapper
 describe('Nav', () => {
   it('maps app hosts back to the matching marketing origin', () => {
     expect(marketingOriginForHost('app.axiom-foundation.org')).toBe(
-      'https://axiom-foundation.org',
+      'https://axiom.org',
     )
     expect(
       marketingOriginForHost(

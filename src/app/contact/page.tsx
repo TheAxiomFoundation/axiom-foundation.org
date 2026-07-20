@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 const CHANNELS = [
   {
     label: "Email",
-    value: "hello@axiom-foundation.org",
-    href: "mailto:hello@axiom-foundation.org",
+    value: "hello@axiom.org",
+    href: "mailto:hello@axiom.org",
     external: false,
   },
   {

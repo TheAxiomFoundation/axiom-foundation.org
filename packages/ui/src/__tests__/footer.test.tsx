@@ -26,7 +26,7 @@ describe("Footer", () => {
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("Get updates")).toBeInTheDocument();
     expect(
-      screen.getByText("hello@axiom-foundation.org"),
+      screen.getByText("hello@axiom.org"),
     ).toBeInTheDocument();
   });
 
@@ -68,9 +68,9 @@ describe("Footer", () => {
 
   it("does not apply baseUrl to external links", () => {
     render(<Footer baseUrl="https://axiom-foundation.org" />);
-    expect(screen.getByText("hello@axiom-foundation.org")).toHaveAttribute(
+    expect(screen.getByText("hello@axiom.org")).toHaveAttribute(
       "href",
-      "mailto:hello@axiom-foundation.org",
+      "mailto:hello@axiom.org",
     );
   });
 

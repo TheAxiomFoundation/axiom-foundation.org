@@ -38,7 +38,7 @@ export function Footer({
   appUrl = "https://app.axiom-foundation.org",
   renderLink: LinkComponent,
   logoSrc,
-  updatesUrl = "mailto:hello@axiom-foundation.org?subject=Axiom%20updates",
+  updatesUrl = "mailto:hello@axiom.org?subject=Axiom%20updates",
 }: FooterProps = {}) {
   const resolvedLogoSrc = logoSrc
     ? logoSrc
@@ -143,8 +143,8 @@ export function Footer({
             { href: "/contact", label: "Contact" },
             { href: updatesUrl, label: "Get updates" },
             {
-              href: "mailto:hello@axiom-foundation.org",
-              label: "hello@axiom-foundation.org",
+              href: "mailto:hello@axiom.org",
+              label: "hello@axiom.org",
             },
           ])}
         </div>

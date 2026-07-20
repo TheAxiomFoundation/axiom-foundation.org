@@ -217,6 +217,27 @@ describe("getSectionPageData", () => {
     expect(data!.focusAnchor).toBe("a");
   });
 
+  it("falls back to the en-dash spelling for hyphenated section ids", async () => {
+    // Corpus stores us/statute/42/1396u–1 (en dash); the URL arrives
+    // with the hyphen everyone types.
+    getProvisionByCitationPathMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === "us/statute/42/1396u–1" ? rule(path) : null
+      )
+    );
+    queueTables({
+      current_provisions: [
+        { data: [], error: null }, // hyphen subtree probe: empty
+        { data: [], error: null }, // post-resolve subtree fetch
+      ],
+      navigation_nodes: [{ data: null, error: null }],
+    });
+
+    const data = await getSectionPageData(["us", "statute", "42", "1396u-1"]);
+    expect(data).not.toBeNull();
+    expect(data!.citationPath).toBe("us/statute/42/1396u–1");
+  });
+
   it("returns null when nothing at, below, or above the path is ingested", async () => {
     getProvisionByCitationPathMock.mockResolvedValue(null);
     // The subtree probe (new root-less-section path) finds nothing.

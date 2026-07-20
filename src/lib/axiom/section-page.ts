@@ -549,6 +549,32 @@ export async function getSectionPageData(
     }
   }
   if (!root) {
+    // The corpus stores USC lettered sections with an en dash
+    // (us/statute/42/1396u–1) but every human types a hyphen. Retry
+    // with hyphens swapped in the rule segments (never the
+    // jurisdiction slug) before giving up.
+    const dashPath = [
+      slug,
+      ...ruleSegments.map((segment, index) =>
+        index === 0 ? segment : segment.replace(/-/g, "–")
+      ),
+    ].join("/");
+    if (dashPath !== requestedPath) {
+      root = await getProvisionByCitationPath(dashPath).catch(() => null);
+      if (root) {
+        citationPath = dashPath;
+      } else {
+        const probe = await getSubtreeProvisions(dashPath);
+        if (probe.provisions.length > 0) {
+          const navNode = await getNavigationNode(dashPath);
+          root = synthesizeSectionRoot(dashPath, resolved, navNode?.label);
+          citationPath = dashPath;
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
+  if (!root) {
     for (let end = ruleSegments.length - 1; end >= 2; end--) {
       const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
       const rule = await getProvisionByCitationPath(candidate).catch(

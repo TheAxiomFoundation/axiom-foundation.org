@@ -5,14 +5,16 @@ import { NavClient } from "./nav-client";
 import { SITE_URL, axiomAppHref } from "@/lib/urls";
 
 const PRODUCTION_APP_ORIGIN = "https://app.axiom-foundation.org";
-const PRODUCTION_MARKETING_ORIGIN = "https://axiom-foundation.org";
+const PRODUCTION_MARKETING_ORIGIN = "https://axiom.org";
 const PRODUCTION_MARKETING_HOSTS = new Set([
+  "axiom.org",
+  "www.axiom.org",
   "axiom-foundation.org",
   "www.axiom-foundation.org",
   "app.axiom-foundation.org",
 ]);
 const MARKETING_PREVIEW_HOST_RE =
-  /^axiom-foundation-.+-policy-engine\.vercel\.app$/;
+  /^axiom-foundation-.+-(?:policy-engine|axiom-foundation)\.vercel\.app$/;
 
 export function marketingOriginForHost(hostname: string): string | undefined {
   if (hostname === "app.axiom-foundation.org") {

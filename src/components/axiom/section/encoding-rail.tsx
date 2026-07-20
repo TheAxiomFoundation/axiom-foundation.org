@@ -210,18 +210,19 @@ export function EncodingRail({
 
   return (
     <div>
+      {/* Scope header: one readable line naming what the rail is
+          showing right now. Counts live on the drawer summaries — no
+          duplicate stat line. */}
+      <p className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        in view
+      </p>
       <p
         data-testid="rail-header"
-        className="mb-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]"
+        className="mb-3 truncate text-sm text-[var(--color-ink)]"
+        style={{ fontFamily: "var(--f-serif)" }}
+        title={activeChunk?.label}
       >
-        {activeChunk
-          ? `This subsection — ${activeChunk.designator}`
-          : "This section"}
-      </p>
-      <p className="mb-3 font-mono text-[10px] text-[var(--color-ink-muted)]">
-        {nodeRules.length} {nodeRules.length === 1 ? "rule" : "rules"}
-        {nodePrograms.length > 0 &&
-          ` · in ${nodePrograms.length} ${nodePrograms.length === 1 ? "program" : "programs"}`}
+        {activeChunk ? activeChunk.label : "Whole section"}
       </p>
 
       <RunSample programs={programs} sectionFocus={sectionFocus} sectionRuleIds={sectionRuleIds} />
@@ -244,7 +245,10 @@ export function EncodingRail({
                 activeChunk
                   ? [
                       {
-                        label: activeChunk.label,
+                        // The rail header already names the node; an
+                        // empty label suppresses the duplicate group
+                        // heading.
+                        label: "",
                         ruleNames: nodeRules.map((rule) => rule.name),
                       },
                     ]

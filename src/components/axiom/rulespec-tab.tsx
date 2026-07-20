@@ -290,14 +290,16 @@ function GroupedRules({
     <div className="space-y-8">
       {sections.map((section) => (
         <section key={section.label} className="space-y-4">
-          <div className="border-b border-[var(--color-rule)] pb-1.5">
-            <span
-              className="text-sm text-[var(--color-ink)]"
-              style={{ fontFamily: "var(--f-serif)" }}
-            >
-              {section.label}
-            </span>
-          </div>
+          {section.label && (
+            <div className="border-b border-[var(--color-rule)] pb-1.5">
+              <span
+                className="text-sm text-[var(--color-ink)]"
+                style={{ fontFamily: "var(--f-serif)" }}
+              >
+                {section.label}
+              </span>
+            </div>
+          )}
           {section.rules.map((rule) => (
             <RuleCard
               key={rule.name}

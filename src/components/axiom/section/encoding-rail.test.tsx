@@ -137,7 +137,7 @@ describe("EncodingRail", () => {
     placeSections({ a: 500, b: 1500 });
     renderRail();
     expect(screen.getByTestId("rail-header")).toHaveTextContent(
-      "This section"
+      "Whole section"
     );
     // Drawers: rules and citations, collapsed by default.
     expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");

@@ -102,17 +102,17 @@ describe("SectionReader", () => {
       "href",
       "https://uscode.house.gov/32"
     );
-    expect(screen.getByText("Encoded · 1 rules")).toBeInTheDocument();
-    // Chunk sections with designator links into their own URLs.
+    // The header action strip carries the status line and verbs.
+    const strip = screen.getByTestId("action-strip");
+    expect(strip).toHaveTextContent("encoded ✓ 1 rules");
+    expect(within(strip).getByTestId("strip-cite")).toBeInTheDocument();
+    // Chunk sections with designator links into their own URLs; no
+    // rule-name chips in the reading flow.
     expect(screen.getByTitle("Open us/statute/26/32/a")).toHaveAttribute(
       "href",
       "/us/statute/26/32/a"
     );
-    // Encoded-as chip deep-links into the rail.
-    expect(screen.getByText("eitc_phased_in")).toHaveAttribute(
-      "href",
-      "#rule-eitc_phased_in"
-    );
+    expect(screen.queryByText("eitc_phased_in")).not.toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");
     expect(screen.getByText(/§ 33/)).toHaveAttribute("rel", "next");
@@ -273,11 +273,8 @@ describe("SectionReader", () => {
     expect(
       new URL(builder.getAttribute("href")!).searchParams.get("output")
     ).toBe("us:statutes/26/32/d#limit_rule");
-    // Encoded-as chips and a real subsection URL on the designator.
-    expect(screen.getByText("limit_rule")).toHaveAttribute(
-      "href",
-      "#rule-limit_rule"
-    );
+    // A real subsection URL on the designator; rule-name chips no
+    // longer sit in the reading flow.
     expect(screen.getByTitle("Open us/statute/26/32/d")).toHaveAttribute(
       "href",
       "/us/statute/26/32/d"

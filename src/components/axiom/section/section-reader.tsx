@@ -15,6 +15,8 @@ import { CitationPreviewLayer } from "./citation-preview";
 import { TraceProvider } from "./trace-context";
 import { ChunkTraceChips } from "./chunk-trace";
 import { SubsectionActions } from "./subsection-actions";
+import { ActionStrip } from "./action-strip";
+import { programFamilySummary } from "@/lib/axiom/runtime/families";
 import {
   builderUrlForRule,
   graphFocusForCitationPath,
@@ -142,7 +144,6 @@ function ProvisionBlock({
           builderHref={builderHref}
         />
       )}
-      {isTopLevel && <EncodedRuleChips rules={provisionRules} />}
       {isTopLevel && (
         <ChunkTraceChips anchor={anchor} sectionFocus={sectionFocus} />
       )}
@@ -157,32 +158,6 @@ function ProvisionBlock({
         </div>
       )}
     </section>
-  );
-}
-
-/**
- * Chips tying a subsection to the rules that encode it. Each chip
- * scrolls the encoding rail to that rule's card (#rule-<name> —
- * RuleSpecTab expands the card on that hash).
- */
-function EncodedRuleChips({ rules }: { rules: SectionPageData["encodedRules"] }) {
-  if (rules.length === 0) return null;
-  return (
-    <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-        Encoded as
-      </span>
-      {rules.map((rule) => (
-        <a
-          key={rule.name}
-          href={`#rule-${rule.name}`}
-          title={rule.kind ? `${rule.kind} rule — view in encoding rail` : "View in encoding rail"}
-          className="rounded border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
-        >
-          {rule.name}
-        </a>
-      ))}
-    </p>
   );
 }
 
@@ -216,6 +191,17 @@ function subsectionActionHrefs(
       )
     : null;
   return { graphHref, builderHref };
+}
+
+/** Builder target for the header strip: the section's first encoded
+ *  rule with a known home file, as the calculator output. */
+function stripBuilderHref(data: SectionPageData): string | null {
+  const rule = data.encodedRules.find((entry) => data.ruleFiles[entry.name]);
+  if (!rule) return null;
+  const slug = data.citationPath.split("/")[0];
+  return builderUrlForRule(
+    ruleGraphFocus(slug, data.ruleFiles[rule.name], rule.name)
+  );
 }
 
 const FOCUSED_SUBSECTION_CLASS =
@@ -259,7 +245,6 @@ function ChunkBlock({
           builderHref={builderHref}
         />
       )}
-      <EncodedRuleChips rules={chunkRules} />
       <ChunkTraceChips anchor={chunk.anchor} sectionFocus={sectionFocus} />
       <div className="mt-1">
         <RuleBody
@@ -359,14 +344,23 @@ export function SectionReader({ data }: { data: SectionPageData }) {
                 Official source
               </a>
             )}
-            {(data.encoding || data.root.has_rulespec) && (
-              <span className="text-[var(--color-accent)]">
-                {data.encodedRules.length > 0
-                  ? `Encoded · ${data.encodedRules.length} rules`
-                  : "Encoded"}
-              </span>
-            )}
           </div>
+          <ActionStrip
+            encodedRuleCount={data.encodedRules.length}
+            familySummary={programFamilySummary(data.programs)}
+            defaultProgram={
+              data.programs.find((program) => program.status === "ready") ??
+              null
+            }
+            graphHref={
+              data.programs[0] && sectionFocus
+                ? graphViewerUrl(data.programs[0], sectionFocus)
+                : null
+            }
+            builderHref={stripBuilderHref(data)}
+            citationLabel={formatLegalCitation(data.citationPath)}
+            href={`/${data.citationPath}`}
+          />
         </header>
 
         {data.bodyChunks.length > 0 ? (

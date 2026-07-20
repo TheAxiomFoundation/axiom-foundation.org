@@ -133,16 +133,16 @@ describe("EncodingRail", () => {
     document.body.innerHTML = "";
   });
 
-  it("shows the section overview before any subsection crosses the reading line", () => {
+  it("shows the section skeleton before any subsection crosses the reading line", () => {
     placeSections({ a: 500, b: 1500 });
     renderRail();
-    // Subsection map with per-node rule counts, not rule cards.
-    expect(screen.getByTestId("rail-subsection-map")).toBeInTheDocument();
-    expect(screen.getByText("(a) Allowance of credit")).toBeInTheDocument();
-    expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
-    expect(screen.queryByText("rule_for_a")).not.toBeInTheDocument();
-    // Section-level references are visible.
-    expect(screen.getByTestId("references-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("rail-header")).toHaveTextContent(
+      "This section"
+    );
+    // Drawers: rules and citations, collapsed by default.
+    expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");
+    expect(screen.getByTestId("rail-rules")).toHaveTextContent("rules (2)");
+    expect(screen.getByTestId("rail-citations")).toBeInTheDocument();
   });
 
   it("follows scroll: shows only the active subsection's rules", async () => {
@@ -279,7 +279,11 @@ describe("EncodingRail", () => {
     await waitFor(() =>
       expect(screen.getByText("rule_for_b")).toBeInTheDocument()
     );
-    expect(screen.queryByTestId("rule-graph-link")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("rule-graph-link")
+      ).not.toBeInTheDocument()
+    );
   });
 
   it("renders no programs block when coverage is empty", () => {

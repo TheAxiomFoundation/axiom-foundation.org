@@ -1,15 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
-import { useTraceRun, type TraceRun } from "./trace-context";
-
-interface RunResponse {
-  outputs: Record<string, number | string | boolean | null>;
-  trace: TraceRun["trace"];
-  period: string | null;
-  sample: boolean;
-}
+import { useRunProgram, runParamFor } from "./use-run-program";
 
 function formatValue(value: number | string | boolean | null): string {
   if (value === null) return "—";
@@ -18,10 +11,6 @@ function formatValue(value: number | string | boolean | null): string {
     return Number.isInteger(value) ? String(value) : value.toFixed(2);
   }
   return String(value);
-}
-
-function runParamFor(program: ProvisionProgramCoverage): string {
-  return `${program.jurisdiction}/${program.programId}`;
 }
 
 /**
@@ -37,88 +26,37 @@ export function _resetAttemptedRuns() {
   attemptedRuns.clear();
 }
 
-/** Reflect the active run in the URL so the computation is shareable;
- *  ?run=us-co/co-snap re-executes the sample on load. */
-function syncRunParam(value: string | null) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  if (value) url.searchParams.set("run", value);
-  else url.searchParams.delete("run");
-  window.history.replaceState({}, "", url.toString());
-}
-
 /**
- * F2: execute a program's canonical sample household through the
- * hosted engine. Outputs render in the rail; the trace is published
- * to TraceProvider so the reading column lights up the subsections
- * that produced values; the run is URL-addressable via ?run=.
+ * The rail's run panel: executes ?run= permalinks once per page load
+ * and renders the active run's outputs. The run itself lives in the
+ * trace context (shared with the header strip's Run button), so it
+ * survives the rail's overview/node remounts and lights up the
+ * reading column either way.
  */
 export function RunSample({
   programs,
   sectionFocus,
 }: {
-  /** The family group's runnable programs; the first is the default,
-   *  and a ?run= permalink can select any of them. */
+  /** The family group's runnable programs; a ?run= permalink can
+   *  select any of them. */
   programs: ProvisionProgramCoverage[];
   /** File-legal-id prefix of the section being read
    *  ("us:statutes/7/2017"), for marking outputs it produced. */
   sectionFocus: string | null;
 }) {
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState(false);
-  const { run, setRun } = useTraceRun();
-  // The displayed result lives in the trace context, not local
-  // state, so it survives the rail's overview/node remounts.
-  const contextRun =
-    run &&
-    programs.some(
-      (candidate) =>
-        candidate.jurisdiction === run.jurisdiction &&
-        candidate.programId === run.programId
-    )
-      ? run
-      : null;
-  const program = contextRun
-    ? programs.find(
-        (candidate) =>
-          candidate.jurisdiction === contextRun.jurisdiction &&
-          candidate.programId === contextRun.programId
-      ) ?? programs[0]
-    : programs[0];
-
-  const runProgram = useCallback(async (target: ProvisionProgramCoverage) => {
-    setRunning(true);
-    setError(false);
-    try {
-      const response = await fetch("/api/axiom/runtime/run", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jurisdiction: target.jurisdiction,
-          program_id: target.programId,
-        }),
-      });
-      if (!response.ok) throw new Error(String(response.status));
-      const data = (await response.json()) as RunResponse;
-      setRun({
-        jurisdiction: target.jurisdiction,
-        programId: target.programId,
-        period: data.period,
-        outputs: data.outputs,
-        trace: data.trace,
-      });
-      syncRunParam(runParamFor(target));
-    } catch {
-      setError(true);
-    } finally {
-      setRunning(false);
-    }
-  }, [setRun]);
+  const { run, runProgram, clearRun, running, error } = useRunProgram();
+  const activeProgram = programs.find(
+    (candidate) =>
+      run &&
+      candidate.jurisdiction === run.jurisdiction &&
+      candidate.programId === run.programId
+  );
+  const contextRun = activeProgram ? run : null;
 
   // ?run=<jurisdiction>/<program> permalinks execute once per page
   // load — whichever program in this family the param names. The
-  // context run doubles as the guard against re-execution after
-  // remounts; attemptedRuns additionally stops failure retry loops.
+  // context run guards against remount re-execution; attemptedRuns
+  // additionally stops failure retry loops.
   useEffect(() => {
     if (typeof window === "undefined" || contextRun) return;
     const requested = new URL(window.location.href).searchParams.get("run");
@@ -133,11 +71,10 @@ export function RunSample({
   }, [programs, runProgram, contextRun]);
 
   const clear = () => {
-    if (contextRun) {
-      attemptedRuns.delete(runParamFor(program));
+    if (activeProgram) {
+      attemptedRuns.delete(runParamFor(activeProgram));
     }
-    setRun(null);
-    syncRunParam(null);
+    clearRun();
   };
 
   const fromThisSection = (variable: string): boolean => {
@@ -151,17 +88,13 @@ export function RunSample({
     );
   };
 
-  // No inline run affordance: running belongs to builder-configured
-  // scenarios and ?run= permalinks, not a canned-sample button in the
-  // rail. This island exists to execute permalinks and render their
-  // results (design call 2026-07-17).
   if (!contextRun && !running && !error) return null;
 
   return (
     <div data-testid="run-sample" className="mt-1.5">
       {running && (
         <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          running {program ? runParamFor(program) : "scenario"}…
+          running sample household…
         </p>
       )}
       {error && (

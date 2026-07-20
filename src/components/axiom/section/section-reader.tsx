@@ -182,9 +182,16 @@ function subsectionActionHrefs(
     graphProgram && sectionFocus
       ? graphViewerUrl(graphProgram, `${sectionFocus}/${anchor}`)
       : null;
-  const builderRule = subsectionRules.find(
-    (rule) => data.ruleFiles[rule.name]
+  const inPrograms = new Set(
+    data.programs.flatMap((program) => program.ruleNames)
   );
+  const sorted = [...subsectionRules].sort(
+    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
+  );
+  const builderRule =
+    sorted.find(
+      (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
+    ) ?? sorted.find((rule) => data.ruleFiles[rule.name]);
   const builderHref = builderRule
     ? builderUrlForRule(
         ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
@@ -193,10 +200,25 @@ function subsectionActionHrefs(
   return { graphHref, builderHref };
 }
 
-/** Builder target for the header strip: the section's first encoded
- *  rule with a known home file, as the calculator output. */
+/**
+ * Builder target for the header strip. Prefer a rule the coverage
+ * data says actually lives in a composed program graph — a rule
+ * that's only in the repo file can't be resolved by the builder's
+ * program probe and would land on the plain picker.
+ */
 function stripBuilderHref(data: SectionPageData): string | null {
-  const rule = data.encodedRules.find((entry) => data.ruleFiles[entry.name]);
+  const inPrograms = new Set(
+    data.programs.flatMap((program) => program.ruleNames)
+  );
+  // Derived rules survive program composition; parameters are often
+  // inlined, so a parameter output can't be preselected downstream.
+  const candidates = [...data.encodedRules].sort(
+    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
+  );
+  const rule =
+    candidates.find(
+      (entry) => inPrograms.has(entry.name) && data.ruleFiles[entry.name]
+    ) ?? candidates.find((entry) => data.ruleFiles[entry.name]);
   if (!rule) return null;
   const slug = data.citationPath.split("/")[0];
   return builderUrlForRule(

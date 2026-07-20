@@ -109,7 +109,12 @@ function coverageFromRules(
     if (!match) continue;
     ruleCount++;
     if (match.anchor) anchors.add(match.anchor);
-    if (ruleNames.length < RULE_NAME_CAP) ruleNames.push(rule.name);
+    if (ruleNames.length < RULE_NAME_CAP) {
+      // The legalId fragment is the rule's file-level name — the
+      // name space encodedRules and builder deep links speak.
+      // node.name can be a composition-local alias.
+      ruleNames.push(rule.legalId.split("#")[1] ?? rule.name);
+    }
   }
   if (ruleCount === 0) return null;
   return { ruleCount, anchors: Array.from(anchors).sort(), ruleNames };

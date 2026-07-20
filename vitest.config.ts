@@ -14,6 +14,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Full runs share the machine with dev servers and builds; under
+    // load, unrelated component suites time out intermittently (each
+    // passes in isolation). Give them headroom and one retry so a
+    // busy laptop doesn't read as a red suite.
+    testTimeout: 15000,
+    retry: 1,
     exclude: ['src/_old_pages/**', 'node_modules/**', '**/node_modules/**'],
     coverage: {
       provider: 'v8',

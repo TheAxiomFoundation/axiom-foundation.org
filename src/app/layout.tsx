@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   description:
     "Open, machine-readable encodings of the world's rules, starting with tax and benefit policy. Cited, time-aware, and executable, so anyone can run, audit, or reform them.",
   openGraph: {
-    url: "/",
+    url: "./",
     title: "Axiom Foundation",
     // Round 1 tease — shares should carry the launch date. Update at launch.
     description:

@@ -158,6 +158,11 @@ export function Nav({
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link, true))}
+          {rightSlot && (
+            <div className="mt-4" onClick={close}>
+              {rightSlot}
+            </div>
+          )}
         </nav>
       )}
     </header>

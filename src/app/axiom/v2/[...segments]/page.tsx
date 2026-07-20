@@ -31,6 +31,7 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ segments: string[] }>;
+  searchParams?: Promise<{ page?: string }>;
 }
 
 function decodeSegments(segments: string[]): string[] {
@@ -65,14 +66,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function SectionPage({ params }: PageProps) {
+export default async function SectionPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { segments } = await params;
   const decoded = decodeSegments(segments);
 
   // Browse depth (jurisdiction / doc type / title) renders the list
   // view; section depth and deeper renders the reader.
   if (decoded.length <= MAX_BROWSE_SEGMENTS) {
-    const browse = await getBrowsePageData(decoded);
+    const rawPage = Number((await searchParams)?.page ?? "0");
+    const page =
+      Number.isInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 50) : 0;
+    const browse = await getBrowsePageData(decoded, page);
     if (browse === "unavailable") {
       // Transient backend failure — render a retryable notice, never
       // a 404 for a valid URL.

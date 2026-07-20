@@ -38,17 +38,25 @@ export function ChunkTraceChips({
       <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]">
         Computed · {run.programId}
       </span>
-      {entries.map((entry) => (
-        <a
-          key={`${entry.rule_id}-${entry.variable}`}
-          href={`#rule-${entry.rule_id}`}
-          title={`${entry.variable} — computed by ${entry.rule_id} for the sample household; view the rule`}
-          className="rounded border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink)] hover:border-[var(--color-accent)] transition-colors"
-        >
-          {entry.variable} ={" "}
-          <span className="font-semibold">{formatValue(entry.value)}</span>
-        </a>
-      ))}
+      {entries.map((entry) => {
+        // Durable-id variables ("us:statutes/…#rule_name") display and
+        // link by their rule-name fragment; plain variables (default
+        // outputs) by the rule that computed them.
+        const name = entry.variable.includes("#")
+          ? entry.variable.split("#").pop()!
+          : entry.rule_id;
+        return (
+          <a
+            key={`${entry.rule_id}-${entry.variable}`}
+            href={`#rule-${name}`}
+            title={`${name} — computed for the sample household; view the rule`}
+            className="rounded border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5 px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink)] hover:border-[var(--color-accent)] transition-colors"
+          >
+            {name} ={" "}
+            <span className="font-semibold">{formatValue(entry.value)}</span>
+          </a>
+        );
+      })}
     </p>
   );
 }

@@ -12,6 +12,7 @@ import { useRunProgram, runParamFor } from "./use-run-program";
  * per-node detail.
  */
 export function ActionStrip({
+  sectionRuleIds = [],
   encodedRuleCount,
   familySummary,
   defaultProgram,
@@ -20,6 +21,8 @@ export function ActionStrip({
   citationLabel,
   href,
 }: {
+  /** Durable legal ids traced with the run (section rule values). */
+  sectionRuleIds?: string[];
   encodedRuleCount: number;
   /** e.g. "snap (7 jurisdictions)" — grouped program families. */
   familySummary: string | null;
@@ -68,7 +71,7 @@ export function ActionStrip({
             type="button"
             data-testid="strip-run"
             disabled={running || Boolean(run)}
-            onClick={() => runProgram(defaultProgram)}
+            onClick={() => runProgram(defaultProgram, sectionRuleIds)}
             title={`Execute the ${runParamFor(defaultProgram)} sample household through the engine — computed values appear in the text below`}
             className={`${buttonClass} border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-ink)] hover:bg-[var(--color-accent)]/20 disabled:cursor-default disabled:opacity-60`}
           >

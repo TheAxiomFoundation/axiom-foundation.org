@@ -36,6 +36,7 @@ export function _resetAttemptedRuns() {
 export function RunSample({
   programs,
   sectionFocus,
+  sectionRuleIds = [],
 }: {
   /** The family group's runnable programs; a ?run= permalink can
    *  select any of them. */
@@ -43,6 +44,8 @@ export function RunSample({
   /** File-legal-id prefix of the section being read
    *  ("us:statutes/7/2017"), for marking outputs it produced. */
   sectionFocus: string | null;
+  /** Durable legal ids traced with permalink runs. */
+  sectionRuleIds?: string[];
 }) {
   const { run, runProgram, clearRun, running, error } = useRunProgram();
   const activeProgram = programs.find(
@@ -66,9 +69,9 @@ export function RunSample({
     );
     if (match) {
       attemptedRuns.add(requested);
-      void runProgram(match);
+      void runProgram(match, sectionRuleIds);
     }
-  }, [programs, runProgram, contextRun]);
+  }, [programs, runProgram, contextRun, sectionRuleIds]);
 
   const clear = () => {
     if (activeProgram) {
@@ -122,7 +125,9 @@ export function RunSample({
             </button>
           </div>
           <dl className="m-0 space-y-1">
-            {Object.entries(contextRun.outputs).map(([name, value]) => (
+            {Object.entries(contextRun.outputs)
+              .filter(([name]) => !name.includes(":"))
+              .map(([name, value]) => (
               <div key={name} className="flex items-baseline justify-between gap-2">
                 <dt className="min-w-0 truncate font-mono text-[11px] text-[var(--color-ink-secondary)]">
                   {name}

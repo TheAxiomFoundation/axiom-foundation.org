@@ -200,6 +200,23 @@ function subsectionActionHrefs(
   return { graphHref, builderHref };
 }
 
+/** Durable legal ids for the section's rules — requested as extra
+ *  trace variables on runs so the column lights with the values this
+ *  section computed. */
+function sectionRuleIds(data: SectionPageData): string[] {
+  const slug = data.citationPath.split("/")[0];
+  return data.encodedRules
+    // Only derived rules are queryable engine outputs — requesting a
+    // parameter fails the whole run ("unknown derived output").
+    .filter(
+      (entry) => entry.kind === "derived" && data.ruleFiles[entry.name]
+    )
+    .slice(0, 12)
+    .map((entry) =>
+      ruleGraphFocus(slug, data.ruleFiles[entry.name], entry.name)
+    );
+}
+
 /**
  * Builder target for the header strip. Prefer a rule the coverage
  * data says actually lives in a composed program graph — a rule
@@ -368,6 +385,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             )}
           </div>
           <ActionStrip
+            sectionRuleIds={sectionRuleIds(data)}
             encodedRuleCount={data.encodedRules.length}
             familySummary={programFamilySummary(data.programs)}
             defaultProgram={
@@ -455,6 +473,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           incoming={incoming}
           programs={data.programs}
           ruleFiles={data.ruleFiles}
+          sectionRuleIds={sectionRuleIds(data)}
         />
       </aside>
     </div>

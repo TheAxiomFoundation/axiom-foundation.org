@@ -71,7 +71,7 @@ describe("trace overlay", () => {
     expect(chip!.getAttribute("href")).toBe(
       "#rule-snap_regular_month_allotment"
     );
-    expect(chip!.textContent).toContain("snap_benefit_amount");
+    expect(chip!.textContent).toContain("snap_regular_month_allotment");
     expect(chip!.textContent).toContain("298");
     expect(screen.queryByTestId("trace-chips-b")).not.toBeInTheDocument();
     // The run is URL-addressable.
@@ -115,6 +115,7 @@ describe("trace overlay", () => {
     expect(JSON.parse(call[1].body)).toEqual({
       jurisdiction: "us-co",
       program_id: "co-snap",
+      section_rules: [],
     });
     // The result header names the program that actually ran.
     await waitFor(() =>

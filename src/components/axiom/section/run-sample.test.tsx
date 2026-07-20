@@ -75,6 +75,7 @@ describe("RunSample", () => {
     expect(JSON.parse(call[1].body)).toEqual({
       jurisdiction: "us-co",
       program_id: "co-snap",
+      section_rules: [],
     });
   });
 

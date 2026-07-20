@@ -141,6 +141,7 @@ export function EncodingRail({
   incoming,
   programs = [],
   ruleFiles = {},
+  sectionRuleIds = [],
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -153,6 +154,8 @@ export function EncodingRail({
   programs?: ProvisionProgramCoverage[];
   /** Rule name → repo file path; enables per-rule graph links. */
   ruleFiles?: Record<string, string>;
+  /** Durable legal ids traced with runs. */
+  sectionRuleIds?: string[];
 }) {
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
@@ -221,7 +224,7 @@ export function EncodingRail({
           ` · in ${nodePrograms.length} ${nodePrograms.length === 1 ? "program" : "programs"}`}
       </p>
 
-      <RunSample programs={programs} sectionFocus={sectionFocus} />
+      <RunSample programs={programs} sectionFocus={sectionFocus} sectionRuleIds={sectionRuleIds} />
 
       <div className="mt-4 space-y-2">
         {(encoding || nodeRules.length > 0) && (

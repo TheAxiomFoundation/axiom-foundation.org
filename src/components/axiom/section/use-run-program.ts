@@ -37,7 +37,10 @@ export function useRunProgram() {
   const { run, setRun } = useTraceRun();
 
   const runProgram = useCallback(
-    async (target: ProvisionProgramCoverage) => {
+    async (
+      target: ProvisionProgramCoverage,
+      sectionRuleIds: string[] = []
+    ) => {
       setRunning(true);
       setError(false);
       try {
@@ -47,6 +50,7 @@ export function useRunProgram() {
           body: JSON.stringify({
             jurisdiction: target.jurisdiction,
             program_id: target.programId,
+            section_rules: sectionRuleIds,
           }),
         });
         if (!response.ok) throw new Error(String(response.status));

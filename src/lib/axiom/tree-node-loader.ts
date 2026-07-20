@@ -423,7 +423,16 @@ async function filterNavigableRows(
 ): Promise<NavigationNodeRow[]> {
   if (rows.length === 0) return rows;
 
-  const resolvableIds = await getResolvableNavigationNodeIds(rows);
+  // The resolvability check is cosmetic (it hides rows whose backing
+  // provision vanished). If it can't answer in time, fail open and
+  // show the level rather than 503ing it — us/policy went dark this
+  // way (2026-07-20).
+  let resolvableIds: Set<string>;
+  try {
+    resolvableIds = await getResolvableNavigationNodeIds(rows);
+  } catch {
+    return rows;
+  }
   return rows.filter((row) => {
     if (resolvableIds.has(row.id)) return true;
     return navigationRowHasEncodedCoverage(row, encodedFiles);

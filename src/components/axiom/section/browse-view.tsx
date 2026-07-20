@@ -58,15 +58,30 @@ function Breadcrumbs({ data }: { data: BrowsePageData }) {
 export function BrowseUnavailable({ path }: { path: string }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16">
-      <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-        {path}
-      </p>
-      <p
-        className="mt-4 text-sm text-[var(--color-ink-secondary)] leading-relaxed"
+      <div
         data-testid="browse-unavailable"
+        className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8 text-center"
       >
-        Navigation data is temporarily unavailable — reload in a moment.
-      </p>
+        <p className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          {path}
+        </p>
+        <p
+          className="mt-3 text-base text-[var(--color-ink)]"
+          style={{ fontFamily: "var(--f-serif)" }}
+        >
+          Navigation data is temporarily unavailable
+        </p>
+        <p className="mt-2 text-sm text-[var(--color-ink-muted)] leading-relaxed">
+          The index didn't answer in time — this level exists, the
+          backend hiccupped.
+        </p>
+        <a
+          href={`/${path}`}
+          className="mt-5 inline-block rounded border border-[var(--color-rule)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-secondary)] no-underline hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+        >
+          reload
+        </a>
+      </div>
     </div>
   );
 }

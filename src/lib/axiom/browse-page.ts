@@ -75,11 +75,38 @@ export async function getBrowsePageData(
   // themselves by their own citation path not matching the position
   // they'd occupy here.
   const expectedPrefix = segments.join("/");
-  const positioned = result.nodes
-    .filter((node) => {
-      const path = node.rule?.citation_path;
-      return !path || path === `${expectedPrefix}/${node.segment}`;
-    })
+  const kept: TreeNode[] = [];
+  const strayCounts = new Map<string, number>();
+  for (const node of result.nodes) {
+    const path = node.rule?.citation_path;
+    if (!path) {
+      kept.push(node);
+      continue;
+    }
+    if (!path.startsWith(`${expectedPrefix}/`)) continue;
+    const nextSegment = path.slice(expectedPrefix.length + 1).split("/")[0];
+    if (nextSegment === node.segment) {
+      // Correctly positioned (including deeper flattened rows).
+      kept.push(node);
+    } else if (nextSegment) {
+      // Mis-parented stray (a deep leaf listed at this level with its
+      // last path segment — us/policy/cms/…/pdf as segment "pdf").
+      // Don't show the stray; synthesize its real container instead.
+      strayCounts.set(nextSegment, (strayCounts.get(nextSegment) ?? 0) + 1);
+    }
+  }
+  const keptSegments = new Set(kept.map((node) => node.segment));
+  const synthesized: TreeNode[] = Array.from(strayCounts)
+    .filter(([segment]) => !keptSegments.has(segment))
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([segment, count]) => ({
+      segment,
+      label: segment.length <= 5 ? segment.toUpperCase() : segment,
+      hasChildren: true,
+      childCount: count,
+      nodeType: "container" as TreeNode["nodeType"],
+    }));
+  const positioned = [...kept, ...synthesized]
     .map((node) => {
       // Container labels citing a section ("26 U.S.C. § 85 …" as the
       // label for all of Title 26) are index corruption from the

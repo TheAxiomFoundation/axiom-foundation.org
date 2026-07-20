@@ -125,9 +125,17 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                 title={node.label}
                 className="group flex items-baseline gap-3 rounded-sm px-2 py-2 no-underline transition-colors hover:bg-[var(--color-rule)]/30"
               >
-                <span className="w-14 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)]">
-                  {node.segment}
-                </span>
+                {/* The segment column earns its place for numbered
+                    levels (titles, sections, years); for word
+                    segments (statute, cms) it just repeats the
+                    label. */}
+                {/\d/.test(node.segment) ? (
+                  <span className="w-14 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)]">
+                    {node.segment}
+                  </span>
+                ) : (
+                  <span className="w-14 shrink-0" aria-hidden />
+                )}
                 <span className="min-w-0 flex-1 truncate text-sm text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)]">
                   {displayLabel(node.label)}
                 </span>

@@ -1146,7 +1146,10 @@ export interface BreadcrumbItem {
 }
 
 export function buildBreadcrumbs(segments: string[]): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = [{ label: "Axiom", href: "/" }];
+  // "/axiom" is the app landing on every host (localhost serves it
+  // directly; the app/marketing hosts 308 it to the app root) — a
+  // bare "/" would land readers on the marketing homepage.
+  const items: BreadcrumbItem[] = [{ label: "Axiom", href: "/axiom" }];
 
   if (segments.length === 0) return items;
 

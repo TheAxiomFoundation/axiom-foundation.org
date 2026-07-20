@@ -42,10 +42,15 @@ describe("BrowseView", () => {
     ).toHaveAttribute("href", "/us/statute/7");
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByTitle("Has RuleSpec encodings")).toBeInTheDocument();
-    // Breadcrumb ancestors are links; the leaf is the current page.
-    expect(screen.getByText("US Federal").closest("a")).toHaveAttribute(
-      "href",
-      "/us"
+    // Breadcrumb shows ancestors only (as links); the eyebrow repeats
+    // the parent context; the current level is the H1, not a crumb.
+    const crumbLink = screen
+      .getAllByText("US Federal")
+      .map((el) => el.closest("a"))
+      .find(Boolean);
+    expect(crumbLink).toHaveAttribute("href", "/us");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Statute"
     );
   });
 

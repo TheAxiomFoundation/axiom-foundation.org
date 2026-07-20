@@ -24,27 +24,22 @@ function displayLabel(label: string): string {
  */
 
 function Breadcrumbs({ data }: { data: BrowsePageData }) {
+  // Ancestors only — the current level is the page title, not a
+  // crumb. At /us that leaves just "Axiom".
+  const ancestors = data.breadcrumbs.slice(0, -1);
+  if (ancestors.length === 0) return null;
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-        {data.breadcrumbs.map((item, index) => (
-          <li key={item.href} className="flex items-center gap-1">
+      <ol className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+        {ancestors.map((item, index) => (
+          <li key={item.href} className="flex items-center gap-1.5">
             {index > 0 && <span aria-hidden>/</span>}
-            {index === data.breadcrumbs.length - 1 ? (
-              <span
-                aria-current="page"
-                className="text-[var(--color-ink-secondary)]"
-              >
-                {item.label}
-              </span>
-            ) : (
-              <Link
-                href={item.href}
-                className="hover:text-[var(--color-ink)] transition-colors"
-              >
-                {item.label}
-              </Link>
-            )}
+            <Link
+              href={item.href}
+              className="hover:text-[var(--color-ink)] transition-colors"
+            >
+              {item.label}
+            </Link>
           </li>
         ))}
       </ol>
@@ -52,12 +47,22 @@ function Breadcrumbs({ data }: { data: BrowsePageData }) {
   );
 }
 
+/** Plural noun for the level's children, from their node type. */
+function levelNoun(data: BrowsePageData): string {
+  const type = data.nodes[0]?.nodeType;
+  if (type === "doc_type") return "document types";
+  if (type === "title") return "titles";
+  if (type === "section") return "sections";
+  if (type === "act") return "acts";
+  return "entries";
+}
+
 /** Transient-failure state: the URL is valid; the navigation index
  *  didn't answer in time. Distinct from notFound so crawlers and
  *  users never see a valid level as nonexistent. */
 export function BrowseUnavailable({ path }: { path: string }) {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16">
+    <div className="mx-auto w-full max-w-2xl px-4 pt-24 pb-16">
       <div
         data-testid="browse-unavailable"
         className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8 text-center"
@@ -93,53 +98,60 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
       ? data.jurisdictionLabel
       : data.breadcrumbs.at(-1)?.label ?? data.segments.at(-1));
   const basePath = data.segments.join("/");
+  // Contextual eyebrow: the ancestor labels ("US Federal · Statutes"),
+  // or the level kind at the top. Never the raw path.
+  const ancestorLabels = data.breadcrumbs
+    .slice(1, -1)
+    .map((item) => item.label);
+  const eyebrow =
+    ancestorLabels.length > 0 ? ancestorLabels.join(" · ") : "Jurisdiction";
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16">
-      <div className="mb-4">
+    <div className="mx-auto w-full max-w-2xl px-4 pt-24 pb-16">
+      <div className="mb-10">
         <Breadcrumbs data={data} />
-      </div>
-
-      <header className="border-b border-[var(--color-rule)] pb-5">
-        <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {basePath}
+        <p className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+          {eyebrow}
         </p>
         <h1
-          className="mt-2 text-2xl font-semibold text-[var(--color-ink)]"
+          className="mt-2 text-3xl font-semibold text-[var(--color-ink)]"
           style={{ fontFamily: "var(--f-serif)" }}
         >
-          {heading}
+          {displayLabel(heading ?? "")}
         </h1>
-      </header>
+        {data.nodes.length > 0 && (
+          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
+            {data.nodes.length}
+            {data.hasMore ? "+" : ""} {levelNoun(data)}
+          </p>
+        )}
+      </div>
 
       {data.nodes.length === 0 ? (
-        <p className="mt-8 text-sm text-[var(--color-ink-muted)] leading-relaxed">
+        <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
           Nothing has been ingested at this level yet.
         </p>
       ) : (
-        <ol data-testid="browse-list" className="mt-6 space-y-0.5">
+        <ol
+          data-testid="browse-list"
+          className="divide-y divide-[var(--color-rule)] border-t border-b border-[var(--color-rule)]"
+        >
           {data.nodes.map((node) => (
             <li key={node.segment}>
               <Link
                 href={`/${basePath}/${node.segment}`}
                 title={node.label}
-                className="group flex items-baseline gap-3 rounded-sm px-2 py-2 no-underline transition-colors hover:bg-[var(--color-rule)]/30"
+                className="group flex items-baseline gap-4 py-3.5 no-underline"
               >
-                {/* The segment column earns its place for numbered
-                    levels (titles, sections, years); for word
-                    segments (statute, cms) it just repeats the
-                    label. */}
-                {/\d/.test(node.segment) ? (
-                  <span className="w-14 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)]">
+                {/\d/.test(node.segment) && (
+                  <span className="w-12 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors">
                     {node.segment}
                   </span>
-                ) : (
-                  <span className="w-14 shrink-0" aria-hidden />
                 )}
-                <span className="min-w-0 flex-1 truncate text-sm text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)]">
+                <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors">
                   {displayLabel(node.label)}
                 </span>
-                <span className="flex shrink-0 items-baseline gap-2 font-mono text-[10px] text-[var(--color-ink-muted)]">
+                <span className="flex shrink-0 items-baseline gap-3 font-mono text-[11px] text-[var(--color-ink-muted)]">
                   {node.hasRuleSpec && (
                     <span
                       className="text-[var(--color-accent)]"
@@ -150,6 +162,12 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                   )}
                   {typeof node.childCount === "number" &&
                     node.childCount > 0 && <span>{node.childCount}</span>}
+                  <span
+                    aria-hidden
+                    className="text-[var(--color-ink-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[var(--color-accent)]"
+                  >
+                    →
+                  </span>
                 </span>
               </Link>
             </li>

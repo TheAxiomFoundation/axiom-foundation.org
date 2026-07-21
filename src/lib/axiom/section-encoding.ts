@@ -214,6 +214,10 @@ async function listMirrorFiles(
         .or(
           `citation_path.eq.${citationPath},citation_path.like.${citationPath}/*`
         )
+        // Order in the database, before the limit — without this the
+        // limit selects an arbitrary subset on sections with more
+        // files than the cap, and can drop the section root itself.
+        .order("citation_path", { ascending: true })
         .limit(MAX_SECTION_FILES),
       QUERY_TIMEOUT_MS,
       null

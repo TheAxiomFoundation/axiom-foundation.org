@@ -63,7 +63,7 @@ const SECTION = "us/statute/26/32";
  *  chain is thenable with the given result. */
 function mirrorChain(result: { data: unknown; error: unknown }) {
   const self: Record<string, unknown> = {};
-  for (const method of ["select", "or", "limit"]) {
+  for (const method of ["select", "or", "order", "limit"]) {
     self[method] = () => self;
   }
   self.then = (

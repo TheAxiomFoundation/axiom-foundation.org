@@ -20,7 +20,14 @@ export default defineConfig({
     // busy laptop doesn't read as a red suite.
     testTimeout: 15000,
     retry: 1,
-    exclude: ['src/_old_pages/**', 'node_modules/**', '**/node_modules/**'],
+    // .claude/worktrees holds parallel-session git worktrees — full
+    // repo copies whose duplicate test files must not run here.
+    exclude: [
+      'src/_old_pages/**',
+      'node_modules/**',
+      '**/node_modules/**',
+      '.claude/**',
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

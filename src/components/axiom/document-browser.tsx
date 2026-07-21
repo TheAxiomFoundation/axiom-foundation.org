@@ -442,9 +442,10 @@ export function AxiomBrowser({
               <span className="text-gradient">executable.</span>
             </h1>
             <p className="mt-5 max-w-[520px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
-              Axiom indexes US, UK, and Canadian law and renders machine-
-              readable RuleSpec encodings alongside every source provision.
-              Search, browse, or wire it into your own software.
+              Axiom indexes law across dozens of jurisdictions and links
+              available machine-readable RuleSpec encodings to their source
+              provisions, with coverage expanding. Search, browse, or wire
+              it into your own software.
             </p>
             <div className="mt-8">
               <HeroSearchBar />

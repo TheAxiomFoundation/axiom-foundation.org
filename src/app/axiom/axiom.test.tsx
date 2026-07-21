@@ -65,7 +65,7 @@ describe("AxiomBrowser (tree-based)", () => {
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Axiom indexes US, UK, and Canadian law/i)
+      screen.getByText(/Axiom indexes law across dozens of jurisdictions/i)
     ).toBeInTheDocument();
   });
 

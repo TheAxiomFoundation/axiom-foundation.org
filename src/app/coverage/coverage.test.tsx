@@ -95,7 +95,9 @@ describe("CoveragePage", () => {
         .getAllByText("United Kingdom")
         .every((el) => el.closest("a.cov-card") === null)
     ).toBe(true);
-    expect(screen.getAllByText(/9,897 provisions/).length).toBeGreaterThan(0);
+    // Headline figure and its label are separate spans on the card.
+    expect(screen.getAllByText("9,897").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/provisions/i).length).toBeGreaterThan(0);
     expect(
       screen.getByText(/encodings published ahead of corpus ingestion/)
     ).toBeInTheDocument();
@@ -104,7 +106,8 @@ describe("CoveragePage", () => {
       screen.getByRole("group", { name: /sort jurisdictions/i })
     ).toBeInTheDocument();
     expect(screen.getByText(/view as table/i)).toBeInTheDocument();
-    expect(screen.getByText("9,897")).toBeInTheDocument();
+    // The figure appears on the card and again in the table fold.
+    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
   });
 });
 

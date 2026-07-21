@@ -307,8 +307,9 @@ canvas[aria-hidden] {
   }
 }
 
-/* ── /coverage: shelf cards — each jurisdiction as its own mini
-   shelf. Hover lifts the card and the books rise in a ripple. */
+/* ── /coverage: jurisdiction cards — clean metric cards with a
+   segmented document-mix bar (hues validated against the light card
+   surface). Sort/filter controls above; hover is CSS. */
 .cov-controls {
   display: flex;
   flex-wrap: wrap;
@@ -366,21 +367,21 @@ canvas[aria-hidden] {
 }
 .cov-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 0.9rem;
 }
 .cov-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem 1rem 0.9rem;
+  gap: 0.85rem;
+  padding: 1.15rem 1.15rem 1rem;
   border: 1px solid var(--color-rule);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-paper-elevated);
   text-decoration: none;
   color: inherit;
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 220ms ease, border-color 220ms ease;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms ease, border-color 200ms ease;
   animation: cov-card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @keyframes cov-card-in {
@@ -395,9 +396,9 @@ canvas[aria-hidden] {
 }
 a.cov-card:hover,
 a.cov-card:focus-visible {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--color-accent);
-  box-shadow: 0 14px 32px rgba(28, 25, 23, 0.12);
+  box-shadow: 0 12px 28px rgba(28, 25, 23, 0.1);
 }
 a.cov-card:focus-visible {
   outline: 2px solid var(--color-focus-ring);
@@ -405,90 +406,125 @@ a.cov-card:focus-visible {
 }
 .cov-card-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
 .cov-card-name {
-  font-family: var(--f-serif);
-  font-size: 1.02rem;
+  font-family: var(--f-body);
+  font-weight: 550;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
   color: var(--color-ink);
 }
-.cov-card-arrow {
-  font-size: 0.8rem;
-  color: var(--color-ink-muted);
-  transition: color 160ms ease, transform 160ms ease;
-}
-a.cov-card:hover .cov-card-arrow {
-  color: var(--color-accent);
-  transform: translate(1px, -1px);
-}
-/* The mini shelf: a small dark case window inside the light card. */
-.cov-card-shelf {
-  background: #1c1917;
-  border-radius: 5px;
-  padding: 10px 8px 0;
-}
-.cov-card-books {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  min-height: 28px;
-  overflow: hidden;
-}
-.cov-card-spine {
-  display: inline-block;
-  flex: none;
-  border-radius: 1.5px 1.5px 0 0;
-  transform-origin: bottom center;
-  transform: rotate(var(--lean, 0deg));
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: calc(var(--i, 0) * 14ms);
-}
-a.cov-card:hover .cov-card-spine {
-  transform: translateY(-3px) rotate(var(--lean, 0deg));
-}
-.cov-card-board {
-  height: 3px;
-  border-radius: 1px 2px 2px 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(214, 168, 88, 0.55),
-    rgba(214, 168, 88, 0.15)
-  );
-}
-.cov-card-figures {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+.cov-card-slug {
   font-family: var(--f-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.05em;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-rule);
+  border-radius: 5px;
+  padding: 0.14rem 0.4rem;
+  background: var(--color-paper);
 }
-.cov-card-provisions {
+.cov-card-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+.cov-card-value {
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.65rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--color-ink);
-  font-size: 0.76rem;
+}
+.cov-card-metric-label {
+  font-family: var(--f-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+/* Segmented document-mix bar: flat, thin, 2px surface gaps. */
+.cov-card-mix {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+.cov-card-mix-seg {
+  min-width: 4px;
+  border-radius: 3px;
+  transform-origin: left center;
+  animation: cov-mix-grow 520ms 180ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes cov-mix-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .cov-card-docs {
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
   color: var(--color-ink-muted);
 }
+.cov-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-rule-subtle);
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+}
 .cov-card-encoded {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--color-accent);
+}
+.cov-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #bd7a24;
+  box-shadow: 0 0 0 3px rgba(189, 122, 36, 0.15);
 }
 .cov-card-encoded-none {
   color: var(--color-ink-muted);
 }
+.cov-card-arrow {
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
+}
+a.cov-card:hover .cov-card-arrow,
+a.cov-card:focus-visible .cov-card-arrow {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--color-accent);
+}
 @media (prefers-reduced-motion: reduce) {
-  .cov-card {
+  .cov-card,
+  .cov-card-mix-seg {
     animation: none;
   }
-  .cov-card-spine,
   a.cov-card:hover,
   a.cov-card:focus-visible {
-    transition: none;
     transform: none;
   }
-  a.cov-card:hover .cov-card-spine {
-    transform: rotate(var(--lean, 0deg));
+  .cov-card-arrow {
+    opacity: 1;
+    transform: none;
   }
 }

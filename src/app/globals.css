@@ -306,3 +306,189 @@ canvas[aria-hidden] {
     padding: 1.5rem 1rem 1rem;
   }
 }
+
+/* ── /coverage: shelf cards — each jurisdiction as its own mini
+   shelf. Hover lifts the card and the books rise in a ripple. */
+.cov-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.cov-sorts {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+.cov-sort {
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  padding: 0.32rem 0.75rem;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.cov-sort:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.cov-sort-on {
+  color: var(--color-paper);
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+.cov-filter {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 6px;
+  padding: 0.45rem 0.7rem;
+  min-width: 220px;
+}
+.cov-filter:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-empty {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+  padding: 2rem 0;
+}
+.cov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.9rem;
+}
+.cov-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1rem 0.9rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease, border-color 220ms ease;
+  animation: cov-card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes cov-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+a.cov-card:hover,
+a.cov-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--color-accent);
+  box-shadow: 0 14px 32px rgba(28, 25, 23, 0.12);
+}
+a.cov-card:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+.cov-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cov-card-name {
+  font-family: var(--f-serif);
+  font-size: 1.02rem;
+  color: var(--color-ink);
+}
+.cov-card-arrow {
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  transition: color 160ms ease, transform 160ms ease;
+}
+a.cov-card:hover .cov-card-arrow {
+  color: var(--color-accent);
+  transform: translate(1px, -1px);
+}
+/* The mini shelf: a small dark case window inside the light card. */
+.cov-card-shelf {
+  background: #1c1917;
+  border-radius: 5px;
+  padding: 10px 8px 0;
+}
+.cov-card-books {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 28px;
+  overflow: hidden;
+}
+.cov-card-spine {
+  display: inline-block;
+  flex: none;
+  border-radius: 1.5px 1.5px 0 0;
+  transform-origin: bottom center;
+  transform: rotate(var(--lean, 0deg));
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--i, 0) * 14ms);
+}
+a.cov-card:hover .cov-card-spine {
+  transform: translateY(-3px) rotate(var(--lean, 0deg));
+}
+.cov-card-board {
+  height: 3px;
+  border-radius: 1px 2px 2px 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(214, 168, 88, 0.55),
+    rgba(214, 168, 88, 0.15)
+  );
+}
+.cov-card-figures {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+.cov-card-provisions {
+  color: var(--color-ink);
+  font-size: 0.76rem;
+}
+.cov-card-docs {
+  color: var(--color-ink-muted);
+}
+.cov-card-encoded {
+  color: var(--color-accent);
+}
+.cov-card-encoded-none {
+  color: var(--color-ink-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cov-card {
+    animation: none;
+  }
+  .cov-card-spine,
+  a.cov-card:hover,
+  a.cov-card:focus-visible {
+    transition: none;
+    transform: none;
+  }
+  a.cov-card:hover .cov-card-spine {
+    transform: rotate(var(--lean, 0deg));
+  }
+}

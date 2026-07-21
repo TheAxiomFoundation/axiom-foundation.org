@@ -48,7 +48,18 @@ const MAX_SWEEP_PAGES = 30;
 const CONCURRENCY = 8;
 
 function labelForSlug(slug: string): string {
-  return JURISDICTIONS_SEED.find((j) => j.slug === slug)?.label ?? slug;
+  const seeded = JURISDICTIONS_SEED.find((j) => j.slug === slug)?.label;
+  if (seeded) return seeded;
+  // Unseeded mirror slugs ("uk-kingston-upon-thames") — humanize
+  // rather than leaking the raw slug into cards and shelves.
+  return slug
+    .split("-")
+    .map((part, i) =>
+      i === 0 && part.length <= 3
+        ? part.toUpperCase()
+        : part.charAt(0).toUpperCase() + part.slice(1)
+    )
+    .join(" ");
 }
 
 async function mapChunked<T, R>(

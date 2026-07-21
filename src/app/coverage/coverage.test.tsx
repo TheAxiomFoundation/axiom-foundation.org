@@ -83,13 +83,28 @@ describe("CoveragePage", () => {
     const ukRun = screen.getByLabelText(/United Kingdom — 300 files/);
     expect(ukRun.closest("a")).toBeNull();
 
-    // The table still carries exact numbers; UK row stays unlinked.
+    // Shelf cards: US links into the app, UK (encodings-only) does
+    // not, and the exact figures are printed on the card.
+    const usCard = screen
+      .getAllByText("US Federal")
+      .map((el) => el.closest("a.cov-card"))
+      .find(Boolean);
+    expect(usCard).toHaveAttribute("href", "/us");
+    expect(
+      screen
+        .getAllByText("United Kingdom")
+        .every((el) => el.closest("a.cov-card") === null)
+    ).toBe(true);
+    expect(screen.getAllByText(/9,897 provisions/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/encodings published ahead of corpus ingestion/)
+    ).toBeInTheDocument();
+    // Sort controls and the collapsible exact-numbers table.
+    expect(
+      screen.getByRole("group", { name: /sort jurisdictions/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/view as table/i)).toBeInTheDocument();
     expect(screen.getByText("9,897")).toBeInTheDocument();
-    expect(screen.getByText("US Federal").closest("a")).toHaveAttribute(
-      "href",
-      "/us"
-    );
-    expect(screen.getByText("United Kingdom").closest("a")).toBeNull();
   });
 });
 

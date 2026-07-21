@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
 import { Stacks, buildShelves } from "@/components/coverage/stacks";
+import { ShelfCards } from "@/components/coverage/shelf-cards";
 import {
   getCoverageData,
   type CoverageData,
@@ -107,12 +108,23 @@ function CoverageBody({ data }: { data: CoverageData }) {
           <span aria-hidden className="mb-3 block h-px w-7 bg-[var(--color-accent)]" />
           By jurisdiction
         </h2>
-        <JurisdictionTable data={data} />
-        <p className="mt-4 max-w-[720px] font-body text-[0.9rem] leading-relaxed text-[var(--color-ink-muted)]">
-          Jurisdictions with encoding files but no provision counts have
-          RuleSpec encodings published ahead of their corpus ingestion.
-          Click a jurisdiction to browse its documents in the Axiom app.
+        <ShelfCards jurisdictions={data.jurisdictions} />
+        <p className="mt-6 max-w-[720px] font-body text-[0.9rem] leading-relaxed text-[var(--color-ink-muted)]">
+          Each card is that jurisdiction&apos;s own shelf — the mix of
+          statutes, regulations, and other documents at a glance, with
+          the exact counts beside it. Cards without provision counts
+          have RuleSpec encodings published ahead of their corpus
+          ingestion. Click a card to browse its documents in the Axiom
+          app.
         </p>
+        <details className="mt-8">
+          <summary className="cursor-pointer font-mono text-[0.7rem] tracking-[0.12em] uppercase text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]">
+            View as table
+          </summary>
+          <div className="mt-4">
+            <JurisdictionTable data={data} />
+          </div>
+        </details>
       </Reveal>
     </>
   );

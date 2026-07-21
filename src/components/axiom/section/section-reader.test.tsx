@@ -192,9 +192,9 @@ describe("SectionReader", () => {
     // Builder gets the subsection's encoded rule as the output.
     const builder = within(row).getByText("use in builder ↗");
     const builderHref = new URL(builder.getAttribute("href")!);
-    expect(builderHref.searchParams.get("output")).toBe(
-      "us:statutes/26/32/a#eitc_phased_in"
-    );
+    // Section-level id: the builder scopes its output picker to the
+    // provision and the user selects rules there.
+    expect(builderHref.searchParams.get("output")).toBe("us:statutes/26/32");
     // The row belongs to (a); (b) has none.
     expect(row.closest("section")?.id).toBe("a");
   });
@@ -274,7 +274,7 @@ describe("SectionReader", () => {
     const builder = within(row).getByText("use in builder ↗");
     expect(
       new URL(builder.getAttribute("href")!).searchParams.get("output")
-    ).toBe("us:statutes/26/32/d#limit_rule");
+    ).toBe("us:statutes/26/32");
     // A real subsection URL on the designator; rule-name chips no
     // longer sit in the reading flow.
     expect(screen.getByTitle("Open us/statute/26/32/d")).toHaveAttribute(

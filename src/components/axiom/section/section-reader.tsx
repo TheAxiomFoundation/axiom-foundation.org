@@ -211,46 +211,26 @@ function subsectionActionHrefs(
             fileGraphFocus(slug, data.ruleFiles[composeRule.name])
           )
         : null;
-  // Every encoded rule gets a builder link — the builder's deep-link
-  // handler probes its programs and falls back to the picker when a
-  // rule can't be resolved (product call: graph + builder are the
-  // primary verbs, offered per encoding, not gated on coverage).
-  const builderRule =
-    sorted.find(
-      (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
-    ) ?? sorted.find((rule) => data.ruleFiles[rule.name]);
-  const builderHref = builderRule
-    ? builderUrlForRule(
-        ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
-      )
-    : null;
+  // Builder gets the section-level legal id: its deep-link handler
+  // scopes the output picker to this provision and the user selects
+  // which rules become outputs there — no per-rule link picking here.
+  const builderHref =
+    sectionFocus && subsectionRules.length > 0
+      ? builderUrlForRule(sectionFocus)
+      : null;
   return { graphHref, builderHref };
 }
 
 /**
- * Builder target for the header strip. Prefer a rule the coverage
- * data says actually lives in a composed program graph — a rule
- * that's only in the repo file can't be resolved by the builder's
- * program probe and would land on the plain picker.
+ * Builder target for the header strip: the section-level legal id.
+ * The builder resolves a program containing the section's rules and
+ * lands on its output picker scoped to this provision, where the
+ * user selects which rulespec rules become calculator outputs.
  */
 function stripBuilderHref(data: SectionPageData): string | null {
-  const inPrograms = new Set(
-    data.programs.flatMap((program) => program.ruleNames)
-  );
-  // Derived rules survive program composition; parameters are often
-  // inlined, so a parameter output can't be preselected downstream.
-  const candidates = [...data.encodedRules].sort(
-    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
-  );
-  const rule =
-    candidates.find(
-      (entry) => inPrograms.has(entry.name) && data.ruleFiles[entry.name]
-    ) ?? candidates.find((entry) => data.ruleFiles[entry.name]);
-  if (!rule) return null;
-  const slug = data.citationPath.split("/")[0];
-  return builderUrlForRule(
-    ruleGraphFocus(slug, data.ruleFiles[rule.name], rule.name)
-  );
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
+  if (!sectionFocus || data.encodedRules.length === 0) return null;
+  return builderUrlForRule(sectionFocus);
 }
 
 /**

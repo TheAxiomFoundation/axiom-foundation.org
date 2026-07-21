@@ -202,63 +202,11 @@ describe("EncodingRail", () => {
     expect(screen.queryByTestId("rail-executable")).not.toBeInTheDocument();
   });
 
-  it("adds a per-rule graph link carrying the rule's legal id", async () => {
-    const programs = [
-      {
-        jurisdiction: "us",
-        programId: "us-eitc",
-        mode: "compiled" as const,
-        status: "ready" as const,
-        ruleCount: 2,
-        anchors: ["a", "b"],
-        ruleNames: ["rule_for_a"],
-      },
-    ];
+  it("renders rule cards without per-rule link buttons", async () => {
     placeSections({ a: 500, b: 1500 });
-    render(
-      <EncodingRail
-        encoding={makeEncoding()}
-        jurisdiction="us"
-        citationPath="us/statute/26/32"
-        isRepealed={false}
-        chunks={CHUNKS}
-        encodedRules={ENCODED_RULES}
-        outgoing={OUTGOING}
-        incoming={[]}
-        programs={programs}
-        ruleFiles={{ rule_for_a: "statutes/26/32/a.yaml" }}
-      />
-    );
-    // Scroll into (a) so rule_for_a's card renders.
-    scrollTo({ a: -200, b: 900 });
-    await waitFor(() =>
-      expect(screen.getByTestId("rule-graph-link")).toBeInTheDocument()
-    );
-    const href = new URL(
-      screen.getByTestId("rule-graph-link").getAttribute("href")!
-    );
-    expect(href.searchParams.get("program")).toBe("us/us-eitc");
-    expect(href.searchParams.get("focus")).toBe(
-      "us:statutes/26/32/a#rule_for_a"
-    );
-    // "Use in builder" carries the same legal id; the builder resolves
-    // the program itself.
-    const builderHref = new URL(
-      screen.getByTestId("rule-builder-link").getAttribute("href")!
-    );
-    expect(builderHref.searchParams.get("output")).toBe(
-      "us:statutes/26/32/a#rule_for_a"
-    );
-    // rule_for_b has no known home file → no graph link on its card.
-    scrollTo({ a: -1200, b: 100 });
-    await waitFor(() =>
-      expect(screen.getByText("rule_for_b")).toBeInTheDocument()
-    );
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId("rule-graph-link")
-      ).not.toBeInTheDocument()
-    );
+    renderRail();
+    expect(screen.queryByText("graph ↗")).not.toBeInTheDocument();
+    expect(screen.queryByText("use in builder ↗")).not.toBeInTheDocument();
   });
 
   it("renders no programs block when coverage is empty", () => {

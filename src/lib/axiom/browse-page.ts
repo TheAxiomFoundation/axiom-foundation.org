@@ -94,6 +94,9 @@ export async function getBrowsePageData(
     // boilerplate headings) are pipeline working data, not law.
     if (path.includes("/release-scope-")) continue;
     const nextSegment = path.slice(expectedPrefix.length + 1).split("/")[0];
+    // Same namespace guard for strays that would synthesize the
+    // recovery container without a release-scope marker in the path.
+    if (segments.length === 2 && nextSegment === "recovery") continue;
     if (nextSegment === node.segment) {
       // Correctly positioned (including deeper flattened rows).
       kept.push(node);

@@ -57,7 +57,7 @@ describe("proxy", () => {
 
   it("redirects site /axiom paths to the clean app subdomain URL", () => {
     const response = proxy(
-      request("https://axiom-foundation.org/axiom/us/statute/7", "axiom-foundation.org")
+      request("https://axiom.org/axiom/us/statute/7", "axiom.org")
     );
 
     expect(response.status).toBe(308);
@@ -68,7 +68,7 @@ describe("proxy", () => {
 
   it("redirects site /axiom root to the clean app subdomain root", () => {
     const response = proxy(
-      request("https://axiom-foundation.org/axiom", "axiom-foundation.org")
+      request("https://axiom.org/axiom", "axiom.org")
     );
 
     expect(response.status).toBe(308);
@@ -195,7 +195,7 @@ describe("proxy", () => {
   });
 
   it("passes through regular site pages", () => {
-    const response = proxy(request("https://axiom-foundation.org/about", "axiom-foundation.org"));
+    const response = proxy(request("https://axiom.org/about", "axiom.org"));
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });

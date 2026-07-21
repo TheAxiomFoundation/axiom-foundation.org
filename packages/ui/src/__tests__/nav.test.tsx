@@ -2,14 +2,45 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Nav } from "../components/nav";
 
 describe("Nav", () => {
-  it("renders the Round 1 navigation links (About, Team only)", () => {
+  it("renders the full launch navigation links (pages only, no scroll anchors)", () => {
     render(<Nav />);
+    expect(screen.getAllByText("Axiom")[0]).toHaveAttribute(
+      "href",
+      "https://app.axiom-foundation.org",
+    );
+    expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
-    // Product-page + external links are pulled back in Round 1.
-    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "GitHub" }).length,
+    ).toBeGreaterThan(0);
+    // Landing scroll anchors live on the page, not in the header;
+    // Docs is footer-only (contributor audience).
+    expect(screen.queryByText("Why")).not.toBeInTheDocument();
+    expect(screen.queryByText("Encoding")).not.toBeInTheDocument();
     expect(screen.queryByText("Docs")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+  });
+
+  it("renders the demos dropdown grouped by stakeholder", () => {
+    render(<Nav />);
+    // Group headers mirror the demo-gallery taxonomy in axiom-demo-shell.
+    expect(screen.getAllByText("Builders").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AI labs").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Government").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Small company checker")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#reg-demo");
+    expect(
+      screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#finbot");
+    expect(
+      screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos#co-snap-cliffs");
+    expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
+      "href",
+      "/demos",
+    );
   });
 
   it("renders the Axiom Foundation logo", () => {

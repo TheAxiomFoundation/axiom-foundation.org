@@ -1,25 +1,50 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { ArrowRightIcon } from "@/components/icons";
+import { Reveal } from "@/components/landing/reveal";
 import { axiomAppHref } from "@/lib/urls";
 
 export const metadata: Metadata = {
   title: "Documentation — Axiom Foundation",
   description:
     "Canonical Axiom documentation map for architecture, RuleSpec, corpus, claims, and encoder validation.",
-  // Round 1 pull-back — noindexed until the Jul 28 launch.
-  robots: { index: false, follow: false },
 };
 
+// Ordered by pipeline: source corpus → claims → the RuleSpec format
+// and its time model → encoding contracts → where rules live →
+// cross-engine validation.
 const docHomes = [
   {
-    name: "Cross-system architecture",
-    owner: "axiom-foundation.org",
-    location: "/docs",
+    name: "Signed corpus releases",
+    owner: "axiom-corpus",
+    location: "docs/named-release-publication.md",
     description:
-      "Public index for how Axiom's source, claim, RuleSpec, encoder, runtime, and app layers fit together.",
-    href: "/docs",
-    internal: true,
+      "The immutable named-release model: content-addressed artifacts, signature verification, and transactional activation of the serving projection.",
+    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md",
+  },
+  {
+    name: "Source claims format",
+    owner: "axiom-corpus",
+    location: "docs/claims-format.md",
+    description:
+      "Thin, reviewed, evidence-backed assertions about what a source span says — the layer between raw text and executable rules.",
+    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/claims-format.md",
+  },
+  {
+    name: "The RuleSpec schema",
+    owner: "axiom-rules-engine",
+    location: "docs/rulespec.md",
+    description:
+      "The canonical authoring and interchange schema for rules — the format every encoding is written in.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/rulespec.md",
+  },
+  {
+    name: "Bitemporal semantics",
+    owner: "axiom-rules-engine",
+    location: "docs/bitemporal.md",
+    description:
+      "Valid time vs. assessment time — how effective-dated versions work today and where the second time axis is headed.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/bitemporal.md",
   },
   {
     name: "RuleSpec proof validation",
@@ -38,28 +63,21 @@ const docHomes = [
     href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/upstream-first-encoding-plan.md",
   },
   {
-    name: "Encoder methods log",
-    owner: "axiom-encode",
-    location: "docs/axiom-encode-methods-log.md",
+    name: "Jurisdiction repositories",
+    owner: "axiom-rules-engine",
+    location: "docs/jurisdiction-repos.md",
     description:
-      "Harness changes, hypotheses, and validation evidence for benchmark-relevant encoder work.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/axiom-encode-methods-log.md",
+      "Where the actual rules live: the rulespec-* repos hold canonical rule content; the engine repo stays runtime and schema only.",
+    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/jurisdiction-repos.md",
   },
   {
-    name: "PolicyEngine oracle registry",
-    owner: "axiom-encode",
-    location: "docs/policyengine-oracle-registry.md",
+    name: "Oracle adapters & comparisons",
+    owner: "axiom-oracles",
+    location: "README.md",
     description:
-      "Mapping and validation notes for comparing RuleSpec outputs to PolicyEngine where the concepts line up.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/policyengine-oracle-registry.md",
+      "The cross-engine validation harness behind the validation dashboard — adapters, concept-keyed cases, and mismatch reports.",
+    href: "https://github.com/TheAxiomFoundation/axiom-oracles",
   },
-];
-
-const ownershipRules = [
-  "Repo-owned engineering docs live in the repo that owns the code or contract.",
-  "Public and cross-repo docs are indexed here so readers do not need to know the repo layout first.",
-  "Schema and validation contracts stay close to the validator or runtime that enforces them.",
-  "Historical notes can live in repo docs, but current public architecture should be linked from this page.",
 ];
 
 const repoMap = [
@@ -77,7 +95,7 @@ const repoMap = [
   },
   {
     repo: "rulespec-*",
-    owns: "Jurisdiction RuleSpec corpora: checked-in `.yaml` rules and companion `.test.yaml` cases.",
+    owns: "Jurisdiction RuleSpec corpora: checked-in .yaml rules and companion .test.yaml cases.",
   },
   {
     repo: "axiom-foundation.org",
@@ -85,162 +103,153 @@ const repoMap = [
   },
 ];
 
-function DocLink({
-  doc,
-}: {
-  doc: (typeof docHomes)[number];
-}) {
-  const classes =
-    "group grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-[var(--color-rule)] py-5 text-left transition-colors hover:border-[var(--color-accent)]";
-  const content = (
-    <>
-      <div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h3 className="font-body text-lg text-[var(--color-ink)]">
-            {doc.name}
-          </h3>
-          <span className="font-mono text-xs text-[var(--color-ink-muted)]">
-            {doc.owner}
-          </span>
-        </div>
-        <p className="mt-2 font-body text-sm leading-relaxed text-[var(--color-ink-secondary)]">
-          {doc.description}
-        </p>
-        <p className="mt-3 font-mono text-xs text-[var(--color-code-text)]">
-          {doc.location}
-        </p>
-      </div>
-      <ArrowRightIcon className="mt-1 h-5 w-5 text-[var(--color-ink-muted)] transition-transform group-hover:translate-x-1 group-hover:text-[var(--color-accent)]" />
-    </>
-  );
+const RELATED = [
+  { href: "/stack", label: "Technical stack", internal: true },
+  { href: "/encoder", label: "Encoder system map", internal: true },
+  { href: "/validation", label: "How we validate", internal: true },
+];
 
-  if (doc.internal) {
-    return (
-      <Link href={doc.href} className={classes}>
-        {content}
-      </Link>
-    );
-  }
+function DocLink({ doc }: { doc: (typeof docHomes)[number] }) {
   return (
     <a
       href={doc.href}
       target="_blank"
       rel="noopener noreferrer"
-      className={classes}
+      className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-t border-[var(--color-rule)] py-6 no-underline transition-colors hover:border-[var(--color-accent)]"
     >
-      {content}
+      <div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="m-0 font-body text-[1.1rem] font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
+            {doc.name}
+          </h3>
+          <span className="font-mono text-[0.65rem] tracking-[0.14em] uppercase text-[var(--color-ink-muted)]">
+            {doc.owner}
+          </span>
+        </div>
+        <p className="mt-2 mb-0 font-body text-[0.92rem] leading-relaxed text-[var(--color-ink-secondary)]">
+          {doc.description}
+        </p>
+        <p className="mt-2.5 mb-0 font-mono text-[0.75rem] text-[var(--color-ink-muted)]">
+          {doc.location}
+        </p>
+      </div>
+      <ArrowRightIcon className="mt-1.5 h-5 w-5 shrink-0 text-[var(--color-ink-muted)] transition-all group-hover:translate-x-1 group-hover:text-[var(--color-accent)]" />
     </a>
   );
 }
 
 export default function DocsPage() {
   return (
-    <div className="relative z-1 px-8 py-28">
-      <div className="mx-auto max-w-[1080px]">
-        <header className="mb-16 grid grid-cols-[minmax(0,0.85fr)_minmax(280px,0.45fr)] gap-12 max-lg:grid-cols-1">
-          <div>
-            <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              Axiom documentation
-            </p>
-            <h1 className="heading-page mb-6">
-              Canonical docs live with the system that enforces them.
-            </h1>
-            <p className="max-w-[720px] font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
-              This page is the public map. Implementation details stay in the
-              owning repos; cross-system architecture is indexed here.
-            </p>
-          </div>
-          <div className="border-l border-[var(--color-rule)] pl-8 max-lg:border-l-0 max-lg:border-t max-lg:pl-0 max-lg:pt-8">
-            <p className="mb-4 font-mono text-xs uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              Current invariant
-            </p>
-            <p className="font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-              Corpus is source text. Claims are reviewed source meaning.
-              RuleSpec is computation. Encoder validates the evidence path
-              between them.
-            </p>
-          </div>
-        </header>
+    <div className="relative z-1 pt-32 pb-24 px-8">
+      <div className="mx-auto max-w-[960px]">
+        {/* Header */}
+        <Reveal className="mb-14 max-w-[760px]">
+          <span className="kicker mb-6 inline-flex">
+            <span className="kicker-mark">&sect;</span>
+            Documentation
+          </span>
+          <h1 className="heading-page mb-6 mt-2">
+            Docs live with the system that enforces them
+          </h1>
+          <p className="font-body text-[1.2rem] leading-relaxed text-[var(--color-ink-secondary)] text-pretty">
+            This page is the public map. Implementation detail stays in the
+            owning repo &mdash; what you find here is every doc worth reading
+            across the ecosystem, in one place.
+          </p>
+        </Reveal>
 
-        <section className="mb-20">
-          <div className="mb-8">
-            <h2 className="heading-section mb-3">Documentation homes</h2>
-            <p className="max-w-[760px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-              These are the current canonical docs for architecture and
-              validation work. Add new docs to the repo that owns the behavior,
-              then link them here when they are useful across repos.
-            </p>
+        {/* The invariant, as a full-width strip instead of a squeezed sidebar */}
+        <Reveal className="mb-16 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-7 py-5">
+          <p className="m-0 font-body text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            <span className="font-mono text-[0.62rem] tracking-[0.18em] uppercase text-[var(--color-accent)] mr-3">
+              The invariant
+            </span>
+            Corpus is source text. Claims are reviewed source meaning. RuleSpec
+            is computation. The encoder validates the evidence path between
+            them.
+          </p>
+        </Reveal>
+
+        {/* Live architecture map — embedded, not a list entry */}
+        <Reveal as="section" className="mb-20">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
+            <h2 className="heading-section m-0">The architecture, live</h2>
+            <a
+              href="https://axiom-architecture-one.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+            >
+              Open full size
+              <ArrowRightIcon className="w-4 h-4" />
+            </a>
           </div>
-          <div>
+          <p className="mb-6 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            How the source, claim, RuleSpec, encoder, runtime, and app layers
+            fit together &mdash; explore the map directly.
+          </p>
+          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+            <iframe
+              src="https://axiom-architecture-one.vercel.app"
+              title="Cross-system architecture map"
+              loading="lazy"
+              className="block w-full h-[560px] border-0"
+            />
+          </div>
+        </Reveal>
+
+        {/* Canonical docs */}
+        <Reveal as="section" className="mb-20">
+          <h2 className="heading-section mb-3">Documentation homes</h2>
+          <p className="mb-8 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            The current canonical docs for architecture and validation work.
+          </p>
+          <div className="border-b border-[var(--color-rule)]">
             {docHomes.map((doc) => (
               <DocLink key={`${doc.owner}:${doc.location}`} doc={doc} />
             ))}
           </div>
-        </section>
+        </Reveal>
 
-        <section className="mb-20 grid grid-cols-[minmax(0,0.72fr)_minmax(260px,0.38fr)] gap-12 max-lg:grid-cols-1">
-          <div>
-            <h2 className="heading-section mb-6">Ownership rule</h2>
-            <div className="flex flex-col gap-4">
-              {ownershipRules.map((rule) => (
-                <div
-                  key={rule}
-                  className="flex items-start gap-3 border-t border-[var(--color-rule)] pt-4"
-                >
-                  <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-success)]" />
-                  <p className="font-body text-sm leading-relaxed text-[var(--color-ink-secondary)]">
-                    {rule}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <aside className="border-l border-[var(--color-rule)] pl-8 max-lg:border-l-0 max-lg:border-t max-lg:pl-0 max-lg:pt-8">
-            <h2 className="font-body text-lg text-[var(--color-ink)]">
-              Related maps
-            </h2>
-            <div className="mt-5 flex flex-col gap-3">
-              <Link href="/stack" className="btn-outline">
-                Technical stack
+        {/* Related maps — a simple row, not an aside */}
+        <Reveal as="section" className="mb-20">
+          <h2 className="heading-section mb-8">Related maps</h2>
+          <div className="flex flex-wrap gap-4">
+            {RELATED.map((link) => (
+              <Link key={link.href} href={link.href} className="btn-outline">
+                {link.label}
               </Link>
-              <Link href="/encoder" className="btn-outline">
-                Encoder system map
-              </Link>
-              <a
-                href={axiomAppHref()}
-                className="btn-outline"
-              >
-                Open Axiom
-              </a>
-            </div>
-          </aside>
-        </section>
-
-        <section>
-          <div className="mb-8">
-            <h2 className="heading-section mb-3">Repository ownership</h2>
-            <p className="max-w-[760px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-              The repo split is part of the documentation model. A doc should
-              move only when the owning system moves.
-            </p>
+            ))}
+            <a href={axiomAppHref()} className="btn-outline">
+              Open Axiom
+            </a>
           </div>
+        </Reveal>
+
+        {/* Repo ownership */}
+        <Reveal as="section">
+          <h2 className="heading-section mb-3">Repository ownership</h2>
+          <p className="mb-8 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            The repo split is part of the documentation model: engineering
+            docs live in the repo that owns the code or contract, and a doc
+            moves only when the owning system moves.
+          </p>
           <div className="divide-y divide-[var(--color-rule)] border-y border-[var(--color-rule)]">
             {repoMap.map((item) => (
               <div
                 key={item.repo}
                 className="grid grid-cols-[220px_minmax(0,1fr)] gap-6 py-5 max-md:grid-cols-1 max-md:gap-2"
               >
-                <p className="font-mono text-sm text-[var(--color-code-text)]">
+                <p className="m-0 font-mono text-[0.85rem] text-[var(--color-ink)]">
                   {item.repo}
                 </p>
-                <p className="font-body text-sm leading-relaxed text-[var(--color-ink-secondary)]">
+                <p className="m-0 font-body text-[0.92rem] leading-relaxed text-[var(--color-ink-secondary)]">
                   {item.owns}
                 </p>
               </div>
             ))}
           </div>
-        </section>
+        </Reveal>
       </div>
     </div>
   );

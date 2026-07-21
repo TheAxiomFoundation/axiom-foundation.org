@@ -19,6 +19,7 @@ export function Reveal({
   as = "div",
   amount = 0.2,
   yOffset = 16,
+  id,
 }: {
   children: React.ReactNode;
   /** Stagger this reveal behind its neighbours; in seconds. */
@@ -32,6 +33,8 @@ export function Reveal({
   amount?: number;
   /** How far up the content slides in (px). 0 disables the slide. */
   yOffset?: number;
+  /** DOM id, for deep-link anchors (e.g. /demos#reg-demo). */
+  id?: string;
 }) {
   const Component = motion[as] as typeof motion.div;
   const variants: Variants = {
@@ -48,6 +51,7 @@ export function Reveal({
   };
   return (
     <Component
+      id={id}
       className={className}
       variants={variants}
       initial="hidden"

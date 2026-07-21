@@ -22,12 +22,14 @@ describe('Footer', () => {
 
   it('renders navigation links', () => {
     render(<Footer />)
+    expect(screen.getByText('Axiom platform')).toBeInTheDocument()
+    expect(screen.getByText('Demos')).toBeInTheDocument()
+    expect(screen.getByText('Validation')).toBeInTheDocument()
+    expect(screen.getByText('Documentation')).toBeInTheDocument()
     expect(screen.getByText('About')).toBeInTheDocument()
     expect(screen.getByText('Team')).toBeInTheDocument()
     expect(screen.getByText('Contact')).toBeInTheDocument()
     expect(screen.getByText('Privacy')).toBeInTheDocument()
-    // GitHub link-outs are pulled back in Round 1.
-    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
   })
 
   it('links to correct destinations', () => {
@@ -35,6 +37,10 @@ describe('Footer', () => {
     expect(screen.getByText('About').closest('a')).toHaveAttribute('href', '/about')
     expect(screen.getByText('Team').closest('a')).toHaveAttribute('href', '/team')
     expect(screen.getByText('Privacy').closest('a')).toHaveAttribute('href', '/privacy')
-    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', 'mailto:hello@axiom-foundation.org')
+    expect(screen.getByText('Contact').closest('a')).toHaveAttribute('href', '/contact')
+    expect(screen.getByLabelText('LinkedIn')).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/company/axiom-foundation',
+    )
   })
 })

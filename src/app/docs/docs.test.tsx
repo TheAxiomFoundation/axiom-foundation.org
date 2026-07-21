@@ -17,15 +17,54 @@ describe("DocsPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /canonical docs live with the system that enforces them/i,
+        name: /docs live with the system that enforces them/i,
       })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /documentation homes/i })
     ).toBeInTheDocument();
-    expect(screen.getByText(/repo-owned engineering docs/i)).toBeInTheDocument();
-    expect(screen.getByText("axiom-corpus")).toBeInTheDocument();
+    expect(
+      screen.getByText(/docs live in the repo that owns the code or contract/i)
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("axiom-corpus").length).toBeGreaterThan(0);
     expect(screen.getAllByText("axiom-encode").length).toBeGreaterThan(0);
+  });
+
+  it("indexes the canonical docs across the pipeline", () => {
+    render(<DocsPage />);
+    expect(
+      screen.getByRole("link", { name: /signed corpus releases/i })
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md"
+    );
+    expect(
+      screen.getByRole("link", { name: /the rulespec schema/i })
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/rulespec.md"
+    );
+    expect(
+      screen.getByRole("link", { name: /source claims format/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /bitemporal semantics/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /jurisdiction repositories/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /oracle adapters/i })
+    ).toHaveAttribute("href", "https://github.com/TheAxiomFoundation/axiom-oracles");
+    // The internal lab notebook stays in the repo, not on the index.
+    expect(screen.queryByText(/methods log/i)).not.toBeInTheDocument();
+  });
+
+  it("embeds the live architecture map", () => {
+    render(<DocsPage />);
+    expect(
+      screen.getByTitle("Cross-system architecture map")
+    ).toHaveAttribute("src", "https://axiom-architecture-one.vercel.app");
   });
 
   it("links to canonical repo docs and related maps", () => {

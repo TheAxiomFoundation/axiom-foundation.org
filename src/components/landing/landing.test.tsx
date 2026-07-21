@@ -53,11 +53,9 @@ describe('Landing sections', () => {
     expect(
       screen.getByRole('heading', { name: /encoded so anyone can compute them/i }),
     ).toBeInTheDocument()
-    // Round 1 pull-back: the PTC worked example is hidden until the
-    // Jul 28 reveal (SHOW_WORKED_EXAMPLE in encoded-law-section).
     expect(
-      screen.queryByRole('heading', { name: /aca premium tax credit, three eras/i }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
+    ).toBeInTheDocument()
   })
 
   it('renders the encoder section with terminal + steps', () => {
@@ -96,8 +94,11 @@ describe('Landing sections', () => {
     expect(screen.getByText(/everything we publish/i)).toBeInTheDocument()
     // The fiscal-sponsorship line was removed (Jul 14).
     expect(screen.queryByText(/fiscally sponsored/i)).not.toBeInTheDocument()
-    // Contributor/GitHub asks are pulled back in Round 1 — only hello@ + internal links remain.
-    expect(screen.getByText(/get in touch/i)).toBeInTheDocument()
+    // Contribute / Verify / Fund cards are back for the v2 launch.
+    expect(screen.getByText(/encode your jurisdiction/i)).toBeInTheDocument()
+    expect(screen.getByText(/validate our work/i)).toBeInTheDocument()
+    expect(screen.getByText(/underwrite the public layer/i)).toBeInTheDocument()
+    expect(screen.getByText(/live demos/i)).toBeInTheDocument()
     expect(screen.getByText(/meet the team/i)).toBeInTheDocument()
   })
 })

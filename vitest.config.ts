@@ -14,11 +14,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    // Full runs share the machine with dev servers and builds; under
-    // load, unrelated component suites time out intermittently (each
-    // passes in isolation). Give them headroom and one retry so a
-    // busy laptop doesn't read as a red suite.
-    testTimeout: 15000,
+    // Under full-suite parallel load, a file's cold transform/import
+    // time (10s+ on a busy machine) is billed to its first test; the
+    // 5s default then fails runs that are actually healthy. Actual
+    // test bodies here run in milliseconds. One retry so a busy
+    // laptop doesn't read as a red suite.
+    testTimeout: 20_000,
     retry: 1,
     exclude: ['src/_old_pages/**', 'node_modules/**', '**/node_modules/**'],
     coverage: {

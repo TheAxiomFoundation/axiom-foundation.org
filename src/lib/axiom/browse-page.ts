@@ -78,12 +78,21 @@ export async function getBrowsePageData(
   const kept: TreeNode[] = [];
   const strayCounts = new Map<string, number>();
   for (const node of result.nodes) {
+    // The "recovery" namespace under each doc type holds ingestion
+    // re-scrape dumps (release-scope blocks, scraper boilerplate) —
+    // pipeline working data, never navigable law (verified against
+    // us/regulation/recovery and us/guidance/recovery, 2026-07-20).
+    if (segments.length === 2 && node.segment === "recovery") continue;
     const path = node.rule?.citation_path;
     if (!path) {
       kept.push(node);
       continue;
     }
     if (!path.startsWith(`${expectedPrefix}/`)) continue;
+    // Ingestion-recovery dumps (raw re-scrape blocks under a
+    // "recovery/release-scope-…" namespace, complete with scraper
+    // boilerplate headings) are pipeline working data, not law.
+    if (path.includes("/release-scope-")) continue;
     const nextSegment = path.slice(expectedPrefix.length + 1).split("/")[0];
     if (nextSegment === node.segment) {
       // Correctly positioned (including deeper flattened rows).

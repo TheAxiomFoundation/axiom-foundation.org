@@ -136,42 +136,57 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
           data-testid="browse-list"
           className="divide-y divide-[var(--color-rule)] border-t border-b border-[var(--color-rule)]"
         >
-          {data.nodes.map((node) => (
-            <li key={node.segment}>
-              <Link
-                href={`/${basePath}/${node.segment}`}
-                title={node.label}
-                className="group flex items-baseline gap-4 py-3.5 no-underline"
-              >
-                {/\d/.test(node.segment) && (
-                  <span className="w-12 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors">
-                    {node.segment}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors">
-                  {displayLabel(node.label)}
-                </span>
-                <span className="flex shrink-0 items-baseline gap-3 font-mono text-[11px] text-[var(--color-ink-muted)]">
-                  {node.hasRuleSpec && (
-                    <span
-                      className="text-[var(--color-accent)]"
-                      title="Has RuleSpec encodings"
-                    >
-                      encoded
+          {data.nodes.map((node) => {
+            // A label that just repeats the segment carries no
+            // information: bare numbers become "Title N" (statute/
+            // regulation levels), and the number column only renders
+            // when the label says something different.
+            const raw = displayLabel(node.label);
+            const bareNumber =
+              raw === node.segment && /^\d/.test(node.segment);
+            const label =
+              bareNumber &&
+              (data.segments[1] === "statute" ||
+                data.segments[1] === "regulation")
+                ? `Title ${node.segment}`
+                : raw;
+            const showChip =
+              /\d/.test(node.segment) && label !== node.segment && !bareNumber;
+            return (
+              <li key={node.segment}>
+                <Link
+                  href={`/${basePath}/${node.segment}`}
+                  title={node.label}
+                  className="group flex items-baseline gap-4 py-3.5 no-underline"
+                >
+                  {showChip && (
+                    <span className="w-12 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors">
+                      {node.segment}
                     </span>
                   )}
-                  {typeof node.childCount === "number" &&
-                    node.childCount > 0 && <span>{node.childCount}</span>}
-                  <span
-                    aria-hidden
-                    className="text-[var(--color-ink-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[var(--color-accent)]"
-                  >
-                    →
+                  <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors">
+                    {label}
                   </span>
-                </span>
-              </Link>
-            </li>
-          ))}
+                  <span className="flex shrink-0 items-baseline gap-3 font-mono text-[11px] text-[var(--color-ink-muted)]">
+                    {node.hasRuleSpec && (
+                      <span
+                        className="text-[var(--color-accent)]"
+                        title="Has RuleSpec encodings"
+                      >
+                        encoded
+                      </span>
+                    )}
+                    <span
+                      aria-hidden
+                      className="text-[var(--color-ink-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[var(--color-accent)]"
+                    >
+                      →
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ol>
       )}
       {(data.hasMore || data.page > 0) && (

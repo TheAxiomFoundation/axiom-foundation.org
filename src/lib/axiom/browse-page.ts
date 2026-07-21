@@ -101,7 +101,12 @@ export async function getBrowsePageData(
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([segment, count]) => ({
       segment,
-      label: segment.length <= 5 ? segment.toUpperCase() : segment,
+      // Acronym-length segments read as initialisms (CMS, IRS);
+      // longer ones as words (Recovery).
+      label:
+        segment.length <= 5
+          ? segment.toUpperCase()
+          : segment.charAt(0).toUpperCase() + segment.slice(1),
       hasChildren: true,
       childCount: count,
       nodeType: "container" as TreeNode["nodeType"],

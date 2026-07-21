@@ -27,12 +27,10 @@ describe("proxy", () => {
       ["/us/statute", "/axiom/v2/us/statute"],
       ["/us", "/axiom/v2/us"],
       ["/us/policy/usda/snap", "/axiom/v2/us/policy/usda/snap"],
-      // Jurisdictions without citation paths (and the legacy alias)
-      // stay on the v1 tree browser, which navigates by provision_id.
+      // Jurisdictions without citation paths stay on the v1 tree
+      // browser, which navigates by provision_id.
       ["/ca", "/axiom/ca"],
       ["/ca/statute/act/1", "/axiom/ca/statute/act/1"],
-      ["/canada", "/axiom/canada"],
-      ["/canada/regulation", "/axiom/canada/regulation"],
     ] as const) {
       const response = proxy(
         request(
@@ -157,12 +155,70 @@ describe("proxy", () => {
 
   it("rewrites jurisdiction paths on custom localhost names into the Axiom app route", () => {
     const response = proxy(
-      request("http://app.localhost:4944/canada/regulation", "app.localhost:4944")
+      request("http://app.localhost:4944/ca/regulation", "app.localhost:4944")
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://app.localhost:4944/axiom/canada/regulation"
+      "http://app.localhost:4944/axiom/ca/regulation"
     );
+  });
+
+  it("redirects the legacy /canada alias to /ca on every host", () => {
+    for (const [url, host, expected] of [
+      [
+        "https://app.axiom-foundation.org/canada",
+        "app.axiom-foundation.org",
+        "https://app.axiom-foundation.org/ca",
+      ],
+      [
+        "https://app.axiom-foundation.org/canada/regulation",
+        "app.axiom-foundation.org",
+        "https://app.axiom-foundation.org/ca/regulation",
+      ],
+      [
+        "http://localhost:4944/canada",
+        "localhost:4944",
+        "http://localhost:4944/ca",
+      ],
+    ] as const) {
+      const response = proxy(request(url, host));
+      expect(response.status).toBe(308);
+      expect(response.headers.get("location")).toBe(expected);
+    }
+  });
+
+  it("redirects direct /axiom/v2 URLs to the canonical bare path", () => {
+    for (const [url, host, expected] of [
+      [
+        "https://axiom-foundation-abc123.vercel.app/axiom/v2/us/statute/26/32",
+        "axiom-foundation-abc123.vercel.app",
+        "https://axiom-foundation-abc123.vercel.app/us/statute/26/32",
+      ],
+      [
+        "http://localhost:4944/axiom/v2/us",
+        "localhost:4944",
+        "http://localhost:4944/us",
+      ],
+    ] as const) {
+      const response = proxy(request(url, host));
+      expect(response.status).toBe(308);
+      expect(response.headers.get("location")).toBe(expected);
+    }
+  });
+
+  it("redirects marketing paths on the app host to the marketing site", () => {
+    for (const path of ["/about", "/team", "/privacy", "/docs"]) {
+      const response = proxy(
+        request(
+          `https://app.axiom-foundation.org${path}`,
+          "app.axiom-foundation.org"
+        )
+      );
+      expect(response.status).toBe(308);
+      expect(response.headers.get("location")).toBe(
+        `https://axiom-foundation.org${path}`
+      );
+    }
   });
 
   it("rewrites jurisdiction paths on preview and marketing hosts too", () => {

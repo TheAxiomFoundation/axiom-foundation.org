@@ -81,6 +81,43 @@ export function BrowseUnavailable({ path }: { path: string }) {
   );
 }
 
+/** One-line, plain-verb description of each collection at the
+ *  jurisdiction root. Copy is design material: these answer "which
+ *  drawer do I open?" for readers who don't know the taxonomy. */
+const DOC_TYPE_BLURBS: Readonly<Record<string, string>> = {
+  statute: "Codified acts of the legislature.",
+  legislation: "Codified acts of the legislature.",
+  regulation: "Rules agencies issue to carry statutes into effect.",
+  policy: "Agency operating manuals and internal policy.",
+  guidance: "Interpretive letters, notices, and public guidance.",
+  form: "Forms and the instructions that accompany them.",
+};
+
+/** What one child of this level is, for count lines. */
+function childNoun(depth: number, sampleSegment: string | undefined): string {
+  if (sampleSegment?.startsWith("subpart")) return "subparts";
+  if (depth === 1) return "collections";
+  if (depth === 2) return "titles";
+  return "sections";
+}
+
+/** The numeral (or letter) that names a node in legal ordering:
+ *  "26", "54.403", subpart-C → "C". Null for prose segments. */
+function orderingKey(segment: string): string | null {
+  const subpart = segment.match(/^subpart-(.+)$/i);
+  if (subpart) return subpart[1].toUpperCase();
+  return /^\d/.test(segment) ? segment : null;
+}
+
+const ENCODED_MARK = (
+  <span
+    title="Has RuleSpec encodings"
+    className="font-mono text-[13px] leading-none text-[var(--color-accent)]"
+  >
+    ∀
+  </span>
+);
+
 export function BrowseView({ data }: { data: BrowsePageData }) {
   const heading =
     data.currentRule?.heading?.trim() ||
@@ -88,46 +125,113 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
       ? data.jurisdictionLabel
       : data.breadcrumbs.at(-1)?.label ?? data.segments.at(-1));
   const basePath = data.segments.join("/");
+  const depth = data.segments.length;
+  const isRoot = depth === 1;
+  const noun = childNoun(depth, data.nodes[0]?.segment);
+  const encodedCount = data.nodes.filter((n) => n.hasRuleSpec).length;
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pt-24 pb-16">
-      <div className="mb-10">
+      <header className="mb-8">
         <Breadcrumbs data={data} />
         <h1
-          className="mt-5 text-3xl font-semibold text-[var(--color-ink)]"
+          className="mt-5 text-[2.4rem] leading-[1.1] font-semibold text-[var(--color-ink)]"
           style={{ fontFamily: "var(--f-serif)" }}
         >
           {displayLabel(heading ?? "")}
         </h1>
-      </div>
+        {data.nodes.length > 0 && !data.hasMore && data.page === 0 && (
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            {data.nodes.length} {noun}
+            {encodedCount > 0 && (
+              <>
+                {" "}· <span className="text-[var(--color-accent)]">∀</span>{" "}
+                {encodedCount} with encodings
+              </>
+            )}
+          </p>
+        )}
+      </header>
 
       {data.nodes.length === 0 ? (
         <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
           Nothing has been ingested at this level yet.
         </p>
-      ) : (
+      ) : isRoot ? (
+        /* The jurisdiction root is a shelf of collections — each row
+           names a drawer and says what lives inside it. */
         <ol
           data-testid="browse-list"
           className="divide-y divide-[var(--color-rule)] border-t border-b border-[var(--color-rule)]"
         >
-          {data.nodes.map((node) => {
-            // A label that just repeats the segment carries no
-            // information: bare numbers become "Title N" (statute/
-            // regulation levels), and the number column only renders
-            // when the label says something different.
+          {data.nodes.map((node) => (
+            <li key={node.segment}>
+              <Link
+                href={
+                  node.rule?.citation_path
+                    ? `/${node.rule.citation_path}`
+                    : `/${basePath}/${node.segment}`
+                }
+                title={node.label}
+                className="group block py-5 no-underline"
+              >
+                <span className="flex items-baseline justify-between gap-4">
+                  <span
+                    className="text-xl text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors"
+                    style={{ fontFamily: "var(--f-serif)" }}
+                  >
+                    {displayLabel(node.label)}
+                  </span>
+                  <span className="flex shrink-0 items-baseline gap-2 font-mono text-[11px] text-[var(--color-ink-muted)]">
+                    {node.hasRuleSpec && ENCODED_MARK}
+                    {typeof node.childCount === "number" &&
+                      node.childCount > 0 && (
+                        <span>{node.childCount}</span>
+                      )}
+                  </span>
+                </span>
+                {DOC_TYPE_BLURBS[node.segment] && (
+                  <span className="mt-1 block text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+                    {DOC_TYPE_BLURBS[node.segment]}
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        /* Finding list — the front-matter of a code volume: ordering
+           numerals as tab dividers, dotted leaders running to the
+           counts, ∀ marking what is machine-readable. */
+        <ol data-testid="browse-list" className="border-t border-[var(--color-rule)]">
+          {(() => {
+            const hasGutter = data.nodes.some(
+              (n) => orderingKey(n.segment) !== null
+            );
+            return data.nodes.map((node) => {
             const raw = displayLabel(node.label);
-            const bareNumber =
-              raw === node.segment && /^\d/.test(node.segment);
-            const label =
+            // A label that just repeats the segment carries no
+            // information at the title level — name the volume.
+            const bareNumber = raw === node.segment && /^\d/.test(node.segment);
+            let label =
               bareNumber &&
+              depth === 2 &&
               (data.segments[1] === "statute" ||
                 data.segments[1] === "regulation")
                 ? `Title ${node.segment}`
                 : raw;
-            const showChip =
-              /\d/.test(node.segment) && label !== node.segment && !bareNumber;
+            const key = orderingKey(node.segment);
+            const showKey = key !== null && label !== node.segment;
+            // The key column already says "C" — "Subpart C - Education…"
+            // repeating it reads as a stutter.
+            if (showKey && /^subpart-/i.test(node.segment)) {
+              label = label.replace(/^subpart\s+\S+\s*[-—–]\s*/i, "");
+            }
             return (
-              <li key={node.segment}>
+              <li
+                key={node.segment}
+                className="border-b border-[var(--color-rule)]"
+              >
                 <Link
                   // Canonical citation-path hrefs where known: deep
                   // containers flatten children out of their own path
@@ -139,36 +243,51 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                       : `/${basePath}/${node.segment}`
                   }
                   title={node.label}
-                  className="group flex items-baseline gap-4 py-3.5 no-underline"
+                  className="group flex items-baseline gap-3 py-3 no-underline sm:gap-4"
                 >
-                  {showChip && (
-                    <span className="w-12 shrink-0 text-right font-mono text-[12px] text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors">
-                      {node.segment}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors">
-                    {label}
-                  </span>
-                  <span className="flex shrink-0 items-baseline gap-3 font-mono text-[11px] text-[var(--color-ink-muted)]">
-                    {node.hasRuleSpec && (
-                      <span
-                        className="text-[var(--color-accent)]"
-                        title="Has RuleSpec encodings"
-                      >
-                        encoded
-                      </span>
-                    )}
+                  {showKey && (
                     <span
                       aria-hidden
-                      className="text-[var(--color-ink-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[var(--color-accent)]"
+                      className="w-10 shrink-0 text-right text-[1.15rem] leading-none text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors sm:w-14"
+                      style={{
+                        fontFamily: "var(--f-serif)",
+                        fontFeatureSettings: "'onum'",
+                      }}
                     >
-                      →
+                      {key}
                     </span>
+                  )}
+                  <span
+                    className={`min-w-0 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors ${
+                      hasGutter && !showKey ? "ml-[3.25rem] sm:ml-[4.5rem]" : ""
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  {/* Dotted leader, exactly as a printed table of
+                      contents runs the eye to the page number. */}
+                  <span
+                    aria-hidden
+                    className="min-w-6 flex-1 border-b border-dotted border-[var(--color-rule)] group-hover:border-[var(--color-ink-muted)] transition-colors"
+                  />
+                  <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
+                    {node.hasRuleSpec && ENCODED_MARK}
+                    {typeof node.childCount === "number" &&
+                      node.childCount > 0 && (
+                        <span className="hidden sm:inline">
+                          {node.childCount}{" "}
+                          {childNoun(depth + 1, undefined).replace(
+                            /s$/,
+                            node.childCount === 1 ? "" : "s"
+                          )}
+                        </span>
+                      )}
                   </span>
                 </Link>
               </li>
             );
-          })}
+          });
+          })()}
         </ol>
       )}
       {(data.hasMore || data.page > 0) && (

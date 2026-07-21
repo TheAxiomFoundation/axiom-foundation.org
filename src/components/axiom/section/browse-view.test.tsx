@@ -40,7 +40,8 @@ describe("BrowseView", () => {
     expect(
       screen.getByText("Title 7 — Agriculture").closest("a")
     ).toHaveAttribute("href", "/us/statute/7");
-    expect(screen.getByText("12")).toBeInTheDocument();
+    // No child-count column; encoded badge remains.
+    expect(screen.queryByText("12")).not.toBeInTheDocument();
     expect(screen.getByTitle("Has RuleSpec encodings")).toBeInTheDocument();
     // Breadcrumb shows ancestors only (as links); the eyebrow repeats
     // the parent context; the current level is the H1, not a crumb.

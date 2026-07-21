@@ -53,6 +53,7 @@ export interface NavProps {
 // scroll-anchor/page behavior). The landing sections are reachable
 // through the page itself; demos group by the segment they serve.
 const DEFAULT_LINKS: NavLink[] = [
+  { href: "/coverage", label: "Coverage" },
   { href: "/validation", label: "Validation" },
   {
     href: "/demos",

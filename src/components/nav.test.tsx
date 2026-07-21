@@ -61,6 +61,7 @@ describe('Nav', () => {
     render(<NavClient />)
     expect(screen.getAllByText('Axiom').length).toBeGreaterThan(0)
     expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Validation').length).toBeGreaterThan(0)
     expect(screen.getAllByText('About').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Team').length).toBeGreaterThan(0)

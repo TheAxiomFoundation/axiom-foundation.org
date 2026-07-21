@@ -129,6 +129,7 @@ export function Footer({
           {renderColumn("Product", [
             { href: appUrl, label: "Axiom platform" },
             { href: "/demos", label: "Demos" },
+            { href: "/coverage", label: "Coverage" },
             { href: "/validation", label: "Validation" },
             { href: "/docs", label: "Documentation" },
           ])}

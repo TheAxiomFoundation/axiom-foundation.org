@@ -34,7 +34,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Testing
+# Vitest coverage output (the /coverage marketing route is source).
 coverage/
+!src/app/coverage/
 
 # Wrangler
 .wrangler/

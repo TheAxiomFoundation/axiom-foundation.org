@@ -101,6 +101,15 @@ export function ActionStrip({
         >
           {copied ? "copied ✓" : "cite"}
         </button>
+        {encodedRuleCount > 0 && !defaultProgram && !graphHref && (
+          <span
+            data-testid="strip-not-executable"
+            title="The rules are encoded, but no compiled runtime package includes this section yet — run and graph unlock when one does (compose-on-demand is tracked upstream)."
+            className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]"
+          >
+            encoded, not yet in an executable program
+          </span>
+        )}
       </div>
     </div>
   );

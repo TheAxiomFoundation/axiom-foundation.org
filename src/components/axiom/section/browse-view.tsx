@@ -47,16 +47,6 @@ function Breadcrumbs({ data }: { data: BrowsePageData }) {
   );
 }
 
-/** Plural noun for the level's children, from their node type. */
-function levelNoun(data: BrowsePageData): string {
-  const type = data.nodes[0]?.nodeType;
-  if (type === "doc_type") return "document types";
-  if (type === "title") return "titles";
-  if (type === "section") return "sections";
-  if (type === "act") return "acts";
-  return "entries";
-}
-
 /** Transient-failure state: the URL is valid; the navigation index
  *  didn't answer in time. Distinct from notFound so crawlers and
  *  users never see a valid level as nonexistent. */
@@ -98,33 +88,17 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
       ? data.jurisdictionLabel
       : data.breadcrumbs.at(-1)?.label ?? data.segments.at(-1));
   const basePath = data.segments.join("/");
-  // Contextual eyebrow: the ancestor labels ("US Federal · Statutes"),
-  // or the level kind at the top. Never the raw path.
-  const ancestorLabels = data.breadcrumbs
-    .slice(1, -1)
-    .map((item) => item.label);
-  const eyebrow =
-    ancestorLabels.length > 0 ? ancestorLabels.join(" · ") : "Jurisdiction";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pt-24 pb-16">
       <div className="mb-10">
         <Breadcrumbs data={data} />
-        <p className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {eyebrow}
-        </p>
         <h1
-          className="mt-2 text-3xl font-semibold text-[var(--color-ink)]"
+          className="mt-5 text-3xl font-semibold text-[var(--color-ink)]"
           style={{ fontFamily: "var(--f-serif)" }}
         >
           {displayLabel(heading ?? "")}
         </h1>
-        {data.nodes.length > 0 && (
-          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
-            {data.nodes.length}
-            {data.hasMore ? "+" : ""} {levelNoun(data)}
-          </p>
-        )}
       </div>
 
       {data.nodes.length === 0 ? (

@@ -129,7 +129,15 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
             return (
               <li key={node.segment}>
                 <Link
-                  href={`/${basePath}/${node.segment}`}
+                  // Canonical citation-path hrefs where known: deep
+                  // containers flatten children out of their own path
+                  // (…/subpart-C lists …/1302/30), so appending the
+                  // segment would 404.
+                  href={
+                    node.rule?.citation_path
+                      ? `/${node.rule.citation_path}`
+                      : `/${basePath}/${node.segment}`
+                  }
                   title={node.label}
                   className="group flex items-baseline gap-4 py-3.5 no-underline"
                 >

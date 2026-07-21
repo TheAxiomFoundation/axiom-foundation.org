@@ -87,6 +87,16 @@ export async function getBrowsePageData(
   const kept: TreeNode[] = [];
   const strayCounts = new Map<string, number>();
   for (const node of result.nodes) {
+    // Deep containers (a CFR part's subparts) legitimately hold
+    // children whose citation paths flatten the container out
+    // (…/1302/subpart-C's children live at …/1302/30). The
+    // positional-integrity filter below exists for doc-type/title
+    // index pollution — at container depth, trust the navigation
+    // index's parent links instead.
+    if (options.allowDeep) {
+      kept.push(node);
+      continue;
+    }
     // The "recovery" namespace under each doc type holds ingestion
     // re-scrape dumps (release-scope blocks, scraper boilerplate) —
     // pipeline working data, never navigable law (verified against

@@ -54,6 +54,28 @@ export function ruleGraphFocus(
   return `${jurisdictionSlug}:${filePath.replace(/\.yaml$/, "")}#${ruleName}`;
 }
 
+/** File legal id for a repo file path: ``regulations/47-cfr/54/403.yaml``
+ *  under ``us`` → ``us:regulations/47-cfr/54/403``. */
+export function fileGraphFocus(
+  jurisdictionSlug: string,
+  filePath: string
+): string {
+  return `${jurisdictionSlug}:${filePath.replace(/\.yaml$/, "")}`;
+}
+
+/**
+ * Viewer deep link for law that is encoded but not inside any compiled
+ * program package: the viewer asks the API to compose the graph on
+ * demand from the encodings mirror (`?compose=`). ``focus`` is a file
+ * or rule legal id from fileGraphFocus/ruleGraphFocus.
+ */
+export function composeGraphViewerUrl(focus: string): string {
+  const base = (
+    process.env.NEXT_PUBLIC_GRAPH_VIEWER_URL ?? DEFAULT_VIEWER_BASE
+  ).replace(/\/$/, "");
+  return `${base}/?compose=${encodeURIComponent(focus)}`;
+}
+
 const DEFAULT_BUILDER_BASE = "https://dashboard-builder-flax.vercel.app";
 
 /**

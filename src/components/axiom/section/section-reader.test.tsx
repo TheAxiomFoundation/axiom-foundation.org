@@ -104,7 +104,11 @@ describe("SectionReader", () => {
     );
     // The header action strip carries the status line and verbs.
     const strip = screen.getByTestId("action-strip");
-    expect(strip).toHaveTextContent("encoded ✓ 1 rules");
+    // Encoded but not covered by any program (and no known rule file
+    // to compose from): the strip says so instead of showing verbs.
+    expect(strip).toHaveTextContent(
+      "encoded, not yet in an executable program"
+    );
     expect(within(strip).getByTestId("strip-cite")).toBeInTheDocument();
     // Chunk sections with designator links into their own URLs; no
     // rule-name chips in the reading flow.

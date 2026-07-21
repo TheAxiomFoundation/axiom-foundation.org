@@ -19,6 +19,8 @@ import { ActionStrip } from "./action-strip";
 import { programFamilySummary } from "@/lib/axiom/runtime/families";
 import {
   builderUrlForRule,
+  composeGraphViewerUrl,
+  fileGraphFocus,
   graphFocusForCitationPath,
   graphViewerUrl,
   ruleGraphFocus,
@@ -178,16 +180,23 @@ function subsectionActionHrefs(
     data.programs.find((program) => program.anchors.includes(anchor)) ??
     data.programs[0] ??
     null;
-  const graphHref =
-    graphProgram && sectionFocus
-      ? graphViewerUrl(graphProgram, `${sectionFocus}/${anchor}`)
-      : null;
   const inPrograms = new Set(
     data.programs.flatMap((program) => program.ruleNames)
   );
   const sorted = [...subsectionRules].sort(
     (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
   );
+  // No package covers this section: compose the graph on demand from
+  // the subsection's encoded file instead of dropping the link.
+  const composeRule = sorted.find((rule) => data.ruleFiles[rule.name]);
+  const graphHref =
+    graphProgram && sectionFocus
+      ? graphViewerUrl(graphProgram, `${sectionFocus}/${anchor}`)
+      : composeRule && slug
+        ? composeGraphViewerUrl(
+            fileGraphFocus(slug, data.ruleFiles[composeRule.name])
+          )
+        : null;
   const builderRule =
     sorted.find(
       (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
@@ -240,6 +249,20 @@ function stripBuilderHref(data: SectionPageData): string | null {
   const slug = data.citationPath.split("/")[0];
   return builderUrlForRule(
     ruleGraphFocus(slug, data.ruleFiles[rule.name], rule.name)
+  );
+}
+
+/**
+ * Header-strip graph target when no compiled package covers this
+ * section: compose the graph on demand from the section's encoded
+ * file (the viewer's ?compose= mode, backed by the encodings mirror).
+ */
+function stripComposeHref(data: SectionPageData): string | null {
+  const rule = data.encodedRules.find((entry) => data.ruleFiles[entry.name]);
+  if (!rule) return null;
+  const slug = data.citationPath.split("/")[0];
+  return composeGraphViewerUrl(
+    fileGraphFocus(slug, data.ruleFiles[rule.name])
   );
 }
 
@@ -395,7 +418,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             graphHref={
               data.programs[0] && sectionFocus
                 ? graphViewerUrl(data.programs[0], sectionFocus)
-                : null
+                : stripComposeHref(data)
             }
             builderHref={stripBuilderHref(data)}
             citationLabel={formatLegalCitation(data.citationPath)}

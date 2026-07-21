@@ -1,10 +1,35 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   builderUrlForRule,
+  composeGraphViewerUrl,
+  fileGraphFocus,
   graphFocusForCitationPath,
   graphViewerUrl,
   ruleGraphFocus,
 } from "./graph-links";
+
+describe("fileGraphFocus", () => {
+  it("builds a file legal id from slug and repo path", () => {
+    expect(fileGraphFocus("us", "regulations/47-cfr/54/403.yaml")).toBe(
+      "us:regulations/47-cfr/54/403"
+    );
+    expect(fileGraphFocus("us", "statutes/7/2017/a")).toBe(
+      "us:statutes/7/2017/a"
+    );
+  });
+});
+
+describe("composeGraphViewerUrl", () => {
+  it("links the viewer's compose-on-demand mode", () => {
+    const url = new URL(
+      composeGraphViewerUrl("us:regulations/47-cfr/54/403")
+    );
+    expect(url.origin).toBe("https://rulespec-graph-viewer.vercel.app");
+    expect(url.searchParams.get("compose")).toBe(
+      "us:regulations/47-cfr/54/403"
+    );
+  });
+});
 
 describe("builderUrlForRule", () => {
   it("links the builder with the rule preselected as an output", () => {

@@ -54,15 +54,9 @@ export function ActionStrip({
 
   return (
     <div data-testid="action-strip" className="mt-3 space-y-2">
-      {(encodedRuleCount > 0 || familySummary) && (
+      {familySummary && (
         <p className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {encodedRuleCount > 0 && (
-            <span className="text-[var(--color-accent)]">
-              encoded ✓ {encodedRuleCount} rules
-            </span>
-          )}
-          {encodedRuleCount > 0 && familySummary && " · "}
-          {familySummary && <span>executable in {familySummary}</span>}
+          executable in {familySummary}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -83,12 +77,22 @@ export function ActionStrip({
             graph ↗
           </a>
         )}
+        {encodedRuleCount > 0 && !defaultProgram && !graphHref && (
+          <span
+            data-testid="strip-not-executable"
+            title="The rules are encoded, but no compiled runtime package includes this section yet — run unlocks when one does."
+            className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]"
+          >
+            encoded, not yet in an executable program
+          </span>
+        )}
+        {/* Secondary verbs sit off to the right, away from Run/Graph. */}
         {builderHref && (
           <a
             href={builderHref}
             target="_blank"
             rel="noreferrer"
-            className={quiet}
+            className={`${quiet} ml-auto`}
           >
             build calculator ↗
           </a>
@@ -97,19 +101,10 @@ export function ActionStrip({
           type="button"
           onClick={copyCitation}
           data-testid="strip-cite"
-          className={quiet}
+          className={builderHref ? quiet : `${quiet} ml-auto`}
         >
           {copied ? "copied ✓" : "cite"}
         </button>
-        {encodedRuleCount > 0 && !defaultProgram && !graphHref && (
-          <span
-            data-testid="strip-not-executable"
-            title="The rules are encoded, but no compiled runtime package includes this section yet — run and graph unlock when one does (compose-on-demand is tracked upstream)."
-            className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]"
-          >
-            encoded, not yet in an executable program
-          </span>
-        )}
       </div>
     </div>
   );

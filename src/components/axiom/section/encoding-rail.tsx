@@ -11,6 +11,7 @@ import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import {
   builderUrlForRule,
   graphFocusForCitationPath,
+  composeGraphViewerUrl,
   graphViewerUrl,
   ruleGraphFocus,
 } from "@/lib/axiom/runtime/graph-links";
@@ -167,11 +168,15 @@ export function EncodingRail({
     : null;
   const graphLinkForRule = (ruleName: string): string | null => {
     const filePath = ruleFiles[ruleName];
-    if (!filePath || !slug || programs.length === 0) return null;
+    if (!filePath || !slug) return null;
+    const focus = ruleGraphFocus(slug, filePath, ruleName);
     const program =
       programs.find((candidate) => candidate.ruleNames.includes(ruleName)) ??
       programs[0];
-    return graphViewerUrl(program, ruleGraphFocus(slug, filePath, ruleName));
+    // No compiled package covers this rule — compose its graph on
+    // demand from the encodings mirror instead.
+    if (!program) return composeGraphViewerUrl(focus);
+    return graphViewerUrl(program, focus);
   };
   const builderLinkForRule = (ruleName: string): string | null => {
     const filePath = ruleFiles[ruleName];

@@ -17,7 +17,6 @@ import {
 } from "@/lib/axiom/runtime/graph-links";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
-import { RunSample } from "./run-sample";
 import { useActiveAnchor } from "./use-active-anchor";
 
 export interface RailChunk {
@@ -68,59 +67,6 @@ function RailSection({
   );
 }
 
-/** Jurisdiction chips linking each program into the graph viewer. */
-function ProgramChips({
-  programs,
-  focus,
-}: {
-  programs: ProvisionProgramCoverage[];
-  focus: string | null;
-}) {
-  const families = new Map<string, ProvisionProgramCoverage[]>();
-  for (const program of programs) {
-    const family = programFamily(program);
-    const group = families.get(family);
-    if (group) group.push(program);
-    else families.set(family, [program]);
-  }
-  return (
-    <ol data-testid="rail-programs" className="space-y-3">
-      {Array.from(families, ([family, group]) => (
-        <li key={family}>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="truncate font-mono text-sm text-[var(--color-ink-secondary)]">
-              {family}
-            </span>
-            <span className="shrink-0 font-mono text-[10px] text-[var(--color-ink-muted)]">
-              {group.length === 1
-                ? `${group[0].ruleCount} ${group[0].ruleCount === 1 ? "rule" : "rules"} here`
-                : `${group.length} jurisdictions`}
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {group.map((program) => (
-              <a
-                key={`${program.jurisdiction}/${program.programId}`}
-                href={graphViewerUrl(program, focus)}
-                target="_blank"
-                rel="noreferrer"
-                title={`${program.programId} (${program.jurisdiction}): ${program.ruleCount} ${program.ruleCount === 1 ? "rule" : "rules"} from this section · ${program.mode} — view in graph`}
-                className={`rounded-sm border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] ${
-                  program.status === "ready"
-                    ? "text-[var(--color-ink-secondary)]"
-                    : "text-[var(--color-ink-muted)] opacity-60"
-                }`}
-              >
-                {jurisdictionChip(program.jurisdiction)}
-              </a>
-            ))}
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 /**
  * The v2 rail — the inspector for the node being read. Order of
  * importance, top down: where you are and what ran (always visible),
@@ -142,7 +88,6 @@ export function EncodingRail({
   incoming,
   programs = [],
   ruleFiles = {},
-  sectionRuleIds = [],
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -155,8 +100,6 @@ export function EncodingRail({
   programs?: ProvisionProgramCoverage[];
   /** Rule name → repo file path; enables per-rule graph links. */
   ruleFiles?: Record<string, string>;
-  /** Durable legal ids traced with runs. */
-  sectionRuleIds?: string[];
 }) {
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
@@ -181,10 +124,6 @@ export function EncodingRail({
   const builderLinkForRule = (ruleName: string): string | null => {
     const filePath = ruleFiles[ruleName];
     if (!filePath || !slug) return null;
-    // The builder resolves rules by probing executable program
-    // graphs; without any program covering this section the deep
-    // link is a guaranteed dead-end on the bare picker.
-    if (programs.length === 0) return null;
     return builderUrlForRule(ruleGraphFocus(slug, filePath, ruleName));
   };
 
@@ -234,13 +173,12 @@ export function EncodingRail({
         {activeChunk ? activeChunk.label : "Whole section"}
       </p>
 
-      <RunSample programs={programs} sectionFocus={sectionFocus} sectionRuleIds={sectionRuleIds} />
-
       <div className="mt-4 space-y-2">
         {(encoding || nodeRules.length > 0) && (
           <RailSection
             summary={`rules (${nodeRules.length})`}
             testId="rail-rules"
+            defaultOpen
           >
             <RuleSpecTab
               encoding={encoding}
@@ -268,14 +206,6 @@ export function EncodingRail({
               graphLinkForRule={graphLinkForRule}
               builderLinkForRule={builderLinkForRule}
             />
-          </RailSection>
-        )}
-        {nodePrograms.length > 0 && (
-          <RailSection
-            summary={`executable in (${nodePrograms.length})`}
-            testId="rail-executable"
-          >
-            <ProgramChips programs={nodePrograms} focus={sectionFocus} />
           </RailSection>
         )}
         {citesSummary && (

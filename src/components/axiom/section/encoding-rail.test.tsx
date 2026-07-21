@@ -139,8 +139,9 @@ describe("EncodingRail", () => {
     expect(screen.getByTestId("rail-header")).toHaveTextContent(
       "Whole section"
     );
-    // Drawers: rules and citations, collapsed by default.
-    expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");
+    // Rules drawer opens by default — per-rule graph/builder links
+    // are the rail's primary content; citations stay collapsed.
+    expect(screen.getByTestId("rail-rules")).toHaveAttribute("open");
     expect(screen.getByTestId("rail-rules")).toHaveTextContent("rules (2)");
     expect(screen.getByTestId("rail-citations")).toBeInTheDocument();
   });
@@ -171,7 +172,7 @@ describe("EncodingRail", () => {
     expect(screen.getByText("rule_for_b")).toBeInTheDocument();
   });
 
-  it("lists executable programs in the overview and scopes them per node", async () => {
+  it("renders no executable-programs drawer — coverage only powers links", () => {
     const programs = [
       {
         jurisdiction: "us",
@@ -181,15 +182,6 @@ describe("EncodingRail", () => {
         ruleCount: 3,
         anchors: ["a", "b"],
         ruleNames: ["eitc_amount"],
-      },
-      {
-        jurisdiction: "us-co",
-        programId: "co-snap",
-        mode: "fixture" as const,
-        status: "ready" as const,
-        ruleCount: 1,
-        anchors: ["b"],
-        ruleNames: ["snap_x"],
       },
     ];
     placeSections({ a: 500, b: 1500 });
@@ -206,25 +198,8 @@ describe("EncodingRail", () => {
         programs={programs}
       />
     );
-    // Overview: both families listed — co-snap folds into the "snap"
-    // family with a CO jurisdiction chip.
-    expect(screen.getByTestId("rail-programs")).toBeInTheDocument();
-    expect(screen.getByText("us-eitc")).toBeInTheDocument();
-    expect(screen.getByText("snap")).toBeInTheDocument();
-    expect(screen.queryByText("co-snap")).not.toBeInTheDocument();
-    // Each jurisdiction chip deep-links into the graph viewer, scoped
-    // to the program and focused on this provision's rules.
-    const chip = screen.getByText("CO").closest("a");
-    const href = new URL(chip!.getAttribute("href")!);
-    expect(href.searchParams.get("program")).toBe("us-co/co-snap");
-    expect(href.searchParams.get("focus")).toBe("us:statutes/26/32");
-
-    // Reading (a): only the program with rules under (a) remains.
-    scrollTo({ a: -200, b: 900 });
-    await waitFor(() => {
-      expect(screen.getByText("us-eitc")).toBeInTheDocument();
-      expect(screen.queryByText("snap")).not.toBeInTheDocument();
-    });
+    expect(screen.queryByTestId("rail-programs")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("rail-executable")).not.toBeInTheDocument();
   });
 
   it("adds a per-rule graph link carrying the rule's legal id", async () => {

@@ -12,11 +12,8 @@ import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
 import { CitationPreviewLayer } from "./citation-preview";
-import { TraceProvider } from "./trace-context";
-import { ChunkTraceChips } from "./chunk-trace";
 import { SubsectionActions } from "./subsection-actions";
 import { ActionStrip } from "./action-strip";
-import { programFamilySummary } from "@/lib/axiom/runtime/families";
 import {
   builderUrlForRule,
   composeGraphViewerUrl,
@@ -146,9 +143,6 @@ function ProvisionBlock({
           builderHref={builderHref}
         />
       )}
-      {isTopLevel && (
-        <ChunkTraceChips anchor={anchor} sectionFocus={sectionFocus} />
-      )}
       {rule.body && (
         <div className="mt-2">
           <RuleBody
@@ -217,40 +211,20 @@ function subsectionActionHrefs(
             fileGraphFocus(slug, data.ruleFiles[composeRule.name])
           )
         : null;
-  // The builder resolves rules by probing program graphs, so a
-  // builder action is only offered when some executable program
-  // covers this section — a repo-only rule would land the user on
-  // the bare picker with nothing selectable (ruleNames is a capped
-  // sample, so program coverage, not name membership, is the gate).
+  // Every encoded rule gets a builder link — the builder's deep-link
+  // handler probes its programs and falls back to the picker when a
+  // rule can't be resolved (product call: graph + builder are the
+  // primary verbs, offered per encoding, not gated on coverage).
   const builderRule =
-    data.programs.length > 0
-      ? (sorted.find(
-          (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
-        ) ?? sorted.find((rule) => data.ruleFiles[rule.name]))
-      : null;
+    sorted.find(
+      (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
+    ) ?? sorted.find((rule) => data.ruleFiles[rule.name]);
   const builderHref = builderRule
     ? builderUrlForRule(
         ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
       )
     : null;
   return { graphHref, builderHref };
-}
-
-/** Durable legal ids for the section's rules — requested as extra
- *  trace variables on runs so the column lights with the values this
- *  section computed. */
-function sectionRuleIds(data: SectionPageData): string[] {
-  const slug = data.citationPath.split("/")[0];
-  return data.encodedRules
-    // Only derived rules are queryable engine outputs — requesting a
-    // parameter fails the whole run ("unknown derived output").
-    .filter(
-      (entry) => entry.kind === "derived" && data.ruleFiles[entry.name]
-    )
-    .slice(0, 12)
-    .map((entry) =>
-      ruleGraphFocus(slug, data.ruleFiles[entry.name], entry.name)
-    );
 }
 
 /**
@@ -260,9 +234,6 @@ function sectionRuleIds(data: SectionPageData): string[] {
  * program probe and would land on the plain picker.
  */
 function stripBuilderHref(data: SectionPageData): string | null {
-  // No executable program covers this section — the builder cannot
-  // resolve any of its rules, so don't offer a dead-end action.
-  if (data.programs.length === 0) return null;
   const inPrograms = new Set(
     data.programs.flatMap((program) => program.ruleNames)
   );
@@ -337,7 +308,6 @@ function ChunkBlock({
           builderHref={builderHref}
         />
       )}
-      <ChunkTraceChips anchor={chunk.anchor} sectionFocus={sectionFocus} />
       <div className="mt-1">
         <RuleBody
                     body={chunk.text}
@@ -397,7 +367,6 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
 
   return (
-    <TraceProvider>
     <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
       <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
@@ -438,13 +407,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             )}
           </div>
           <ActionStrip
-            sectionRuleIds={sectionRuleIds(data)}
             encodedRuleCount={data.encodedRules.length}
-            familySummary={programFamilySummary(data.programs)}
-            defaultProgram={
-              data.programs.find((program) => program.status === "ready") ??
-              null
-            }
             graphHref={(() => {
               const program = primaryProgram(data.programs);
               return program && sectionFocus
@@ -538,10 +501,8 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           incoming={incoming}
           programs={data.programs}
           ruleFiles={data.ruleFiles}
-          sectionRuleIds={sectionRuleIds(data)}
         />
       </aside>
     </div>
-    </TraceProvider>
   );
 }

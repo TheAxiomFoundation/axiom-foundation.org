@@ -102,13 +102,11 @@ describe("SectionReader", () => {
       "href",
       "https://uscode.house.gov/32"
     );
-    // The header action strip carries the status line and verbs.
+    // The header action strip carries the verbs (graph/build/cite).
     const strip = screen.getByTestId("action-strip");
-    // Encoded but not covered by any program (and no known rule file
-    // to compose from): the strip says so instead of showing verbs.
-    expect(strip).toHaveTextContent(
-      "encoded, not yet in an executable program"
-    );
+    // Encoded but no known rule file to link from: the strip says so
+    // instead of showing dead verbs.
+    expect(strip).toHaveTextContent("encoded — links pending mirror sync");
     expect(within(strip).getByTestId("strip-cite")).toBeInTheDocument();
     // Chunk sections with designator links into their own URLs; no
     // rule-name chips in the reading flow.

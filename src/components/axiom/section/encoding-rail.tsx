@@ -181,6 +181,10 @@ export function EncodingRail({
   const builderLinkForRule = (ruleName: string): string | null => {
     const filePath = ruleFiles[ruleName];
     if (!filePath || !slug) return null;
+    // The builder resolves rules by probing executable program
+    // graphs; without any program covering this section the deep
+    // link is a guaranteed dead-end on the bare picker.
+    if (programs.length === 0) return null;
     return builderUrlForRule(ruleGraphFocus(slug, filePath, ruleName));
   };
 

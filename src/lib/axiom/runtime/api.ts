@@ -64,12 +64,32 @@ function apiBase(): string {
 }
 
 /**
+ * Process-local response cache. Program graphs run 2–3 MB — over the
+ * Next.js Data Cache's 2 MB item limit — so `next.revalidate` alone
+ * silently refetches them on every render. Fluid Compute reuses
+ * instances across requests, so a module-level map recovers the
+ * intended ten-minute caching for exactly the payloads the platform
+ * cache rejects.
+ */
+const memoryCache = new Map<string, { at: number; value: unknown }>();
+const MEMORY_CACHE_MAX_ENTRIES = 64;
+
+/** Test hook: module-level cache must reset between tests. */
+export function _resetRuntimeApiCache() {
+  memoryCache.clear();
+}
+
+/**
  * Every 2xx payload is a `{ status: "ok", data: … }` envelope;
  * returns the endpoint payload or null on any transport, HTTP, or
  * envelope failure.
  */
 async function runtimeGet<T>(path: string): Promise<T | null> {
   if (!isRuntimeApiConfigured()) return null;
+  const cached = memoryCache.get(path);
+  if (cached && Date.now() - cached.at < REVALIDATE_SECONDS * 1000) {
+    return cached.value as T;
+  }
   const key = process.env.AXIOM_RUNTIME_API_KEY;
   try {
     const response = await fetch(`${apiBase()}${path}`, {
@@ -83,6 +103,11 @@ async function runtimeGet<T>(path: string): Promise<T | null> {
       data?: T;
     };
     if (envelope.status !== "ok" || envelope.data === undefined) return null;
+    if (memoryCache.size >= MEMORY_CACHE_MAX_ENTRIES) {
+      const oldest = memoryCache.keys().next().value;
+      if (oldest !== undefined) memoryCache.delete(oldest);
+    }
+    memoryCache.set(path, { at: Date.now(), value: envelope.data });
     return envelope.data;
   } catch {
     return null;

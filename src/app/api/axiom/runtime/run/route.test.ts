@@ -14,6 +14,7 @@ vi.mock("@/lib/axiom/runtime/api", () => ({
 }));
 
 import { POST } from "./route";
+import { _resetRunRouteState } from "./limiter";
 
 function post(body: unknown): Request {
   return new Request("http://localhost/api/axiom/runtime/run", {
@@ -25,6 +26,7 @@ function post(body: unknown): Request {
 
 describe("POST /api/axiom/runtime/run", () => {
   beforeEach(() => {
+    _resetRunRouteState();
     getRuntimePackageMock.mockReset();
     runCalculateMock.mockReset();
     isConfiguredMock.mockReset();

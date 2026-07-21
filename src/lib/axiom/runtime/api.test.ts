@@ -3,6 +3,7 @@ import {
   isRuntimeApiConfigured,
   listRuntimePackages,
   getProgramGraph,
+  _resetRuntimeApiCache,
 } from "./api";
 
 function okEnvelope(data: unknown) {
@@ -16,6 +17,7 @@ describe("runtime api client", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    _resetRuntimeApiCache();
   });
   afterEach(() => {
     vi.unstubAllEnvs();

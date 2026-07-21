@@ -169,6 +169,23 @@ function ProvisionBlock({
  * builder output. Shared by both column shapes (body chunks and
  * corpus provisions) so deep links behave identically.
  */
+/**
+ * The one program context shared by Run, Graph and Build for a
+ * section: the strongest-coverage ready program (data.programs is
+ * ruleCount-sorted). Run previously preferred ready programs while
+ * Graph took programs[0] regardless of status — the two actions
+ * could silently address different jurisdictions.
+ */
+export function primaryProgram(
+  programs: SectionPageData["programs"]
+): SectionPageData["programs"][number] | null {
+  return (
+    programs.find((program) => program.status === "ready") ??
+    programs[0] ??
+    null
+  );
+}
+
 function subsectionActionHrefs(
   data: SectionPageData,
   anchor: string,
@@ -177,9 +194,12 @@ function subsectionActionHrefs(
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const slug = data.citationPath.split("/")[0];
   const graphProgram =
+    data.programs.find(
+      (program) =>
+        program.status === "ready" && program.anchors.includes(anchor)
+    ) ??
     data.programs.find((program) => program.anchors.includes(anchor)) ??
-    data.programs[0] ??
-    null;
+    primaryProgram(data.programs);
   const inPrograms = new Set(
     data.programs.flatMap((program) => program.ruleNames)
   );
@@ -197,10 +217,17 @@ function subsectionActionHrefs(
             fileGraphFocus(slug, data.ruleFiles[composeRule.name])
           )
         : null;
+  // The builder resolves rules by probing program graphs, so a
+  // builder action is only offered when some executable program
+  // covers this section — a repo-only rule would land the user on
+  // the bare picker with nothing selectable (ruleNames is a capped
+  // sample, so program coverage, not name membership, is the gate).
   const builderRule =
-    sorted.find(
-      (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
-    ) ?? sorted.find((rule) => data.ruleFiles[rule.name]);
+    data.programs.length > 0
+      ? (sorted.find(
+          (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
+        ) ?? sorted.find((rule) => data.ruleFiles[rule.name]))
+      : null;
   const builderHref = builderRule
     ? builderUrlForRule(
         ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
@@ -233,6 +260,9 @@ function sectionRuleIds(data: SectionPageData): string[] {
  * program probe and would land on the plain picker.
  */
 function stripBuilderHref(data: SectionPageData): string | null {
+  // No executable program covers this section — the builder cannot
+  // resolve any of its rules, so don't offer a dead-end action.
+  if (data.programs.length === 0) return null;
   const inPrograms = new Set(
     data.programs.flatMap((program) => program.ruleNames)
   );
@@ -415,11 +445,12 @@ export function SectionReader({ data }: { data: SectionPageData }) {
               data.programs.find((program) => program.status === "ready") ??
               null
             }
-            graphHref={
-              data.programs[0] && sectionFocus
-                ? graphViewerUrl(data.programs[0], sectionFocus)
-                : stripComposeHref(data)
-            }
+            graphHref={(() => {
+              const program = primaryProgram(data.programs);
+              return program && sectionFocus
+                ? graphViewerUrl(program, sectionFocus)
+                : stripComposeHref(data);
+            })()}
             builderHref={stripBuilderHref(data)}
             citationLabel={formatLegalCitation(data.citationPath)}
             href={`/${data.citationPath}`}
@@ -465,7 +496,18 @@ export function SectionReader({ data }: { data: SectionPageData }) {
         {data.truncated && (
           <p className="mt-8 text-sm text-[var(--color-ink-muted)]">
             This section is unusually large; deeper subsections were cut
-            off. Use the tree browser to reach them.
+            off. Open a subsection via its designator link — for example{" "}
+            {data.toc[0] ? (
+              <Link
+                href={`/${data.citationPath}/${data.toc[0].anchor.split("-")[0]}`}
+                className="underline decoration-[var(--color-rule)] underline-offset-2 hover:text-[var(--color-ink)]"
+              >
+                {data.toc[0].label.split(" ")[0]}
+              </Link>
+            ) : (
+              "its heading"
+            )}{" "}
+            — to read its full text.
           </p>
         )}
 

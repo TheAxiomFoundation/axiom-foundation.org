@@ -56,6 +56,15 @@ export function RunSample({
   );
   const contextRun = activeProgram ? run : null;
 
+  // attemptedRuns is module-level, so it outlives client-side route
+  // changes — back/forward to a ?run= URL would otherwise silently
+  // skip the re-run the URL promises. History navigation resets it.
+  useEffect(() => {
+    const reset = () => attemptedRuns.clear();
+    window.addEventListener("popstate", reset);
+    return () => window.removeEventListener("popstate", reset);
+  }, []);
+
   // ?run=<jurisdiction>/<program> permalinks execute once per page
   // load — whichever program in this family the param names. The
   // context run guards against remount re-execution; attemptedRuns

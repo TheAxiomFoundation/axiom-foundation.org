@@ -518,9 +518,63 @@ async function getNavigationNode(
   return (result.data as NavigationNodeRow | null) ?? null;
 }
 
-export async function getSectionPageData(
+/**
+ * The resolution half of the section page: which ingested row (or
+ * synthesized root) serves this URL. Split from data assembly so the
+ * route can decide 404-vs-render before streaming anything, and so
+ * container paths (a CFR part with navigable children but no corpus
+ * row of its own) can divert to the browse view.
+ */
+export interface SectionResolution {
+  root: Rule;
+  citationPath: string;
+  focusAnchor: string | null;
+  /** True when no corpus row exists at the path itself and the root
+   *  was synthesized over descendant rows — the signal that the path
+   *  may be a navigation container rather than a section. */
+  synthetic: boolean;
+  /**
+   * True when the path names a navigation container (a CFR part, a
+   * statute chapter) rather than a section: no body text of its own
+   * *and* a navigation node with children. The route diverts these
+   * to the browse view. Sections stay readers — 7 USC 2017's nav
+   * node has no children, and subsection-granular sections (42 USC
+   * 1396a) have no nav node at all.
+   */
+  containerCandidate: boolean;
+  prefetchedSubtree: { provisions: Rule[]; truncated: boolean } | null;
+}
+
+/**
+ * Does the requested subsection anchor actually exist below this
+ * ancestor? Ancestor fallback must never silently satisfy a URL with
+ * unrelated ancestor content (…/7/2011 showing all of Title 7).
+ */
+function anchorExistsUnder(
+  root: Rule,
+  citationPath: string,
+  anchor: string,
+  subtree: { provisions: Rule[] }
+): boolean {
+  const found = subtree.provisions.some((rule) => {
+    const relative = subtreeAnchor(
+      citationPath,
+      (rule.citation_path as string) ?? ""
+    );
+    return relative === anchor || relative.startsWith(`${anchor}-`);
+  });
+  if (found) return true;
+  if (subtree.provisions.length === 0 && root.body) {
+    return splitBodyIntoSubsections(root.body).chunks.some(
+      (chunk) => chunk.anchor === anchor
+    );
+  }
+  return false;
+}
+
+export async function resolveSection(
   segments: string[]
-): Promise<SectionPageData | null> {
+): Promise<SectionResolution | null> {
   const resolved = resolveAxiomPath(segments);
   if (
     resolved.phase !== "rule" ||
@@ -539,6 +593,7 @@ export async function getSectionPageData(
   let root = await getProvisionByCitationPath(requestedPath).catch(() => null);
   let citationPath = requestedPath;
   let focusAnchor: string | null = null;
+  let synthetic = false;
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
@@ -551,6 +606,7 @@ export async function getSectionPageData(
     if (probe.provisions.length > 0) {
       const navNode = await getNavigationNode(requestedPath);
       root = synthesizeSectionRoot(requestedPath, resolved, navNode?.label);
+      synthetic = true;
       prefetchedSubtree = probe;
     }
   }
@@ -575,6 +631,7 @@ export async function getSectionPageData(
           const navNode = await getNavigationNode(dashPath);
           root = synthesizeSectionRoot(dashPath, resolved, navNode?.label);
           citationPath = dashPath;
+          synthetic = true;
           prefetchedSubtree = probe;
         }
       }
@@ -587,14 +644,73 @@ export async function getSectionPageData(
         () => null
       );
       if (rule) {
+        // Only accept the ancestor if the requested anchor really
+        // exists under it — otherwise …/7/2011 (missing) would render
+        // Title 7 as though it satisfied the URL.
+        const anchor = ruleSegments[end];
+        const subtree = await getSubtreeProvisions(candidate);
+        if (!anchorExistsUnder(rule, candidate, anchor, subtree)) {
+          return null;
+        }
         root = rule;
         citationPath = candidate;
-        focusAnchor = ruleSegments[end];
+        focusAnchor = anchor;
+        prefetchedSubtree = subtree;
         break;
       }
     }
   }
   if (!root) return null;
+  let containerCandidate = false;
+  if (!root.body) {
+    const navNode = await getNavigationNode(citationPath);
+    containerCandidate = navNode?.has_children === true;
+  }
+  return {
+    root,
+    citationPath,
+    focusAnchor,
+    synthetic,
+    containerCandidate,
+    prefetchedSubtree,
+  };
+}
+
+/**
+ * Trim the root body when descendant rows repeat its text (mixed
+ * ingestion shapes: a subsection row whose body holds the whole
+ * subsection *and* paragraph rows below it). Rendering both
+ * duplicates statutory text. Keeps any chapeau before the first
+ * repeated descendant; drops the body entirely when nothing precedes
+ * it.
+ */
+export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
+  const body = root.body;
+  if (!body) return root;
+  const firstChildBody = descendants
+    .map((rule) => rule.body?.trim() ?? "")
+    .find((text) => text.length >= 20);
+  if (!firstChildBody) return root;
+  const needle = firstChildBody.slice(0, 60);
+  const index = body.indexOf(needle);
+  if (index < 0) return root;
+  const intro = body.slice(0, index).trim();
+  return { ...root, body: intro.length > 0 ? intro : null };
+}
+
+export async function getSectionPageData(
+  segments: string[]
+): Promise<SectionPageData | null> {
+  const resolution = await resolveSection(segments);
+  if (!resolution) return null;
+  return getSectionPageDataFromResolution(resolution);
+}
+
+export async function getSectionPageDataFromResolution(
+  resolution: SectionResolution
+): Promise<SectionPageData | null> {
+  const { citationPath, focusAnchor, prefetchedSubtree } = resolution;
+  let root = resolution.root;
 
   const [subtree, rootRefs, node, sectionEncoding, programs] =
     await Promise.all([
@@ -611,6 +727,8 @@ export async function getSectionPageData(
       ),
     ]);
   const encoding = sectionEncoding.encoding;
+
+  root = dedupeRootBody(root, subtree.provisions);
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({

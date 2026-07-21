@@ -5,8 +5,13 @@ import {
   buildLegislationJsonLd,
   getAxiomRuleMetadata,
 } from "@/lib/axiom/metadata";
-import { getSectionPageData } from "@/lib/axiom/section-page";
+import {
+  getSectionPageDataFromResolution,
+  resolveSection,
+  type SectionResolution,
+} from "@/lib/axiom/section-page";
 import { SectionReader } from "@/components/axiom/section/section-reader";
+import { SectionSkeleton } from "@/components/axiom/section/section-skeleton";
 import {
   getBrowsePageData,
   MAX_BROWSE_SEGMENTS,
@@ -21,6 +26,12 @@ import {
  * rebuild. Renders a provision and its whole subtree as one reading
  * column (single-column reader + sticky TOC), instead of the
  * client-monolith tree browser.
+ *
+ * The route resolves existence *before* streaming: a missing path
+ * must produce a real HTTP 404, not a 200 shell that client-renders
+ * a not-found screen (the old route-level loading.tsx committed the
+ * status before notFound() could run). The heavy data assembly
+ * (encodings, coverage, graphs) still streams behind Suspense.
  *
  * Preview route: kept noindex with a canonical pointing at the v1
  * URL until it replaces the v1 rule page as the canonical statute
@@ -66,31 +77,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function SectionPage({
-  params,
-  searchParams,
-}: PageProps) {
-  const { segments } = await params;
-  const decoded = decodeSegments(segments);
-
-  // Browse depth (jurisdiction / doc type / title) renders the list
-  // view; section depth and deeper renders the reader.
-  if (decoded.length <= MAX_BROWSE_SEGMENTS) {
-    const rawPage = Number((await searchParams)?.page ?? "0");
-    const page =
-      Number.isInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 50) : 0;
-    const browse = await getBrowsePageData(decoded, page);
-    if (browse === "unavailable") {
-      // Transient backend failure — render a retryable notice, never
-      // a 404 for a valid URL.
-      return <BrowseUnavailable path={decoded.join("/")} />;
-    }
-    if (!browse) notFound();
-    return <BrowseView data={browse} />;
-  }
-
+async function SectionBody({
+  resolution,
+  decoded,
+}: {
+  resolution: SectionResolution;
+  decoded: string[];
+}) {
   const [data, meta] = await Promise.all([
-    getSectionPageData(decoded),
+    getSectionPageDataFromResolution(resolution),
     getAxiomRuleMetadata(decoded),
   ]);
   if (!data) notFound();
@@ -105,9 +100,53 @@ export default async function SectionPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <Suspense>
-        <SectionReader data={data} />
-      </Suspense>
+      <SectionReader data={data} />
     </>
+  );
+}
+
+export default async function SectionPage({
+  params,
+  searchParams,
+}: PageProps) {
+  const { segments } = await params;
+  const decoded = decodeSegments(segments);
+  const rawPage = Number((await searchParams)?.page ?? "0");
+  const page =
+    Number.isInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 50) : 0;
+
+  // Browse depth (jurisdiction / doc type / title) renders the list
+  // view; section depth and deeper renders the reader.
+  if (decoded.length <= MAX_BROWSE_SEGMENTS) {
+    const browse = await getBrowsePageData(decoded, page);
+    if (browse === "unavailable") {
+      // Transient backend failure — render a retryable notice, never
+      // a 404 for a valid URL.
+      return <BrowseUnavailable path={decoded.join("/")} />;
+    }
+    if (!browse) notFound();
+    return <BrowseView data={browse} />;
+  }
+
+  const resolution = await resolveSection(decoded);
+
+  // Container paths (a CFR part, a statute chapter) — bodyless roots
+  // whose subtrees blow the reader cap — divert to the browse view
+  // when the navigation index can list children here. Sections stay
+  // readers; see SectionResolution.containerCandidate.
+  if (!resolution || resolution.containerCandidate) {
+    const browse = await getBrowsePageData(decoded, page, {
+      allowDeep: true,
+    }).catch(() => null);
+    if (browse && browse !== "unavailable" && browse.nodes.length > 0) {
+      return <BrowseView data={browse} />;
+    }
+  }
+  if (!resolution) notFound();
+
+  return (
+    <Suspense fallback={<SectionSkeleton />}>
+      <SectionBody resolution={resolution} decoded={decoded} />
+    </Suspense>
   );
 }

@@ -49,9 +49,18 @@ export const MAX_BROWSE_SEGMENTS = 3;
 
 export async function getBrowsePageData(
   segments: string[],
-  page = 0
+  page = 0,
+  options: {
+    /** Allow depths beyond MAX_BROWSE_SEGMENTS — used for navigation
+     *  containers below title level (a CFR part) that have children
+     *  in the index but no corpus row of their own. */
+    allowDeep?: boolean;
+  } = {}
 ): Promise<BrowsePageData | "unavailable" | null> {
-  if (segments.length === 0 || segments.length > MAX_BROWSE_SEGMENTS) {
+  if (
+    segments.length === 0 ||
+    (!options.allowDeep && segments.length > MAX_BROWSE_SEGMENTS)
+  ) {
     return null;
   }
   const resolved = resolveAxiomPath(segments);

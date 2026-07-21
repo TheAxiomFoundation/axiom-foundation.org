@@ -217,6 +217,23 @@ describe("getSectionPageData", () => {
     expect(data!.focusAnchor).toBe("a");
   });
 
+  it("rejects ancestor fallback when the requested anchor does not exist under it", async () => {
+    // /us/statute/7/2011 with §2011 missing must 404, not silently
+    // render Title 7 as though it satisfied the URL.
+    getProvisionByCitationPathMock.mockImplementation((path: string) =>
+      Promise.resolve(path === "us/statute/26/32" ? rule(path) : null)
+    );
+    queueTables({
+      current_provisions: [{ data: [], error: null }],
+      navigation_nodes: [{ data: null, error: null }],
+    });
+
+    // The fixture body only has subsections (a) and (b) — "z" is not
+    // among them, so the ancestor must not be accepted.
+    const data = await getSectionPageData(["us", "statute", "26", "32", "z"]);
+    expect(data).toBeNull();
+  });
+
   it("falls back to the en-dash spelling for hyphenated section ids", async () => {
     // Corpus stores us/statute/42/1396u–1 (en dash); the URL arrives
     // with the hyphen everyone types.

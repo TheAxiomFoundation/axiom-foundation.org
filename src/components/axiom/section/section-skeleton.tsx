@@ -1,10 +1,11 @@
 /**
- * Route-level loading skeleton for the v2 surface. The pages are
- * force-dynamic (multiple corpus queries per render), so without
- * this the browser sits on a blank viewport for the whole fetch —
- * "no obvious loading pattern" was the review feedback.
+ * Reading-column skeleton shown while the section's heavy data
+ * (encodings, coverage, graphs) streams in. Rendered as an in-page
+ * Suspense fallback — deliberately not a route-level loading.tsx,
+ * which would commit an HTTP 200 before notFound() can produce a
+ * real 404 for missing paths.
  */
-export default function SectionLoading() {
+export function SectionSkeleton() {
   const bar = "animate-pulse rounded bg-[var(--color-rule)]/60";
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-24 pb-16" aria-busy>

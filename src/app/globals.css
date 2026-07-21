@@ -129,3 +129,180 @@ canvas[aria-hidden] {
 }
 
 
+
+/* ── /coverage: "The stacks" — the corpus as a law library's shelves.
+   Dark case on the light page (mirrors the landing's dark editorial
+   section device); spine hues are the validated categorical set. All
+   interaction is CSS: hover/focus a run of spines to name it. */
+.stacks-case {
+  background:
+    radial-gradient(circle at 85% -10%, rgba(251, 191, 36, 0.07), transparent 55%),
+    #1c1917;
+  border: 1px solid #292524;
+  border-radius: 10px;
+  padding: 2.25rem 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  /* Edge tooltips must never widen the page. */
+  overflow-x: clip;
+}
+.stacks-shelf-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.stacks-shelf-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  align-self: center;
+  flex: none;
+}
+.stacks-shelf-name {
+  color: #fafaf9;
+}
+.stacks-shelf-count {
+  color: #a8a29e;
+  letter-spacing: 0.08em;
+}
+.stacks-shelf-books {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  row-gap: 14px;
+  min-height: 60px;
+}
+/* A run = one jurisdiction's volumes. The 2px gap between runs is the
+   spacer that separates fills; spines within a run sit 2px apart. */
+.stacks-run {
+  position: relative;
+  display: inline-flex;
+  /* A long run (Illinois) must wrap on narrow screens or it forces
+     the whole page wider than the viewport. */
+  flex-wrap: wrap;
+  max-width: 100%;
+  align-items: flex-end;
+  gap: 2px;
+  row-gap: 14px;
+  padding: 0 3px;
+  border-radius: 3px 3px 0 0;
+  text-decoration: none;
+  transition: opacity 160ms ease;
+}
+.stacks-run:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+.stacks-shelf-books:hover .stacks-run:not(:hover) {
+  opacity: 0.45;
+}
+.stacks-run:hover {
+  opacity: 1;
+}
+.stacks-spine {
+  display: inline-block;
+  border-radius: 2px 2px 0 0;
+  transform-origin: bottom center;
+  transform: rotate(var(--lean, 0deg));
+  animation: stacks-shelve 480ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes stacks-shelve {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(var(--lean, 0deg));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--lean, 0deg));
+  }
+}
+/* The shelf board the spines rest on: present, warm, with a faint
+   under-shadow so the books sit ON something. */
+.stacks-board {
+  height: 5px;
+  border-radius: 1px 3px 3px 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(214, 168, 88, 0.55),
+    rgba(214, 168, 88, 0.28) 55%,
+    rgba(214, 168, 88, 0.1)
+  );
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.45);
+  margin-top: 0;
+}
+.stacks-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(220px, 70vw);
+  text-align: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  background: #fafaf9;
+  color: #1c1917;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+  z-index: 5;
+}
+.stacks-run:hover .stacks-tooltip,
+.stacks-run:focus-visible .stacks-tooltip {
+  opacity: 1;
+}
+/* Keep edge tooltips inside the case. */
+.stacks-run:first-child .stacks-tooltip {
+  left: 0;
+  transform: none;
+}
+.stacks-run:last-child .stacks-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.stacks-colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.9rem;
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+}
+/* Provisions bar in the by-jurisdiction table: quiet linear magnitude. */
+.coverage-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(28, 25, 23, 0.13);
+  overflow: hidden;
+}
+.coverage-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent);
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stacks-spine {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .stacks-case {
+    padding: 1.5rem 1rem 1rem;
+  }
+}

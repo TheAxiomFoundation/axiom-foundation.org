@@ -41,11 +41,13 @@ const n = (value: number) => numberFormat.format(value);
 
 type SortKey = "provisions" | "documents" | "encodings" | "name";
 
-const SORTS: Array<{ key: SortKey; label: string }> = [
-  { key: "provisions", label: "Provisions" },
-  { key: "documents", label: "Documents" },
-  { key: "encodings", label: "Encodings" },
-  { key: "name", label: "A–Z" },
+/** dot: the hero layer this sort dimension corresponds to — the
+ *  segmented control repeats the stack's key swatches. */
+const SORTS: Array<{ key: SortKey; label: string; dot: string | null }> = [
+  { key: "provisions", label: "Provisions", dot: "provisions" },
+  { key: "documents", label: "Documents", dot: "documents" },
+  { key: "encodings", label: "Encodings", dot: "encodings" },
+  { key: "name", label: "A–Z", dot: null },
 ];
 
 function sortRows(
@@ -210,31 +212,63 @@ export function ShelfCards({
   return (
     <div>
       <div className="cov-controls">
-        <div
-          className="cov-sorts"
-          role="group"
-          aria-label="Sort jurisdictions"
-        >
-          {SORTS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setSort(s.key)}
-              className={sort === s.key ? "cov-sort cov-sort-on" : "cov-sort"}
-              aria-pressed={sort === s.key}
-            >
-              {s.label}
-            </button>
-          ))}
+        <div className="cov-controls-sort">
+          <span className="cov-controls-label" aria-hidden>
+            Sort by
+          </span>
+          <div
+            className="cov-seg"
+            role="group"
+            aria-label="Sort jurisdictions"
+          >
+            {SORTS.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setSort(s.key)}
+                className={
+                  sort === s.key ? "cov-seg-btn cov-seg-on" : "cov-seg-btn"
+                }
+                aria-pressed={sort === s.key}
+              >
+                {s.dot && (
+                  <span
+                    className={`cov-seg-dot cov-seg-dot-${s.dot}`}
+                    aria-hidden
+                  />
+                )}
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter jurisdictions…"
-          aria-label="Filter jurisdictions"
-          className="cov-filter"
-        />
+        <div className="cov-controls-find">
+          {query.trim() !== "" && (
+            <span className="cov-count" aria-live="polite">
+              {rows.length} of {jurisdictions.length}
+            </span>
+          )}
+          <label className="cov-filter">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden
+            >
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="m10.5 10.5 3 3" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter jurisdictions…"
+              aria-label="Filter jurisdictions"
+              className="cov-filter-input"
+            />
+          </label>
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="cov-empty">

@@ -342,46 +342,115 @@ canvas[aria-hidden] {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
-.cov-sorts {
-  display: inline-flex;
-  gap: 0.35rem;
+.cov-controls-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
-.cov-sort {
+.cov-controls-label {
   font-family: var(--f-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.1em;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
-  background: none;
+}
+/* Segmented sort control: recessed track, elevated active segment.
+   The dots repeat the hero layers' key swatches. */
+.cov-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
   border: 1px solid var(--color-rule);
-  border-radius: 999px;
-  padding: 0.32rem 0.75rem;
+  background: rgba(28, 25, 23, 0.05);
+}
+.cov-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.36rem 0.72rem;
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
-.cov-sort:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+.cov-seg-btn:hover {
+  color: var(--color-ink);
 }
-.cov-sort-on {
-  color: var(--color-paper);
-  background: var(--color-ink);
-  border-color: var(--color-ink);
+.cov-seg-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-seg-on,
+.cov-seg-on:hover {
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
+}
+.cov-seg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex: none;
+}
+.cov-seg-dot-documents {
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule-strong);
+}
+.cov-seg-dot-provisions {
+  background: #d9d2ca;
+  border: 1px solid rgba(28, 25, 23, 0.18);
+}
+.cov-seg-dot-encodings {
+  background: linear-gradient(135deg, #d97706, #92400e);
+}
+.cov-controls-find {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.cov-count {
+  font-family: var(--f-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
 }
 .cov-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+  padding: 0.45rem 0.7rem;
+  min-width: 230px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.cov-filter:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.08);
+}
+.cov-filter svg {
+  width: 13px;
+  height: 13px;
+  color: var(--color-ink-muted);
+  flex: none;
+}
+.cov-filter-input {
   font-family: var(--f-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   color: var(--color-ink);
-  background: var(--color-paper-elevated);
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 6px;
-  padding: 0.45rem 0.7rem;
-  min-width: 220px;
-}
-.cov-filter:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
+  background: none;
+  border: 0;
+  outline: 0;
+  width: 100%;
 }
 .cov-empty {
   font-family: var(--f-mono);

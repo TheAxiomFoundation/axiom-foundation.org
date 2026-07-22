@@ -1,4 +1,5 @@
 import type { EncodedRuleLink } from "@/lib/axiom/section-page";
+import CodeBlock from "@/components/code-block";
 
 export interface RuleCardDetail {
   /** The rule's source citation string ("26 USC 32(a)(1)"). */
@@ -66,9 +67,13 @@ export function RuleCardList({
                   </p>
                 )}
                 {detail?.yaml && (
-                  <pre className="mt-2 max-h-64 overflow-auto rounded bg-[var(--color-rule-subtle)] p-2.5 font-mono text-[11px] leading-relaxed text-[var(--color-ink-secondary)]">
-                    {detail.yaml}
-                  </pre>
+                  <div className="mt-2 max-h-64 overflow-auto rounded">
+                    <CodeBlock
+                      code={detail.yaml}
+                      language="yaml"
+                      className="!m-0 text-[11px] leading-relaxed"
+                    />
+                  </div>
                 )}
                 {href && (
                   <a

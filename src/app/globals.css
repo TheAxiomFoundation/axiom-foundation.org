@@ -277,15 +277,6 @@ canvas[aria-hidden] {
   letter-spacing: -0.02em;
   color: var(--color-ink);
 }
-/* The facts line: same weighted-number language as the detail line,
-   a step up in ink so the two lines read as lead + support. */
-.pstack-callout-facts {
-  font-family: var(--f-body);
-  font-size: 0.88rem;
-  line-height: 1.5;
-  color: var(--color-ink-secondary);
-  margin-top: 0.55rem;
-}
 .pstack-callout-detail {
   font-family: var(--f-body);
   font-size: 0.85rem;
@@ -293,11 +284,6 @@ canvas[aria-hidden] {
   color: var(--color-ink-muted);
   margin-top: 0.55rem;
   max-width: 44ch;
-}
-.pstack-num {
-  color: var(--color-ink);
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 900px) {
   .pstack {

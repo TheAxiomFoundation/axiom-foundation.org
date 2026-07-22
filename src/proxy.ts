@@ -27,7 +27,8 @@ const V1_ONLY_JURISDICTIONS = new Set(["ca", "canada"]);
 // section depth and deeper the v2 reader. The app root ("/") stays
 // on the v1 landing until it is rebuilt.
 function appPagePath(pathname: string): string {
-  if (pathname === "/") return "/axiom";
+  // The app root is the two-door portal (Library / Plane).
+  if (pathname === "/") return "/axiom/v2";
   if (!APP_ROOT_PREFIX_RE.test(pathname)) return `/axiom${pathname}`;
   const slug = pathname.split("/")[1];
   return V1_ONLY_JURISDICTIONS.has(slug)
@@ -128,6 +129,15 @@ export function proxy(request: NextRequest) {
     target.hostname = APP_HOST;
     target.pathname = stripAxiomPrefix(pathname);
     return NextResponse.redirect(target, 308);
+  }
+
+  // The two-door portal has a public path on every host — the app
+  // root serves it in production, /start reaches it from localhost
+  // and previews (where "/" belongs to the marketing site).
+  if (pathname === "/start") {
+    const target = request.nextUrl.clone();
+    target.pathname = "/axiom/v2";
+    return NextResponse.rewrite(target);
   }
 
   // The in-app graph viewer resolves on every host, like

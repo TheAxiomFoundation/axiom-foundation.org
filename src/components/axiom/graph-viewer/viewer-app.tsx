@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { InteractiveRuleGraph } from "./InteractiveRuleGraph";
 import "./styles.css";
 import "./graph-styles.css";
+import "./plane.css";
 import {
   countriesFromPrograms,
   PREFERRED_DEFAULT_PROGRAM_KEY,
@@ -31,6 +32,18 @@ export function GraphViewerApp() {
   const [programsLoading, setProgramsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [outputSearch, setOutputSearch] = useState("");
+  // ── The Plane: scenario → run → execution overlay ──
+  // Scenario values keyed by input bare name; seeded from the graph's
+  // sample values when a program loads, editable in the panel.
+  const [scenario, setScenario] = useState<Record<string, number | boolean>>(
+    {},
+  );
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<{
+    outputs: Record<string, number | string | boolean | null>;
+    trace: Array<{ variable: string; value: unknown }>;
+  } | null>(null);
   // Deep-link params, consumed once: ?program=us-co/co-snap selects a
   // program as soon as the registry loads; ?focus=us:statutes/7/2017
   // pre-selects the rules whose fileLegalId sits at or under that
@@ -70,6 +83,100 @@ export function GraphViewerApp() {
       cancelled = true;
     };
   }, []);
+
+  const composedProgram = useMemo<ProgramRef | null>(() => {
+    if (!composeFocus) return null;
+    return {
+      jurisdiction: composeFocus.split(":")[0] ?? "us",
+      programId: "composed",
+      displayName: composeFocus.split("#")[0] ?? composeFocus,
+    };
+  }, [composeFocus]);
+  const effectiveProgram = program ?? composedProgram;
+
+  // Editable scenario fields. Programs with a known lever vocabulary
+  // get a curated set (the abstract household keys the API's mapping
+  // layer computes from — verified live); everything else falls back
+  // to the graph's own scalar inputs.
+  const scenarioFields = useMemo(() => {
+    const programId = effectiveProgram?.programId ?? "";
+    if (programId.includes("snap")) {
+      return [
+        { name: "household_size", label: "household_size", sample: 2 },
+        {
+          name: "snap_gross_monthly_income",
+          label: "snap_gross_monthly_income",
+          sample: 1200,
+        },
+        { name: "shelter_costs", label: "shelter_costs", sample: 900 },
+        { name: "age", label: "age", sample: 40 },
+      ] as Array<{ name: string; label: string; sample: number | boolean }>;
+    }
+    const fields: Array<{
+      name: string;
+      label: string;
+      sample: number | boolean;
+    }> = [];
+    const seen = new Set<string>();
+    for (const input of graph?.inputs ?? []) {
+      if (seen.has(input.name)) continue;
+      const sample = input.sample;
+      if (typeof sample !== "number" && typeof sample !== "boolean") continue;
+      seen.add(input.name);
+      fields.push({ name: input.name, label: input.name, sample });
+    }
+    return fields.slice(0, 16);
+  }, [graph, effectiveProgram]);
+
+  useEffect(() => {
+    setScenario(
+      Object.fromEntries(
+        scenarioFields.map((field) => [field.name, field.sample]),
+      ),
+    );
+    setRunResult(null);
+    setRunError(null);
+  }, [scenarioFields]);
+
+  const runScenario = async () => {
+    if (!effectiveProgram || running) return;
+    setRunning(true);
+    setRunError(null);
+    try {
+      // Trace the selected outputs plus their reachable rules so the
+      // execution lights intermediate nodes, not just the results.
+      const reachable = new Set<string>();
+      const byId = new Map((graph?.rules ?? []).map((r) => [r.legalId, r]));
+      const walk = (id: string) => {
+        if (reachable.has(id) || reachable.size > 60) return;
+        const rule = byId.get(id);
+        if (!rule) return;
+        reachable.add(id);
+        for (const dep of rule.ruleDeps) walk(dep);
+      };
+      for (const id of selectedOutputs) walk(id);
+      const response = await fetch("/api/axiom/runtime/calculate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jurisdiction: effectiveProgram.jurisdiction,
+          program_id: effectiveProgram.programId,
+          values: scenario,
+          variables: [...reachable].slice(0, 32),
+        }),
+      });
+      if (!response.ok) throw new Error(`run failed (${response.status})`);
+      const data = (await response.json()) as {
+        outputs: Record<string, number | string | boolean | null>;
+        trace: Array<{ variable: string; value: unknown }>;
+      };
+      setRunResult(data);
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : "run failed");
+    } finally {
+      setRunning(false);
+    }
+  };
 
   const countries = useMemo(() => countriesFromPrograms(allPrograms), [allPrograms]);
   const programs = useMemo(
@@ -246,15 +353,6 @@ export function GraphViewerApp() {
   );
   // In compose mode there is no registry program; a synthetic ref keeps
   // the header and dashboard spec coherent.
-  const composedProgram = useMemo<ProgramRef | null>(() => {
-    if (!composeFocus) return null;
-    return {
-      jurisdiction: composeFocus.split(":")[0] ?? "us",
-      programId: "composed",
-      displayName: composeFocus.split("#")[0] ?? composeFocus,
-    };
-  }, [composeFocus]);
-  const effectiveProgram = program ?? composedProgram;
 
   const spec = useMemo<DashboardSpec | null>(
     () =>
@@ -290,6 +388,51 @@ export function GraphViewerApp() {
     () => buildStructureTraces(graph, selectedOutputs),
     [graph, selectedOutputs],
   );
+
+  // Execution overlay: clone the structural traces and light them
+  // with the run's computed values (rules by durable id or bare
+  // fragment) and the scenario's input values.
+  const liveTraces = useMemo(() => {
+    if (!runResult) return structureTraces;
+    const valueByFragment = new Map<string, unknown>();
+    const valueByLegalId = new Map<string, unknown>();
+    const record = (variable: string, value: unknown) => {
+      if (variable.includes("#")) valueByLegalId.set(variable, value);
+      else valueByFragment.set(variable, value);
+    };
+    for (const entry of runResult.trace) record(entry.variable, entry.value);
+    for (const [name, value] of Object.entries(runResult.outputs)) {
+      record(name, value);
+    }
+    const seen = new Map<TraceNode, TraceNode>();
+    const light = (node: TraceNode): TraceNode => {
+      const cached = seen.get(node);
+      if (cached) return cached;
+      const fragment = node.legalId.split("#").pop() ?? "";
+      let value: unknown =
+        valueByLegalId.get(node.legalId) ??
+        valueByFragment.get(fragment) ??
+        (node.dtype === "input"
+          ? scenario[fragment.replace(/^input\./, "")]
+          : undefined);
+      const next: TraceNode = {
+        ...node,
+        value:
+          value === undefined ? node.value : (value as TraceNode["value"]),
+        inputSource:
+          node.dtype === "input" &&
+          fragment.replace(/^input\./, "") in scenario
+            ? "user"
+            : node.inputSource,
+      };
+      seen.set(node, next);
+      next.children = (node.children ?? []).map(light);
+      return next;
+    };
+    return Object.fromEntries(
+      Object.entries(structureTraces).map(([key, node]) => [key, light(node)]),
+    );
+  }, [structureTraces, runResult, scenario]);
 
   function toggleOutput(legalId: LegalId) {
     setSelectedOutputs((current) =>
@@ -340,8 +483,11 @@ export function GraphViewerApp() {
       <aside className="side-panel">
         <div className="brand">
           <span>Axiom</span>
-          <strong>Rule Graph</strong>
-          <p>Explore the structure of a RuleSpec computation without the dashboard builder workflow.</p>
+          <strong>Plane</strong>
+          <p>Law as a system: pick a program, set a household, run it, and watch the computation light up.</p>
+          <a className="brand-switch" href="/us">
+            ⇄ Library — read the law
+          </a>
         </div>
 
         <section className="control-block program-controls">
@@ -431,6 +577,54 @@ export function GraphViewerApp() {
             )}
           </div>
         </section>
+
+        {scenarioFields.length > 0 && (
+          <section className="control-block scenario-block">
+            <div className="section-head stacked">
+              <h2>Scenario</h2>
+              <span>The levers of the law — edit and run</span>
+            </div>
+            <div className="scenario-fields">
+              {scenarioFields.map((field) => (
+                <label key={field.name} className="scenario-field">
+                  <span>{humanize(field.name)}</span>
+                  {typeof field.sample === "boolean" ? (
+                    <input
+                      type="checkbox"
+                      checked={Boolean(scenario[field.name])}
+                      onChange={(event) =>
+                        setScenario((current) => ({
+                          ...current,
+                          [field.name]: event.target.checked,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      value={String(scenario[field.name] ?? field.sample)}
+                      onChange={(event) =>
+                        setScenario((current) => ({
+                          ...current,
+                          [field.name]: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="run-button"
+              disabled={running || selectedOutputs.length === 0}
+              onClick={() => void runScenario()}
+            >
+              {running ? "Running…" : "▶ Run this scenario"}
+            </button>
+            {runError && <p className="run-error">{runError}</p>}
+          </section>
+        )}
       </aside>
 
       <section className="viewer-panel">
@@ -456,7 +650,7 @@ export function GraphViewerApp() {
           </div>
         </header>
 
-        <div className="graph-stage">
+        <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
           {error && <div className="status error">{error}</div>}
 
           {loading ? (
@@ -467,8 +661,8 @@ export function GraphViewerApp() {
           ) : spec && Object.keys(structureTraces).length > 0 ? (
             <InteractiveRuleGraph
               spec={spec}
-              traces={structureTraces}
-              showValues={false}
+              traces={liveTraces}
+              showValues={Boolean(runResult)}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}
             />
@@ -476,6 +670,48 @@ export function GraphViewerApp() {
             <div className="empty-state">Select at least one output to render its computation graph.</div>
           )}
         </div>
+
+        {runResult && (
+          <aside className="results-sheet" role="status">
+            <div className="results-head">
+              <div>
+                <span className="results-eyebrow">Executed</span>
+                <strong>{effectiveProgram?.displayName ?? "Program"}</strong>
+              </div>
+              <button
+                type="button"
+                className="results-close"
+                onClick={() => setRunResult(null)}
+                aria-label="Dismiss results"
+              >
+                ×
+              </button>
+            </div>
+            <div className="results-grid">
+              {Object.entries(runResult.outputs)
+                .filter(([name]) => !name.includes(":"))
+                .slice(0, 6)
+                .map(([name, value]) => (
+                  <div key={name} className="results-cell">
+                    <span className="results-label">{humanize(name)}</span>
+                    <span className="results-value">
+                      {typeof value === "boolean"
+                        ? value
+                          ? "Yes"
+                          : "No"
+                        : typeof value === "number"
+                          ? value.toLocaleString("en-US")
+                          : String(value ?? "—")}
+                    </span>
+                  </div>
+                ))}
+            </div>
+            <p className="results-note">
+              Computed by the Axiom engine from your scenario — the graph
+              above shows every intermediate value.
+            </p>
+          </aside>
+        )}
       </section>
     </main>
     </div>

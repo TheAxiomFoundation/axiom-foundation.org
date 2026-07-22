@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════════════
+   The Plane — execution layer over the rule canvas. Hand-scoped
+   under .graph-viewer-root like the generated sheets. Glass panels,
+   one accent verb, and an execution state where computed nodes carry
+   the light and everything else steps back.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── The other door ── */
+.graph-viewer-root .brand-switch {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+  text-decoration: none;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  padding: 5px 12px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.graph-viewer-root .brand-switch:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Scenario panel ── */
+.graph-viewer-root .scenario-block {
+  border-top: 1px solid var(--color-rule);
+  padding-top: 14px;
+}
+.graph-viewer-root .scenario-fields {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.graph-viewer-root .scenario-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .scenario-field span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-viewer-root .scenario-field input[type="number"] {
+  width: 96px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+  padding: 5px 8px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.graph-viewer-root .scenario-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.graph-viewer-root .run-button {
+  margin-top: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.18),
+    0 6px 18px -8px var(--color-accent);
+  transition: transform 0.12s ease, box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+.graph-viewer-root .run-button:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.2),
+    0 10px 24px -8px var(--color-accent);
+}
+.graph-viewer-root .run-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.graph-viewer-root .run-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--color-error, #991b1b);
+}
+
+/* ── Execution state: computed nodes carry the light ── */
+.graph-viewer-root .plane-live .react-flow__node {
+  opacity: 0.38;
+  transition: opacity 0.35s ease;
+}
+.graph-viewer-root .plane-live .react-flow__node:has(.irg-value),
+.graph-viewer-root .plane-live .react-flow__node:hover {
+  opacity: 1;
+}
+.graph-viewer-root .plane-live .react-flow__node:has(.irg-value) .irg-node {
+  box-shadow:
+    0 0 0 1px var(--color-accent-line),
+    0 8px 28px -10px rgba(146, 64, 14, 0.45);
+}
+.graph-viewer-root .plane-live .irg-value {
+  animation: plane-value-in 0.45s var(--ease-out, ease) both;
+}
+@keyframes plane-value-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.graph-viewer-root .plane-live .react-flow__edge path {
+  stroke-dasharray: 6 4;
+  animation: plane-flow 0.9s linear infinite;
+}
+@keyframes plane-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* ── The elevated results sheet ── */
+.graph-viewer-root .viewer-panel {
+  position: relative;
+}
+.graph-viewer-root .results-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  background: color-mix(in srgb, var(--color-paper-elevated) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 24px 60px -20px rgba(28, 25, 23, 0.35);
+  padding: 16px 18px 14px;
+  animation: sheet-rise 0.4s var(--ease-out, ease) both;
+  z-index: 12;
+}
+@keyframes sheet-rise {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+.graph-viewer-root .results-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.graph-viewer-root .results-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-success, #166534);
+}
+.graph-viewer-root .results-head strong {
+  font-size: 15px;
+  color: var(--color-ink);
+}
+.graph-viewer-root .results-close {
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.graph-viewer-root .results-close:hover {
+  color: var(--color-ink);
+  background: var(--color-rule-subtle);
+}
+.graph-viewer-root .results-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 18px;
+}
+.graph-viewer-root .results-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .results-value {
+  display: block;
+  margin-top: 2px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  animation: plane-value-in 0.5s var(--ease-out, ease) both;
+}
+.graph-viewer-root .results-note {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--color-ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .plane-live .react-flow__edge path {
+    animation: none;
+  }
+  .graph-viewer-root .results-sheet,
+  .graph-viewer-root .plane-live .irg-value,
+  .graph-viewer-root .results-value {
+    animation: none;
+  }
+}

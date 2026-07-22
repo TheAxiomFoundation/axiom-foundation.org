@@ -113,13 +113,13 @@ describe("proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("rewrites the app host root into the Axiom app root", () => {
+  it("rewrites the app host root into the two-door portal", () => {
     const response = proxy(
       request("https://app.axiom-foundation.org/", "app.axiom-foundation.org")
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "https://app.axiom-foundation.org/axiom"
+      "https://app.axiom-foundation.org/axiom/v2"
     );
   });
 
@@ -241,6 +241,15 @@ describe("proxy", () => {
     );
     expect(marketing.headers.get("x-middleware-rewrite")).toBe(
       "https://axiom-foundation.org/axiom/v2/us/statute/26/32"
+    );
+  });
+
+  it("rewrites /start to the portal on every host", () => {
+    const response = proxy(
+      request("http://localhost:4944/start", "localhost:4944")
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "http://localhost:4944/axiom/v2"
     );
   });
 

@@ -53,6 +53,22 @@ export function GraphViewerApp() {
     string | null
   >(() => initialParam("program"));
   const pendingFocusRef = useRef<string | null>(initialParam("focus"));
+  // The entry launcher: a cold arrival (no deep link) opens with
+  // "what law do you want to run?" instead of a bare canvas. Picking
+  // a program dissolves the launcher into the graph.
+  const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
+    () =>
+      typeof window !== "undefined" &&
+      !new URL(window.location.href).searchParams.get("program") &&
+      !new URL(window.location.href).searchParams.get("focus") &&
+      !new URL(window.location.href).searchParams.get("compose")
+        ? "open"
+        : "closed",
+  );
+  const dismissLauncher = () => {
+    setLauncher("leaving");
+    window.setTimeout(() => setLauncher("closed"), 420);
+  };
   // ?compose=us:regulations/47-cfr/54/403[#rule] renders a graph composed
   // on demand from the encodings mirror — for law that is encoded but not
   // yet inside any compiled program package. Choosing a program or
@@ -479,6 +495,59 @@ export function GraphViewerApp() {
 
   return (
     <div className="graph-viewer-root">
+    {launcher !== "closed" && (
+      <div
+        className={`plane-launcher ${launcher === "leaving" ? "is-leaving" : ""}`}
+        role="dialog"
+        aria-label="Choose a program to run"
+      >
+        <div className="plane-launcher-inner">
+          <p className="plane-launcher-eyebrow">Axiom · Plane</p>
+          <h1 className="plane-launcher-title">
+            What law do you want to run?
+          </h1>
+          <p className="plane-launcher-sub">
+            Pick a program — its rule graph opens on the canvas, ready to
+            explore, set a scenario, and execute.
+          </p>
+          {programsLoading ? (
+            <p className="plane-launcher-loading">Loading programs…</p>
+          ) : (
+            <div className="plane-launcher-grid">
+              {allPrograms.map((item, index) => (
+                <button
+                  key={programKey(item)}
+                  type="button"
+                  className="plane-launcher-card"
+                  style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
+                  onClick={() => {
+                    selectProgram(programKey(item));
+                    dismissLauncher();
+                  }}
+                >
+                  <span className="plane-launcher-chip">
+                    {countryShortLabel(countryOf(item.jurisdiction))}
+                    {item.jurisdiction.includes("-")
+                      ? ` · ${item.jurisdiction.split("-")[1].toUpperCase()}`
+                      : ""}
+                  </span>
+                  <strong>{displayNameForProgram(item)}</strong>
+                  <span className="plane-launcher-meta">
+                    {item.outputCount
+                      ? `${item.outputCount} outputs`
+                      : "compiled program"}
+                    {item.inputCount ? ` · ${item.inputCount} inputs` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <a className="plane-launcher-alt" href="/us">
+            Just reading? Open the Library →
+          </a>
+        </div>
+      </div>
+    )}
     <main className="app-shell">
       <aside className="side-panel">
         <div className="brand">

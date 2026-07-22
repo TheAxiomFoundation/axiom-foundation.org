@@ -120,7 +120,7 @@ describe("SectionReader", () => {
     const encodings = screen.getByTestId("rail-encodings");
     expect(within(encodings).getByText("eitc_phased_in")).toBeInTheDocument();
     expect(
-      within(encodings).getByText(/implements \(a\) \(b\)/)
+      within(encodings).getByText(/§ 32 \(a\)\(b\) · derived/)
     ).toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");

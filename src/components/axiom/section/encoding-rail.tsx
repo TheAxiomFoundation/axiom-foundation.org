@@ -10,6 +10,7 @@ import {
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { RuleCardList, type RuleCardDetail } from "./rule-cards";
+import { formatCitationLabel } from "@/components/axiom/references-panel";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import { useMemo } from "react";
 import yaml from "js-yaml";
@@ -178,6 +179,7 @@ export function EncodingRail({
           </h3>
           <RuleCardList
             rules={nodeRules}
+            citationLabel={citationPath ? formatCitationLabel(citationPath) : ""}
             detailFor={(ruleName) => ruleDetails.get(ruleName) ?? null}
             hrefFor={(ruleName) => {
               const slug = citationPath?.split("/")[0] ?? null;

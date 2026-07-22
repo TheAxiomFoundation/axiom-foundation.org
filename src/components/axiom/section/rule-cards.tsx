@@ -19,10 +19,14 @@ export function RuleCardList({
   rules,
   hrefFor,
   detailFor,
+  citationLabel = "",
 }: {
   rules: EncodedRuleLink[];
   hrefFor: (ruleName: string) => string | null;
   detailFor?: (ruleName: string) => RuleCardDetail | null;
+  /** Compact legal cite for the section ("7 USC § 2017") — grounds
+   *  each card's second line without per-card glyph icons. */
+  citationLabel?: string;
 }) {
   if (rules.length === 0) return null;
   return (
@@ -30,34 +34,32 @@ export function RuleCardList({
       {rules.map((rule) => {
         const href = hrefFor(rule.name);
         const detail = detailFor?.(rule.name) ?? null;
+        const cite = citationLabel
+          ? `${citationLabel}${
+              rule.anchors.length > 0 ? ` (${rule.anchors.join(")(")})` : ""
+            }`
+          : rule.anchors.length > 0
+            ? `(${rule.anchors.join(")(")})`
+            : "";
         return (
           <li key={rule.name}>
             <details className="group rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] transition-colors open:border-[var(--color-accent)]/40 hover:border-[var(--color-accent)]">
               <summary className="block cursor-pointer list-none px-3 py-2.5">
-                <span className="flex items-baseline gap-2">
-                  <span
-                    aria-hidden
-                    title={
-                      rule.kind === "derived" ? "Derived rule" : "Parameter"
-                    }
-                    className="font-mono text-[12px] text-[var(--color-accent)]"
-                  >
-                    {rule.kind === "derived" ? "ƒ" : "□"}
-                  </span>
-                  <span className="min-w-0 truncate font-mono text-[13px] text-[var(--color-ink)]">
+                <span className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-[var(--color-ink)]">
                     {rule.name}
                   </span>
                   <span
                     aria-hidden
-                    className="ml-auto shrink-0 font-mono text-[10px] text-[var(--color-ink-muted)] transition-transform group-open:rotate-90"
+                    className="shrink-0 text-[10px] text-[var(--color-ink-muted)] transition-transform group-open:rotate-90"
                   >
                     ▸
                   </span>
                 </span>
-                <span className="mt-1 block font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                  {rule.anchors.length > 0
-                    ? `implements (${rule.anchors.join(") (")})`
-                    : "whole section"}
+                <span className="mt-1 block truncate text-[11px] text-[var(--color-ink-muted)]">
+                  {cite}
+                  {cite && rule.kind && " · "}
+                  {rule.kind}
                 </span>
               </summary>
               <div className="border-t border-[var(--color-rule)] px-3 py-2.5">

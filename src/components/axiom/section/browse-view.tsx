@@ -109,6 +109,31 @@ function orderingKey(segment: string): string | null {
   return /^\d/.test(segment) ? segment : null;
 }
 
+function CoverageMark({
+  encoded,
+  total,
+}: {
+  encoded?: number;
+  total?: number;
+}) {
+  if (!encoded) return ENCODED_MARK;
+  return (
+    <span
+      className="font-mono text-[11px] leading-none"
+      title={
+        total
+          ? `${encoded} of ${total} ingested ${total === 1 ? "entry" : "entries"} carry RuleSpec encodings`
+          : `${encoded} RuleSpec ${encoded === 1 ? "file" : "files"}`
+      }
+    >
+      <span className="text-[var(--color-accent)]">∀ {encoded}</span>
+      {total ? (
+        <span className="text-[var(--color-ink-muted)]"> / {total}</span>
+      ) : null}
+    </span>
+  );
+}
+
 const ENCODED_MARK = (
   <span
     title="Has RuleSpec encodings"
@@ -183,7 +208,13 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                     {displayLabel(node.label)}
                   </span>
                   <span className="flex shrink-0 items-baseline gap-2 font-mono text-[11px] text-[var(--color-ink-muted)]">
-                    {node.hasRuleSpec && ENCODED_MARK}
+                    {data.encodedCounts?.[node.segment] ? (
+                      <CoverageMark
+                        encoded={data.encodedCounts?.[node.segment]}
+                      />
+                    ) : (
+                      node.hasRuleSpec && ENCODED_MARK
+                    )}
                     {typeof node.childCount === "number" &&
                       node.childCount > 0 && (
                         <span>{node.childCount}</span>
@@ -271,8 +302,16 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                     className="min-w-6 flex-1 border-b border-dotted border-[var(--color-rule)] group-hover:border-[var(--color-ink-muted)] transition-colors"
                   />
                   <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
-                    {node.hasRuleSpec && ENCODED_MARK}
-                    {typeof node.childCount === "number" &&
+                    {data.encodedCounts?.[node.segment] ? (
+                      <CoverageMark
+                        encoded={data.encodedCounts?.[node.segment]}
+                        total={node.childCount}
+                      />
+                    ) : (
+                      node.hasRuleSpec && ENCODED_MARK
+                    )}
+                    {!data.encodedCounts?.[node.segment] &&
+                      typeof node.childCount === "number" &&
                       node.childCount > 0 && (
                         <span className="hidden sm:inline">
                           {node.childCount}{" "}

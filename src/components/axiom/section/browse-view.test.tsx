@@ -29,6 +29,7 @@ function makeData(overrides: Partial<BrowsePageData> = {}): BrowsePageData {
         nodeType: "title",
       },
     ],
+    encodedCounts: {},
     hasMore: false,
     ...overrides,
   };

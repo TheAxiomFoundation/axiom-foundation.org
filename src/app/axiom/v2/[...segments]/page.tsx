@@ -13,6 +13,7 @@ import {
 import { SectionReader } from "@/components/axiom/section/section-reader";
 import { SectionSkeleton } from "@/components/axiom/section/section-skeleton";
 import {
+  browseTitle,
   getBrowsePageData,
   MAX_BROWSE_SEGMENTS,
 } from "@/lib/axiom/browse-page";
@@ -62,7 +63,7 @@ export async function generateMetadata({
   const decoded = decodeSegments(segments);
   if (decoded.length <= MAX_BROWSE_SEGMENTS) {
     return {
-      title: `${decoded.join("/")} · Axiom`,
+      title: `${browseTitle(decoded)} · Axiom`,
       robots: { index: false, follow: true },
     };
   }

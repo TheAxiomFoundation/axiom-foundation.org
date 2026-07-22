@@ -696,4 +696,12 @@ a.cov-card:focus-visible .cov-card-arrow {
   .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
     opacity: 0;
   }
+  /* The entrance animations outrank the opacity rule in the cascade
+     (running animations beat normal declarations), so the later
+     layers were still fading in pre-hydration. Kill their entrances;
+     layer one keeps its. */
+  .pscroll:not(.pscroll-live) .pstack-slot:nth-child(n + 2) .pstack-plane,
+  .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
+    animation: none;
+  }
 }

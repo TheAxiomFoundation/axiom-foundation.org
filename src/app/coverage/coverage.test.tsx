@@ -11,7 +11,6 @@ vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
 }));
 
 import CoveragePage from "./page";
-import { buildShelves } from "@/components/coverage/stacks";
 import type { CoverageData } from "@/lib/axiom/coverage-page";
 
 const DATA: CoverageData = {
@@ -59,32 +58,29 @@ describe("CoveragePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the stacks with per-jurisdiction runs and the table", async () => {
+  it("renders the stack hero layers and the jurisdiction cards", async () => {
     mockGetCoverageData.mockResolvedValue(DATA);
     render(await CoveragePage());
 
-    // Shelf labels carry the live totals ("Statutes" also names a
-    // table column, so expect both).
-    expect(screen.getAllByText("Statutes").length).toBe(2);
+    // The three pipeline layers with their live totals ("Provisions"
+    // also names a table column in the details fold).
+    expect(screen.getByText("Source documents")).toBeInTheDocument();
+    expect(screen.getAllByText("Provisions").length).toBeGreaterThan(0);
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
-    expect(screen.getByText(/225 documents · 1 jurisdiction\b/)).toBeInTheDocument();
-    // Colophon states the quantum and the provisions headline.
-    expect(screen.getByText(/one spine ≈/)).toBeInTheDocument();
+    expect(screen.getByText(/^405/)).toBeInTheDocument();
+    expect(screen.getByText(/^58,624/)).toBeInTheDocument();
+    expect(screen.getByText(/^4,875/)).toBeInTheDocument();
+    // Breadth rides in the callouts: corpus jurisdictions (1 of the
+    // 2 fixtures has provisions) and encoded jurisdictions (both).
     expect(
-      screen.getByText(/58,624 provisions across 2 jurisdictions/)
+      screen.getByText(/1 jurisdictions · 3 document types/)
     ).toBeInTheDocument();
-    // A corpus jurisdiction's run links into the app browse surface.
-    const usRuns = screen.getAllByRole("link", {
-      name: /US Federal — .*Browse US Federal/i,
-    });
-    expect(usRuns.length).toBeGreaterThan(0);
-    expect(usRuns[0]).toHaveAttribute("href", "/us");
-    // Encodings-only jurisdictions get a focusable, unlinked run.
-    const ukRun = screen.getByLabelText(/United Kingdom — 300 files/);
-    expect(ukRun.closest("a")).toBeNull();
+    expect(
+      screen.getByText(/2 jurisdictions encoded so far/)
+    ).toBeInTheDocument();
 
-    // Shelf cards: US links into the app, UK (encodings-only) does
-    // not, and the exact figures are printed on the card.
+    // Jurisdiction cards: US links into the app, UK (encodings-only)
+    // does not, and the exact figures are printed on the card.
     const usCard = screen
       .getAllByText("US Federal")
       .map((el) => el.closest("a.cov-card"))
@@ -95,9 +91,7 @@ describe("CoveragePage", () => {
         .getAllByText("United Kingdom")
         .every((el) => el.closest("a.cov-card") === null)
     ).toBe(true);
-    // Headline figure and its label are separate spans on the card.
-    expect(screen.getAllByText("9,897").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/provisions/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
     expect(
       screen.getByText(/encodings published ahead of corpus ingestion/)
     ).toBeInTheDocument();
@@ -106,31 +100,5 @@ describe("CoveragePage", () => {
       screen.getByRole("group", { name: /sort jurisdictions/i })
     ).toBeInTheDocument();
     expect(screen.getByText(/view as table/i)).toBeInTheDocument();
-    // The figure appears on the card and again in the table fold.
-    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
-  });
-});
-
-describe("buildShelves", () => {
-  it("quantizes runs, groups by jurisdiction, and links corpus rows", () => {
-    const { shelves, quantum } = buildShelves(DATA);
-    expect(quantum).toBe(25);
-    const statutes = shelves.find((s) => s.key === "statute");
-    expect(statutes?.total).toBe(225);
-    expect(statutes?.groups).toEqual([
-      { slug: "us", label: "US Federal", count: 225, volumes: 9, href: "/us" },
-    ]);
-    const encodings = shelves.find((s) => s.key === "encoding");
-    expect(encodings?.total).toBe(1500);
-    // UK has encodings but no corpus presence: present, unlinked.
-    expect(encodings?.groups.find((g) => g.slug === "uk")).toMatchObject({
-      href: null,
-      volumes: 12,
-    });
-    // Every tiny jurisdiction still gets at least one spine.
-    const other = shelves.find((s) => s.key === "other");
-    expect(
-      other?.groups.every((g) => g.volumes >= 1)
-    ).toBe(true);
   });
 });

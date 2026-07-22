@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
-import { Stacks, buildShelves } from "@/components/coverage/stacks";
+import { StackHero } from "@/components/coverage/stack-hero";
 import { ShelfCards } from "@/components/coverage/shelf-cards";
 import {
   getCoverageData,
@@ -63,18 +63,17 @@ export default async function CoveragePage() {
         <Reveal className="mb-14 max-w-[760px]">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
-            Coverage &middot; The stacks
+            Coverage &middot; Depth &amp; breadth
           </span>
           <h1 className="heading-page mb-6 mt-2">
-            Every shelf, counted
+            The whole stack, counted
           </h1>
           <p className="font-body text-[1.2rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            What Axiom holds today, shelved the way a law library would:
-            statutes, regulations, and agency guidance &mdash; and beneath
-            them, the gilt shelf machines can read. A document is a
-            top-level instrument (a U.S.&nbsp;Code title, a CFR part, a
-            state act, an agency manual); counts come from the live corpus
-            release and refresh every ten minutes.
+            What Axiom holds today, layer by layer: source documents
+            (a U.S.&nbsp;Code title, a CFR part, a state act, an agency
+            manual), the atomic provisions they split into, and the
+            machine-readable RuleSpec encodings built on top. Counts come
+            from the live corpus release and refresh every ten minutes.
           </p>
         </Reveal>
 
@@ -91,16 +90,10 @@ export default async function CoveragePage() {
 }
 
 function CoverageBody({ data }: { data: CoverageData }) {
-  const { shelves, quantum } = buildShelves(data);
   return (
     <>
-      <Reveal as="section" className="mb-20" aria-label="The stacks">
-        <Stacks
-          shelves={shelves}
-          quantum={quantum}
-          provisions={data.totals.provisions}
-          jurisdictions={data.totals.jurisdictions}
-        />
+      <Reveal as="section" className="mb-20" aria-label="The stack">
+        <StackHero data={data} />
       </Reveal>
 
       <Reveal as="section" className="mb-16">

@@ -51,42 +51,89 @@ const ORACLE_LABELS: Readonly<Record<string, string>> = {
   euromod: "EUROMOD",
 };
 
+/** Past this many subsections the tick map gives way to numerals. */
+const COVERAGE_MAP_MAX_UNITS = 16;
+
 /**
- * The section's trust line — one quiet sentence, not a stamp: how
- * many rules, how much of the section they cover, and whether an
- * external oracle has verified the covering program. "Verified"
- * appears only for oracle comparisons; golden cases alone are
- * self-graded and earn nothing here.
+ * The section's trust line — an assay mark, not a badge. Three
+ * clauses in the logic vernacular the corpus itself speaks:
+ *
+ *   ∀ 8 rules   ▮▯▯▯▯▯ 1 of 6 subsections   ⊨ PolicyEngine · 1 case
+ *
+ * The tick row is a map, not a meter: one tick per top-level
+ * subsection in document order, filled where rules exist, and each
+ * tick jumps to its subsection. ⊨ ("models") marks external-oracle
+ * verification only — golden expectations are self-graded and earn
+ * nothing here. Denominators always shown.
  */
 function EncodingStatusLine({ data }: { data: SectionPageData }) {
   if (data.encodedRules.length === 0) return null;
-  const coverage = data.encodedCoverage;
-  const coveragePiece = coverage
-    ? coverage.encodedUnits === coverage.totalUnits
-      ? `fully encoded · all ${coverage.totalUnits} subsections`
-      : coverage.encodedUnits > 0
-        ? `partially encoded · ${coverage.encodedUnits} of ${coverage.totalUnits} subsections`
-        : null
-    : null;
+  const unitAnchors =
+    data.provisions.length > 0
+      ? data.provisions
+          .filter((provision) => provision.relativeDepth === 1)
+          .map((provision) => provision.anchor)
+      : data.bodyChunks.map((chunk) => chunk.anchor);
+  const encodedAnchors = new Set(
+    data.encodedRules.flatMap((entry) => entry.anchors)
+  );
+  const encodedCount = unitAnchors.filter((anchor) =>
+    encodedAnchors.has(anchor)
+  ).length;
+
   return (
-    <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-      <span className="text-[var(--color-accent)]">∀</span>{" "}
-      {data.encodedRules.length}{" "}
-      {data.encodedRules.length === 1 ? "rule" : "rules"}
-      {coveragePiece && <> · {coveragePiece}</>}
-      {data.parity && (
-        <>
-          {" "}·{" "}
-          <span
-            className="text-[var(--color-success)]"
-            title={`${data.parity.programId} (${data.parity.jurisdiction}): ${data.parity.caseDescriptions.join(" — ")}`}
-          >
-            verified against{" "}
-            {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle} ·{" "}
-            {data.parity.caseCount}{" "}
-            {data.parity.caseCount === 1 ? "case" : "cases"}
+    <p className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+      <span>
+        <span className="text-[var(--color-accent)]">∀</span>{" "}
+        {data.encodedRules.length}{" "}
+        {data.encodedRules.length === 1 ? "rule" : "rules"}
+      </span>
+
+      {unitAnchors.length > 0 && (
+        <span className="inline-flex items-baseline gap-1.5">
+          {unitAnchors.length <= COVERAGE_MAP_MAX_UNITS && (
+            <span
+              className="inline-flex items-center gap-[3px] self-center"
+              aria-hidden
+            >
+              {unitAnchors.map((anchor) => (
+                <a
+                  key={anchor}
+                  href={`#${anchor}`}
+                  title={`(${anchor}) — ${
+                    encodedAnchors.has(anchor) ? "encoded" : "not yet encoded"
+                  }`}
+                  className={`h-[9px] w-[5px] rounded-[1px] transition-transform hover:scale-y-125 ${
+                    encodedAnchors.has(anchor)
+                      ? "bg-[var(--color-accent)]"
+                      : "border border-[var(--color-rule)] bg-transparent hover:border-[var(--color-ink-muted)]"
+                  }`}
+                />
+              ))}
+            </span>
+          )}
+          <span>
+            {encodedCount === unitAnchors.length
+              ? `all ${unitAnchors.length} subsections`
+              : `${encodedCount} of ${unitAnchors.length} subsections`}
           </span>
-        </>
+        </span>
+      )}
+
+      {data.parity && (
+        <span
+          className="text-[var(--color-success)] underline decoration-dotted decoration-[var(--color-success)]/40 underline-offset-4 cursor-help"
+          title={`Externally verified: ${data.parity.programId} (${data.parity.jurisdiction}) agrees with ${
+            ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle
+          } — ${data.parity.caseDescriptions.join(" — ")}`}
+        >
+          <span aria-hidden>⊨</span>{" "}
+          <span className="normal-case">
+            {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle}
+          </span>{" "}
+          · {data.parity.caseCount}{" "}
+          {data.parity.caseCount === 1 ? "case" : "cases"}
+        </span>
       )}
     </p>
   );

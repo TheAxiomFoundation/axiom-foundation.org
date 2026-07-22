@@ -499,7 +499,6 @@ a.cov-card:focus-visible {
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-}
 .cov-card-docs {
   font-family: var(--f-mono);
   font-size: 0.66rem;

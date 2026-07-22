@@ -51,20 +51,23 @@ const ORACLE_LABELS: Readonly<Record<string, string>> = {
   euromod: "EUROMOD",
 };
 
-/** Past this many subsections the tick map gives way to numerals. */
+/** Past this many subsections the segment map gives way to numerals. */
 const COVERAGE_MAP_MAX_UNITS = 16;
 
+const CHIP_CLASS =
+  "inline-flex items-center gap-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1.5 text-[12px] font-medium leading-none text-[var(--color-ink-secondary)]";
+
 /**
- * The section's trust line — an assay mark, not a badge. Three
- * clauses in the logic vernacular the corpus itself speaks:
+ * The section's trust row — three quiet status chips in the app's
+ * sans, product-style rather than typewriter-style:
  *
- *   ∀ 8 rules   ▮▯▯▯▯▯ 1 of 6 subsections   ⊨ PolicyEngine · 1 case
+ *   (∀ 8 rules) (▰▱▱▱▱▱ 1 of 6 subsections) (✓ Verified · PolicyEngine)
  *
- * The tick row is a map, not a meter: one tick per top-level
- * subsection in document order, filled where rules exist, and each
- * tick jumps to its subsection. ⊨ ("models") marks external-oracle
- * verification only — golden expectations are self-graded and earn
- * nothing here. Denominators always shown.
+ * Coverage is a map, not a meter: one segment per top-level
+ * subsection in document order, filled where rules exist; each
+ * segment links to its subsection. The verified chip appears only
+ * for external-oracle parity comparisons — golden expectations are
+ * self-graded and earn nothing. Denominators always shown.
  */
 function EncodingStatusLine({ data }: { data: SectionPageData }) {
   if (data.encodedRules.length === 0) return null;
@@ -82,20 +85,32 @@ function EncodingStatusLine({ data }: { data: SectionPageData }) {
   ).length;
 
   return (
-    <p className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-      <span>
-        <span className="text-[var(--color-accent)]">∀</span>{" "}
+    <div className="mt-3.5 flex flex-wrap items-center gap-2">
+      <span className={CHIP_CLASS}>
+        <span
+          aria-hidden
+          className="text-[13px] font-semibold text-[var(--color-accent)]"
+        >
+          ∀
+        </span>
         {data.encodedRules.length}{" "}
         {data.encodedRules.length === 1 ? "rule" : "rules"}
       </span>
 
       {unitAnchors.length > 0 && (
-        <span className="inline-flex items-baseline gap-1.5">
+        <span
+          className={CHIP_CLASS}
+          title={
+            encodedCount === unitAnchors.length
+              ? "Every subsection has encoded rules"
+              : `Encoded so far: ${unitAnchors
+                  .filter((anchor) => encodedAnchors.has(anchor))
+                  .map((anchor) => `(${anchor})`)
+                  .join(" ") || "none at subsection level"}`
+          }
+        >
           {unitAnchors.length <= COVERAGE_MAP_MAX_UNITS && (
-            <span
-              className="inline-flex items-center gap-[3px] self-center"
-              aria-hidden
-            >
+            <span className="inline-flex items-center gap-[3px]" aria-hidden>
               {unitAnchors.map((anchor) => (
                 <a
                   key={anchor}
@@ -103,39 +118,48 @@ function EncodingStatusLine({ data }: { data: SectionPageData }) {
                   title={`(${anchor}) — ${
                     encodedAnchors.has(anchor) ? "encoded" : "not yet encoded"
                   }`}
-                  className={`h-[9px] w-[5px] rounded-[1px] transition-transform hover:scale-y-125 ${
+                  className={`h-[5px] w-[14px] rounded-full transition-colors ${
                     encodedAnchors.has(anchor)
-                      ? "bg-[var(--color-accent)]"
-                      : "border border-[var(--color-rule)] bg-transparent hover:border-[var(--color-ink-muted)]"
+                      ? "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]"
+                      : "bg-[var(--color-rule)] hover:bg-[var(--color-ink-muted)]"
                   }`}
                 />
               ))}
             </span>
           )}
-          <span>
-            {encodedCount === unitAnchors.length
-              ? `all ${unitAnchors.length} subsections`
-              : `${encodedCount} of ${unitAnchors.length} subsections`}
-          </span>
+          {encodedCount === unitAnchors.length
+            ? `All ${unitAnchors.length} subsections`
+            : `${encodedCount} of ${unitAnchors.length} subsections`}
         </span>
       )}
 
       {data.parity && (
         <span
-          className="text-[var(--color-success)] underline decoration-dotted decoration-[var(--color-success)]/40 underline-offset-4 cursor-help"
-          title={`Externally verified: ${data.parity.programId} (${data.parity.jurisdiction}) agrees with ${
+          className="inline-flex cursor-help items-center gap-2 rounded-full border border-[rgba(22,101,52,0.25)] bg-[rgba(22,101,52,0.06)] px-3 py-1.5 text-[12px] font-medium leading-none text-[var(--color-success)]"
+          title={`⊨ Externally verified: ${data.parity.programId} (${data.parity.jurisdiction}) agrees with ${
             ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle
           } — ${data.parity.caseDescriptions.join(" — ")}`}
         >
-          <span aria-hidden>⊨</span>{" "}
-          <span className="normal-case">
-            {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle}
-          </span>{" "}
-          · {data.parity.caseCount}{" "}
-          {data.parity.caseCount === 1 ? "case" : "cases"}
+          <svg
+            aria-hidden
+            viewBox="0 0 12 12"
+            className="h-3 w-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 6.2 4.8 9 10 3.4" />
+          </svg>
+          Verified · {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle}
+          <span className="opacity-60">
+            {data.parity.caseCount}{" "}
+            {data.parity.caseCount === 1 ? "case" : "cases"}
+          </span>
         </span>
       )}
-    </p>
+    </div>
   );
 }
 

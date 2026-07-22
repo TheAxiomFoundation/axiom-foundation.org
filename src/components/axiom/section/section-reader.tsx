@@ -44,6 +44,54 @@ function formatDate(value: string | null): string | null {
   });
 }
 
+const ORACLE_LABELS: Readonly<Record<string, string>> = {
+  policyengine: "PolicyEngine",
+  taxsim: "TAXSIM",
+  ukmod: "UKMOD",
+  euromod: "EUROMOD",
+};
+
+/**
+ * The section's trust line — one quiet sentence, not a stamp: how
+ * many rules, how much of the section they cover, and whether an
+ * external oracle has verified the covering program. "Verified"
+ * appears only for oracle comparisons; golden cases alone are
+ * self-graded and earn nothing here.
+ */
+function EncodingStatusLine({ data }: { data: SectionPageData }) {
+  if (data.encodedRules.length === 0) return null;
+  const coverage = data.encodedCoverage;
+  const coveragePiece = coverage
+    ? coverage.encodedUnits === coverage.totalUnits
+      ? `fully encoded · all ${coverage.totalUnits} subsections`
+      : coverage.encodedUnits > 0
+        ? `partially encoded · ${coverage.encodedUnits} of ${coverage.totalUnits} subsections`
+        : null
+    : null;
+  return (
+    <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+      <span className="text-[var(--color-accent)]">∀</span>{" "}
+      {data.encodedRules.length}{" "}
+      {data.encodedRules.length === 1 ? "rule" : "rules"}
+      {coveragePiece && <> · {coveragePiece}</>}
+      {data.parity && (
+        <>
+          {" "}·{" "}
+          <span
+            className="text-[var(--color-success)]"
+            title={`${data.parity.programId} (${data.parity.jurisdiction}): ${data.parity.caseDescriptions.join(" — ")}`}
+          >
+            verified against{" "}
+            {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle} ·{" "}
+            {data.parity.caseCount}{" "}
+            {data.parity.caseCount === 1 ? "case" : "cases"}
+          </span>
+        </>
+      )}
+    </p>
+  );
+}
+
 function Breadcrumbs({ data }: { data: SectionPageData }) {
   // Bare citation-path hrefs are canonical: the proxy routes
   // section-depth paths to this reader and browse levels to the v1
@@ -498,6 +546,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
               {heading}
             </h1>
           )}
+          <EncodingStatusLine data={data} />
           <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-[var(--color-ink-muted)]">
             {effective && <span>Effective {effective}</span>}
             {data.root.source_url && (

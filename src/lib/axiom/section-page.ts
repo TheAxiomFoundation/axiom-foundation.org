@@ -17,6 +17,7 @@ import {
   getProvisionCoverage,
   type ProvisionProgramCoverage,
 } from "@/lib/axiom/runtime/coverage";
+import { listParityCases } from "@/lib/axiom/runtime/api";
 import { getSectionEncoding } from "@/lib/axiom/section-encoding";
 
 /**
@@ -117,6 +118,24 @@ export interface SectionPageData {
   next: SectionNeighbor | null;
   /** True when the subtree hit SUBTREE_LIMIT and was cut off. */
   truncated: boolean;
+  /**
+   * How much of the section the encodings cover: distinct top-level
+   * subsections with rules vs. subsections total. Null when the
+   * section has no subsection structure to measure against.
+   */
+  encodedCoverage: { encodedUnits: number; totalUnits: number } | null;
+  /**
+   * Oracle verification for the section's covering programs.
+   * Only external-oracle comparisons earn "verified" — golden
+   * expectations alone are self-graded (executable, not verified).
+   */
+  parity: {
+    oracle: string;
+    caseCount: number;
+    programId: string;
+    jurisdiction: string;
+    caseDescriptions: string[];
+  } | null;
 }
 
 /**
@@ -718,7 +737,7 @@ export async function getSectionPageDataFromResolution(
   const { citationPath, focusAnchor, prefetchedSubtree } = resolution;
   let root = resolution.root;
 
-  const [subtree, rootRefs, node, sectionEncoding, programs] =
+  const [subtree, rootRefs, node, sectionEncoding, programs, parityCases] =
     await Promise.all([
       prefetchedSubtree ?? getSubtreeProvisions(citationPath),
       getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
@@ -731,6 +750,7 @@ export async function getSectionPageDataFromResolution(
       getProvisionCoverage(citationPath).catch(
         () => [] as ProvisionProgramCoverage[]
       ),
+      listParityCases().catch(() => []),
     ]);
   const encoding = sectionEncoding.encoding;
 
@@ -767,6 +787,54 @@ export async function getSectionPageDataFromResolution(
           children: [],
         }));
 
+  const encodedRules = applyFileAnchors(
+    mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
+    sectionEncoding.fileAnchors
+  );
+
+  // Coverage: which top-level subsections carry rules, out of how
+  // many the section has.
+  const unitAnchors =
+    provisions.length > 0
+      ? provisions
+          .filter((provision) => provision.relativeDepth === 1)
+          .map((provision) => provision.anchor)
+      : bodySplit.chunks.map((chunk) => chunk.anchor);
+  const encodedAnchors = new Set(
+    encodedRules.flatMap((entry) => entry.anchors)
+  );
+  const encodedCoverage =
+    unitAnchors.length > 0 && encodedRules.length > 0
+      ? {
+          encodedUnits: unitAnchors.filter((anchor) =>
+            encodedAnchors.has(anchor)
+          ).length,
+          totalUnits: unitAnchors.length,
+        }
+      : null;
+
+  // Oracle verification: the first covering program with an
+  // external-oracle parity comparison.
+  let parity: SectionPageData["parity"] = null;
+  for (const program of programs) {
+    const cases = parityCases.filter(
+      (item) =>
+        item.jurisdiction === program.jurisdiction &&
+        item.program_id === program.programId &&
+        item.oracles.length > 0
+    );
+    if (cases.length > 0) {
+      parity = {
+        oracle: cases[0].oracles[0],
+        caseCount: cases.length,
+        programId: program.programId,
+        jurisdiction: program.jurisdiction,
+        caseDescriptions: cases.map((item) => item.description),
+      };
+      break;
+    }
+  }
+
   return {
     citationPath,
     root,
@@ -778,16 +846,15 @@ export async function getSectionPageDataFromResolution(
     toc,
     rootRefs,
     encoding,
-    encodedRules: applyFileAnchors(
-      mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
-      sectionEncoding.fileAnchors
-    ),
+    encodedRules,
     programs,
     ruleFiles: sectionEncoding.ruleFiles,
     focusAnchor,
     prev,
     next,
     truncated: subtree.truncated,
+    encodedCoverage,
+    parity,
   };
 }
 

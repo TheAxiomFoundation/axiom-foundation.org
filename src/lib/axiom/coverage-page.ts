@@ -156,6 +156,39 @@ async function loadEncodingCounts(): Promise<Map<string, number> | null> {
 }
 
 /**
+ * Restrict coverage to US jurisdictions (federal + states), with
+ * totals recomputed from the filtered set so the hero figures match
+ * the cards. Launch scope decision — drop the call in
+ * src/app/coverage/page.tsx to show international coverage again.
+ */
+export function usOnlyCoverage(data: CoverageData): CoverageData {
+  const jurisdictions = data.jurisdictions.filter(
+    (j) => j.slug === "us" || j.slug.startsWith("us-")
+  );
+  const docTypeTotals = new Map<string, number>();
+  for (const j of jurisdictions) {
+    for (const [type, count] of Object.entries(j.documents)) {
+      docTypeTotals.set(type, (docTypeTotals.get(type) ?? 0) + count);
+    }
+  }
+  return {
+    totals: {
+      jurisdictions: jurisdictions.length,
+      documents: jurisdictions.reduce((sum, j) => sum + j.documentTotal, 0),
+      provisions: jurisdictions.reduce((sum, j) => sum + j.provisionCount, 0),
+      encodingFiles: jurisdictions.reduce(
+        (sum, j) => sum + j.encodingFileCount,
+        0
+      ),
+    },
+    docTypeTotals: [...docTypeTotals.entries()]
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count),
+    jurisdictions,
+  };
+}
+
+/**
  * Assemble the page data. Returns null only when the corpus stats
  * backbone is unavailable; per-jurisdiction failures degrade to
  * missing document breakdowns rather than failing the page.

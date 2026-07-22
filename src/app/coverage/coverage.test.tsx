@@ -35,12 +35,20 @@ const DATA: CoverageData = {
       encodingFileCount: 1200,
     },
     {
+      slug: "us-ms",
+      label: "Mississippi",
+      documents: {},
+      documentTotal: 0,
+      provisionCount: 0,
+      encodingFileCount: 300,
+    },
+    {
       slug: "uk",
       label: "United Kingdom",
       documents: {},
       documentTotal: 0,
       provisionCount: 0,
-      encodingFileCount: 300,
+      encodingFileCount: 250,
     },
   ],
 };
@@ -67,9 +75,13 @@ describe("CoveragePage", () => {
     expect(screen.getByText("Source documents")).toBeInTheDocument();
     expect(screen.getAllByText("Provisions").length).toBeGreaterThan(0);
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
-    expect(screen.getByText(/^405/)).toBeInTheDocument();
-    expect(screen.getByText(/^58,624/)).toBeInTheDocument();
-    expect(screen.getByText(/^4,875/)).toBeInTheDocument();
+    // Hero totals are recomputed for the US-only launch scope:
+    // documents 331, provisions 9,897 (hero + card), encodings
+    // 1,200 + 300 = 1,500 — the UK fixture is excluded entirely.
+    expect(screen.getByText("331")).toBeInTheDocument();
+    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
+    expect(screen.getByText("1,500")).toBeInTheDocument();
+    expect(screen.queryByText("United Kingdom")).toBeNull();
     // Each layer carries its serif support line.
     expect(
       screen.getByText(/Statutes, regulations, and agency guidance/)
@@ -87,10 +99,9 @@ describe("CoveragePage", () => {
     expect(usCard).toHaveAttribute("href", "/us");
     expect(
       screen
-        .getAllByText("United Kingdom")
+        .getAllByText("Mississippi")
         .every((el) => el.closest("a.cov-card") === null)
     ).toBe(true);
-    expect(screen.getByText("9,897")).toBeInTheDocument();
     expect(
       screen.getByText(/encodings published ahead of corpus ingestion/)
     ).toBeInTheDocument();

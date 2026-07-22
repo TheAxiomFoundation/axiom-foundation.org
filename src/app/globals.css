@@ -671,3 +671,12 @@ a.cov-card:focus-visible .cov-card-arrow {
     transform: translateY(-10em);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-strip-spin {
+    animation: none;
+  }
+  .roll-strip {
+    transition: none;
+  }
+}

@@ -11,6 +11,7 @@ vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
 }));
 
 import CoveragePage from "./page";
+import CoverageLoading from "./loading";
 import type { CoverageData } from "@/lib/axiom/coverage-page";
 
 const DATA: CoverageData = {
@@ -109,5 +110,22 @@ describe("CoveragePage", () => {
     expect(
       screen.getByRole("group", { name: /sort jurisdictions/i })
     ).toBeInTheDocument();
+  });
+});
+
+describe("CoverageLoading", () => {
+  it("renders the hero mid-count: planes on the left, reels spinning", () => {
+    const { container } = render(<CoverageLoading />);
+    // The isometric stack renders in the loading state too.
+    expect(container.querySelectorAll(".pstack-plane").length).toBe(3);
+    // Spin reels are server-renderable markup (pure CSS motion), so
+    // they exist without any client hydration.
+    expect(
+      container.querySelectorAll(".roll-strip-spin").length
+    ).toBeGreaterThanOrEqual(12);
+    // Same layer names as the real hero (shared copy module).
+    expect(screen.getByText("Source documents")).toBeInTheDocument();
+    expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
+    expect(screen.getByText(/counting the corpus/)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RollingNumber } from "@/components/coverage/rolling-number";
+import { STACK_LAYERS } from "@/components/coverage/copy";
 import type { CoverageData } from "@/lib/axiom/coverage-page";
 
 /**
@@ -58,34 +59,15 @@ export function StackHero({ data }: { data: CoverageData }) {
     };
   }, []);
 
-  const layers: Array<{
-    key: string;
-    name: string;
-    value: number;
-    detail: string;
-  }> = [
-    {
-      key: "documents",
-      name: "Source documents",
-      value: data.totals.documents,
-      detail:
-        "Statutes, regulations, and agency guidance — from U.S. Code titles and CFR parts to state benefit manuals.",
-    },
-    {
-      key: "provisions",
-      name: "Provisions",
-      value: data.totals.provisions,
-      detail:
-        "Every document, split into the atomic citable sections the reader, search, and citation graph all work on.",
-    },
-    {
-      key: "encodings",
-      name: "RuleSpec encodings",
-      value: data.totals.encodingFiles,
-      detail:
-        "Machine-readable rules, each linked back to the exact provisions it encodes.",
-    },
-  ];
+  const values: Record<(typeof STACK_LAYERS)[number]["key"], number> = {
+    documents: data.totals.documents,
+    provisions: data.totals.provisions,
+    encodings: data.totals.encodingFiles,
+  };
+  const layers = STACK_LAYERS.map((layer) => ({
+    ...layer,
+    value: values[layer.key],
+  }));
 
   return (
     <section

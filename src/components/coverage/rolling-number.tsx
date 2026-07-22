@@ -33,7 +33,10 @@ export function RollingNumber({
     setReels(true);
   }, []);
 
-  if (!reels) return <span>{text}</span>;
+  // Spin mode must move before hydration (it IS the loading state),
+  // so its reels render server-side and animate in pure CSS —
+  // reduced motion is handled by a CSS media query.
+  if (!spin && !reels) return <span>{text}</span>;
 
   return (
     <span className="roll" aria-label={spin ? "loading" : text}>

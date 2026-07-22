@@ -11,7 +11,7 @@ vi.mock("@/lib/supabase", () => ({
   supabaseEncodings: { from: mockEncodingsFrom },
 }));
 
-import { getCoverageData } from "./coverage-page";
+import { getCoverageData, _resetCoverageCache } from "./coverage-page";
 
 /** Thenable builder chain: every method returns the chain; awaiting
  *  yields the result queued for that call of from(). */
@@ -49,6 +49,7 @@ describe("getCoverageData", () => {
     mockCorpusRpc.mockReset();
     mockCorpusFrom.mockReset();
     mockEncodingsFrom.mockReset();
+    _resetCoverageCache();
   });
 
   it("joins corpus stats, root document counts, and encoding counts", async () => {

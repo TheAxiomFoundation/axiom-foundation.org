@@ -46,6 +46,20 @@ const MAX_ROOT_DOC_PAGES = 10;
 const SWEEP_PAGE_SIZE = 1000;
 const MAX_SWEEP_PAGES = 30;
 const CONCURRENCY = 8;
+const CACHE_TTL_MS = 600_000;
+
+/**
+ * Process-local result cache, aligned with the page's 10-minute
+ * revalidate. The assembly fans out ~60 queries; without this every
+ * dev render and every ISR regeneration pays the full fan-out.
+ * Failures are never cached.
+ */
+let cached: { at: number; value: CoverageData } | null = null;
+
+/** Test hook: module-level cache must reset between tests. */
+export function _resetCoverageCache() {
+  cached = null;
+}
 
 function labelForSlug(slug: string): string {
   const seeded = JURISDICTIONS_SEED.find((j) => j.slug === slug)?.label;
@@ -147,6 +161,9 @@ async function loadEncodingCounts(): Promise<Map<string, number> | null> {
  * missing document breakdowns rather than failing the page.
  */
 export async function getCoverageData(): Promise<CoverageData | null> {
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.value;
+  }
   const [stats, encodingCounts] = await Promise.all([
     loadCorpusStats(),
     loadEncodingCounts(),
@@ -191,7 +208,7 @@ export async function getCoverageData(): Promise<CoverageData | null> {
     }
   }
 
-  return {
+  const data: CoverageData = {
     totals: {
       jurisdictions: jurisdictions.length,
       documents: jurisdictions.reduce((sum, j) => sum + j.documentTotal, 0),
@@ -206,4 +223,6 @@ export async function getCoverageData(): Promise<CoverageData | null> {
       .sort((a, b) => b.count - a.count),
     jurisdictions,
   };
+  cached = { at: Date.now(), value: data };
+  return data;
 }

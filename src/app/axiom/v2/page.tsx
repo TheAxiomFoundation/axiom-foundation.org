@@ -36,81 +36,76 @@ function PreviewFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** The Plane's preview: a small execution graph, output lit. */
+/**
+ * The Plane's preview: real node cards (the canvas's own vocabulary —
+ * Question / Rule / Result) over animated edges, output lit with its
+ * computed value. HTML cards + an SVG edge layer, so type renders as
+ * crisply as the app itself.
+ */
 function PlanePreview() {
+  const node =
+    "absolute rounded-lg border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-2.5 py-1.5 shadow-[0_1px_2px_rgba(28,25,23,0.06)]";
+  const eyebrow =
+    "block font-mono text-[7.5px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]";
+  const label = "block text-[11px] font-medium text-[var(--color-ink)]";
   return (
-    <svg
-      viewBox="0 0 340 128"
-      className="h-auto w-full"
+    <div
+      className="relative w-full"
+      style={{ aspectRatio: "340 / 150" }}
       role="img"
       aria-label="A rule graph computing an allotment from income and household size"
     >
-      <defs>
-        <marker
-          id="portal-arrow"
-          viewBox="0 0 8 8"
-          refX="7"
-          refY="4"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M0 0 L8 4 L0 8 z" fill="#a8a29e" />
-        </marker>
-      </defs>
-      {/* edges */}
-      <g
-        stroke="#a8a29e"
-        strokeWidth="1.4"
-        fill="none"
-        markerEnd="url(#portal-arrow)"
-        className="portal-flow"
+      <style>{`
+        .portal-edge { stroke-dasharray: 5 4; animation: portal-flow 1.1s linear infinite; }
+        @keyframes portal-flow { to { stroke-dashoffset: -9; } }
+        @media (prefers-reduced-motion: reduce) { .portal-edge { animation: none; } }
+      `}</style>
+      <svg
+        viewBox="0 0 340 150"
+        preserveAspectRatio="none"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
       >
-        <path d="M96 30 C 128 30, 132 56, 158 60" />
-        <path d="M96 96 C 128 96, 132 70, 158 64" />
-        <path d="M232 62 C 248 62, 252 62, 264 62" />
-      </g>
-      {/* input nodes */}
-      <g fontFamily="var(--f-mono, monospace)" fontSize="10">
-        <rect x="8" y="16" width="88" height="28" rx="7" fill="#ffffff" stroke="#e7e5e4" />
-        <text x="52" y="34" textAnchor="middle" fill="#57534e">
-          income · $500
-        </text>
-        <rect x="8" y="82" width="88" height="28" rx="7" fill="#ffffff" stroke="#e7e5e4" />
-        <text x="52" y="100" textAnchor="middle" fill="#57534e">
-          household · 3
-        </text>
-        {/* intermediate */}
-        <rect x="158" y="48" width="74" height="28" rx="7" fill="#ffffff" stroke="#e7e5e4" />
-        <text x="195" y="66" textAnchor="middle" fill="#57534e">
-          net income
-        </text>
-        {/* output, lit */}
-        <rect
-          x="264"
-          y="44"
-          width="70"
-          height="36"
-          rx="8"
-          fill="rgba(217,119,6,0.08)"
-          stroke="#d97706"
-          strokeWidth="1.4"
-        />
-        <text x="299" y="59" textAnchor="middle" fill="#78716c" fontSize="8.5">
-          ALLOTMENT
-        </text>
-        <text
-          x="299"
-          y="73"
-          textAnchor="middle"
-          fill="#b45309"
-          fontSize="12"
-          fontWeight="600"
+        <g
+          className="portal-edge"
+          stroke="var(--color-ink-muted)"
+          strokeOpacity="0.45"
+          strokeWidth="1.3"
+          fill="none"
         >
+          <path d="M126 33 C 146 33, 138 71, 158 71" />
+          <path d="M126 117 C 146 117, 138 79, 158 79" />
+          <path d="M250 75 C 256 75, 256 75, 262 75" />
+        </g>
+      </svg>
+
+      <div className={node} style={{ left: "2.4%", top: "9%", width: "34%" }}>
+        <span className={eyebrow}>Question</span>
+        <span className={label}>Monthly income · $500</span>
+      </div>
+      <div className={node} style={{ left: "2.4%", top: "65%", width: "34%" }}>
+        <span className={eyebrow}>Question</span>
+        <span className={label}>Household · 3 people</span>
+      </div>
+      <div className={node} style={{ left: "46.5%", top: "37%", width: "27%" }}>
+        <span className={eyebrow}>Rule</span>
+        <span className={label}>Net income</span>
+      </div>
+      <div
+        className="absolute rounded-lg border border-[var(--color-accent)] bg-[var(--color-paper-elevated)] px-2.5 py-1.5 shadow-[0_0_0_3px_var(--color-accent-light),0_6px_16px_-6px_rgba(217,119,6,0.5)]"
+        style={{ left: "77%", top: "30%", width: "21%" }}
+      >
+        <span className="block font-mono text-[7.5px] uppercase tracking-[0.12em] text-[var(--color-accent)]">
+          Result
+        </span>
+        <span className="block text-[11px] font-medium text-[var(--color-ink)]">
+          Allotment
+        </span>
+        <span className="block text-[15px] font-semibold tracking-tight text-[var(--color-accent-hover)]">
           $785
-        </text>
-      </g>
-    </svg>
+        </span>
+      </div>
+    </div>
   );
 }
 

@@ -673,3 +673,28 @@ a.cov-card:focus-visible .cov-card-arrow {
 .pscroll-hint[data-done] {
   opacity: 0;
 }
+
+/* ── /coverage callout refinements: pipeline ordinals, the mini
+   document-mix bar (same segment language as the cards), and serif
+   italic for the prose support lines. */
+.pstack-ordinal {
+  color: var(--color-accent);
+  margin-right: 0.55rem;
+}
+.pstack-mix {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  max-width: 280px;
+  margin-top: 0.65rem;
+}
+.pstack-mix > span {
+  min-width: 3px;
+  border-radius: 2px;
+}
+.pstack-prose {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 0.93rem;
+  letter-spacing: 0.01em;
+}

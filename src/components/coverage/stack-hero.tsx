@@ -90,6 +90,22 @@ export function StackHero({ data }: { data: CoverageData }) {
     <span className="pstack-num">{n(value)}</span>
   );
 
+  // Document-type mix for the mini bar — same segment language and
+  // validated hues as the jurisdiction cards below.
+  const statuteDocs =
+    data.docTypeTotals.find((t) => t.type === "statute")?.count ?? 0;
+  const regulationDocs =
+    data.docTypeTotals.find((t) => t.type === "regulation")?.count ?? 0;
+  const otherDocs = Math.max(
+    0,
+    data.totals.documents - statuteDocs - regulationDocs
+  );
+  const docMix = [
+    { key: "statute", count: statuteDocs, hue: "#C75B50" },
+    { key: "regulation", count: regulationDocs, hue: "#7C83E0" },
+    { key: "other", count: otherDocs, hue: "#2E9E85" },
+  ].filter((segment) => segment.count > 0);
+
   const layers: Array<{
     key: string;
     name: string;
@@ -183,12 +199,38 @@ export function StackHero({ data }: { data: CoverageData }) {
                 style={{ "--layer": i } as React.CSSProperties}
               >
                 <div className="pstack-callout-body">
-                  <span className="pstack-callout-name">{layer.name}</span>
+                  <span className="pstack-callout-name">
+                    <span className="pstack-ordinal" aria-hidden>
+                      0{i + 1}
+                    </span>
+                    {layer.name}
+                  </span>
                   <span className="pstack-callout-value">{n(layer.value)}</span>
                   {layer.facts && (
                     <span className="pstack-callout-facts">{layer.facts}</span>
                   )}
-                  <span className="pstack-callout-detail">{layer.detail}</span>
+                  {layer.key === "documents" && docMix.length > 0 && (
+                    <span className="pstack-mix" aria-hidden>
+                      {docMix.map((segment) => (
+                        <span
+                          key={segment.key}
+                          style={{
+                            flexGrow: segment.count,
+                            background: segment.hue,
+                          }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  <span
+                    className={
+                      layer.key === "documents"
+                        ? "pstack-callout-detail"
+                        : "pstack-callout-detail pstack-prose"
+                    }
+                  >
+                    {layer.detail}
+                  </span>
                 </div>
               </li>
             ))}

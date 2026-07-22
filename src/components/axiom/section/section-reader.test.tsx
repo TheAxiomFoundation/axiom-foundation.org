@@ -97,7 +97,7 @@ describe("SectionReader", () => {
   it("renders header, chunks, chips, TOC, and neighbors", () => {
     render(<SectionReader data={makeData()} />);
     expect(screen.getByText("Earned income")).toBeInTheDocument();
-    expect(screen.getByText("us/statute/26/32")).toBeInTheDocument();
+    // The citation path is implied by the breadcrumbs — no eyebrow.
     expect(screen.getByText("Official source")).toHaveAttribute(
       "href",
       "https://uscode.house.gov/32"

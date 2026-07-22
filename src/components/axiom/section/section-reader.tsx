@@ -491,12 +491,9 @@ export function SectionReader({ data }: { data: SectionPageData }) {
         </div>
 
         <header className="border-b border-[var(--color-rule)] pb-5">
-          <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {data.citationPath}
-          </p>
           {heading && (
             <h1
-              className="mt-2 text-2xl font-semibold text-[var(--color-ink)]"
+              className="text-2xl font-semibold text-[var(--color-ink)]"
               style={{ fontFamily: "var(--f-serif)" }}
             >
               {heading}

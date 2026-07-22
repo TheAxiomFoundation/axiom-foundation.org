@@ -14,6 +14,9 @@ import { EncodingRail } from "./encoding-rail";
 import { CitationPreviewLayer } from "./citation-preview";
 import { SubsectionActions } from "./subsection-actions";
 import { ActionStrip } from "./action-strip";
+import { RuleCards } from "./rule-cards";
+import { CollapsibleText } from "./collapsible-text";
+import { primaryProgram } from "./primary-program";
 import {
   builderUrlForRule,
   composeGraphViewerUrl,
@@ -81,6 +84,127 @@ function AnchorLink({ anchor }: { anchor: string }) {
       #
     </a>
   );
+}
+
+
+/** Top-level provision with its whole subtree — one collapsible unit
+ *  so provision-backed sections compress the same way chunked ones
+ *  do. Heading, chips, and actions stay outside the clamp. */
+function ProvisionGroup({
+  head,
+  children: childProvisions,
+  data,
+  sectionFocus,
+}: {
+  head: SectionProvision;
+  children: SectionProvision[];
+  data: SectionPageData;
+  sectionFocus: string | null;
+}) {
+  const anchor = head.anchor;
+  const focused = data.focusAnchor === anchor;
+  const groupRules = data.encodedRules.filter((entry) =>
+    entry.anchors.includes(anchor)
+  );
+  const { graphHref, builderHref } = focused
+    ? subsectionActionHrefs(data, anchor, groupRules)
+    : { graphHref: null, builderHref: null };
+  const heading = head.rule.heading?.trim();
+  const textLength =
+    (head.rule.body?.length ?? 0) +
+    childProvisions.reduce(
+      (sum, child) => sum + (child.rule.body?.length ?? 0),
+      0
+    );
+  const clamp = data.encodedRules.length > 0 && !focused && textLength > 420;
+  const content = (
+    <>
+      {head.rule.body && (
+        <div className="mt-2">
+          <RuleBody
+            body={head.rule.body}
+            refs={[]}
+            citationPath={head.rule.citation_path ?? undefined}
+            testId={null}
+          />
+        </div>
+      )}
+      {childProvisions.map((child) => (
+        <ProvisionBlock
+          key={child.rule.id}
+          provision={child}
+          data={data}
+          sectionFocus={sectionFocus}
+        />
+      ))}
+    </>
+  );
+  return (
+    <section
+      id={anchor}
+      className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
+    >
+      <h2 className="mt-7 flex items-baseline gap-2 text-lg font-semibold text-[var(--color-ink)]">
+        <Link
+          href={`/${data.citationPath}/${anchor}`}
+          className="font-mono text-[0.85em] text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+          title={`Open ${data.citationPath}/${anchor}`}
+        >
+          {head.designator}
+        </Link>
+        {heading && <span className="min-w-0 truncate">{heading}</span>}
+        {groupRules.length > 0 && (
+          <span
+            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+            title={groupRules.map((entry) => entry.name).join(", ")}
+          >
+            ∀ {groupRules.length}
+          </span>
+        )}
+        <AnchorLink anchor={anchor} />
+      </h2>
+      {focused && (
+        <SubsectionActions
+          citationLabel={formatLegalCitation(data.citationPath, anchor)}
+          href={`/${data.citationPath}/${anchor}`}
+          graphHref={graphHref}
+          builderHref={builderHref}
+        />
+      )}
+      {clamp ? <CollapsibleText>{content}</CollapsibleText> : content}
+    </section>
+  );
+}
+
+/** Split the flat, path-sorted provision list into top-level groups.
+ *  Orphans before the first top-level provision pass through. */
+function groupProvisions(provisions: SectionProvision[]): Array<{
+  head: SectionProvision | null;
+  children: SectionProvision[];
+}> {
+  const groups: Array<{
+    head: SectionProvision | null;
+    children: SectionProvision[];
+  }> = [];
+  let current: (typeof groups)[number] | null = null;
+  for (const provision of provisions) {
+    if (provision.relativeDepth === 1) {
+      current = { head: provision, children: [] };
+      groups.push(current);
+    } else if (
+      current?.head &&
+      provision.anchor.startsWith(`${current.head.anchor}-`)
+    ) {
+      current.children.push(provision);
+    } else {
+      if (!current || current.head) {
+        current = { head: null, children: [] };
+        groups.push(current);
+      }
+      current.children.push(provision);
+    }
+  }
+  return groups;
 }
 
 function ProvisionBlock({
@@ -163,23 +287,6 @@ function ProvisionBlock({
  * builder output. Shared by both column shapes (body chunks and
  * corpus provisions) so deep links behave identically.
  */
-/**
- * The one program context shared by Run, Graph and Build for a
- * section: the strongest-coverage ready program (data.programs is
- * ruleCount-sorted). Run previously preferred ready programs while
- * Graph took programs[0] regardless of status — the two actions
- * could silently address different jurisdictions.
- */
-export function primaryProgram(
-  programs: SectionPageData["programs"]
-): SectionPageData["programs"][number] | null {
-  return (
-    programs.find((program) => program.status === "ready") ??
-    programs[0] ??
-    null
-  );
-}
-
 function subsectionActionHrefs(
   data: SectionPageData,
   anchor: string,
@@ -258,19 +365,32 @@ function ChunkBlock({
   data: SectionPageData;
 }) {
   const focused = data.focusAnchor === chunk.anchor;
-  const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const chunkRules = data.encodedRules.filter((rule) =>
     rule.anchors.includes(chunk.anchor)
   );
   const { graphHref, builderHref } = focused
     ? subsectionActionHrefs(data, chunk.anchor, chunkRules)
     : { graphHref: null, builderHref: null };
+  // The encoded layer leads the page; long source text sits behind a
+  // clamped preview unless the reader deep-linked to this subsection
+  // or the section carries no encodings at all (then text is the
+  // only content and stands open).
+  const clamp =
+    data.encodedRules.length > 0 && !focused && chunk.text.length > 420;
+  const body = (
+    <RuleBody
+      body={chunk.text}
+      refs={refsForChunk(data.rootRefs, chunk.text)}
+      citationPath={data.root.citation_path ?? undefined}
+      testId={null}
+    />
+  );
   return (
     <section
       id={chunk.anchor}
       className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
     >
-      <h2 className="mt-8 flex items-baseline gap-2">
+      <h2 className="mt-7 flex items-baseline gap-2">
         <Link
           href={`/${data.citationPath}/${chunk.anchor}`}
           className="font-mono text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
@@ -278,6 +398,20 @@ function ChunkBlock({
         >
           {chunk.designator}
         </Link>
+        <span
+          className="min-w-0 truncate text-[15px] text-[var(--color-ink)]"
+          style={{ fontFamily: "var(--f-serif)" }}
+        >
+          {chunk.label.replace(/^\([a-z]{1,2}\)\s*/, "")}
+        </span>
+        {chunkRules.length > 0 && (
+          <span
+            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+            title={chunkRules.map((rule) => rule.name).join(", ")}
+          >
+            ∀ {chunkRules.length}
+          </span>
+        )}
         <AnchorLink anchor={chunk.anchor} />
       </h2>
       {focused && (
@@ -289,12 +423,7 @@ function ChunkBlock({
         />
       )}
       <div className="mt-1">
-        <RuleBody
-                    body={chunk.text}
-          refs={refsForChunk(data.rootRefs, chunk.text)}
-          citationPath={data.root.citation_path ?? undefined}
-          testId={null}
-        />
+        {clamp ? <CollapsibleText>{body}</CollapsibleText> : body}
       </div>
     </section>
   );
@@ -400,6 +529,17 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           />
         </header>
 
+        <RuleCards data={data} />
+
+        {data.encodedRules.length > 0 &&
+          (data.bodyChunks.length > 0 ||
+            data.provisions.length > 0 ||
+            data.root.body) && (
+            <h2 className="mt-10 border-b border-[var(--color-rule)] pb-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              Source text
+            </h2>
+          )}
+
         {data.bodyChunks.length > 0 ? (
           <>
             {data.intro && (
@@ -427,14 +567,27 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           )
         )}
 
-        {data.provisions.map((provision) => (
-          <ProvisionBlock
-            key={provision.rule.id}
-            provision={provision}
-            data={data}
-            sectionFocus={sectionFocus}
-          />
-        ))}
+        {groupProvisions(data.provisions).map((group, index) =>
+          group.head ? (
+            <ProvisionGroup
+              key={group.head.rule.id}
+              head={group.head}
+              data={data}
+              sectionFocus={sectionFocus}
+            >
+              {group.children}
+            </ProvisionGroup>
+          ) : (
+            group.children.map((provision) => (
+              <ProvisionBlock
+                key={provision.rule.id}
+                provision={provision}
+                data={data}
+                sectionFocus={sectionFocus}
+              />
+            ))
+          )
+        )}
 
         {data.truncated && (
           <p className="mt-8 text-sm text-[var(--color-ink-muted)]">

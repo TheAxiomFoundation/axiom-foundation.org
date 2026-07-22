@@ -108,13 +108,16 @@ describe("SectionReader", () => {
     // instead of showing dead verbs.
     expect(strip).toHaveTextContent("encoded — links pending mirror sync");
     expect(within(strip).getByTestId("strip-cite")).toBeInTheDocument();
-    // Chunk sections with designator links into their own URLs; no
-    // rule-name chips in the reading flow.
+    // Chunk sections with designator links into their own URLs.
     expect(screen.getByTitle("Open us/statute/26/32/a")).toHaveAttribute(
       "href",
       "/us/statute/26/32/a"
     );
-    expect(screen.queryByText("eitc_phased_in")).not.toBeInTheDocument();
+    // The encoded layer leads: rule cards name each rule and ground
+    // it in the subsection it implements.
+    const cards = screen.getByTestId("rule-cards");
+    expect(within(cards).getByText("eitc_phased_in")).toBeInTheDocument();
+    expect(within(cards).getByText(/implements \(a\)/)).toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");
     expect(screen.getByText(/§ 33/)).toHaveAttribute("rel", "next");

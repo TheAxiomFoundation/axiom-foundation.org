@@ -78,32 +78,66 @@ export function StackHero({ data }: { data: CoverageData }) {
     (j) => j.encodingFileCount > 0
   ).length;
   const topTypes = data.docTypeTotals.slice(0, 3);
+  const perDocument =
+    data.totals.documents > 0
+      ? Math.round(data.totals.provisions / data.totals.documents)
+      : 0;
+  const topEncoded = [...data.jurisdictions].sort(
+    (a, b) => b.encodingFileCount - a.encodingFileCount
+  )[0];
 
-  const layers = [
+  const plural = (count: number, word: string) =>
+    `${n(count)} ${word}${count === 1 ? "" : "s"}`;
+
+  const layers: Array<{
+    key: string;
+    name: string;
+    value: number;
+    chips: string[];
+    detail: React.ReactNode;
+  }> = [
     {
       key: "documents",
       name: "Source documents",
       value: data.totals.documents,
-      breadth: `${corpusJurisdictions} jurisdictions · ${data.docTypeTotals.length} document types`,
-      detail: topTypes
-        .map(({ type, count }) => `${n(count)} ${docTypeLabel(type)}`)
-        .join(" · "),
+      chips: [
+        plural(corpusJurisdictions, "jurisdiction"),
+        plural(data.docTypeTotals.length, "document type"),
+      ],
+      detail: (
+        <>
+          {topTypes.map(({ type, count }, i) => (
+            <span key={type}>
+              {i > 0 && " · "}
+              <span className="pstack-num">{n(count)}</span>{" "}
+              {docTypeLabel(type)}
+            </span>
+          ))}
+        </>
+      ),
     },
     {
       key: "provisions",
       name: "Provisions",
       value: data.totals.provisions,
-      breadth: "every document, split into atomic citable sections",
-      detail: "the unit the reader, search, and citation graph work on",
+      chips: perDocument > 0 ? [`≈ ${n(perDocument)} per document`] : [],
+      detail:
+        "Every document, split into the atomic citable sections the reader, search, and citation graph all work on.",
     },
     {
       key: "encodings",
       name: "RuleSpec encodings",
       value: data.totals.encodingFiles,
-      breadth: `${encodedJurisdictions} jurisdictions encoded so far`,
-      detail: "machine-readable rules, linked back to their source provisions",
+      chips: [
+        `${plural(encodedJurisdictions, "jurisdiction")} encoded`,
+        ...(topEncoded && topEncoded.encodingFileCount > 0
+          ? [`${topEncoded.label} leads · ${n(topEncoded.encodingFileCount)}`]
+          : []),
+      ],
+      detail:
+        "Machine-readable rules, each linked back to the exact provisions it encodes.",
     },
-  ] as const;
+  ];
 
   return (
     <section
@@ -138,13 +172,16 @@ export function StackHero({ data }: { data: CoverageData }) {
                 />
                 <div className="pstack-callout-body">
                   <span className="pstack-callout-name">{layer.name}</span>
-                  <span className="pstack-callout-value">
-                    {n(layer.value)}
-                    <span className="pstack-callout-breadth">
-                      {" "}
-                      {layer.breadth}
+                  <span className="pstack-callout-value">{n(layer.value)}</span>
+                  {layer.chips.length > 0 && (
+                    <span className="pstack-chiprow">
+                      {layer.chips.map((chip) => (
+                        <span key={chip} className="pstack-chip">
+                          {chip}
+                        </span>
+                      ))}
                     </span>
-                  </span>
+                  )}
                   <span className="pstack-callout-detail">{layer.detail}</span>
                 </div>
               </li>

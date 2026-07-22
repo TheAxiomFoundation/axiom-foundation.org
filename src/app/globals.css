@@ -295,20 +295,36 @@ canvas[aria-hidden] {
   letter-spacing: -0.02em;
   color: var(--color-ink);
 }
-.pstack-callout-breadth {
-  display: block;
+/* Scannable facts as chips, matching the cards' slug-chip language. */
+.pstack-chiprow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+.pstack-chip {
   font-family: var(--f-mono);
-  font-weight: 400;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
+  font-size: 0.63rem;
+  letter-spacing: 0.05em;
   color: var(--color-ink-secondary);
-  margin-top: 0.3rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  padding: 0.2rem 0.6rem;
+  white-space: nowrap;
 }
 .pstack-callout-detail {
   font-family: var(--f-body);
   font-size: 0.85rem;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--color-ink-muted);
+  margin-top: 0.55rem;
+  max-width: 44ch;
+}
+.pstack-num {
+  color: var(--color-ink);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 900px) {
   .pstack {

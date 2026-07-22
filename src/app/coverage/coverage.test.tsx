@@ -70,13 +70,15 @@ describe("CoveragePage", () => {
     expect(screen.getByText(/^405/)).toBeInTheDocument();
     expect(screen.getByText(/^58,624/)).toBeInTheDocument();
     expect(screen.getByText(/^4,875/)).toBeInTheDocument();
-    // Breadth rides in the callouts: corpus jurisdictions (1 of the
-    // 2 fixtures has provisions) and encoded jurisdictions (both).
+    // Breadth rides in the callout chips: corpus jurisdictions (1 of
+    // the 2 fixtures has provisions), doc types, derived density
+    // (58,624 / 405 ≈ 145), and the encoding leader.
+    expect(screen.getByText("1 jurisdiction")).toBeInTheDocument();
+    expect(screen.getByText("3 document types")).toBeInTheDocument();
+    expect(screen.getByText("≈ 145 per document")).toBeInTheDocument();
+    expect(screen.getByText("2 jurisdictions encoded")).toBeInTheDocument();
     expect(
-      screen.getByText(/1 jurisdictions · 3 document types/)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/2 jurisdictions encoded so far/)
+      screen.getByText("US Federal leads · 1,200")
     ).toBeInTheDocument();
 
     // Jurisdiction cards: US links into the app, UK (encodings-only)

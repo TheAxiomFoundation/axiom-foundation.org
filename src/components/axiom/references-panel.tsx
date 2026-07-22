@@ -106,7 +106,14 @@ function RefItem({
           ref.citation_text
         )}`
       : "";
-  const href = `${hrefPrefix}/${ref.other_citation_path}${markQuery}`;
+  // Inferred refs are regex-derived and unverified below section
+  // level — a hallucinated subsection chain 404s. Link them to the
+  // section root (always real); the label still names the claimed
+  // subsection.
+  const targetPath = ref.inferred
+    ? ref.other_citation_path.split("/").slice(0, 4).join("/")
+    : ref.other_citation_path;
+  const href = `${hrefPrefix}/${targetPath}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);
   const resolved = ref.direction === "incoming" ? true : ref.target_resolved;
 

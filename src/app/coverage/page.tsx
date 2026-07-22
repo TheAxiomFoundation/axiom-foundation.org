@@ -5,7 +5,6 @@ import { ShelfCards } from "@/components/coverage/shelf-cards";
 import {
   getCoverageData,
   type CoverageData,
-  type JurisdictionCoverage,
 } from "@/lib/axiom/coverage-page";
 
 export const metadata: Metadata = {
@@ -17,42 +16,6 @@ export const metadata: Metadata = {
 // Static page revalidated from the live corpus; counts change only
 // when a release is activated or the encodings mirror syncs.
 export const revalidate = 600;
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  statute: "Statutes",
-  regulation: "Regulations",
-  policy: "Policy documents",
-  guidance: "Guidance documents",
-  manual: "Manuals",
-  form: "Forms",
-  "district-plan": "District plans",
-};
-
-function docTypeLabel(type: string): string {
-  return (
-    DOC_TYPE_LABELS[type] ??
-    type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, " ")
-  );
-}
-
-function otherDocs(j: JurisdictionCoverage): {
-  count: number;
-  breakdown: string;
-} {
-  const entries = Object.entries(j.documents).filter(
-    ([type]) => type !== "statute" && type !== "regulation"
-  );
-  return {
-    count: entries.reduce((sum, [, count]) => sum + count, 0),
-    breakdown: entries
-      .sort((a, b) => b[1] - a[1])
-      .map(([type, count]) => `${count} ${docTypeLabel(type).toLowerCase()}`)
-      .join(", "),
-  };
-}
-
-const numberFormat = new Intl.NumberFormat("en-US");
-const n = (value: number) => numberFormat.format(value);
 
 export default async function CoveragePage() {
   const data = await getCoverageData();
@@ -107,110 +70,7 @@ function CoverageBody({ data }: { data: CoverageData }) {
           By jurisdiction
         </h2>
         <ShelfCards jurisdictions={data.jurisdictions} />
-        <p className="mt-6 max-w-[720px] font-body text-[0.9rem] leading-relaxed text-[var(--color-ink-muted)]">
-          Each card is that jurisdiction&apos;s own shelf — the mix of
-          statutes, regulations, and other documents at a glance, with
-          the exact counts beside it. Cards without provision counts
-          have RuleSpec encodings published ahead of their corpus
-          ingestion. Click a card to browse its documents in the Axiom
-          app.
-        </p>
-        <details className="mt-8">
-          <summary className="cursor-pointer font-mono text-[0.7rem] tracking-[0.12em] uppercase text-[var(--color-ink-muted)] hover:text-[var(--color-accent)]">
-            View as table
-          </summary>
-          <div className="mt-4">
-            <JurisdictionTable data={data} />
-          </div>
-        </details>
       </Reveal>
     </>
   );
-}
-
-function JurisdictionTable({ data }: { data: CoverageData }) {
-  const maxProvisions = Math.max(
-    1,
-    ...data.jurisdictions.map((j) => j.provisionCount)
-  );
-  return (
-    <div className="overflow-x-auto border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)]">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-[var(--color-rule)] font-mono text-[0.68rem] tracking-[0.12em] uppercase text-[var(--color-ink-muted)]">
-            <th className="px-4 py-3 font-normal">Jurisdiction</th>
-            <th className="px-4 py-3 font-normal min-w-[140px]">
-              <span className="sr-only">Provision share</span>
-            </th>
-            <th className="px-4 py-3 font-normal text-right">Statutes</th>
-            <th className="px-4 py-3 font-normal text-right">Regulations</th>
-            <th className="px-4 py-3 font-normal text-right">Other docs</th>
-            <th className="px-4 py-3 font-normal text-right">Provisions</th>
-            <th className="px-4 py-3 font-normal text-right">
-              Encoding files
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--color-rule-subtle)]">
-          {data.jurisdictions.map((j) => (
-            <JurisdictionRow key={j.slug} j={j} maxProvisions={maxProvisions} />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function JurisdictionRow({
-  j,
-  maxProvisions,
-}: {
-  j: JurisdictionCoverage;
-  maxProvisions: number;
-}) {
-  const other = otherDocs(j);
-  const inCorpus = j.provisionCount > 0;
-  const share = Math.max(
-    j.provisionCount > 0 ? 1.5 : 0,
-    (j.provisionCount / maxProvisions) * 100
-  );
-  const cell =
-    "px-4 py-2.5 text-right font-mono text-[0.8rem] text-[var(--color-ink-secondary)]";
-  return (
-    <tr className="hover:bg-[var(--color-paper)] transition-colors">
-      <td className="px-4 py-2.5">
-        {inCorpus ? (
-          <a
-            href={`/${j.slug}`}
-            className="font-body text-[0.95rem] text-[var(--color-ink)] no-underline hover:text-[var(--color-accent)]"
-          >
-            {j.label}
-          </a>
-        ) : (
-          <span className="font-body text-[0.95rem] text-[var(--color-ink)]">
-            {j.label}
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-2.5" aria-hidden>
-        <span className="coverage-bar">
-          <span style={{ width: `${share}%` }} />
-        </span>
-      </td>
-      <td className={cell}>{cellCount(j.documents.statute, inCorpus)}</td>
-      <td className={cell}>{cellCount(j.documents.regulation, inCorpus)}</td>
-      <td className={cell} title={other.breakdown || undefined}>
-        {cellCount(other.count || undefined, inCorpus)}
-      </td>
-      <td className={cell}>{inCorpus ? n(j.provisionCount) : "—"}</td>
-      <td className={`${cell} text-[var(--color-accent)]`}>
-        {j.encodingFileCount > 0 ? n(j.encodingFileCount) : "—"}
-      </td>
-    </tr>
-  );
-}
-
-function cellCount(value: number | undefined, inCorpus: boolean): string {
-  if (!inCorpus) return "—";
-  return value ? n(value) : "·";
 }

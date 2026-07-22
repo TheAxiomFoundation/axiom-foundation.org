@@ -91,14 +91,13 @@ describe("CoveragePage", () => {
         .getAllByText("United Kingdom")
         .every((el) => el.closest("a.cov-card") === null)
     ).toBe(true);
-    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
+    expect(screen.getByText("9,897")).toBeInTheDocument();
     expect(
       screen.getByText(/encodings published ahead of corpus ingestion/)
     ).toBeInTheDocument();
-    // Sort controls and the collapsible exact-numbers table.
+    // Sort controls.
     expect(
       screen.getByRole("group", { name: /sort jurisdictions/i })
     ).toBeInTheDocument();
-    expect(screen.getByText(/view as table/i)).toBeInTheDocument();
   });
 });

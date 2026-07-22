@@ -621,3 +621,66 @@ a.cov-card:focus-visible .cov-card-arrow {
     transform: none;
   }
 }
+
+/* ── /coverage scrollytelling: the stack assembles on scroll.
+   .pscroll-live is added by the client driver only on wide viewports
+   without prefers-reduced-motion; without it (SSR, no JS, mobile,
+   reduced motion) the section is normal height and fully visible. */
+.pstack-slot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pstack-slot .pstack-plane {
+  pointer-events: auto;
+}
+.pscroll-live {
+  min-height: 240vh;
+}
+.pscroll-live .pscroll-sticky {
+  position: sticky;
+  top: 88px;
+}
+.pscroll-live .pstack {
+  min-height: calc(100vh - 220px);
+  align-items: center;
+}
+.pscroll-live .pstack-plane,
+.pscroll-live .pstack-callout {
+  animation: none;
+}
+.pscroll-live .pstack-slot {
+  transition: opacity 480ms ease,
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pscroll-live .pstack-callout {
+  transition: opacity 420ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease, background 180ms ease;
+}
+.pscroll-live[data-step="1"] .pstack-slot:nth-child(2),
+.pscroll-live[data-step="1"] .pstack-slot:nth-child(3),
+.pscroll-live[data-step="2"] .pstack-slot:nth-child(3) {
+  opacity: 0;
+  transform: translateY(-34px);
+}
+.pscroll-live[data-step="1"] .pstack-callout:nth-child(2),
+.pscroll-live[data-step="1"] .pstack-callout:nth-child(3),
+.pscroll-live[data-step="2"] .pstack-callout:nth-child(3) {
+  opacity: 0;
+  transform: translateX(18px);
+  pointer-events: none;
+}
+.pscroll-hint {
+  margin: 1.2rem 0 0;
+  text-align: center;
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  transition: opacity 300ms ease;
+}
+.pscroll-hint[data-done] {
+  opacity: 0;
+}

@@ -65,7 +65,10 @@ export default async function CoveragePage() {
             <span className="kicker-mark">&sect;</span>
             Coverage &middot; Depth &amp; breadth
           </span>
-          <h1 className="heading-page mb-6 mt-2">
+          {/* GradientSync styles this heading before the streamed
+              boundary hydrates (loading.tsx makes the page stream);
+              the attribute delta is intentional. */}
+          <h1 className="heading-page mb-6 mt-2" suppressHydrationWarning>
             The whole stack, counted
           </h1>
           <p className="font-body text-[1.2rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
@@ -92,9 +95,11 @@ export default async function CoveragePage() {
 function CoverageBody({ data }: { data: CoverageData }) {
   return (
     <>
-      <Reveal as="section" className="mb-20" aria-label="The stack">
+      {/* No Reveal wrapper here: its transform would break the
+          sticky scrollytelling stage inside the hero. */}
+      <div className="mb-20">
         <StackHero data={data} />
-      </Reveal>
+      </div>
 
       <Reveal as="section" className="mb-16">
         <h2 className="m-0 mb-8 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">

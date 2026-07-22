@@ -139,10 +139,13 @@ describe("EncodingRail", () => {
     expect(screen.getByTestId("rail-header")).toHaveTextContent(
       "Whole section"
     );
-    // Rules drawer opens by default — per-rule graph/builder links
-    // are the rail's primary content; citations stay collapsed.
-    expect(screen.getByTestId("rail-rules")).toHaveAttribute("open");
-    expect(screen.getByTestId("rail-rules")).toHaveTextContent("rules (2)");
+    // Encodings cards lead the rail; the code drawer sits collapsed
+    // beneath them and citations stay collapsed.
+    expect(screen.getByTestId("rail-encodings")).toHaveTextContent(
+      "Encodings · 2"
+    );
+    expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");
+    expect(screen.getByTestId("rail-rules")).toHaveTextContent("rulespec code");
     expect(screen.getByTestId("rail-citations")).toBeInTheDocument();
   });
 
@@ -155,7 +158,7 @@ describe("EncodingRail", () => {
       expect(screen.getByText("(a) Allowance of credit")).toBeInTheDocument();
       expect(screen.queryByText("(b) Percentages")).not.toBeInTheDocument();
     });
-    expect(screen.getByText("rule_for_a")).toBeInTheDocument();
+    expect(screen.getAllByText("rule_for_a").length).toBeGreaterThan(0);
     expect(screen.queryByText("rule_for_b")).not.toBeInTheDocument();
     // The node's own citations show; the source-file header does not.
     expect(screen.getByTestId("references-panel")).toBeInTheDocument();
@@ -169,7 +172,7 @@ describe("EncodingRail", () => {
       expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
       expect(screen.queryByText("(a) Allowance of credit")).not.toBeInTheDocument();
     });
-    expect(screen.getByText("rule_for_b")).toBeInTheDocument();
+    expect(screen.getAllByText("rule_for_b").length).toBeGreaterThan(0);
   });
 
   it("renders no executable-programs drawer — coverage only powers links", () => {

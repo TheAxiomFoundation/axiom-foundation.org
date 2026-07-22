@@ -14,7 +14,6 @@ import { EncodingRail } from "./encoding-rail";
 import { CitationPreviewLayer } from "./citation-preview";
 import { SubsectionActions } from "./subsection-actions";
 import { ActionStrip } from "./action-strip";
-import { RuleCards } from "./rule-cards";
 import { CollapsibleText } from "./collapsible-text";
 import { primaryProgram } from "./primary-program";
 import {
@@ -476,7 +475,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
+    <div className="mx-auto grid w-full max-w-[88rem] grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[210px_minmax(0,1fr)_400px]">
       <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />
@@ -600,7 +599,6 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           encoding stays in view while the source scrolls — the
           "prove faithfulness" pairing from the v1 detail panel. */}
       <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-        <RuleCards data={data} />
         <EncodingRail
           encoding={data.encoding}
           jurisdiction={data.root.jurisdiction}

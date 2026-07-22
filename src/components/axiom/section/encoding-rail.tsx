@@ -9,6 +9,13 @@ import {
 } from "@/lib/axiom/section-page";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
+import { RuleCardList } from "./rule-cards";
+import { primaryProgram } from "./primary-program";
+import {
+  composeGraphViewerUrl,
+  graphViewerUrl,
+  ruleGraphFocus,
+} from "@/lib/axiom/runtime/graph-links";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
 
@@ -144,12 +151,32 @@ export function EncodingRail({
         {activeChunk ? activeChunk.label : "Whole section"}
       </p>
 
-      <div className="mt-4 space-y-2">
+      {nodeRules.length > 0 && (
+        <section data-testid="rail-encodings" className="mt-4">
+          <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            Encodings · {nodeRules.length}
+          </h3>
+          <RuleCardList
+            rules={nodeRules}
+            hrefFor={(ruleName) => {
+              const slug = citationPath?.split("/")[0] ?? null;
+              const filePath = ruleFiles[ruleName];
+              if (!slug || !filePath) return null;
+              const focus = ruleGraphFocus(slug, filePath, ruleName);
+              const program = primaryProgram(programs);
+              return program
+                ? graphViewerUrl(program, focus)
+                : composeGraphViewerUrl(focus);
+            }}
+          />
+        </section>
+      )}
+
+      <div className="mt-3 space-y-2">
         {(encoding || nodeRules.length > 0) && (
           <RailSection
-            summary={`rules (${nodeRules.length})`}
+            summary="rulespec code"
             testId="rail-rules"
-            defaultOpen
           >
             <RuleSpecTab
               encoding={encoding}

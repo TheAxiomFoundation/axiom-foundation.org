@@ -64,7 +64,9 @@ function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
     rootRefs: [],
     encoding: null,
     encodedRules: [
-      { name: "eitc_phased_in", kind: "derived", anchors: ["a"] },
+      // Both anchors: the rail scopes to the subsection under the
+      // reading line, which jsdom resolves arbitrarily.
+      { name: "eitc_phased_in", kind: "derived", anchors: ["a", "b"] },
     ],
     programs: [],
     ruleFiles: {},
@@ -113,11 +115,13 @@ describe("SectionReader", () => {
       "href",
       "/us/statute/26/32/a"
     );
-    // The encoded layer leads: rule cards name each rule and ground
-    // it in the subsection it implements.
-    const cards = screen.getByTestId("rule-cards");
-    expect(within(cards).getByText("eitc_phased_in")).toBeInTheDocument();
-    expect(within(cards).getByText(/implements \(a\)/)).toBeInTheDocument();
+    // The encoded layer leads the rail: the encodings block names
+    // each rule and grounds it in the subsection it implements.
+    const encodings = screen.getByTestId("rail-encodings");
+    expect(within(encodings).getByText("eitc_phased_in")).toBeInTheDocument();
+    expect(
+      within(encodings).getByText(/implements \(a\) \(b\)/)
+    ).toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");
     expect(screen.getByText(/§ 33/)).toHaveAttribute("rel", "next");
@@ -203,7 +207,11 @@ describe("SectionReader", () => {
   });
 
   it("omits graph and builder actions without coverage, keeping cite", () => {
-    render(<SectionReader data={makeData({ focusAnchor: "b" })} />);
+    render(
+      <SectionReader
+        data={makeData({ focusAnchor: "b", encodedRules: [] })}
+      />
+    );
     const row = screen.getByTestId("subsection-actions");
     expect(
       within(row).getByText("cite · 26 U.S.C. § 32(b)")

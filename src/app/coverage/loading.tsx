@@ -29,8 +29,12 @@ export default function CoverageLoading() {
           from the live corpus release and refresh every ten minutes.
         </p>
 
-        <div className="pstack mt-14">
-          <div className="pstack-visual" aria-hidden>
+        {/* .pscroll (without -live) picks up the same pre-hide rules
+            as the real hero, so loading shows exactly what the
+            hydrated page will: layer one, counting. */}
+        <div className="pscroll mt-14">
+          <div className="pstack">
+            <div className="pstack-visual" aria-hidden>
             {STACK_LAYERS.map((layer, i) => (
               <div key={layer.key} className="pstack-slot">
                 <div
@@ -59,7 +63,8 @@ export default function CoverageLoading() {
                 </div>
               </li>
             ))}
-          </ol>
+            </ol>
+          </div>
         </div>
 
         <p className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">

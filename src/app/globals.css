@@ -680,3 +680,20 @@ a.cov-card:focus-visible .cov-card-arrow {
     transition: none;
   }
 }
+
+/* Pre-hydration guard: the server HTML shows the fully assembled
+   stack (right for SEO and no-JS), but browsers that WILL run the
+   scroll driver would paint it for a split second and then snap back
+   to layer 1 when hydration engages. Under the exact conditions the
+   driver activates (scripting on, wide viewport, motion allowed),
+   pre-hide the later layers and pre-size the section so nothing
+   jumps. Applies to the route loading state too — it shares .pscroll. */
+@media (scripting: enabled) and (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .pscroll:not(.pscroll-live) {
+    min-height: 240vh;
+  }
+  .pscroll:not(.pscroll-live) .pstack-slot:nth-child(n + 2),
+  .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
+    opacity: 0;
+  }
+}

@@ -52,6 +52,42 @@ export function formatCitationLabel(path: string): string {
   return path;
 }
 
+
+/** Where the referenced provision lives in the corpus tree, as a
+ *  compact crumb trail: "US Federal › Statutes › Title 26 › § 63".
+ *  Previews the destination before the reader commits to the jump. */
+export function citationTreeCrumb(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length < 2) return path;
+  const [jurisdiction, docType, ...rest] = parts;
+  const jurisdictionLabel =
+    jurisdiction === "us"
+      ? "US Federal"
+      : jurisdiction.startsWith("us-")
+        ? jurisdiction.slice(3).toUpperCase()
+        : jurisdiction.toUpperCase();
+  const docLabel =
+    docType.charAt(0).toUpperCase() +
+    docType.slice(1) +
+    (docType.endsWith("s") || docType === "guidance" ? "" : "s");
+  const crumbs = [jurisdictionLabel, docLabel];
+  if (rest.length > 0) {
+    crumbs.push(
+      docType === "statute" || docType === "regulation"
+        ? `Title ${rest[0]}`
+        : rest[0].toUpperCase()
+    );
+  }
+  if (rest.length > 1) {
+    const section = rest[1].startsWith("subpart-")
+      ? `Subpart ${rest[1].slice("subpart-".length).toUpperCase()}`
+      : `§ ${rest[1]}`;
+    crumbs.push(section);
+  }
+  if (rest.length > 2) crumbs.push(`(${rest.slice(2).join(")(")})`);
+  return crumbs.join(" › ");
+}
+
 function RefItem({
   ref,
   hrefPrefix = "",
@@ -84,30 +120,35 @@ function RefItem({
     : `${ref.other_citation_path} — not yet ingested`;
 
   return (
-    <li className="py-2 flex items-baseline gap-3">
-      <Link
-        href={href}
-        className={`font-mono text-xs ${linkClasses}`}
-        title={title}
-        {...(resolved && { "data-cite": ref.other_citation_path })}
-      >
-        {label}
-      </Link>
-      {ref.other_heading && (
-        <span className="text-sm text-[var(--color-ink-secondary)] leading-snug">
-          {ref.other_heading}
-        </span>
-      )}
-      {!resolved && (
-        <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
-          pending
-        </span>
-      )}
-      {ref.inferred && (
-        <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
-          inferred
-        </span>
-      )}
+    <li className="py-2">
+      <span className="flex items-baseline gap-3">
+        <Link
+          href={href}
+          className={`font-mono text-xs ${linkClasses}`}
+          title={title}
+          {...(resolved && { "data-cite": ref.other_citation_path })}
+        >
+          {label}
+        </Link>
+        {ref.other_heading && (
+          <span className="text-sm text-[var(--color-ink-secondary)] leading-snug">
+            {ref.other_heading}
+          </span>
+        )}
+        {!resolved && (
+          <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+            pending
+          </span>
+        )}
+        {ref.inferred && (
+          <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+            inferred
+          </span>
+        )}
+      </span>
+      <span className="mt-0.5 block font-mono text-[10px] tracking-wide text-[var(--color-ink-muted)]">
+        {citationTreeCrumb(ref.other_citation_path)}
+      </span>
     </li>
   );
 }

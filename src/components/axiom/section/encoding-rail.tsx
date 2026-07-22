@@ -9,7 +9,10 @@ import {
 } from "@/lib/axiom/section-page";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
-import { RuleCardList } from "./rule-cards";
+import { RuleCardList, type RuleCardDetail } from "./rule-cards";
+import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
+import { useMemo } from "react";
+import yaml from "js-yaml";
 import { primaryProgram } from "./primary-program";
 import {
   composeGraphViewerUrl,
@@ -101,6 +104,23 @@ export function EncodingRail({
   /** Rule name → repo file path; enables per-rule graph links. */
   ruleFiles?: Record<string, string>;
 }) {
+  const ruleDetails = useMemo(() => {
+    const map = new Map<string, RuleCardDetail>();
+    if (!encoding?.rulespec_content) return map;
+    for (const rule of parseRuleSpec(encoding.rulespec_content).rules) {
+      map.set(rule.name, {
+        source: rule.source ?? null,
+        yaml: yaml.dump(rule.raw, {
+          indent: 2,
+          lineWidth: 80,
+          noRefs: true,
+          sortKeys: false,
+        }),
+      });
+    }
+    return map;
+  }, [encoding?.rulespec_content]);
+
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
   const nodeMode = Boolean(activeChunk);
@@ -158,6 +178,7 @@ export function EncodingRail({
           </h3>
           <RuleCardList
             rules={nodeRules}
+            detailFor={(ruleName) => ruleDetails.get(ruleName) ?? null}
             hrefFor={(ruleName) => {
               const slug = citationPath?.split("/")[0] ?? null;
               const filePath = ruleFiles[ruleName];

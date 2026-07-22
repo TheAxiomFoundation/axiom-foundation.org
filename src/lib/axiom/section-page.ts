@@ -88,6 +88,12 @@ export interface SectionPageData {
   bodyChunks: BodyChunk[];
   toc: SectionTocEntry[];
   rootRefs: RuleReference[];
+  /**
+   * The root body as ingested, before descendant-duplication
+   * trimming — the inferred-reference pass reads this so citations
+   * survive the dedupe.
+   */
+  refBody?: string | null;
   /** RuleSpec encoding for the section (encoding_runs or GitHub). */
   encoding: RuleEncodingData | null;
   /** Rules from ``encoding`` mapped to their subsection anchors. */
@@ -728,6 +734,7 @@ export async function getSectionPageDataFromResolution(
     ]);
   const encoding = sectionEncoding.encoding;
 
+  const refBody = root.body;
   root = dedupeRootBody(root, subtree.provisions);
 
   const rootDepth = citationPath.split("/").length;
@@ -763,6 +770,7 @@ export async function getSectionPageDataFromResolution(
   return {
     citationPath,
     root,
+    refBody,
     breadcrumbs: buildBreadcrumbs(citationPath.split("/")),
     provisions,
     intro: bodySplit.intro,

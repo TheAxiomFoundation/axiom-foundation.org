@@ -465,7 +465,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const heading = data.root.heading?.trim();
   const effective = formatDate(data.root.effective_date);
   const outgoing = buildInlineReferences(
-    data.root.body,
+    data.refBody ?? data.root.body,
     data.citationPath,
     data.rootRefs
   ).filter((ref) => ref.direction === "outgoing");

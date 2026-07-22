@@ -244,6 +244,24 @@ describe("proxy", () => {
     );
   });
 
+  it("rewrites /graph to the in-app viewer on every host", () => {
+    for (const [url, host, expected] of [
+      [
+        "https://app.axiom-foundation.org/graph?program=us-co/co-snap",
+        "app.axiom-foundation.org",
+        "https://app.axiom-foundation.org/axiom/graph?program=us-co/co-snap",
+      ],
+      [
+        "http://localhost:4944/graph?compose=us:statutes/7/2017/a",
+        "localhost:4944",
+        "http://localhost:4944/axiom/graph?compose=us:statutes/7/2017/a",
+      ],
+    ] as const) {
+      const response = proxy(request(url, host));
+      expect(response.headers.get("x-middleware-rewrite")).toBe(expected);
+    }
+  });
+
   it("leaves marketing paths on localhost alone", () => {
     const response = proxy(request("http://localhost:4944/about", "localhost:4944"));
 

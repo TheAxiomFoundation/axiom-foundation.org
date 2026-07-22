@@ -130,6 +130,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(target, 308);
   }
 
+  // The in-app graph viewer resolves on every host, like
+  // jurisdiction paths: reader pages link to /graph?focus=… and
+  // those links must work on localhost and previews too.
+  if (pathname === "/graph") {
+    const target = request.nextUrl.clone();
+    target.pathname = "/axiom/graph";
+    return NextResponse.rewrite(target);
+  }
+
   // Jurisdiction-rooted paths resolve on every host — localhost,
   // Vercel preview deployments, and the marketing host (where the
   // globally mounted palette can navigate to them). App links are

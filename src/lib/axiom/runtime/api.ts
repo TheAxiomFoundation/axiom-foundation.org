@@ -114,6 +114,36 @@ async function runtimeGet<T>(path: string): Promise<T | null> {
   }
 }
 
+/**
+ * Raw envelope passthrough for the in-app graph viewer's proxy
+ * routes: the browser gets the upstream `{status, data}` envelope
+ * verbatim (the viewer client parses it), the key stays server-side.
+ */
+export async function runtimeProxyGet(
+  path: string
+): Promise<{ status: number; body: unknown }> {
+  if (!isRuntimeApiConfigured()) {
+    return {
+      status: 503,
+      body: { status: "error", error: { code: "runtime_unconfigured" } },
+    };
+  }
+  const key = process.env.AXIOM_RUNTIME_API_KEY;
+  try {
+    const response = await fetch(`${apiBase()}${path}`, {
+      headers: key ? { "x-api-key": key } : undefined,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      next: { revalidate: REVALIDATE_SECONDS },
+    });
+    return { status: response.status, body: await response.json() };
+  } catch {
+    return {
+      status: 502,
+      body: { status: "error", error: { code: "upstream_unreachable" } },
+    };
+  }
+}
+
 export async function listRuntimePackages(): Promise<RuntimePackageSummary[]> {
   const data = await runtimeGet<{ packages: RuntimePackageSummary[] }>(
     "/runtime/packages"

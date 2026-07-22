@@ -186,12 +186,12 @@ describe("SectionReader", () => {
     ).toBeInTheDocument();
     // Graph opens the covering program focused on this subsection.
     const graph = within(row).getByText("graph ↗");
-    const graphHref = new URL(graph.getAttribute("href")!);
+    const graphHref = new URL(graph.getAttribute("href")!, "http://app.test");
     expect(graphHref.searchParams.get("program")).toBe("us/us-eitc");
     expect(graphHref.searchParams.get("focus")).toBe("us:statutes/26/32/a");
     // Builder gets the subsection's encoded rule as the output.
     const builder = within(row).getByText("use in builder ↗");
-    const builderHref = new URL(builder.getAttribute("href")!);
+    const builderHref = new URL(builder.getAttribute("href")!, "http://app.test");
     // Section-level id: the builder scopes its output picker to the
     // provision and the user selects rules there.
     expect(builderHref.searchParams.get("output")).toBe("us:statutes/26/32");
@@ -273,7 +273,7 @@ describe("SectionReader", () => {
     expect(within(row).getByText("graph ↗")).toBeInTheDocument();
     const builder = within(row).getByText("use in builder ↗");
     expect(
-      new URL(builder.getAttribute("href")!).searchParams.get("output")
+      new URL(builder.getAttribute("href")!, "http://app.test").searchParams.get("output")
     ).toBe("us:statutes/26/32");
     // A real subsection URL on the designator; rule-name chips no
     // longer sit in the reading flow.

@@ -368,23 +368,6 @@ canvas[aria-hidden] {
   background: var(--color-paper-elevated);
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
 }
-.cov-seg-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  flex: none;
-}
-.cov-seg-dot-documents {
-  background: var(--color-paper-elevated);
-  border: 1px solid var(--color-rule-strong);
-}
-.cov-seg-dot-provisions {
-  background: #d9d2ca;
-  border: 1px solid rgba(28, 25, 23, 0.18);
-}
-.cov-seg-dot-encodings {
-  background: linear-gradient(135deg, #d97706, #92400e);
-}
 .cov-controls-find {
   display: flex;
   align-items: center;
@@ -516,25 +499,6 @@ a.cov-card:focus-visible {
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
-/* Segmented document-mix bar: flat, thin, 2px surface gaps. */
-.cov-card-mix {
-  display: flex;
-  gap: 2px;
-  height: 6px;
-}
-.cov-card-mix-seg {
-  min-width: 4px;
-  border-radius: 3px;
-  transform-origin: left center;
-  animation: cov-mix-grow 520ms 180ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-@keyframes cov-mix-grow {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
 }
 .cov-card-docs {
   font-family: var(--f-mono);
@@ -583,8 +547,7 @@ a.cov-card:focus-visible .cov-card-arrow {
   color: var(--color-accent);
 }
 @media (prefers-reduced-motion: reduce) {
-  .cov-card,
-  .cov-card-mix-seg {
+  .cov-card {
     animation: none;
   }
   a.cov-card:hover,

@@ -5,26 +5,18 @@ import type { JurisdictionCoverage } from "@/lib/axiom/coverage-page";
 
 /**
  * Jurisdiction cards — clean metric cards: name + slug chip, one
- * headline figure, a flat segmented bar showing the document-type
- * mix (same validated hues as the stacks case, revalidated against
- * the light card surface), and the encodings figure in amber.
- * Client component only for sort + filter; hover behavior is CSS.
+ * headline figure, the document counts as plain text, and the
+ * encodings figure in amber. Client component only for sort +
+ * filter; hover behavior is CSS.
  */
-
-const MIX_HUES: Record<string, string> = {
-  statute: "#C75B50",
-  regulation: "#7C83E0",
-  other: "#2E9E85",
-  encoding: "#BD7A24",
-};
 
 export interface MixSegment {
   type: string;
   count: number;
 }
 
-/** Document-mix segments for the composition bar, largest first
- *  within the fixed statute → regulation → other order. */
+/** Document counts in the fixed statute → regulation → other order,
+ *  for the card's doc-mix text line. */
 export function docMix(j: JurisdictionCoverage): MixSegment[] {
   const statute = j.documents.statute ?? 0;
   const regulation = j.documents.regulation ?? 0;
@@ -41,13 +33,11 @@ const n = (value: number) => numberFormat.format(value);
 
 type SortKey = "provisions" | "documents" | "encodings" | "name";
 
-/** dot: the hero layer this sort dimension corresponds to — the
- *  segmented control repeats the stack's key swatches. */
-const SORTS: Array<{ key: SortKey; label: string; dot: string | null }> = [
-  { key: "provisions", label: "Provisions", dot: "provisions" },
-  { key: "documents", label: "Documents", dot: "documents" },
-  { key: "encodings", label: "Encodings", dot: "encodings" },
-  { key: "name", label: "A–Z", dot: null },
+const SORTS: Array<{ key: SortKey; label: string }> = [
+  { key: "provisions", label: "Provisions" },
+  { key: "documents", label: "Documents" },
+  { key: "encodings", label: "Encodings" },
+  { key: "name", label: "A–Z" },
 ];
 
 function sortRows(
@@ -94,9 +84,6 @@ function Card({
   entranceMs: number;
 }) {
   const inCorpus = j.provisionCount > 0;
-  const segments = inCorpus
-    ? docMix(j)
-    : [{ type: "encoding", count: j.encodingFileCount }];
 
   const body = (
     <>
@@ -118,21 +105,9 @@ function Card({
               : "encoding files"}
         </span>
       </div>
-      <div className="cov-card-mix" aria-hidden>
-        {segments.map((segment) => (
-          <span
-            key={segment.type}
-            className="cov-card-mix-seg"
-            style={{
-              flexGrow: segment.count,
-              background: MIX_HUES[segment.type],
-            }}
-          />
-        ))}
-      </div>
       <span className="cov-card-docs">
         {inCorpus
-          ? mixLine(segments)
+          ? mixLine(docMix(j))
           : "encodings published ahead of corpus ingestion"}
       </span>
       <div className="cov-card-foot">
@@ -231,12 +206,6 @@ export function ShelfCards({
                 }
                 aria-pressed={sort === s.key}
               >
-                {s.dot && (
-                  <span
-                    className={`cov-seg-dot cov-seg-dot-${s.dot}`}
-                    aria-hidden
-                  />
-                )}
                 {s.label}
               </button>
             ))}

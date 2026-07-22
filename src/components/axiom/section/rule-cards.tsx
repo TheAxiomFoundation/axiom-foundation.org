@@ -28,11 +28,11 @@ export function RuleCards({ data }: { data: SectionPageData }) {
   };
 
   return (
-    <section data-testid="rule-cards" className="mt-8">
+    <section data-testid="rule-cards" className="mb-5">
       <h2 className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
         Encoded rules · {data.encodedRules.length}
       </h2>
-      <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <ol className="mt-2.5 grid grid-cols-1 gap-1.5">
         {data.encodedRules.map((rule) => {
           const href = hrefFor(rule.name);
           const inner = (

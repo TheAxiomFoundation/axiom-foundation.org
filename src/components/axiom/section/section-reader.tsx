@@ -529,17 +529,6 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           />
         </header>
 
-        <RuleCards data={data} />
-
-        {data.encodedRules.length > 0 &&
-          (data.bodyChunks.length > 0 ||
-            data.provisions.length > 0 ||
-            data.root.body) && (
-            <h2 className="mt-10 border-b border-[var(--color-rule)] pb-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              Source text
-            </h2>
-          )}
-
         {data.bodyChunks.length > 0 ? (
           <>
             {data.intro && (
@@ -614,6 +603,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           encoding stays in view while the source scrolls — the
           "prove faithfulness" pairing from the v1 detail panel. */}
       <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+        <RuleCards data={data} />
         <EncodingRail
           encoding={data.encoding}
           jurisdiction={data.root.jurisdiction}

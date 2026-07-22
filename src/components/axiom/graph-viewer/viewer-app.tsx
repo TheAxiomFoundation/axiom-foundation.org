@@ -161,26 +161,35 @@ export function GraphViewerApp() {
     try {
       // Trace the selected outputs plus their reachable rules so the
       // execution lights intermediate nodes, not just the results.
+      // Derived rules only — asking the engine to trace a parameter
+      // fails the whole run ("unknown derived output").
       const reachable = new Set<string>();
       const byId = new Map((graph?.rules ?? []).map((r) => [r.legalId, r]));
       const walk = (id: string) => {
         if (reachable.has(id) || reachable.size > 60) return;
         const rule = byId.get(id);
         if (!rule) return;
-        reachable.add(id);
+        if (rule.kind === "derived") reachable.add(id);
         for (const dep of rule.ruleDeps) walk(dep);
       };
       for (const id of selectedOutputs) walk(id);
-      const response = await fetch("/api/axiom/runtime/calculate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jurisdiction: effectiveProgram.jurisdiction,
-          program_id: effectiveProgram.programId,
-          values: scenario,
-          variables: [...reachable].slice(0, 32),
-        }),
-      });
+      const attempt = (variables: string[]) =>
+        fetch("/api/axiom/runtime/calculate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jurisdiction: effectiveProgram.jurisdiction,
+            program_id: effectiveProgram.programId,
+            values: scenario,
+            variables,
+          }),
+        });
+      let response = await attempt([...reachable].slice(0, 32));
+      if (!response.ok && reachable.size > 0) {
+        // A rejected trace variable fails the whole run — fall back
+        // to the outputs alone rather than failing the scenario.
+        response = await attempt([]);
+      }
       if (!response.ok) throw new Error(`run failed (${response.status})`);
       const data = (await response.json()) as {
         outputs: Record<string, number | string | boolean | null>;

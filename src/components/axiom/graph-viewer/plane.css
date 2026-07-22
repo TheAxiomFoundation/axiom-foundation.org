@@ -379,7 +379,34 @@
   }
 }
 
-/* Positioning context for the launcher overlay. */
+/* The shell owns the viewport. The scoper turned the upstream
+   html/body 100vh sizing into 100%, which collapses under the app's
+   auto-height <body> — restore a real viewport height here, with
+   clearance for the fixed app nav. */
 .graph-viewer-root {
   position: relative;
+  height: 100vh;
+  box-sizing: border-box;
+  padding-top: 5.5rem;
+  overflow: hidden;
+  background: var(--color-paper);
+}
+
+/* The side panel gained a fourth block (Scenario); the upstream grid
+   declared rows for three, which overlapped Outputs and Scenario. */
+.graph-viewer-root .side-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+/* Four blocks must share the panel: outputs keeps a real minimum and
+   scrolls internally; the scenario stays compact. */
+.graph-viewer-root .side-panel {
+  grid-template-rows: auto auto minmax(150px, 1fr) auto;
+}
+.graph-viewer-root .outputs-control {
+  overflow: hidden;
+  min-height: 0;
+}
+.graph-viewer-root .scenario-fields {
+  max-height: 176px;
 }

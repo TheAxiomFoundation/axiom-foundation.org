@@ -20,20 +20,6 @@ import type { CoverageData } from "@/lib/axiom/coverage-page";
 const numberFormat = new Intl.NumberFormat("en-US");
 const n = (value: number) => numberFormat.format(value);
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  statute: "statutes",
-  regulation: "regulations",
-  policy: "policy docs",
-  guidance: "guidance docs",
-  manual: "manuals",
-  form: "forms",
-  "district-plan": "district plans",
-};
-
-function docTypeLabel(type: string): string {
-  return DOC_TYPE_LABELS[type] ?? type.replace(/-/g, " ");
-}
-
 /** How far through the tall section each layer joins the stack. */
 const STEP_THRESHOLDS = [0.28, 0.6];
 
@@ -77,7 +63,6 @@ export function StackHero({ data }: { data: CoverageData }) {
   const encodedJurisdictions = data.jurisdictions.filter(
     (j) => j.encodingFileCount > 0
   ).length;
-  const topTypes = data.docTypeTotals.slice(0, 3);
   const perDocument =
     data.totals.documents > 0
       ? Math.round(data.totals.provisions / data.totals.documents)
@@ -90,21 +75,29 @@ export function StackHero({ data }: { data: CoverageData }) {
     <span className="pstack-num">{n(value)}</span>
   );
 
-  // Document-type mix for the mini bar — same segment language and
-  // validated hues as the jurisdiction cards below.
-  const statuteDocs =
-    data.docTypeTotals.find((t) => t.type === "statute")?.count ?? 0;
-  const regulationDocs =
-    data.docTypeTotals.find((t) => t.type === "regulation")?.count ?? 0;
-  const otherDocs = Math.max(
-    0,
-    data.totals.documents - statuteDocs - regulationDocs
-  );
-  const docMix = [
-    { key: "statute", count: statuteDocs, hue: "#C75B50" },
-    { key: "regulation", count: regulationDocs, hue: "#7C83E0" },
-    { key: "other", count: otherDocs, hue: "#2E9E85" },
-  ].filter((segment) => segment.count > 0);
+  // Who is covered — a far better fact than a document-type
+  // histogram (which the flat state manuals dominate). Computed
+  // live from the corpus jurisdictions.
+  const corpus = data.jurisdictions.filter((j) => j.provisionCount > 0);
+  const hasFederal = corpus.some((j) => j.slug === "us");
+  const hasDC = corpus.some((j) => j.slug === "us-dc");
+  const stateCount = corpus.filter(
+    (j) => j.slug.startsWith("us-") && j.slug !== "us-dc"
+  ).length;
+  const otherNations = corpus
+    .filter((j) => j.slug !== "us" && !j.slug.startsWith("us-"))
+    .map((j) => j.label)
+    .slice(0, 3);
+
+  const whoParts: React.ReactNode[] = [
+    hasFederal ? "US federal" : null,
+    stateCount > 0 ? (
+      <span key="states">
+        <Num value={stateCount} /> states{hasDC ? " & DC" : ""}
+      </span>
+    ) : null,
+    ...otherNations,
+  ].filter(Boolean);
 
   const layers: Array<{
     key: string;
@@ -120,21 +113,17 @@ export function StackHero({ data }: { data: CoverageData }) {
       facts: (
         <>
           <Num value={corpusJurisdictions} /> jurisdiction
-          {corpusJurisdictions === 1 ? "" : "s"} ·{" "}
-          <Num value={data.docTypeTotals.length} /> document type
-          {data.docTypeTotals.length === 1 ? "" : "s"}
-        </>
-      ),
-      detail: (
-        <>
-          {topTypes.map(({ type, count }, i) => (
-            <span key={type}>
+          {corpusJurisdictions === 1 ? "" : "s"} —{" "}
+          {whoParts.map((part, i) => (
+            <span key={i}>
               {i > 0 && " · "}
-              <Num value={count} /> {docTypeLabel(type)}
+              {part}
             </span>
           ))}
         </>
       ),
+      detail:
+        "Statutes, regulations, and agency guidance — from U.S. Code titles and CFR parts to state benefit manuals.",
     },
     {
       key: "provisions",
@@ -209,26 +198,7 @@ export function StackHero({ data }: { data: CoverageData }) {
                   {layer.facts && (
                     <span className="pstack-callout-facts">{layer.facts}</span>
                   )}
-                  {layer.key === "documents" && docMix.length > 0 && (
-                    <span className="pstack-mix" aria-hidden>
-                      {docMix.map((segment) => (
-                        <span
-                          key={segment.key}
-                          style={{
-                            flexGrow: segment.count,
-                            background: segment.hue,
-                          }}
-                        />
-                      ))}
-                    </span>
-                  )}
-                  <span
-                    className={
-                      layer.key === "documents"
-                        ? "pstack-callout-detail"
-                        : "pstack-callout-detail pstack-prose"
-                    }
-                  >
+                  <span className="pstack-callout-detail pstack-prose">
                     {layer.detail}
                   </span>
                 </div>

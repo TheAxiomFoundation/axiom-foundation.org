@@ -681,17 +681,6 @@ a.cov-card:focus-visible .cov-card-arrow {
   color: var(--color-accent);
   margin-right: 0.55rem;
 }
-.pstack-mix {
-  display: flex;
-  gap: 2px;
-  height: 4px;
-  max-width: 280px;
-  margin-top: 0.65rem;
-}
-.pstack-mix > span {
-  min-width: 3px;
-  border-radius: 2px;
-}
 .pstack-prose {
   font-family: var(--f-serif);
   font-style: italic;

@@ -75,7 +75,7 @@ describe("CoveragePage", () => {
     // jurisdictions (1 of the 2 fixtures has provisions), doc types,
     // derived density (58,624 / 405 ≈ 145), and the encoding leader.
     const text = container.textContent ?? "";
-    expect(text).toContain("1 jurisdiction · 3 document types");
+    expect(text).toContain("1 jurisdiction — US federal");
     expect(text).toContain("≈ 145 per document");
     expect(text).toContain("2 jurisdictions encoded · US Federal leads with 1,200");
 

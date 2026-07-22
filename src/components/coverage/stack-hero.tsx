@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { RollingNumber } from "@/components/coverage/rolling-number";
 import type { CoverageData } from "@/lib/axiom/coverage-page";
 
 /**
@@ -120,7 +121,14 @@ export function StackHero({ data }: { data: CoverageData }) {
                     </span>
                     {layer.name}
                   </span>
-                  <span className="pstack-callout-value">{n(layer.value)}</span>
+                  <span className="pstack-callout-value">
+                    {/* Rolls up from zero when this layer assembles. */}
+                    <RollingNumber
+                      text={n(layer.value)}
+                      active={!live || step > i}
+                      delayMs={140}
+                    />
+                  </span>
                   <span className="pstack-callout-detail pstack-prose">
                     {layer.detail}
                   </span>

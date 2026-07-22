@@ -635,3 +635,39 @@ a.cov-card:focus-visible .cov-card-arrow {
   font-size: 0.93rem;
   letter-spacing: 0.01em;
 }
+
+/* ── Rolling odometer digits for the coverage figures. The reels are
+   a client enhancement: SSR/no-JS/reduced-motion render plain text. */
+.roll {
+  display: inline-flex;
+  overflow: hidden;
+}
+.roll-digit {
+  display: inline-block;
+  position: relative;
+  width: 1ch;
+  height: 1em;
+  overflow: hidden;
+}
+.roll-strip {
+  display: block;
+  transition: transform 950ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.roll-cell {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}
+.roll-strip-spin {
+  animation: roll-spin 900ms linear infinite;
+}
+@keyframes roll-spin {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-10em);
+  }
+}

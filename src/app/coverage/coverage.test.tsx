@@ -60,7 +60,7 @@ describe("CoveragePage", () => {
 
   it("renders the stack hero layers and the jurisdiction cards", async () => {
     mockGetCoverageData.mockResolvedValue(DATA);
-    render(await CoveragePage());
+    const { container } = render(await CoveragePage());
 
     // The three pipeline layers with their live totals ("Provisions"
     // also names a table column in the details fold).
@@ -70,16 +70,14 @@ describe("CoveragePage", () => {
     expect(screen.getByText(/^405/)).toBeInTheDocument();
     expect(screen.getByText(/^58,624/)).toBeInTheDocument();
     expect(screen.getByText(/^4,875/)).toBeInTheDocument();
-    // Breadth rides in the callout chips: corpus jurisdictions (1 of
-    // the 2 fixtures has provisions), doc types, derived density
-    // (58,624 / 405 ≈ 145), and the encoding leader.
-    expect(screen.getByText("1 jurisdiction")).toBeInTheDocument();
-    expect(screen.getByText("3 document types")).toBeInTheDocument();
-    expect(screen.getByText("≈ 145 per document")).toBeInTheDocument();
-    expect(screen.getByText("2 jurisdictions encoded")).toBeInTheDocument();
-    expect(
-      screen.getByText("US Federal leads · 1,200")
-    ).toBeInTheDocument();
+    // Breadth rides in the callout fact lines (weighted numbers are
+    // separate spans, so assert on assembled text): corpus
+    // jurisdictions (1 of the 2 fixtures has provisions), doc types,
+    // derived density (58,624 / 405 ≈ 145), and the encoding leader.
+    const text = container.textContent ?? "";
+    expect(text).toContain("1 jurisdiction · 3 document types");
+    expect(text).toContain("≈ 145 per document");
+    expect(text).toContain("2 jurisdictions encoded · US Federal leads with 1,200");
 
     // Jurisdiction cards: US links into the app, UK (encodings-only)
     // does not, and the exact figures are printed on the card.

@@ -86,31 +86,35 @@ export function StackHero({ data }: { data: CoverageData }) {
     (a, b) => b.encodingFileCount - a.encodingFileCount
   )[0];
 
-  const plural = (count: number, word: string) =>
-    `${n(count)} ${word}${count === 1 ? "" : "s"}`;
+  const Num = ({ value }: { value: number }) => (
+    <span className="pstack-num">{n(value)}</span>
+  );
 
   const layers: Array<{
     key: string;
     name: string;
     value: number;
-    chips: string[];
+    facts: React.ReactNode;
     detail: React.ReactNode;
   }> = [
     {
       key: "documents",
       name: "Source documents",
       value: data.totals.documents,
-      chips: [
-        plural(corpusJurisdictions, "jurisdiction"),
-        plural(data.docTypeTotals.length, "document type"),
-      ],
+      facts: (
+        <>
+          <Num value={corpusJurisdictions} /> jurisdiction
+          {corpusJurisdictions === 1 ? "" : "s"} ·{" "}
+          <Num value={data.docTypeTotals.length} /> document type
+          {data.docTypeTotals.length === 1 ? "" : "s"}
+        </>
+      ),
       detail: (
         <>
           {topTypes.map(({ type, count }, i) => (
             <span key={type}>
               {i > 0 && " · "}
-              <span className="pstack-num">{n(count)}</span>{" "}
-              {docTypeLabel(type)}
+              <Num value={count} /> {docTypeLabel(type)}
             </span>
           ))}
         </>
@@ -120,7 +124,12 @@ export function StackHero({ data }: { data: CoverageData }) {
       key: "provisions",
       name: "Provisions",
       value: data.totals.provisions,
-      chips: perDocument > 0 ? [`≈ ${n(perDocument)} per document`] : [],
+      facts:
+        perDocument > 0 ? (
+          <>
+            ≈ <Num value={perDocument} /> per document
+          </>
+        ) : null,
       detail:
         "Every document, split into the atomic citable sections the reader, search, and citation graph all work on.",
     },
@@ -128,12 +137,19 @@ export function StackHero({ data }: { data: CoverageData }) {
       key: "encodings",
       name: "RuleSpec encodings",
       value: data.totals.encodingFiles,
-      chips: [
-        `${plural(encodedJurisdictions, "jurisdiction")} encoded`,
-        ...(topEncoded && topEncoded.encodingFileCount > 0
-          ? [`${topEncoded.label} leads · ${n(topEncoded.encodingFileCount)}`]
-          : []),
-      ],
+      facts: (
+        <>
+          <Num value={encodedJurisdictions} /> jurisdiction
+          {encodedJurisdictions === 1 ? "" : "s"} encoded
+          {topEncoded && topEncoded.encodingFileCount > 0 && (
+            <>
+              {" "}
+              · {topEncoded.label} leads with{" "}
+              <Num value={topEncoded.encodingFileCount} />
+            </>
+          )}
+        </>
+      ),
       detail:
         "Machine-readable rules, each linked back to the exact provisions it encodes.",
     },
@@ -166,21 +182,11 @@ export function StackHero({ data }: { data: CoverageData }) {
                 data-layer={layer.key}
                 style={{ "--layer": i } as React.CSSProperties}
               >
-                <span
-                  className={`pstack-key pstack-key-${layer.key}`}
-                  aria-hidden
-                />
                 <div className="pstack-callout-body">
                   <span className="pstack-callout-name">{layer.name}</span>
                   <span className="pstack-callout-value">{n(layer.value)}</span>
-                  {layer.chips.length > 0 && (
-                    <span className="pstack-chiprow">
-                      {layer.chips.map((chip) => (
-                        <span key={chip} className="pstack-chip">
-                          {chip}
-                        </span>
-                      ))}
-                    </span>
+                  {layer.facts && (
+                    <span className="pstack-callout-facts">{layer.facts}</span>
                   )}
                   <span className="pstack-callout-detail">{layer.detail}</span>
                 </div>

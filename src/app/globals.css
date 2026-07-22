@@ -255,24 +255,6 @@ canvas[aria-hidden] {
     transform: translateX(0);
   }
 }
-.pstack-key {
-  flex: none;
-  width: 13px;
-  height: 13px;
-  border-radius: 4px;
-  margin-top: 5px;
-}
-.pstack-key-documents {
-  background: var(--color-paper-elevated);
-  border: 1px solid var(--color-rule-strong);
-}
-.pstack-key-provisions {
-  background: #d9d2ca;
-  border: 1px solid rgba(28, 25, 23, 0.18);
-}
-.pstack-key-encodings {
-  background: linear-gradient(135deg, #d97706, #92400e);
-}
 .pstack-callout-body {
   display: flex;
   flex-direction: column;
@@ -295,23 +277,14 @@ canvas[aria-hidden] {
   letter-spacing: -0.02em;
   color: var(--color-ink);
 }
-/* Scannable facts as chips, matching the cards' slug-chip language. */
-.pstack-chiprow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.55rem;
-}
-.pstack-chip {
-  font-family: var(--f-mono);
-  font-size: 0.63rem;
-  letter-spacing: 0.05em;
+/* The facts line: same weighted-number language as the detail line,
+   a step up in ink so the two lines read as lead + support. */
+.pstack-callout-facts {
+  font-family: var(--f-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
   color: var(--color-ink-secondary);
-  border: 1px solid var(--color-rule);
-  border-radius: 999px;
-  background: var(--color-paper-elevated);
-  padding: 0.2rem 0.6rem;
-  white-space: nowrap;
+  margin-top: 0.55rem;
 }
 .pstack-callout-detail {
   font-family: var(--f-body);

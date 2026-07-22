@@ -97,40 +97,40 @@ export default function PortalPage() {
 
         <Link
           href="/graph"
-          className="group relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-2xl border border-[var(--color-rule)] bg-[#1c1917] p-8 no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[0_24px_60px_-24px_rgba(28,25,23,0.6)]"
+          className="group relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-2xl border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8 no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[0_24px_60px_-24px_rgba(28,25,23,0.35)]"
           style={{
             backgroundImage:
-              "radial-gradient(rgba(231,229,228,0.14) 1px, transparent 1px)",
+              "radial-gradient(rgba(120,113,108,0.18) 1px, transparent 1px)",
             backgroundSize: "18px 18px",
           }}
         >
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#a8a29e]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
               Graph first
             </p>
-            <h2 className="mt-2 text-[1.9rem] font-semibold text-[#fafaf9]">
+            <h2 className="mt-2 text-[1.9rem] font-semibold text-[var(--color-ink)]">
               Plane
             </h2>
-            <p className="mt-3 max-w-sm text-[14px] leading-relaxed text-[#d6d3d1]">
+            <p className="mt-3 max-w-sm text-[14px] leading-relaxed text-[var(--color-ink-secondary)]">
               The law as a system. Walk the dependency graph, set a
               household's numbers, and run — the computation lights up node
               by node.
             </p>
           </div>
           <div aria-hidden className="mt-8 flex items-center gap-2 opacity-80">
-            <span className="rounded-md border border-[#44403c] bg-[#292524] px-2.5 py-1.5 text-[11px] text-[#e7e5e4]">
+            <span className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] px-2.5 py-1.5 text-[11px] text-[var(--color-ink-secondary)] shadow-sm">
               gross income
             </span>
-            <span className="text-[#78716c]">──</span>
-            <span className="rounded-md border border-[#44403c] bg-[#292524] px-2.5 py-1.5 text-[11px] text-[#e7e5e4]">
+            <span className="text-[var(--color-ink-muted)]">──</span>
+            <span className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] px-2.5 py-1.5 text-[11px] text-[var(--color-ink-secondary)] shadow-sm">
               net income
             </span>
-            <span className="text-[#78716c]">──</span>
-            <span className="rounded-md border border-[var(--color-accent)] bg-[#292524] px-2.5 py-1.5 text-[11px] text-[#fbbf24]">
+            <span className="text-[var(--color-ink-muted)]">──</span>
+            <span className="rounded-md border border-[var(--color-accent)] bg-[var(--color-accent-light)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-accent-hover)] shadow-sm">
               allotment · $298
             </span>
           </div>
-          <span className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[#a8a29e] transition-colors group-hover:text-[var(--color-accent)]">
+          <span className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)] transition-colors group-hover:text-[var(--color-accent)]">
             ▶ Step onto the plane →
           </span>
         </Link>

@@ -116,6 +116,13 @@ export function GraphViewerApp() {
   );
   const [intentSearch, setIntentSearch] = useState("");
   const [intentSearchOpen, setIntentSearchOpen] = useState(false);
+  // Which kind of piece: a computed rule (output path) or a raw
+  // input (question path).
+  const [intentKind, setIntentKind] = useState<"output" | "input">("output");
+  const [intentInput, setIntentInput] = useState<{
+    legalId: string;
+    name: string;
+  } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
@@ -134,6 +141,8 @@ export function GraphViewerApp() {
     setLauncherStep(effectiveProgram ? "intent" : "program");
     setIntentSearch("");
     setIntentSearchOpen(false);
+    setIntentKind("output");
+    setIntentInput(null);
     setLauncher("open");
   };
   const beginSurvey = () => {
@@ -152,14 +161,34 @@ export function GraphViewerApp() {
   const intentMatches = useMemo(() => {
     const query = intentSearch.trim().toLowerCase();
     if (!query || !graph) return [];
+    if (intentKind === "input") {
+      const seen = new Set<string>();
+      return graph.inputs
+        .filter((input) => {
+          if (seen.has(input.name)) return false;
+          seen.add(input.name);
+          return input.name.toLowerCase().includes(query);
+        })
+        .slice(0, 8)
+        .map((input) => ({ legalId: input.legalId, name: input.name }));
+    }
     return graph.rules
       .filter(
         (rule) =>
           rule.kind === "derived" &&
           rule.name.toLowerCase().includes(query),
       )
+      .slice(0, 8)
+      .map((rule) => ({ legalId: rule.legalId, name: rule.name }));
+  }, [intentSearch, graph, intentKind]);
+
+  // The chosen input's consumers — the paths it feeds.
+  const intentInputConsumers = useMemo(() => {
+    if (!intentInput || !graph) return [];
+    return graph.rules
+      .filter((rule) => rule.inputDeps.includes(intentInput.legalId))
       .slice(0, 8);
-  }, [intentSearch, graph]);
+  }, [intentInput, graph]);
   // ?compose=us:regulations/47-cfr/54/403[#rule] renders a graph composed
   // on demand from the encodings mirror — for law that is encoded but not
   // yet inside any compiled program package. Choosing a program or
@@ -667,30 +696,93 @@ export function GraphViewerApp() {
                   <div className="journey-card is-search">
                     <span className="journey-glyph">⊙</span>
                     <strong>Understand one rule</strong>
-                    <input
-                      type="search"
-                      placeholder="Search a rule… allotment, eligible, income"
-                      value={intentSearch}
-                      onChange={(event) => setIntentSearch(event.target.value)}
-                      autoFocus
-                    />
-                    {intentMatches.length > 0 && (
-                      <div className="journey-matches">
-                        {intentMatches.map((rule) => (
-                          <button
-                            key={rule.legalId}
-                            type="button"
-                            onClick={() => beginRuleLens(rule.legalId)}
-                          >
-                            {humanize(rule.name)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {intentSearch.trim() && intentMatches.length === 0 && (
-                      <span className="journey-empty">
-                        {graph ? "No rule matches." : "Loading rules…"}
-                      </span>
+                    <div
+                      className="journey-kind"
+                      role="tablist"
+                      aria-label="Kind of piece"
+                    >
+                      {(["output", "input"] as const).map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="tab"
+                          aria-selected={intentKind === kind}
+                          className={intentKind === kind ? "is-active" : ""}
+                          onClick={() => {
+                            setIntentKind(kind);
+                            setIntentInput(null);
+                            setIntentSearch("");
+                          }}
+                        >
+                          {kind === "output" ? "Output · a rule" : "Input · a question"}
+                        </button>
+                      ))}
+                    </div>
+                    {intentInput ? (
+                      <>
+                        <span className="journey-picked">
+                          {humanize(intentInput.name)} feeds{" "}
+                          {intentInputConsumers.length}
+                          {intentInputConsumers.length === 8 ? "+" : ""}{" "}
+                          {intentInputConsumers.length === 1 ? "rule" : "rules"} — pick a path:
+                        </span>
+                        <div className="journey-matches">
+                          {intentInputConsumers.map((rule) => (
+                            <button
+                              key={rule.legalId}
+                              type="button"
+                              onClick={() => beginRuleLens(rule.legalId)}
+                            >
+                              {humanize(rule.name)}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="journey-back"
+                          onClick={() => setIntentInput(null)}
+                        >
+                          ← different input
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="search"
+                          placeholder={
+                            intentKind === "input"
+                              ? "Search an input… income, age, household"
+                              : "Search a rule… allotment, eligible, income"
+                          }
+                          value={intentSearch}
+                          onChange={(event) =>
+                            setIntentSearch(event.target.value)
+                          }
+                          autoFocus
+                        />
+                        {intentMatches.length > 0 && (
+                          <div className="journey-matches">
+                            {intentMatches.map((match) => (
+                              <button
+                                key={match.legalId}
+                                type="button"
+                                onClick={() =>
+                                  intentKind === "input"
+                                    ? setIntentInput(match)
+                                    : beginRuleLens(match.legalId)
+                                }
+                              >
+                                {humanize(match.name)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {intentSearch.trim() && intentMatches.length === 0 && (
+                          <span className="journey-empty">
+                            {graph ? "No matches." : "Loading…"}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 ) : (

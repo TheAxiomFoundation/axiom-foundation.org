@@ -167,7 +167,7 @@ export function InteractiveRuleGraph({
 
   // Semantic zoom: far viewports render constellation pills, mid
   // hides secondary chrome, near shows full cards.
-  const [lod, setLod] = useState<"near" | "mid" | "far">("near");
+  const [lod, setLod] = useState<"near" | "mid" | "far" | "atlas">("near");
   // When the user hovers any node, dim everything that isn't part of its
   // lineage (ancestors that feed into it + descendants it feeds). For a
   // mathematical operator that means "the boxes it pertains to"; for an
@@ -474,6 +474,18 @@ export function InteractiveRuleGraph({
     });
   }, [edges, highlightSet, executionActive, executedIds]);
 
+  // Coarse geometry fingerprint — changes whenever a relayout moves
+  // nodes, which is what the survey camera needs to chase.
+  const layoutSig = useMemo(
+    () =>
+      displayNodes.length +
+      ":" +
+      Math.round(
+        displayNodes.reduce((sum, n) => sum + n.position.x + n.position.y, 0),
+      ),
+    [displayNodes],
+  );
+
   if (!fontsReady) {
     return (
       <div ref={wrapRef} className="irg-wrap">
@@ -495,16 +507,18 @@ export function InteractiveRuleGraph({
           nodeTypes={NODE_TYPES}
           fitView
           fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.4 }}
-          minZoom={0.2}
+          minZoom={0.01}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
           onMove={(_event, viewport) => {
             const next =
-              viewport.zoom < 0.42
-                ? "far"
-                : viewport.zoom < 0.75
-                  ? "mid"
-                  : "near";
+              viewport.zoom < 0.14
+                ? "atlas"
+                : viewport.zoom < 0.42
+                  ? "far"
+                  : viewport.zoom < 0.75
+                    ? "mid"
+                    : "near";
             setLod((current) => (current === next ? current : next));
           }}
           connectionLineType={ConnectionLineType.SmoothStep}
@@ -552,7 +566,7 @@ export function InteractiveRuleGraph({
           }}
         >
           <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
-          <FlyToController target={flyTo ?? null} />
+          <FlyToController target={flyTo ?? null} layoutSig={layoutSig} />
           <ExecutionCamera
             active={executionActive}
             executedIds={executedIds}
@@ -747,14 +761,35 @@ export type IrgNodeData =
 /** Fly the viewport to a rule by durable legal id. */
 function FlyToController({
   target,
+  layoutSig,
 }: {
   target: { legalId: string; nonce: number } | null;
+  layoutSig: string;
 }) {
   const flow = useReactFlow();
   const last = useRef(0);
+  const surveyUntil = useRef(0);
+  // A survey fit chases the layout, not the clock: a whole-law unfold
+  // relays out asynchronously (and slowly), so keep re-fitting on
+  // every geometry change until the layout stops moving.
+  useEffect(() => {
+    if (Date.now() > surveyUntil.current) return;
+    const timer = window.setTimeout(() => {
+      void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [layoutSig, flow]);
   useEffect(() => {
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
+    if (target.legalId === "*") {
+      surveyUntil.current = Date.now() + 10_000;
+      window.setTimeout(() => {
+        void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
+      }, 350);
+      return;
+    }
+    surveyUntil.current = 0;
     const match = flow
       .getNodes()
       .find(
@@ -1954,7 +1989,16 @@ function edgeColorVar(cls: string): string {
 
 function layout(nodes: Node[], edges: Edge[]) {
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", nodesep: 24, ranksep: 80, marginx: 24, marginy: 24 });
+  // Whole-law renders read at atlas zoom where whitespace is dead
+  // pixels — tighten the weave once the graph outgrows card reading.
+  const dense = nodes.length > 250;
+  g.setGraph({
+    rankdir: "LR",
+    nodesep: dense ? 10 : 24,
+    ranksep: dense ? 42 : 80,
+    marginx: 24,
+    marginy: 24,
+  });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of nodes) {
@@ -1975,6 +2019,82 @@ function layout(nodes: Node[], edges: Edge[]) {
     };
     (n as Node).width = layoutInfo.width;
     (n as Node).height = layoutInfo.height;
+  }
+
+  packComponents(nodes, edges);
+}
+
+/**
+ * Dagre stacks disconnected components along the cross axis, so a
+ * many-output selection degenerates into a mile-high needle. Edges
+ * never cross components, so re-packing the component bounding boxes
+ * into shelf rows aiming at a screen-ish aspect is safe — the atlas
+ * becomes a rectangle instead of a strip.
+ */
+function packComponents(nodes: Node[], edges: Edge[]) {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let root = id;
+    while (parent.get(root) !== undefined && parent.get(root) !== root) {
+      root = parent.get(root)!;
+    }
+    parent.set(id, root);
+    return root;
+  };
+  for (const n of nodes) parent.set(n.id, n.id);
+  for (const e of edges) {
+    const a = find(e.source);
+    const b = find(e.target);
+    if (a !== b) parent.set(a, b);
+  }
+
+  const groups = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const root = find(n.id);
+    const group = groups.get(root);
+    if (group) group.push(n);
+    else groups.set(root, [n]);
+  }
+  if (groups.size < 2) return;
+
+  const GAP = 140;
+  const boxes = [...groups.values()].map((members) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of members) {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + (n.width ?? 200));
+      maxY = Math.max(maxY, n.position.y + (n.height ?? 80));
+    }
+    return { members, minX, minY, w: maxX - minX, h: maxY - minY };
+  });
+  boxes.sort((a, b) => b.h - a.h);
+
+  const area = boxes.reduce((sum, b) => sum + (b.w + GAP) * (b.h + GAP), 0);
+  const targetWidth = Math.max(
+    Math.sqrt(area * 1.7),
+    Math.max(...boxes.map((b) => b.w)),
+  );
+
+  let x = 0;
+  let y = 0;
+  let rowHeight = 0;
+  for (const box of boxes) {
+    if (x > 0 && x + box.w > targetWidth) {
+      x = 0;
+      y += rowHeight + GAP;
+      rowHeight = 0;
+    }
+    const dx = x - box.minX;
+    const dy = y - box.minY;
+    for (const n of box.members) {
+      n.position = { x: n.position.x + dx, y: n.position.y + dy };
+    }
+    x += box.w + GAP;
+    rowHeight = Math.max(rowHeight, box.h);
   }
 }
 

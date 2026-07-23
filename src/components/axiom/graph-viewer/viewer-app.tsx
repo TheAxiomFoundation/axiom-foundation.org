@@ -34,6 +34,7 @@ export function GraphViewerApp() {
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
   const [selectedOutputs, setSelectedOutputs] = useState<LegalId[]>([]);
+  const surveyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [programsLoading, setProgramsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -154,7 +155,17 @@ export function GraphViewerApp() {
   };
   const beginSurvey = () => {
     dismissLauncher();
+    // The whole law, literally: every result selected, everything
+    // unfolded, camera framing it all. The LOD constellation and the
+    // Index keep it legible.
+    surveyRef.current = true;
+    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+    setFolded(new Set());
     setNavOpen(true);
+    setFlyTarget((current) => ({
+      legalId: "*",
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
   };
   const beginScenario = () => {
     dismissLauncher();
@@ -603,12 +614,19 @@ export function GraphViewerApp() {
       (lensTrail.length > 0 || walk ? "always" : "auto");
     if (foldedInitialized.current !== key) {
       foldedInitialized.current = key;
-      setFolded(
-        initialCollapse(
-          structureTraces,
-          lensTrail.length > 0 ? "always" : "auto",
-        ),
-      );
+      if (surveyRef.current) {
+        // A survey just selected everything — keep it unfolded
+        // instead of re-dissecting the new selection.
+        surveyRef.current = false;
+        setFolded(new Set());
+      } else {
+        setFolded(
+          initialCollapse(
+            structureTraces,
+            lensTrail.length > 0 ? "always" : "auto",
+          ),
+        );
+      }
     }
   }, [structureTraces, lensTrail.length, walk]);
 

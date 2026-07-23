@@ -167,7 +167,7 @@ export function InteractiveRuleGraph({
 
   // Semantic zoom: far viewports render constellation pills, mid
   // hides secondary chrome, near shows full cards.
-  const [lod, setLod] = useState<"near" | "mid" | "far" | "atlas">("near");
+  const [lod, setLod] = useState<"near" | "mid" | "far">("near");
   // When the user hovers any node, dim everything that isn't part of its
   // lineage (ancestors that feed into it + descendants it feeds). For a
   // mathematical operator that means "the boxes it pertains to"; for an
@@ -512,13 +512,11 @@ export function InteractiveRuleGraph({
           proOptions={{ hideAttribution: true }}
           onMove={(_event, viewport) => {
             const next =
-              viewport.zoom < 0.14
-                ? "atlas"
-                : viewport.zoom < 0.42
-                  ? "far"
-                  : viewport.zoom < 0.75
-                    ? "mid"
-                    : "near";
+              viewport.zoom < 0.42
+                ? "far"
+                : viewport.zoom < 0.75
+                  ? "mid"
+                  : "near";
             setLod((current) => (current === next ? current : next));
           }}
           connectionLineType={ConnectionLineType.SmoothStep}

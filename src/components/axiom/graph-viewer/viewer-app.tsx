@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { InteractiveRuleGraph } from "./InteractiveRuleGraph";
+import {
+  InteractiveRuleGraph,
+  type IrgNodeData,
+} from "./InteractiveRuleGraph";
+import { axiomAppUrl, fileLegalIdOf, humanizeCitation } from "./citations";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -40,6 +44,7 @@ export function GraphViewerApp() {
   );
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  const [inspected, setInspected] = useState<IrgNodeData | null>(null);
   const [runResult, setRunResult] = useState<{
     outputs: Record<string, number | string | boolean | null>;
     trace: Array<{ variable: string; value: unknown }>;
@@ -418,7 +423,7 @@ export function GraphViewerApp() {
   // with the run's computed values (rules by durable id or bare
   // fragment) and the scenario's input values.
   const liveTraces = useMemo(() => {
-    if (!runResult) return structureTraces;
+    if (!runResult) return { traces: structureTraces, executed: new Set<string>() };
     const valueByFragment = new Map<string, unknown>();
     const valueByLegalId = new Map<string, unknown>();
     const record = (variable: string, value: unknown) => {
@@ -429,17 +434,22 @@ export function GraphViewerApp() {
     for (const [name, value] of Object.entries(runResult.outputs)) {
       record(name, value);
     }
+    const executed = new Set<string>();
     const seen = new Map<TraceNode, TraceNode>();
     const light = (node: TraceNode): TraceNode => {
       const cached = seen.get(node);
       if (cached) return cached;
       const fragment = node.legalId.split("#").pop() ?? "";
-      let value: unknown =
-        valueByLegalId.get(node.legalId) ??
-        valueByFragment.get(fragment) ??
-        (node.dtype === "input"
+      const ranValue =
+        valueByLegalId.get(node.legalId) ?? valueByFragment.get(fragment);
+      const scenarioValue =
+        node.dtype === "input"
           ? scenario[fragment.replace(/^input\./, "")]
-          : undefined);
+          : undefined;
+      if (ranValue !== undefined || scenarioValue !== undefined) {
+        executed.add(node.legalId);
+      }
+      let value: unknown = ranValue ?? scenarioValue;
       const next: TraceNode = {
         ...node,
         value:
@@ -454,9 +464,15 @@ export function GraphViewerApp() {
       next.children = (node.children ?? []).map(light);
       return next;
     };
-    return Object.fromEntries(
-      Object.entries(structureTraces).map(([key, node]) => [key, light(node)]),
-    );
+    return {
+      traces: Object.fromEntries(
+        Object.entries(structureTraces).map(([key, node]) => [
+          key,
+          light(node),
+        ]),
+      ),
+      executed,
+    };
   }, [structureTraces, runResult, scenario]);
 
   function toggleOutput(legalId: LegalId) {
@@ -728,6 +744,15 @@ export function GraphViewerApp() {
           </div>
         </header>
 
+        {runResult && (
+          <div className="exec-pill" role="status">
+            <span className="exec-pill-dot" aria-hidden />
+            Execution layer · live
+            <button type="button" onClick={() => setRunResult(null)}>
+              exit
+            </button>
+          </div>
+        )}
         <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
           {error && <div className="status error">{error}</div>}
 
@@ -739,8 +764,11 @@ export function GraphViewerApp() {
           ) : spec && Object.keys(structureTraces).length > 0 ? (
             <InteractiveRuleGraph
               spec={spec}
-              traces={liveTraces}
+              traces={liveTraces.traces}
               showValues={Boolean(runResult)}
+              executionActive={Boolean(runResult)}
+              executedLegalIds={liveTraces.executed}
+              onInspect={setInspected}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}
             />
@@ -748,6 +776,53 @@ export function GraphViewerApp() {
             <div className="empty-state">Select at least one output to render its computation graph.</div>
           )}
         </div>
+
+        {inspected && (
+          <aside className="node-inspector" aria-label="Node details">
+            <div className="node-inspector-head">
+              <span className="node-inspector-kind">{inspected.kind}</span>
+              <button
+                type="button"
+                className="results-close"
+                onClick={() => setInspected(null)}
+                aria-label="Close inspector"
+              >
+                ×
+              </button>
+            </div>
+            <h2 className="node-inspector-title">
+              {humanize(
+                "label" in inspected ? (inspected.label ?? "") : "",
+              )}
+            </h2>
+            {"value" in inspected && inspected.value ? (
+              <p className="node-inspector-value">{inspected.value}</p>
+            ) : null}
+            {"legalId" in inspected && inspected.legalId ? (
+              <p className="node-inspector-cite">
+                {humanizeCitation(fileLegalIdOf(inspected.legalId))}
+              </p>
+            ) : null}
+            {"meta" in inspected &&
+            (inspected.meta?.formulaPreview ||
+              inspected.meta?.parameterValue) ? (
+              <pre className="node-inspector-formula">
+                {inspected.meta.formulaPreview ??
+                  inspected.meta.parameterValue}
+              </pre>
+            ) : null}
+            {"legalId" in inspected &&
+            inspected.legalId &&
+            axiomAppUrl(fileLegalIdOf(inspected.legalId)) ? (
+              <a
+                className="node-inspector-link"
+                href={axiomAppUrl(fileLegalIdOf(inspected.legalId)) ?? "#"}
+              >
+                Read in the Library →
+              </a>
+            ) : null}
+          </aside>
+        )}
 
         {runResult && (
           <aside className="results-sheet" role="status">

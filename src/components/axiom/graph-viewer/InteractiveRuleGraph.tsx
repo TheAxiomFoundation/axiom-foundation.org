@@ -15,6 +15,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import type { DashboardSpec, ParameterRule, TraceNode } from "./types";
@@ -48,6 +49,15 @@ interface Props {
    * and a link to the Axiom app entry.
    */
   parameterRules?: ParameterRule[];
+  /** Run mode: the execution layer is live — executed nodes lift,
+   *  the rest recede, the camera flies the executed path. */
+  executionActive?: boolean;
+  /** Durable legal ids the run actually computed or consumed —
+   *  the executed subgraph. */
+  executedLegalIds?: Set<string>;
+  /** Node click → inspector. Fired for plain clicks (not action
+   *  rows, which keep their own routing). */
+  onInspect?: (data: IrgNodeData) => void;
 }
 
 /**
@@ -73,6 +83,9 @@ export function InteractiveRuleGraph({
   selectedOutputIds,
   showValues = false,
   parameterRules,
+  executionActive = false,
+  executedLegalIds,
+  onInspect,
 }: Props) {
   // Sub-rules expand inline by default — the user gets the full DAG to atomic
   // inputs out of the box. They can collapse any sub-rule to hide its
@@ -265,24 +278,71 @@ export function InteractiveRuleGraph({
   // Apply the highlight by tagging each node and edge with a className
   // reflecting whether it's on the lineage. CSS handles the dim/emphasize
   // transitions so this re-render is cheap.
+  // The executed subgraph: nodes carrying a computed value while the
+  // execution layer is live. Drives depth-of-field, edge glow, and
+  // the camera.
+  const executedIds = useMemo(() => {
+    if (!executionActive) return new Set<string>();
+    const ids = new Set<string>();
+    for (const n of nodes) {
+      const d = n.data as IrgNodeData;
+      if (
+        "legalId" in d &&
+        d.legalId &&
+        executedLegalIds?.has(d.legalId)
+      ) {
+        ids.add(n.id);
+      }
+    }
+    return ids;
+  }, [nodes, executionActive, executedLegalIds]);
+
+  const outputNodeIds = useMemo(
+    () =>
+      nodes
+        .filter((n) => (n.data as IrgNodeData).kind === "output")
+        .map((n) => n.id),
+    [nodes],
+  );
+
   const displayNodes = useMemo(() => {
-    if (!highlightSet) return nodes;
-    return nodes.map((n) => ({
+    let out = nodes;
+    if (executionActive) {
+      out = out.map((n) => ({
+        ...n,
+        className: executedIds.has(n.id) ? "irg-exec-node" : "irg-exec-off",
+      }));
+    }
+    if (!highlightSet) return out;
+    return out.map((n) => ({
       ...n,
-      className: highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed",
+      className: `${n.className ?? ""} ${
+        highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
+      }`.trim(),
     }));
-  }, [nodes, highlightSet]);
+  }, [nodes, highlightSet, executionActive, executedIds]);
 
   const displayEdges = useMemo(() => {
-    if (!highlightSet) return edges;
-    return edges.map((e) => {
+    let out = edges;
+    if (executionActive) {
+      out = out.map((e) => ({
+        ...e,
+        className: `${e.className ?? ""} ${
+          executedIds.has(e.source) && executedIds.has(e.target)
+            ? "irg-exec-edge"
+            : "irg-exec-dim"
+        }`.trim(),
+      }));
+    }
+    if (!highlightSet) return out;
+    return out.map((e) => {
       const lit = highlightSet.has(e.source) && highlightSet.has(e.target);
       return {
         ...e,
         className: `${e.className ?? ""} ${lit ? "irg-rf-on-path" : "irg-rf-dimmed"}`.trim(),
       };
     });
-  }, [edges, highlightSet]);
+  }, [edges, highlightSet, executionActive, executedIds]);
 
   if (!fontsReady) {
     return (
@@ -339,9 +399,15 @@ export function InteractiveRuleGraph({
                 return;
               }
             }
+            if (!actionEl) onInspect?.(data);
           }}
         >
           <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
+          <ExecutionCamera
+            active={executionActive}
+            executedIds={executedIds}
+            outputIds={outputNodeIds}
+          />
           <MiniMap
             nodeColor={(n) => miniMapColor(n.data as IrgNodeData)}
             nodeStrokeColor={(n) => miniMapColor(n.data as IrgNodeData)}
@@ -452,7 +518,7 @@ interface NodeMeta {
   parameterValue?: string;
 }
 
-type IrgNodeData =
+export type IrgNodeData =
   | {
       kind: "output";
       label: string;
@@ -520,6 +586,53 @@ type IrgNodeData =
     };
 
 /** Inputs only emit edges (rightward), so they don't need a target handle. */
+/**
+ * The execution camera: when the run layer activates, glide out to
+ * frame the whole executed path, then ease in toward the results.
+ * Deactivation returns to the full graph.
+ */
+function ExecutionCamera({
+  active,
+  executedIds,
+  outputIds,
+}: {
+  active: boolean;
+  executedIds: Set<string>;
+  outputIds: string[];
+}) {
+  const flow = useReactFlow();
+  const wasActive = useRef(false);
+  useEffect(() => {
+    if (active && executedIds.size > 0) {
+      wasActive.current = true;
+      const executed = [...executedIds].map((id) => ({ id }));
+      void flow.fitView({
+        nodes: executed,
+        duration: 850,
+        padding: 0.25,
+        maxZoom: 1.1,
+      });
+      const outputs = outputIds.filter((id) => executedIds.has(id));
+      const timer = window.setTimeout(() => {
+        if (outputs.length > 0) {
+          void flow.fitView({
+            nodes: outputs.map((id) => ({ id })),
+            duration: 900,
+            padding: 0.45,
+            maxZoom: 1.25,
+          });
+        }
+      }, 1500);
+      return () => window.clearTimeout(timer);
+    }
+    if (!active && wasActive.current) {
+      wasActive.current = false;
+      void flow.fitView({ duration: 700, padding: 0.2 });
+    }
+  }, [active, executedIds, outputIds, flow]);
+  return null;
+}
+
 const HandleSource = () => (
   <Handle type="source" position={Position.Right} className="irg-handle" />
 );

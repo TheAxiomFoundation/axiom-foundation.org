@@ -417,3 +417,187 @@
   height: 100%;
   min-height: 0;
 }
+
+/* ── Run mode: execution as a depth layer ── */
+/* Non-executed matter recedes into depth of field. */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-off {
+  opacity: 0.3;
+  filter: blur(1.3px) saturate(0.75);
+  transition: opacity 0.5s ease, filter 0.5s ease;
+}
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-off:hover {
+  opacity: 0.95;
+  filter: none;
+}
+/* Executed nodes lift off the canvas. */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-node {
+  opacity: 1;
+  z-index: 5 !important;
+}
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 2px 6px rgba(28, 25, 23, 0.12),
+    0 18px 40px -14px rgba(217, 119, 6, 0.55);
+  transition: transform 0.45s var(--ease-out, ease), box-shadow 0.45s ease;
+}
+/* Executed edges glow and flow; the rest thin out and hold still. */
+.graph-viewer-root .plane-live .react-flow__edge.irg-exec-edge path {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+  animation: plane-flow 0.8s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.55));
+}
+.graph-viewer-root .plane-live .react-flow__edge.irg-exec-dim path {
+  stroke-dasharray: none;
+  animation: none;
+  opacity: 0.25;
+}
+/* Retire the earlier blanket edge animation in run mode. */
+.graph-viewer-root .plane-live .react-flow__edge path {
+  stroke-dasharray: none;
+  animation: none;
+}
+.graph-viewer-root .plane-live .react-flow__edge.irg-exec-edge path {
+  stroke-dasharray: 7 5;
+  animation: plane-flow 0.8s linear infinite;
+}
+
+/* ── Execution pill ── */
+.graph-viewer-root .exec-pill {
+  position: absolute;
+  top: 84px;
+  right: 24px;
+  z-index: 14;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(22, 101, 52, 0.3);
+  background: color-mix(in srgb, var(--color-paper-elevated) 85%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-success, #166534);
+  box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.3);
+}
+.graph-viewer-root .exec-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-success, #166534);
+  animation: exec-pulse 1.6s ease-in-out infinite;
+}
+@keyframes exec-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(22, 101, 52, 0); }
+}
+.graph-viewer-root .exec-pill button {
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-elevated);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+}
+.graph-viewer-root .exec-pill button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Node inspector ── */
+.graph-viewer-root .node-inspector {
+  position: absolute;
+  top: 132px;
+  right: 24px;
+  z-index: 13;
+  width: min(320px, calc(100% - 48px));
+  background: color-mix(in srgb, var(--color-paper-elevated) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 22px 50px -18px rgba(28, 25, 23, 0.4);
+  padding: 14px 16px 16px;
+  animation: inspector-in 0.3s var(--ease-out, ease) both;
+}
+@keyframes inspector-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: none; }
+}
+.graph-viewer-root .node-inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.graph-viewer-root .node-inspector-kind {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.graph-viewer-root .node-inspector-title {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+.graph-viewer-root .node-inspector-value {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-accent-hover);
+  font-variant-numeric: tabular-nums;
+}
+.graph-viewer-root .node-inspector-cite {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .node-inspector-formula {
+  margin: 10px 0 0;
+  max-height: 140px;
+  overflow: auto;
+  background: var(--color-rule-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--color-ink-secondary);
+  white-space: pre-wrap;
+}
+.graph-viewer-root .node-inspector-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.graph-viewer-root .node-inspector-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .node-inspector,
+  .graph-viewer-root .exec-pill-dot,
+  .graph-viewer-root .plane-live .react-flow__edge.irg-exec-edge path {
+    animation: none;
+  }
+}

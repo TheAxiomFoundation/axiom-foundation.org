@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRightIcon, CodeIcon, GitHubIcon } from "@/components/icons";
 import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
@@ -86,42 +85,6 @@ export function FoundationSection() {
           ))}
         </RevealGroup>
 
-        <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap pt-8 border-t border-[var(--color-rule-subtle)]">
-          {[
-            { href: "/demos", label: "Live demos", internal: true },
-            { href: "/format", label: "Format comparison", internal: true },
-            {
-              href: "https://github.com/TheAxiomFoundation/axiom-encode",
-              label: "Encoder source",
-            },
-            {
-              href: "https://github.com/TheAxiomFoundation",
-              label: "All repositories",
-            },
-            { href: "/about", label: "About the foundation", internal: true },
-            { href: "/team", label: "Meet the team", internal: true },
-          ].map((link) =>
-            link.internal ? (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="font-mono text-[0.78rem] tracking-[0.04em] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
-              >
-                {link.label}
-              </Link>
-            ) : (
-              <a
-                key={link.label}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-[0.78rem] tracking-[0.04em] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
-              >
-                {link.label}
-              </a>
-            ),
-          )}
-        </div>
       </div>
     </section>
   );

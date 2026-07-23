@@ -126,8 +126,8 @@ export function Plane3D({
         consumers: consumers.get(rule.legalId) ?? 0,
         isTerminal: terminal.has(rule.legalId),
         fx: (d - maxDepth / 2) * LAYER_SPACING,
-        fy: (BUCKET_BAND[bucket] ?? 0) + jitter(rule.legalId, 90),
-        fz: jitter(rule.name, 300),
+        fy: (BUCKET_BAND[bucket] ?? 0) + jitter(rule.legalId, 56),
+        fz: jitter(rule.name, 210),
       };
     });
     const links = graph.rules.flatMap((rule) =>
@@ -140,31 +140,38 @@ export function Plane3D({
 
   const selectedSet = useMemo(() => new Set(selectedOutputs), [selectedOutputs]);
 
+  // Every node is a card — the same boxes-and-lines language as the
+  // flat plane, floated in space. Executed cards tint amber and
+  // carry their value; the rest are quiet white cards seamed with
+  // their source color.
   const nodeObject = useCallback(
     (node: NodeObject) => {
       const n = node as PlaneNode;
       const isExec = executed.has(n.id);
       const focal = n.isTerminal || selectedSet.has(n.id);
-      if (!focal && !isExec) return undefined as unknown as Object3D;
+      const dimmed = live && !isExec;
       const value = isExec ? valueOf(n.id) : null;
       const sprite = new SpriteText(
-        value
-          ? `${humanizeName(n.name)} · ${value}`
-          : humanizeName(n.name)
+        value ? `${humanizeName(n.name)} · ${value}` : humanizeName(n.name)
       );
-      sprite.color = isExec ? "#7c2d12" : "#44403c";
+      sprite.color = isExec ? "#7c2d12" : dimmed ? "#a8a29e" : "#292524";
       sprite.backgroundColor = isExec
-        ? "rgba(251,243,219,0.95)"
-        : "rgba(255,255,255,0.85)";
-      sprite.borderColor = isExec ? EXEC_COLOR : "#e7e5e4";
-      sprite.borderWidth = 0.5;
-      sprite.borderRadius = 3;
-      sprite.padding = 2.5;
-      sprite.textHeight = focal ? 7 : 5.5;
-      (sprite as unknown as { position: { y: number } }).position.y = 10;
+        ? "rgba(251,243,219,0.96)"
+        : dimmed
+          ? "rgba(255,255,255,0.55)"
+          : "rgba(255,255,255,0.94)";
+      sprite.borderColor = isExec
+        ? EXEC_COLOR
+        : dimmed
+          ? "#eceae7"
+          : (BUCKET_COLOR[n.bucket] ?? "#e7e5e4");
+      sprite.borderWidth = isExec || focal ? 0.7 : 0.4;
+      sprite.borderRadius = 2.5;
+      sprite.padding = focal ? 3.5 : 2.5;
+      sprite.textHeight = focal ? 7.5 : isExec ? 6 : 4.6;
       return sprite as unknown as Object3D;
     },
-    [executed, valueOf, selectedSet]
+    [executed, valueOf, selectedSet, live]
   );
 
   // Establishing shot: once the strata exist, pull back to frame
@@ -224,10 +231,7 @@ export function Plane3D({
         warmupTicks={0}
         enableNodeDrag={false}
         nodeId="id"
-        nodeVal={(node) => {
-          const n = node as PlaneNode;
-          return n.isTerminal ? 9 : 2 + Math.min(n.consumers, 8) * 0.8;
-        }}
+        nodeVal={4}
         nodeColor={(node) => {
           const n = node as PlaneNode;
           if (live && !executed.has(n.id)) return DIM_COLOR;
@@ -235,7 +239,6 @@ export function Plane3D({
           return BUCKET_COLOR[n.bucket] ?? "#78716c";
         }}
         nodeOpacity={0.92}
-        nodeThreeObjectExtend
         nodeThreeObject={nodeObject}
         linkColor={(link) => {
           const s = (link.source as PlaneNode).id ?? link.source;

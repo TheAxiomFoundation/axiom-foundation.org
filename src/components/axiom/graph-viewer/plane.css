@@ -1037,3 +1037,58 @@
 .graph-viewer-root .dimension-toggle {
   margin-right: 10px;
 }
+
+/* ═══ 2.5D: the plane is a plane ═══ */
+/* A restrained perspective tilt on the drawing surface only —
+   panels, toolbar, and minimap stay flat. Cards gain true depth:
+   they rise toward the viewer on hover and on execution. */
+.graph-viewer-root .irg-wrap .react-flow__renderer {
+  transform: perspective(1800px) rotateX(7deg);
+  transform-origin: 50% 38%;
+  transform-style: preserve-3d;
+}
+.graph-viewer-root .irg-wrap .react-flow__viewport,
+.graph-viewer-root .irg-wrap .react-flow__node {
+  transform-style: preserve-3d;
+}
+.graph-viewer-root .irg-wrap .irg-node {
+  transition:
+    transform 0.25s var(--ease-out, ease),
+    box-shadow 0.25s ease;
+}
+.graph-viewer-root .irg-wrap .react-flow__node:hover .irg-node {
+  transform: translateZ(22px);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.1),
+    0 18px 36px -16px rgba(28, 25, 23, 0.45);
+}
+/* Execution lifts higher than hover — computed law sits above. */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
+  animation: exec-lift-3d 0.55s var(--ease-out, ease) both;
+  animation-delay: calc(var(--exec-order, 0) * 130ms);
+}
+@keyframes exec-lift-3d {
+  from {
+    transform: translateZ(0) scale(1);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  }
+  to {
+    transform: translateZ(34px) scale(1.02);
+    box-shadow:
+      0 0 0 1.5px var(--color-accent),
+      0 4px 8px rgba(28, 25, 23, 0.14),
+      0 26px 52px -18px rgba(217, 119, 6, 0.6);
+  }
+}
+/* Receded matter sinks slightly below the plane. */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-off .irg-node {
+  transform: translateZ(-14px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .irg-wrap .react-flow__renderer {
+    transform: none;
+  }
+  .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
+    animation: none;
+  }
+}

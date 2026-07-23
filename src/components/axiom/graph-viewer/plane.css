@@ -1670,3 +1670,30 @@
 .graph-viewer-root .journey-back:hover {
   color: var(--color-accent);
 }
+
+/* Focused journey: the search card takes the room alone. */
+.graph-viewer-root .journey-grid.is-focused {
+  grid-template-columns: 1fr;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.graph-viewer-root .journey-grid.is-focused .journey-card.is-search {
+  padding: 20px 22px;
+}
+.graph-viewer-root .journey-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.graph-viewer-root .journey-head strong {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+.graph-viewer-root .journey-head .journey-back {
+  margin-left: auto;
+}
+.graph-viewer-root .journey-grid.is-focused .journey-matches {
+  max-height: 240px;
+}

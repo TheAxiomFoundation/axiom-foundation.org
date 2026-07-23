@@ -679,7 +679,10 @@ export function GraphViewerApp() {
                 {effectiveProgram?.displayName ?? "This program"} — what do
                 you want to do?
               </h1>
-              <div className="journey-grid">
+              <div
+                className={`journey-grid ${intentSearchOpen ? "is-focused" : ""}`}
+              >
+                {!intentSearchOpen && (
                 <button
                   type="button"
                   className="journey-card"
@@ -692,16 +695,30 @@ export function GraphViewerApp() {
                     with the full index at hand.
                   </span>
                 </button>
+                )}
                 {intentSearchOpen ? (
                   <div className="journey-card is-search">
-                    <span className="journey-glyph">⊙</span>
-                    <strong>Understand one rule</strong>
+                    <div className="journey-head">
+                      <span className="journey-glyph">⊙</span>
+                      <strong>Understand one rule</strong>
+                      <button
+                        type="button"
+                        className="journey-back"
+                        onClick={() => {
+                          setIntentSearchOpen(false);
+                          setIntentInput(null);
+                          setIntentSearch("");
+                        }}
+                      >
+                        ← all journeys
+                      </button>
+                    </div>
                     <div
                       className="journey-kind"
                       role="tablist"
                       aria-label="Kind of piece"
                     >
-                      {(["output", "input"] as const).map((kind) => (
+                      {(["input", "output"] as const).map((kind) => (
                         <button
                           key={kind}
                           type="button"
@@ -799,6 +816,7 @@ export function GraphViewerApp() {
                     </span>
                   </button>
                 )}
+                {!intentSearchOpen && (
                 <button
                   type="button"
                   className="journey-card"
@@ -811,6 +829,7 @@ export function GraphViewerApp() {
                     light the path to the result.
                   </span>
                 </button>
+                )}
               </div>
               <button
                 type="button"

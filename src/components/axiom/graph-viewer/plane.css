@@ -410,3 +410,10 @@
 .graph-viewer-root .scenario-fields {
   max-height: 176px;
 }
+
+/* Upstream sized the canvas against the viewport (100vh − chrome);
+   in-app the stage's grid row is the constraint — fill it. */
+.graph-viewer-root .irg-wrap {
+  height: 100%;
+  min-height: 0;
+}

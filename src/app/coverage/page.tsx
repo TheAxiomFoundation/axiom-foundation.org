@@ -37,13 +37,6 @@ export default async function CoveragePage() {
           <h1 className="heading-page mb-6 mt-2" suppressHydrationWarning>
             The whole stack, counted
           </h1>
-          <p className="font-body text-[1.2rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            What Axiom holds today, layer by layer: source documents
-            (a U.S.&nbsp;Code title, a CFR part, a state act, an agency
-            manual), the atomic provisions they split into, and the
-            machine-readable RuleSpec encodings built on top. Counts come
-            from the live corpus release and refresh every ten minutes.
-          </p>
         </Reveal>
 
         {data === null ? (

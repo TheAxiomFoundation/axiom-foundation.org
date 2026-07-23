@@ -115,6 +115,7 @@ export function GraphViewerApp() {
     "program",
   );
   const [intentSearch, setIntentSearch] = useState("");
+  const [intentSearchOpen, setIntentSearchOpen] = useState(false);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
@@ -132,6 +133,7 @@ export function GraphViewerApp() {
   const reopenJourney = () => {
     setLauncherStep(effectiveProgram ? "intent" : "program");
     setIntentSearch("");
+    setIntentSearchOpen(false);
     setLauncher("open");
   };
   const beginSurvey = () => {
@@ -661,35 +663,50 @@ export function GraphViewerApp() {
                     with the full index at hand.
                   </span>
                 </button>
-                <div className="journey-card is-search">
-                  <span className="journey-glyph">⊙</span>
-                  <strong>Understand one rule</strong>
-                  <input
-                    type="search"
-                    placeholder="Search a rule… allotment, eligible, income"
-                    value={intentSearch}
-                    onChange={(event) => setIntentSearch(event.target.value)}
-                    autoFocus
-                  />
-                  {intentMatches.length > 0 && (
-                    <div className="journey-matches">
-                      {intentMatches.map((rule) => (
-                        <button
-                          key={rule.legalId}
-                          type="button"
-                          onClick={() => beginRuleLens(rule.legalId)}
-                        >
-                          {humanize(rule.name)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {intentSearch.trim() && intentMatches.length === 0 && (
-                    <span className="journey-empty">
-                      {graph ? "No rule matches." : "Loading rules…"}
+                {intentSearchOpen ? (
+                  <div className="journey-card is-search">
+                    <span className="journey-glyph">⊙</span>
+                    <strong>Understand one rule</strong>
+                    <input
+                      type="search"
+                      placeholder="Search a rule… allotment, eligible, income"
+                      value={intentSearch}
+                      onChange={(event) => setIntentSearch(event.target.value)}
+                      autoFocus
+                    />
+                    {intentMatches.length > 0 && (
+                      <div className="journey-matches">
+                        {intentMatches.map((rule) => (
+                          <button
+                            key={rule.legalId}
+                            type="button"
+                            onClick={() => beginRuleLens(rule.legalId)}
+                          >
+                            {humanize(rule.name)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {intentSearch.trim() && intentMatches.length === 0 && (
+                      <span className="journey-empty">
+                        {graph ? "No rule matches." : "Loading rules…"}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="journey-card"
+                    onClick={() => setIntentSearchOpen(true)}
+                  >
+                    <span className="journey-glyph">⊙</span>
+                    <strong>Understand one rule</strong>
+                    <span>
+                      Find a single rule and open its lens — what it reads,
+                      what it feeds, how it computes.
                     </span>
-                  )}
-                </div>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="journey-card"

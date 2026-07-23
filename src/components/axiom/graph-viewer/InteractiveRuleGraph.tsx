@@ -52,6 +52,11 @@ interface Props {
   /** Dissection policy: "auto" folds only past the size threshold;
    *  "always" opens one hop regardless (the rule lens). */
   dissect?: "auto" | "always";
+  /** Controlled fold state (the navigator tree shares it). */
+  collapsed?: Set<string>;
+  onCollapsedChange?: (next: Set<string>) => void;
+  /** Fly the camera to this rule; bump nonce to re-trigger. */
+  flyTo?: { legalId: string; nonce: number } | null;
   /** Run mode: the execution layer is live — executed nodes lift,
    *  the rest recede, the camera flies the executed path. */
   executionActive?: boolean;
@@ -89,6 +94,9 @@ export function InteractiveRuleGraph({
   showValues = false,
   parameterRules,
   dissect = "auto",
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+  flyTo,
   executionActive = false,
   executedLegalIds,
   onInspect,
@@ -98,18 +106,36 @@ export function InteractiveRuleGraph({
   // inputs out of the box. They can collapse any sub-rule to hide its
   // internals; we track those user-collapses in the `collapsed` set rather
   // than the inverse.
-  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    initialCollapse(traces, dissect),
+  const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(
+    () => initialCollapse(traces, dissect),
   );
-  // Re-dissect when the program (trace set) or policy changes.
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+  const setCollapsed = useCallback(
+    (update: Set<string> | ((current: Set<string>) => Set<string>)) => {
+      const apply = (current: Set<string>) =>
+        typeof update === "function" ? update(current) : update;
+      if (onCollapsedChange) {
+        onCollapsedChange(apply(controlledCollapsedRef.current ?? new Set()));
+      } else {
+        setInternalCollapsed(apply);
+      }
+    },
+    [onCollapsedChange],
+  );
+  const controlledCollapsedRef = useRef(controlledCollapsed);
+  controlledCollapsedRef.current = controlledCollapsed;
+  // Re-dissect when the program (trace set) or policy changes
+  // (uncontrolled mode only — controlled owners re-dissect themselves).
   const traceKey = Object.keys(traces).sort().join("|") + "::" + dissect;
   const lastTraceKey = useRef(traceKey);
   useEffect(() => {
     if (lastTraceKey.current !== traceKey) {
       lastTraceKey.current = traceKey;
-      setCollapsed(initialCollapse(traces, dissect));
+      if (!controlledCollapsed) {
+        setInternalCollapsed(initialCollapse(traces, dissect));
+      }
     }
-  }, [traceKey, traces, dissect]);
+  }, [traceKey, traces, dissect, controlledCollapsed]);
   // "wires": collapse operator boxes — atomic inputs connect directly to
   //   the sub-rule or output that consumes them. Cleanest overview, and
   //   the default since most users care about structure first.
@@ -179,14 +205,17 @@ export function InteractiveRuleGraph({
     }
   }, []);
 
-  const toggleCollapse = useCallback((legalId: string) => {
-    setCollapsed((s) => {
-      const next = new Set(s);
-      if (next.has(legalId)) next.delete(legalId);
-      else next.add(legalId);
-      return next;
-    });
-  }, []);
+  const toggleCollapse = useCallback(
+    (legalId: string) => {
+      setCollapsed((s) => {
+        const next = new Set(s);
+        if (next.has(legalId)) next.delete(legalId);
+        else next.add(legalId);
+        return next;
+      });
+    },
+    [setCollapsed],
+  );
 
   const collapseAll = useCallback(() => {
     // Best-effort: collapse every rule mentioned in the trace tree. Computed
@@ -196,9 +225,12 @@ export function InteractiveRuleGraph({
       collectRuleIds(t, all);
     }
     setCollapsed(all);
-  }, [traces]);
+  }, [traces, setCollapsed]);
 
-  const expandAll = useCallback(() => setCollapsed(new Set()), []);
+  const expandAll = useCallback(
+    () => setCollapsed(new Set()),
+    [setCollapsed],
+  );
 
   const canExposeInputs = !!onExposeInput;
   const { nodes, edges } = useMemo(
@@ -506,6 +538,7 @@ export function InteractiveRuleGraph({
           }}
         >
           <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
+          <FlyToController target={flyTo ?? null} />
           <ExecutionCamera
             active={executionActive}
             executedIds={executedIds}
@@ -697,6 +730,36 @@ export type IrgNodeData =
     };
 
 /** Inputs only emit edges (rightward), so they don't need a target handle. */
+/** Fly the viewport to a rule by durable legal id. */
+function FlyToController({
+  target,
+}: {
+  target: { legalId: string; nonce: number } | null;
+}) {
+  const flow = useReactFlow();
+  const last = useRef(0);
+  useEffect(() => {
+    if (!target || target.nonce === last.current) return;
+    last.current = target.nonce;
+    const match = flow
+      .getNodes()
+      .find(
+        (node) =>
+          (node.data as IrgNodeData & { legalId?: string }).legalId ===
+          target.legalId,
+      );
+    if (match) {
+      void flow.fitView({
+        nodes: [{ id: match.id }],
+        duration: 700,
+        padding: 0.5,
+        maxZoom: 1.2,
+      });
+    }
+  }, [target, flow]);
+  return null;
+}
+
 /**
  * The execution camera: when the run layer activates, glide out to
  * frame the whole executed path, then ease in toward the results.
@@ -1069,6 +1132,15 @@ const RuleRefNode = ({ data }: NodeProps) => {
     >
       <HandleBoth />
       <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
+      {!d.isExpanded && (d.hiddenCount ?? 0) > 0 && (
+        <span
+          className="irg-fold-badge irg-action-clickable"
+          data-action="collapse"
+          title={`${d.hiddenCount} folded steps — click to unfold`}
+        >
+          ▸ {d.hiddenCount}
+        </span>
+      )}
       <div className="irg-eyebrow">
         {d.isParameter ? "Parameter" : d.isOutput ? "Step · result" : "Step"}
       </div>
@@ -1570,6 +1642,7 @@ function walkAst(node: AstNode, parentScope: string, opPath: string, ctx: WalkCt
           label: t.label || node.name,
           legalId: t.legalId,
           canExpand: Boolean(t.formula) && !isParameter,
+          hiddenCount: isExpanded ? 0 : hiddenDescendantCount(t),
           isParameter,
           isOutput,
           verdictCls: verdictClass(t),
@@ -2087,7 +2160,7 @@ function hiddenDescendantCount(node: TraceNode, seen = new Set<string>()): numbe
  *  everything deeper behind "+ expand" counts. */
 const FOCUS_THRESHOLD = 120;
 
-function initialCollapse(
+export function initialCollapse(
   traces: Record<string, TraceNode>,
   dissect: "auto" | "always" = "auto",
 ): Set<string> {

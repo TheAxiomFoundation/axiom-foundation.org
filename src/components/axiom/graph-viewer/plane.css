@@ -401,14 +401,17 @@
 /* Four blocks must share the panel: outputs keeps a real minimum and
    scrolls internally; the scenario stays compact. */
 .graph-viewer-root .side-panel {
-  grid-template-rows: auto auto minmax(150px, 1fr) auto;
+  grid-template-rows: auto auto minmax(260px, 1fr) auto;
 }
 .graph-viewer-root .outputs-control {
   overflow: hidden;
   min-height: 0;
 }
 .graph-viewer-root .scenario-fields {
-  max-height: 176px;
+  max-height: 120px;
+}
+.graph-viewer-root .brand p {
+  display: none;
 }
 
 /* Upstream sized the canvas against the viewport (100vh − chrome);
@@ -823,4 +826,189 @@
 }
 .graph-viewer-root .node-inspector-lens:hover {
   background: color-mix(in srgb, var(--color-accent-light) 60%, #fff);
+}
+
+/* ═══ Navigator: the index of the computation ═══ */
+.graph-viewer-root .program-anatomy {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .program-anatomy strong {
+  color: var(--color-ink-secondary);
+  font-weight: 600;
+}
+.graph-viewer-root .navigator-tree {
+  margin: 6px 0 10px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 8px;
+}
+.graph-viewer-root .nav-branch {
+  border-left: 1px solid var(--color-rule-subtle);
+}
+.graph-viewer-root .nav-branch:first-child {
+  border-left: none;
+}
+.graph-viewer-root .nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 1.5px 0;
+}
+.graph-viewer-root .nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  font-style: normal;
+}
+.graph-viewer-root .nav-name {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 5px;
+}
+.graph-viewer-root .nav-name:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+.graph-viewer-root .nav-name.is-root {
+  font-weight: 650;
+  color: var(--color-ink);
+  font-size: 12.5px;
+}
+.graph-viewer-root .nav-fold {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+}
+.graph-viewer-root .nav-fold.is-open {
+  border-color: var(--color-rule);
+  background: none;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .nav-fold:hover {
+  border-color: var(--color-accent);
+}
+
+/* ═══ On-canvas fold badges: the doors are visible at every zoom ═══ */
+.graph-viewer-root .irg-fold-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 3;
+  border: 1px solid var(--color-accent);
+  background: var(--color-paper-elevated);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  box-shadow: 0 2px 6px -2px rgba(217, 119, 6, 0.5);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.graph-viewer-root .irg-fold-badge:hover {
+  transform: scale(1.12);
+  background: var(--color-accent-light);
+}
+/* Badges survive every LOD — they ARE the wayfinding. */
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge,
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-fold-badge {
+  display: inline-block;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* The outputs block gained the navigator; its fixed grid rows can't
+   host five children — flex column with internal scroll areas. */
+.graph-viewer-root .outputs-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.graph-viewer-root .outputs-control .output-list {
+  min-height: 60px;
+  flex: 1;
+}
+
+/* Program block joined the fixed-grid casualty list — flex it. */
+.graph-viewer-root .program-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── The floating index: Figma-layers for the law ── */
+.graph-viewer-root .nav-toggle {
+  position: absolute;
+  bottom: 14px;
+  left: 60px;
+  z-index: 13;
+  border: 1px solid var(--color-rule);
+  background: color-mix(in srgb, var(--color-paper-elevated) 90%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(28, 25, 23, 0.35);
+}
+.graph-viewer-root .nav-toggle:hover,
+.graph-viewer-root .nav-toggle[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
+}
+.graph-viewer-root .nav-panel {
+  position: absolute;
+  bottom: 56px;
+  left: 14px;
+  z-index: 13;
+  width: 300px;
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--color-paper-elevated) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 22px 50px -18px rgba(28, 25, 23, 0.4);
+  padding: 12px 14px;
+  animation: inspector-in 0.25s var(--ease-out, ease) both;
+}
+.graph-viewer-root .nav-panel .navigator-tree {
+  border-bottom: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
 }

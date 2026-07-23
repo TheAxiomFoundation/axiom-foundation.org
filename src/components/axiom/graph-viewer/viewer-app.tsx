@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   InteractiveRuleGraph,
+  initialCollapse,
   type IrgNodeData,
 } from "./InteractiveRuleGraph";
 import { axiomAppUrl, fileLegalIdOf, humanizeCitation } from "./citations";
@@ -49,6 +50,19 @@ export function GraphViewerApp() {
   // rules over the map. Entering saves the map's output selection;
   // the trail's crumbs step back; leaving restores the map exactly.
   const [lensTrail, setLensTrail] = useState<string[]>([]);
+  const [navOpen, setNavOpen] = useState(false);
+  // The fold state is shared by the canvas and the navigator tree.
+  const [folded, setFolded] = useState<Set<string>>(new Set());
+  const foldedInitialized = useRef<string | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{
+    legalId: string;
+    nonce: number;
+  } | null>(null);
+  const flyTo = (legalId: string) =>
+    setFlyTarget((current) => ({
+      legalId,
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
   const savedSelection = useRef<LegalId[] | null>(null);
   const openLens = (legalId: string) => {
     setInspected(null);
@@ -454,6 +468,24 @@ export function GraphViewerApp() {
     [graph, selectedOutputs],
   );
 
+  // Dissect on program/selection/lens change; unfold the executed
+  // path when a run lands.
+  useEffect(() => {
+    const key =
+      Object.keys(structureTraces).sort().join("|") +
+      "::" +
+      (lensTrail.length > 0 ? "always" : "auto");
+    if (foldedInitialized.current !== key) {
+      foldedInitialized.current = key;
+      setFolded(
+        initialCollapse(
+          structureTraces,
+          lensTrail.length > 0 ? "always" : "auto",
+        ),
+      );
+    }
+  }, [structureTraces, lensTrail.length]);
+
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
   // fragment) and the scenario's input values.
@@ -509,6 +541,18 @@ export function GraphViewerApp() {
       executed,
     };
   }, [structureTraces, runResult, scenario]);
+
+  useEffect(() => {
+    if (!runResult) return;
+    setFolded((current) => {
+      let changed = false;
+      const next = new Set(current);
+      for (const id of liveTraces.executed) {
+        if (next.delete(id)) changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [runResult, liveTraces.executed]);
 
   function toggleOutput(legalId: LegalId) {
     setSelectedOutputs((current) =>
@@ -649,14 +693,6 @@ export function GraphViewerApp() {
             </select>
           </label>
           {program && <p className="program-summary">{summaryForProgram(programs, program)}</p>}
-          {composeFocus && (
-            <p className="program-summary">
-              Composed on demand from {composedFiles.length || "the"} encoded{" "}
-              {composedFiles.length === 1 ? "file" : "files"}
-              {composedTruncated ? " (import walk truncated)" : ""}. Pick a
-              program above to return to compiled packages.
-            </p>
-          )}
         </section>
 
         <section className="control-block outputs-control">
@@ -789,6 +825,57 @@ export function GraphViewerApp() {
           </div>
         )}
         <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={() => setNavOpen((open) => !open)}
+            aria-expanded={navOpen}
+          >
+            ☰ Index{graph ? ` · ${graph.rules.length}` : ""}
+          </button>
+          {navOpen && (
+            <div className="nav-panel" aria-label="Computation index">
+          {graph && (
+            <p className="program-anatomy">
+              This program decides{" "}
+              <strong>{graph.terminalOutputs.length} results</strong> from{" "}
+              <strong>{graph.inputs.length} inputs</strong> through{" "}
+              <strong>{graph.rules.length} rules</strong>.
+            </p>
+          )}
+          {composeFocus && (
+            <p className="program-summary">
+              Composed on demand from {composedFiles.length || "the"} encoded{" "}
+              {composedFiles.length === 1 ? "file" : "files"}
+              {composedTruncated ? " (import walk truncated)" : ""}. Pick a
+              program above to return to compiled packages.
+            </p>
+          )}
+          <div className="navigator-tree" aria-label="Computation navigator">
+            {selectedOutputs.map((legalId) => {
+              const root = structureTraces[legalId];
+              if (!root) return null;
+              return (
+                <NavigatorBranch
+                  key={legalId}
+                  node={root}
+                  depth={0}
+                  folded={folded}
+                  onToggleFold={(id) =>
+                    setFolded((current) => {
+                      const next = new Set(current);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                  onFly={flyTo}
+                />
+              );
+            })}
+          </div>
+            </div>
+          )}
         {lensFocusId && (
           <div className="lens-bar" role="navigation" aria-label="Rule lens trail">
             <button type="button" className="lens-crumb lens-crumb-root" onClick={closeLens}>
@@ -839,6 +926,9 @@ export function GraphViewerApp() {
               executionActive={Boolean(runResult)}
               executedLegalIds={liveTraces.executed}
               dissect={lensFocusId ? "always" : "auto"}
+              collapsed={folded}
+              onCollapsedChange={setFolded}
+              flyTo={flyTarget}
               onInspect={setInspected}
               onLens={openLens}
               parameterRules={parameterRules}
@@ -1131,4 +1221,91 @@ function syncCountryToUrl(country: Country) {
   if (country === "us") url.searchParams.delete("country");
   else url.searchParams.set("country", country);
   window.history.replaceState({}, "", url.toString());
+}
+
+
+/** Source bucket of a durable legal id, for the seam dot. */
+function sourceBucket(legalId: string): string | null {
+  return legalId.split(":")[1]?.split("/")[0] ?? null;
+}
+
+const BUCKET_DOT: Record<string, string> = {
+  statutes: "#d97706",
+  regulations: "#0f766e",
+  policies: "#4f46e5",
+  guidance: "#b45309",
+  compositions: "#78716c",
+};
+
+/**
+ * One row of the navigator: seam dot · name · fold badge. Clicking
+ * the name flies the camera to the node; clicking the badge unfolds
+ * it on the canvas and in the tree — the same fold state drives
+ * both projections.
+ */
+function NavigatorBranch({
+  node,
+  depth,
+  folded,
+  onToggleFold,
+  onFly,
+}: {
+  node: TraceNode;
+  depth: number;
+  folded: Set<string>;
+  onToggleFold: (legalId: string) => void;
+  onFly: (legalId: string) => void;
+}) {
+  const isRule = node.dtype !== "input" && Boolean(node.formula);
+  const children = (node.children ?? []).filter(
+    (child) => child.dtype !== "input",
+  );
+  const isFolded = folded.has(node.legalId);
+  const hidden = isFolded
+    ? children.length
+    : 0;
+  const bucket = sourceBucket(node.legalId);
+  if (depth > 6) return null;
+  return (
+    <div className="nav-branch" style={{ paddingLeft: depth === 0 ? 0 : 12 }}>
+      <div className="nav-row">
+        {bucket && BUCKET_DOT[bucket] && (
+          <i
+            className="nav-dot"
+            style={{ background: BUCKET_DOT[bucket] }}
+            aria-hidden
+          />
+        )}
+        <button
+          type="button"
+          className={`nav-name ${depth === 0 ? "is-root" : ""}`}
+          onClick={() => onFly(node.legalId)}
+          title="Fly to this rule on the canvas"
+        >
+          {humanize(node.label ?? node.legalId.split("#").pop() ?? "")}
+        </button>
+        {isRule && children.length > 0 && (
+          <button
+            type="button"
+            className={`nav-fold ${isFolded ? "" : "is-open"}`}
+            onClick={() => onToggleFold(node.legalId)}
+            title={isFolded ? "Unfold on the canvas" : "Fold"}
+          >
+            {isFolded ? `▸ ${hidden}` : "▾"}
+          </button>
+        )}
+      </div>
+      {!isFolded &&
+        children.map((child, index) => (
+          <NavigatorBranch
+            key={`${child.legalId}-${index}`}
+            node={child}
+            depth={depth + 1}
+            folded={folded}
+            onToggleFold={onToggleFold}
+            onFly={onFly}
+          />
+        ))}
+    </div>
+  );
 }

@@ -1013,6 +1013,414 @@
   padding: 0;
 }
 
+/* ═══ Dissection: semantic zoom (LOD) ═══ */
+/* Mid zoom: secondary chrome yields; the map reads as named cards. */
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-action,
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
+  display: none;
+}
+/* Far zoom: constellation mode — pills with names only, weight by
+   role. The graph becomes a sky map instead of unreadable micro text. */
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-eyebrow,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
+  display: none;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node {
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-label {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-output .irg-label {
+  font-size: 17px;
+}
+/* Keep computed values visible in run mode even from afar — the
+   execution layer outranks the LOD. */
+.graph-viewer-root
+  .irg-wrap[data-lod="far"]
+  .plane-live
+  .irg-exec-node
+  .irg-value,
+.graph-viewer-root
+  .plane-live
+  .irg-wrap[data-lod="far"]
+  .irg-exec-node
+  .irg-value {
+  display: block;
+}
+
+/* ═══ Dissection: source anatomy ═══ */
+/* Every node wears the body of law it came from as a left seam:
+   statutes amber, regulations teal, policies indigo, guidance
+   bronze, compositions neutral. */
+.graph-viewer-root .react-flow__node[class*="irg-src-"] .irg-node {
+  border-left-width: 3px;
+}
+.graph-viewer-root .react-flow__node.irg-src-statutes .irg-node {
+  border-left-color: #d97706;
+}
+.graph-viewer-root .react-flow__node.irg-src-regulations .irg-node {
+  border-left-color: #0f766e;
+}
+.graph-viewer-root .react-flow__node.irg-src-policies .irg-node {
+  border-left-color: #4f46e5;
+}
+.graph-viewer-root .react-flow__node.irg-src-guidance .irg-node {
+  border-left-color: #b45309;
+}
+.graph-viewer-root .react-flow__node.irg-src-compositions .irg-node {
+  border-left-color: #78716c;
+}
+
+/* Legend chips in the toolbar. */
+.graph-viewer-root .irg-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .irg-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.graph-viewer-root .irg-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  font-style: normal;
+}
+
+/* ═══ Execution wave ═══ */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
+  animation: exec-lift 0.5s var(--ease-out, ease) both;
+  animation-delay: calc(var(--exec-order, 0) * 130ms);
+}
+@keyframes exec-lift {
+  from {
+    transform: scale(1);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  }
+  to {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 1.5px var(--color-accent),
+      0 2px 6px rgba(28, 25, 23, 0.12),
+      0 18px 40px -14px rgba(217, 119, 6, 0.55);
+  }
+}
+.graph-viewer-root .plane-live .irg-exec-node .irg-value {
+  animation: plane-value-in 0.45s var(--ease-out, ease) both;
+  animation-delay: calc(var(--exec-order, 0) * 130ms + 120ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node,
+  .graph-viewer-root .plane-live .irg-exec-node .irg-value {
+    animation: none;
+  }
+}
+
+/* ═══ The rule lens: trail + downstream ═══ */
+.graph-viewer-root .graph-stage {
+  position: relative;
+}
+.graph-viewer-root .lens-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 14;
+  max-width: min(720px, calc(100% - 480px));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-paper-elevated) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px -12px rgba(28, 25, 23, 0.35);
+  animation: inspector-in 0.25s var(--ease-out, ease) both;
+}
+.graph-viewer-root .lens-crumb {
+  border: 1px solid transparent;
+  background: none;
+  border-radius: 8px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.graph-viewer-root .lens-crumb:hover {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+}
+.graph-viewer-root .lens-crumb.is-current {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-light);
+  color: var(--color-accent-hover);
+  font-weight: 600;
+}
+.graph-viewer-root .lens-crumb-root {
+  font-weight: 550;
+  color: var(--color-ink);
+}
+.graph-viewer-root .lens-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-viewer-root .lens-sep {
+  color: var(--color-ink-muted);
+  font-size: 10px;
+}
+.graph-viewer-root .lens-consumers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.graph-viewer-root .lens-consumers-label {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .lens-consumer-chip {
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-elevated);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.graph-viewer-root .lens-consumer-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.graph-viewer-root .node-inspector-lens {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.graph-viewer-root .node-inspector-lens:hover {
+  background: color-mix(in srgb, var(--color-accent-light) 60%, #fff);
+}
+
+/* ═══ Navigator: the index of the computation ═══ */
+.graph-viewer-root .program-anatomy {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .program-anatomy strong {
+  color: var(--color-ink-secondary);
+  font-weight: 600;
+}
+.graph-viewer-root .navigator-tree {
+  margin: 6px 0 10px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 8px;
+}
+.graph-viewer-root .nav-branch {
+  border-left: 1px solid var(--color-rule-subtle);
+}
+.graph-viewer-root .nav-branch:first-child {
+  border-left: none;
+}
+.graph-viewer-root .nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 1.5px 0;
+}
+.graph-viewer-root .nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  font-style: normal;
+}
+.graph-viewer-root .nav-name {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 5px;
+}
+.graph-viewer-root .nav-name:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+.graph-viewer-root .nav-name.is-root {
+  font-weight: 650;
+  color: var(--color-ink);
+  font-size: 12.5px;
+}
+.graph-viewer-root .nav-fold {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+}
+.graph-viewer-root .nav-fold.is-open {
+  border-color: var(--color-rule);
+  background: none;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .nav-fold:hover {
+  border-color: var(--color-accent);
+}
+
+/* ═══ On-canvas fold badges: the doors are visible at every zoom ═══ */
+.graph-viewer-root .irg-fold-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 3;
+  border: 1px solid var(--color-accent);
+  background: var(--color-paper-elevated);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  box-shadow: 0 2px 6px -2px rgba(217, 119, 6, 0.5);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.graph-viewer-root .irg-fold-badge:hover {
+  transform: scale(1.12);
+  background: var(--color-accent-light);
+}
+/* Badges survive every LOD — they ARE the wayfinding. */
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge,
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-fold-badge {
+  display: inline-block;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* The outputs block gained the navigator; its fixed grid rows can't
+   host five children — flex column with internal scroll areas. */
+.graph-viewer-root .outputs-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.graph-viewer-root .outputs-control .output-list {
+  min-height: 60px;
+  flex: 1;
+}
+
+/* Program block joined the fixed-grid casualty list — flex it. */
+.graph-viewer-root .program-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── The floating index: Figma-layers for the law ── */
+.graph-viewer-root .nav-toggle {
+  position: absolute;
+  bottom: 14px;
+  left: 60px;
+  z-index: 13;
+  border: 1px solid var(--color-rule);
+  background: color-mix(in srgb, var(--color-paper-elevated) 90%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(28, 25, 23, 0.35);
+}
+.graph-viewer-root .nav-toggle:hover,
+.graph-viewer-root .nav-toggle[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
+}
+.graph-viewer-root .nav-panel {
+  position: absolute;
+  bottom: 56px;
+  left: 14px;
+  z-index: 13;
+  width: 300px;
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--color-paper-elevated) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 22px 50px -18px rgba(28, 25, 23, 0.4);
+  padding: 12px 14px;
+  animation: inspector-in 0.25s var(--ease-out, ease) both;
+}
+.graph-viewer-root .nav-panel .navigator-tree {
+  border-bottom: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* ── Plane 3D shell ── */
 .graph-viewer-root .plane3d-wrap {
   position: relative;

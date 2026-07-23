@@ -1,23 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import {
   InteractiveRuleGraph,
   initialCollapse,
   type IrgNodeData,
 } from "./InteractiveRuleGraph";
 
-// Three.js loads only when the 3D plane is entered.
-const Plane3D = dynamic(
-  () => import("./plane3d").then((mod) => mod.Plane3D),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="plane3d-loading">Raising the plane…</div>
-    ),
-  },
-);
 import { axiomAppUrl, fileLegalIdOf, humanizeCitation } from "./citations";
 import "./styles.css";
 import "./graph-styles.css";
@@ -63,8 +52,6 @@ export function GraphViewerApp() {
   // the trail's crumbs step back; leaving restores the map exactly.
   const [lensTrail, setLensTrail] = useState<string[]>([]);
   const [navOpen, setNavOpen] = useState(false);
-  // 2D is the stable plane; 3D is the strata view. Kept side by side.
-  const [dimension, setDimension] = useState<"2d" | "3d">("2d");
   // The fold state is shared by the canvas and the navigator tree.
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const foldedInitialized = useRef<string | null>(null);
@@ -568,28 +555,6 @@ export function GraphViewerApp() {
     });
   }, [runResult, liveTraces.executed]);
 
-  // Formatted values by durable legal id, for the 3D strata.
-  const valueByLegalId = useMemo(() => {
-    const map = new Map<string, string>();
-    const walk = (node: TraceNode, seen: Set<string>) => {
-      if (seen.has(node.legalId)) return;
-      seen.add(node.legalId);
-      if (node.value !== null && node.value !== undefined) {
-        map.set(
-          node.legalId,
-          typeof node.value === "number"
-            ? node.value.toLocaleString("en-US")
-            : String(node.value),
-        );
-      }
-      for (const child of node.children ?? []) walk(child, seen);
-    };
-    const seen = new Set<string>();
-    for (const root of Object.values(liveTraces.traces)) walk(root, seen);
-    return map;
-  }, [liveTraces]);
-
-
   function toggleOutput(legalId: LegalId) {
     setSelectedOutputs((current) =>
       current.includes(legalId)
@@ -834,27 +799,6 @@ export function GraphViewerApp() {
             <p>{composeFocus ? "composed view" : effectiveProgram?.jurisdiction ?? ""}</p>
             <h1>{effectiveProgram?.displayName ?? "RuleSpec program"}</h1>
           </div>
-          <div
-            className="country-toggle dimension-toggle"
-            role="tablist"
-            aria-label="Plane dimension"
-          >
-            {(["2d", "3d"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={dimension === option}
-                className={`country-toggle-btn ${dimension === option ? "is-active" : ""}`}
-                onClick={() => setDimension(option)}
-                title={
-                  option === "3d" ? "The strata of law" : "The map"
-                }
-              >
-                {option === "2d" ? "MAP" : "3D"}
-              </button>
-            ))}
-          </div>
           <div className="country-toggle" role="tablist" aria-label="Country">
             {countries.map((option) => (
               <button
@@ -975,35 +919,6 @@ export function GraphViewerApp() {
               <span className="loading-spinner" aria-hidden="true" />
               <span>Loading graph...</span>
             </div>
-          ) : dimension === "3d" && graph ? (
-            <Plane3D
-              graph={graph}
-              selectedOutputs={selectedOutputs}
-              executed={liveTraces.executed}
-              valueOf={(legalId) => valueByLegalId.get(legalId) ?? null}
-              onInspect={(payload) =>
-                setInspected({
-                  kind: "ruleRef",
-                  label: payload.label,
-                  legalId: payload.legalId,
-                  canExpand: false,
-                  hiddenCount: 0,
-                  isParameter: false,
-                  isOutput: payload.kind === "result",
-                  verdictCls: "",
-                  value: payload.value ?? "",
-                  isExpanded: true,
-                  showValues: Boolean(payload.value),
-                  meta: {
-                    kindLine:
-                      payload.kind === "result"
-                        ? "Result · 3D strata"
-                        : "Rule · 3D strata",
-                    legalId: payload.legalId,
-                  },
-                } as IrgNodeData)
-              }
-            />
           ) : spec && Object.keys(structureTraces).length > 0 ? (
             <InteractiveRuleGraph
               spec={spec}

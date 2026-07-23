@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { JURISDICTIONS_SEED } from "@/lib/axiom/jurisdictions-seed";
 import type { JurisdictionCoverage } from "@/lib/axiom/coverage-page";
 import type { ProgramCoverage } from "@/lib/axiom/program-coverage";
 
@@ -13,6 +14,47 @@ import type { ProgramCoverage } from "@/lib/axiom/program-coverage";
 
 const numberFormat = new Intl.NumberFormat("en-US");
 const n = (value: number) => numberFormat.format(value);
+
+/** Display names for known program families; unknown families
+ *  humanize their slug. */
+const PROGRAM_LABELS: Record<string, { name: string; full: string }> = {
+  snap: {
+    name: "SNAP",
+    full: "Supplemental Nutrition Assistance Program",
+  },
+  tanf: {
+    name: "TANF",
+    full: "Temporary Assistance for Needy Families",
+  },
+  "oasdi-wage-tax": {
+    name: "OASDI wage tax",
+    full: "Social Security payroll tax",
+  },
+  scretd: {
+    name: "SCRETD",
+    full: "Senior Citizens Real Estate Tax Deferral",
+  },
+  "universal-credit": {
+    name: "Universal Credit",
+    full: "The UK's unified means-tested benefit",
+  },
+};
+
+function programLabel(family: string): { name: string; full: string | null } {
+  const known = PROGRAM_LABELS[family];
+  if (known) return known;
+  return {
+    name: family
+      .split("-")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" "),
+    full: null,
+  };
+}
+
+function jurisdictionLabel(slug: string): string {
+  return JURISDICTIONS_SEED.find((j) => j.slug === slug)?.label ?? slug;
+}
 
 export function CoverageViews({
   jurisdictions,
@@ -66,21 +108,33 @@ function ProgramView({ programs }: { programs: ProgramCoverage[] }) {
     );
   }
   return (
-    <ul className="cov-prog-list">
-      {programs.map((program) => (
-        <li key={program.family} className="cov-prog">
-          <span className="cov-prog-name">{program.family}</span>
-          <span className="cov-prog-count">
-            {program.jurisdictions.length}{" "}
-            {program.jurisdictions.length === 1
-              ? "jurisdiction"
-              : "jurisdictions"}
-          </span>
-          <span className="cov-prog-slugs">
-            {program.jurisdictions.join(" · ")}
-          </span>
-        </li>
-      ))}
+    <ul className="cov-prog-grid">
+      {programs.map((program) => {
+        const label = programLabel(program.family);
+        return (
+          <li key={program.family} className="cov-progcard">
+            <div className="cov-progcard-head">
+              <span className="cov-progcard-name">{label.name}</span>
+              <span className="cov-progcard-count">
+                {program.jurisdictions.length}
+                <span className="cov-progcard-count-label">
+                  {program.jurisdictions.length === 1
+                    ? "jurisdiction"
+                    : "jurisdictions"}
+                </span>
+              </span>
+            </div>
+            {label.full && (
+              <span className="cov-progcard-full">{label.full}</span>
+            )}
+            <span className="cov-progcard-where">
+              {program.jurisdictions
+                .map((slug) => jurisdictionLabel(slug))
+                .join(" · ")}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

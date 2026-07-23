@@ -105,10 +105,13 @@ describe("CoveragePage", () => {
     expect(
       screen.getByRole("group", { name: /coverage view/i })
     ).toBeInTheDocument();
-    expect(screen.getByText("snap")).toBeInTheDocument();
-    expect(screen.getByText("2 jurisdictions")).toBeInTheDocument();
-    expect(screen.getByText("us-al · us-co")).toBeInTheDocument();
-    expect(screen.getByText("medicaid")).toBeInTheDocument();
+    expect(screen.getByText("SNAP")).toBeInTheDocument();
+    expect(
+      screen.getByText("Supplemental Nutrition Assistance Program")
+    ).toBeInTheDocument();
+    // Real jurisdiction names, not slugs; unknown families humanize.
+    expect(screen.getByText("Alabama · Colorado")).toBeInTheDocument();
+    expect(screen.getByText("Medicaid")).toBeInTheDocument();
 
     // Toggle to by jurisdiction: dense tiles, corpus rows linked,
     // encodings-only rows unlinked and amber.

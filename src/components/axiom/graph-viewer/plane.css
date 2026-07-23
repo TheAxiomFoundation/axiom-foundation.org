@@ -601,3 +601,120 @@
     animation: none;
   }
 }
+
+/* ═══ Dissection: semantic zoom (LOD) ═══ */
+/* Mid zoom: secondary chrome yields; the map reads as named cards. */
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-action,
+.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
+  display: none;
+}
+/* Far zoom: constellation mode — pills with names only, weight by
+   role. The graph becomes a sky map instead of unreadable micro text. */
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-eyebrow,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
+  display: none;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node {
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-label {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-output .irg-label {
+  font-size: 17px;
+}
+/* Keep computed values visible in run mode even from afar — the
+   execution layer outranks the LOD. */
+.graph-viewer-root
+  .irg-wrap[data-lod="far"]
+  .plane-live
+  .irg-exec-node
+  .irg-value,
+.graph-viewer-root
+  .plane-live
+  .irg-wrap[data-lod="far"]
+  .irg-exec-node
+  .irg-value {
+  display: block;
+}
+
+/* ═══ Dissection: source anatomy ═══ */
+/* Every node wears the body of law it came from as a left seam:
+   statutes amber, regulations teal, policies indigo, guidance
+   bronze, compositions neutral. */
+.graph-viewer-root .react-flow__node[class*="irg-src-"] .irg-node {
+  border-left-width: 3px;
+}
+.graph-viewer-root .react-flow__node.irg-src-statutes .irg-node {
+  border-left-color: #d97706;
+}
+.graph-viewer-root .react-flow__node.irg-src-regulations .irg-node {
+  border-left-color: #0f766e;
+}
+.graph-viewer-root .react-flow__node.irg-src-policies .irg-node {
+  border-left-color: #4f46e5;
+}
+.graph-viewer-root .react-flow__node.irg-src-guidance .irg-node {
+  border-left-color: #b45309;
+}
+.graph-viewer-root .react-flow__node.irg-src-compositions .irg-node {
+  border-left-color: #78716c;
+}
+
+/* Legend chips in the toolbar. */
+.graph-viewer-root .irg-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .irg-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.graph-viewer-root .irg-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  font-style: normal;
+}
+
+/* ═══ Execution wave ═══ */
+.graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
+  animation: exec-lift 0.5s var(--ease-out, ease) both;
+  animation-delay: calc(var(--exec-order, 0) * 130ms);
+}
+@keyframes exec-lift {
+  from {
+    transform: scale(1);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  }
+  to {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 1.5px var(--color-accent),
+      0 2px 6px rgba(28, 25, 23, 0.12),
+      0 18px 40px -14px rgba(217, 119, 6, 0.55);
+  }
+}
+.graph-viewer-root .plane-live .irg-exec-node .irg-value {
+  animation: plane-value-in 0.45s var(--ease-out, ease) both;
+  animation-delay: calc(var(--exec-order, 0) * 130ms + 120ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node,
+  .graph-viewer-root .plane-live .irg-exec-node .irg-value {
+    animation: none;
+  }
+}

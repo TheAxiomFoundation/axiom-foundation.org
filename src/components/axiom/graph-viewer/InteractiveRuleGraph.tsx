@@ -91,7 +91,18 @@ export function InteractiveRuleGraph({
   // inputs out of the box. They can collapse any sub-rule to hide its
   // internals; we track those user-collapses in the `collapsed` set rather
   // than the inverse.
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
+    initialCollapse(traces),
+  );
+  // Re-dissect when the program (trace set) changes.
+  const traceKey = Object.keys(traces).sort().join("|");
+  const lastTraceKey = useRef(traceKey);
+  useEffect(() => {
+    if (lastTraceKey.current !== traceKey) {
+      lastTraceKey.current = traceKey;
+      setCollapsed(initialCollapse(traces));
+    }
+  }, [traceKey, traces]);
   // "wires": collapse operator boxes — atomic inputs connect directly to
   //   the sub-rule or output that consumes them. Cleanest overview, and
   //   the default since most users care about structure first.
@@ -100,6 +111,26 @@ export function InteractiveRuleGraph({
   const [detail, setDetail] = useState<"operators" | "wires">("wires");
   const wrapRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Execution dissects its own path: nodes the run computed unfold
+  // so the machinery that actually ran is visible, while untouched
+  // branches stay folded.
+  useEffect(() => {
+    if (!executionActive || !executedLegalIds || executedLegalIds.size === 0) {
+      return;
+    }
+    setCollapsed((current) => {
+      let changed = false;
+      const next = new Set(current);
+      for (const id of executedLegalIds) {
+        if (next.delete(id)) changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [executionActive, executedLegalIds]);
+
+  // Semantic zoom: far viewports render constellation pills, mid
+  // hides secondary chrome, near shows full cards.
+  const [lod, setLod] = useState<"near" | "mid" | "far">("near");
   // When the user hovers any node, dim everything that isn't part of its
   // lineage (ancestors that feed into it + descendants it feeds). For a
   // mathematical operator that means "the boxes it pertains to"; for an
@@ -305,12 +336,58 @@ export function InteractiveRuleGraph({
     [nodes],
   );
 
+  // Depth of each executed node along the executed subgraph, for the
+  // wave: values and lifts ripple in computation order.
+  const execDepth = useMemo(() => {
+    const depth = new Map<string, number>();
+    if (executedIds.size === 0) return depth;
+    const incoming = new Map<string, string[]>();
+    for (const e of edges) {
+      if (executedIds.has(e.source) && executedIds.has(e.target)) {
+        if (!incoming.has(e.target)) incoming.set(e.target, []);
+        incoming.get(e.target)!.push(e.source);
+      }
+    }
+    const resolve = (id: string, stack: Set<string>): number => {
+      const cached = depth.get(id);
+      if (cached !== undefined) return cached;
+      if (stack.has(id)) return 0;
+      stack.add(id);
+      const parents = incoming.get(id) ?? [];
+      const d =
+        parents.length === 0
+          ? 0
+          : Math.max(...parents.map((p) => resolve(p, stack))) + 1;
+      depth.set(id, d);
+      return d;
+    };
+    for (const id of executedIds) resolve(id, new Set());
+    return depth;
+  }, [edges, executedIds]);
+
+
   const displayNodes = useMemo(() => {
-    let out = nodes;
+    let out = nodes.map((n) => {
+      const d = n.data as IrgNodeData;
+      const legalId =
+        "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
+      const bucket = legalId?.split(":")[1]?.split("/")[0];
+      return bucket
+        ? { ...n, className: `irg-src-${bucket}` }
+        : n;
+    });
     if (executionActive) {
       out = out.map((n) => ({
         ...n,
-        className: executedIds.has(n.id) ? "irg-exec-node" : "irg-exec-off",
+        className: `${n.className ?? ""} ${
+          executedIds.has(n.id) ? "irg-exec-node" : "irg-exec-off"
+        }`.trim(),
+        style: executedIds.has(n.id)
+          ? {
+              ...n.style,
+              ["--exec-order" as string]: String(execDepth.get(n.id) ?? 0),
+            }
+          : n.style,
       }));
     }
     if (!highlightSet) return out;
@@ -353,7 +430,11 @@ export function InteractiveRuleGraph({
   }
 
   return (
-    <div ref={wrapRef} className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}>
+    <div
+      ref={wrapRef}
+      data-lod={lod}
+      className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}
+    >
       <ReactFlowProvider>
         <ReactFlow
           nodes={displayNodes}
@@ -364,6 +445,15 @@ export function InteractiveRuleGraph({
           minZoom={0.2}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
+          onMove={(_event, viewport) => {
+            const next =
+              viewport.zoom < 0.42
+                ? "far"
+                : viewport.zoom < 0.75
+                  ? "mid"
+                  : "near";
+            setLod((current) => (current === next ? current : next));
+          }}
           connectionLineType={ConnectionLineType.SmoothStep}
           nodesDraggable
           nodesConnectable={false}
@@ -420,6 +510,11 @@ export function InteractiveRuleGraph({
           <Controls position="bottom-left" showInteractive={false} />
         </ReactFlow>
         <div className="irg-toolbar">
+          <div className="irg-legend" aria-label="Sources of law">
+            <span><i style={{ background: "#d97706" }} /> statute</span>
+            <span><i style={{ background: "#0f766e" }} /> regulation</span>
+            <span><i style={{ background: "#4f46e5" }} /> policy</span>
+          </div>
           <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
             <button
               type="button"
@@ -530,6 +625,8 @@ export type IrgNodeData =
       /** True when the underlying trace has a formula whose upstream
        *  chain we can collapse. */
       canExpand: boolean;
+      /** Steps hidden behind this node while collapsed. */
+      hiddenCount?: number;
       /** Current collapse state — drives "+ expand" / "− collapse". */
       isExpanded: boolean;
     }
@@ -563,6 +660,7 @@ export type IrgNodeData =
       label: string;
       legalId: string;
       canExpand: boolean;
+      hiddenCount?: number;
       isParameter: boolean;
       /** Whether the rule is currently selected as a dashboard output. */
       isOutput: boolean;
@@ -867,7 +965,11 @@ const OutputNode = ({ data }: NodeProps) => {
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded ? "− collapse" : "+ expand"}
+          {d.isExpanded
+            ? "− collapse"
+            : d.hiddenCount
+              ? `+ expand · ${d.hiddenCount} steps`
+              : "+ expand"}
         </div>
       )}
       <NodeInfo
@@ -964,7 +1066,11 @@ const RuleRefNode = ({ data }: NodeProps) => {
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded ? "− collapse" : "+ expand"}
+          {d.isExpanded
+            ? "− collapse"
+            : d.hiddenCount
+              ? `+ expand · ${d.hiddenCount} steps`
+              : "+ expand"}
         </div>
       )}
       <NodeInfo
@@ -1113,6 +1219,7 @@ function buildGraph(
           showValues,
           meta: buildMeta(outputTrace, "Output"),
           canExpand,
+          hiddenCount: isExpanded ? 0 : hiddenDescendantCount(outputTrace),
           isExpanded,
         } satisfies IrgNodeData,
       });
@@ -1229,6 +1336,7 @@ function ensureTraceNode(t: TraceNode, ctx: WalkCtx): string {
       label: t.label || t.legalId.split("#").pop() || "(unnamed)",
       legalId: t.legalId,
       canExpand: Boolean(t.formula) && !isParameter,
+      hiddenCount: isExpanded ? 0 : hiddenDescendantCount(t),
       isParameter,
       isOutput: ctx.selectedOutputIds?.has(t.legalId) ?? false,
       verdictCls: verdictClass(t),
@@ -1948,6 +2056,41 @@ function buildMeta(t: TraceNode, kind: "Output" | "Input" | "Rule" | "Parameter"
 function truncate(s: string | undefined, max: number): string | undefined {
   if (!s) return undefined;
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
+/** How many descendant steps a trace node hides when collapsed. */
+function hiddenDescendantCount(node: TraceNode, seen = new Set<string>()): number {
+  if (seen.has(node.legalId)) return 0;
+  seen.add(node.legalId);
+  let count = 0;
+  for (const child of node.children ?? []) {
+    count += 1 + hiddenDescendantCount(child, seen);
+  }
+  return count;
+}
+
+/** Dissection threshold: beyond this many reachable steps, the graph
+ *  opens focused — outputs and their first-level steps only, with
+ *  everything deeper behind "+ expand" counts. */
+const FOCUS_THRESHOLD = 120;
+
+function initialCollapse(traces: Record<string, TraceNode>): Set<string> {
+  const total = flattenTrace(traces).size;
+  if (total <= FOCUS_THRESHOLD) return new Set();
+  const collapsed = new Set<string>();
+  const walk = (node: TraceNode, depth: number, seen: Set<string>) => {
+    if (seen.has(node.legalId)) return;
+    seen.add(node.legalId);
+    // Keep the outputs' immediate structure visible; fold everything
+    // below the first level of steps.
+    if (depth >= 1 && node.formula && (node.children?.length ?? 0) > 0) {
+      collapsed.add(node.legalId);
+    }
+    for (const child of node.children ?? []) walk(child, depth + 1, seen);
+  };
+  const seen = new Set<string>();
+  for (const root of Object.values(traces)) walk(root, 0, seen);
+  return collapsed;
 }
 
 function flattenTrace(traces: Record<string, TraceNode>): Map<string, TraceNode> {

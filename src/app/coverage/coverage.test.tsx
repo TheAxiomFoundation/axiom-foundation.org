@@ -1,13 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetCoverageData } = vi.hoisted(() => ({
+const { mockGetCoverageData, mockGetProgramCoverage } = vi.hoisted(() => ({
   mockGetCoverageData: vi.fn(),
+  mockGetProgramCoverage: vi.fn(),
 }));
 
 vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getCoverageData: mockGetCoverageData,
+}));
+
+vi.mock("@/lib/axiom/program-coverage", () => ({
+  getProgramCoverage: mockGetProgramCoverage,
 }));
 
 import CoveragePage from "./page";
@@ -54,9 +59,16 @@ const DATA: CoverageData = {
   ],
 };
 
+const PROGRAMS = [
+  { family: "snap", jurisdictions: ["us-al", "us-co"] },
+  { family: "medicaid", jurisdictions: ["us-co"] },
+];
+
 describe("CoveragePage", () => {
   beforeEach(() => {
     mockGetCoverageData.mockReset();
+    mockGetProgramCoverage.mockReset();
+    mockGetProgramCoverage.mockResolvedValue(PROGRAMS);
   });
 
   it("renders an explicit unavailable state when data cannot load", async () => {
@@ -81,7 +93,6 @@ describe("CoveragePage", () => {
     expect(screen.getByText("405")).toBeInTheDocument();
     expect(screen.getByText("58,624")).toBeInTheDocument();
     expect(screen.getByText("4,875")).toBeInTheDocument();
-    expect(screen.getAllByText("United Kingdom").length).toBeGreaterThan(0);
     // Each layer carries its serif support line.
     expect(
       screen.getByText(/Statutes, regulations, and agency guidance/)
@@ -90,26 +101,23 @@ describe("CoveragePage", () => {
       screen.getByText(/Machine-readable rules, each linked back/)
     ).toBeInTheDocument();
 
-    // Jurisdiction cards: US links into the app, UK (encodings-only)
-    // does not, and the exact figures are printed on the card.
-    const usCard = screen
-      .getAllByText("US Federal")
-      .map((el) => el.closest("a.cov-card"))
-      .find(Boolean);
-    expect(usCard).toHaveAttribute("href", "/us");
+    // Default view: by program — family rows with jurisdiction lists.
     expect(
-      screen
-        .getAllByText("Mississippi")
-        .every((el) => el.closest("a.cov-card") === null)
-    ).toBe(true);
-    expect(
-      screen.getAllByText(/encodings published ahead of corpus ingestion/)
-        .length
-    ).toBe(2);
-    // Sort controls.
-    expect(
-      screen.getByRole("group", { name: /sort jurisdictions/i })
+      screen.getByRole("group", { name: /coverage view/i })
     ).toBeInTheDocument();
+    expect(screen.getByText("snap")).toBeInTheDocument();
+    expect(screen.getByText("2 jurisdictions")).toBeInTheDocument();
+    expect(screen.getByText("us-al · us-co")).toBeInTheDocument();
+    expect(screen.getByText("medicaid")).toBeInTheDocument();
+
+    // Toggle to by jurisdiction: dense tiles, corpus rows linked,
+    // encodings-only rows unlinked and amber.
+    fireEvent.click(screen.getByRole("button", { name: /by jurisdiction/i }));
+    const usTile = screen.getByText("US Federal").closest("a");
+    expect(usTile).toHaveAttribute("href", "/us");
+    expect(screen.getByText("Mississippi").closest("a")).toBeNull();
+    expect(screen.getAllByText("United Kingdom").length).toBeGreaterThan(0);
+    expect(screen.getByText(/figures are provisions/)).toBeInTheDocument();
   });
 });
 

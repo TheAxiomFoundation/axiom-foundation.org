@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
 import { CoverageHeader } from "@/components/coverage/header";
 import { StackHero } from "@/components/coverage/stack-hero";
-import { ShelfCards } from "@/components/coverage/shelf-cards";
+import { CoverageViews } from "@/components/coverage/coverage-views";
+import { getProgramCoverage, type ProgramCoverage } from "@/lib/axiom/program-coverage";
 import {
   getCoverageData,
   type CoverageData,
@@ -19,7 +20,10 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 export default async function CoveragePage() {
-  const data = await getCoverageData();
+  const [data, programs] = await Promise.all([
+    getCoverageData(),
+    getProgramCoverage(),
+  ]);
 
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">
@@ -33,14 +37,20 @@ export default async function CoveragePage() {
             Live counts are temporarily unavailable. Reload to try again.
           </Reveal>
         ) : (
-          <CoverageBody data={data} />
+          <CoverageBody data={data} programs={programs} />
         )}
       </div>
     </div>
   );
 }
 
-function CoverageBody({ data }: { data: CoverageData }) {
+function CoverageBody({
+  data,
+  programs,
+}: {
+  data: CoverageData;
+  programs: ProgramCoverage[];
+}) {
   return (
     <>
       {/* No Reveal wrapper here: its transform would break the
@@ -50,11 +60,10 @@ function CoverageBody({ data }: { data: CoverageData }) {
       </div>
 
       <Reveal as="section" className="mb-16">
-        <h2 className="m-0 mb-8 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
-          <span aria-hidden className="mb-3 block h-px w-7 bg-[var(--color-accent)]" />
-          By jurisdiction
-        </h2>
-        <ShelfCards jurisdictions={data.jurisdictions} />
+        <CoverageViews
+          jurisdictions={data.jurisdictions}
+          programs={programs}
+        />
       </Reveal>
     </>
   );

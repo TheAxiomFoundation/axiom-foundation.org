@@ -306,31 +306,8 @@ canvas[aria-hidden] {
   }
 }
 
-/* ── /coverage: jurisdiction cards — clean metric cards with a
-   segmented document-mix bar (hues validated against the light card
-   surface). Sort/filter controls above; hover is CSS. */
-.cov-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.cov-controls-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-.cov-controls-label {
-  font-family: var(--f-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-/* Segmented sort control: recessed track, elevated active segment.
-   The dots repeat the hero layers' key swatches. */
+/* ── /coverage views: one toggle (by program / by jurisdiction),
+   two dense listings — everything observable without scrolling. */
 .cov-seg {
   display: inline-flex;
   gap: 2px;
@@ -368,195 +345,104 @@ canvas[aria-hidden] {
   background: var(--color-paper-elevated);
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
 }
-.cov-controls-find {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.cov-count {
+.cov-note,
+.cov-legend {
   font-family: var(--f-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.08em;
-  color: var(--color-ink-muted);
-}
-.cov-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid var(--color-rule);
-  border-radius: 8px;
-  background: var(--color-paper-elevated);
-  padding: 0.45rem 0.7rem;
-  min-width: 230px;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-.cov-filter:focus-within {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.08);
-}
-.cov-filter svg {
-  width: 13px;
-  height: 13px;
-  color: var(--color-ink-muted);
-  flex: none;
-}
-.cov-filter-input {
-  font-family: var(--f-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  color: var(--color-ink);
-  background: none;
-  border: 0;
-  outline: 0;
-  width: 100%;
-}
-.cov-empty {
-  font-family: var(--f-mono);
-  font-size: 0.75rem;
-  color: var(--color-ink-muted);
-  padding: 2rem 0;
-}
-.cov-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.9rem;
-}
-.cov-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.15rem 1.15rem 1rem;
-  border: 1px solid var(--color-rule);
-  border-radius: 10px;
-  background: var(--color-paper-elevated);
-  text-decoration: none;
-  color: inherit;
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 200ms ease, border-color 200ms ease;
-  animation: cov-card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-@keyframes cov-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-a.cov-card:hover,
-a.cov-card:focus-visible {
-  transform: translateY(-2px);
-  border-color: var(--color-accent);
-  box-shadow: 0 12px 28px rgba(28, 25, 23, 0.1);
-}
-a.cov-card:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-.cov-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.cov-card-name {
-  font-family: var(--f-body);
-  font-weight: 550;
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
-  color: var(--color-ink);
-}
-.cov-card-slug {
-  font-family: var(--f-mono);
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   letter-spacing: 0.06em;
   color: var(--color-ink-muted);
-  border: 1px solid var(--color-rule);
-  border-radius: 5px;
-  padding: 0.14rem 0.4rem;
-  background: var(--color-paper);
 }
-.cov-card-metric {
-  display: flex;
+.cov-legend {
+  margin-top: 0.9rem;
+}
+/* By program: one row per family. */
+.cov-prog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cov-prog {
+  display: grid;
+  grid-template-columns: 150px 130px minmax(0, 1fr);
+  gap: 1rem;
   align-items: baseline;
-  gap: 0.45rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-rule-subtle);
 }
-.cov-card-value {
-  font-family: var(--f-body);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  font-size: 1.65rem;
-  line-height: 1;
-  letter-spacing: -0.02em;
+.cov-prog:first-child {
+  border-top: 1px solid var(--color-rule-subtle);
+}
+.cov-prog-name {
+  font-family: var(--f-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--color-ink);
 }
-.cov-card-metric-label {
+.cov-prog-count {
   font-family: var(--f-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.68rem;
   color: var(--color-ink-muted);
 }
-.cov-card-docs {
+.cov-prog-slugs {
   font-family: var(--f-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-  color: var(--color-ink-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: var(--color-ink-secondary);
+  overflow-wrap: anywhere;
 }
-.cov-card-foot {
+@media (max-width: 640px) {
+  .cov-prog {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+/* By jurisdiction: dense one-line tiles. */
+.cov-mini-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 6px;
+}
+.cov-mini {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--color-rule-subtle);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-paper-elevated);
+  padding: 0.42rem 0.6rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 150ms ease;
+}
+a.cov-mini:hover,
+a.cov-mini:focus-visible {
+  border-color: var(--color-accent);
+}
+a.cov-mini:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-mini-name {
+  font-family: var(--f-body);
+  font-size: 0.78rem;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cov-mini-num {
   font-family: var(--f-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
 }
-.cov-card-encoded {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+.cov-mini-enc {
   color: var(--color-accent);
-}
-.cov-card-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #bd7a24;
-  box-shadow: 0 0 0 3px rgba(189, 122, 36, 0.15);
-}
-.cov-card-encoded-none {
-  color: var(--color-ink-muted);
-}
-.cov-card-arrow {
-  color: var(--color-ink-muted);
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
-}
-a.cov-card:hover .cov-card-arrow,
-a.cov-card:focus-visible .cov-card-arrow {
-  opacity: 1;
-  transform: translateX(0);
-  color: var(--color-accent);
-}
-@media (prefers-reduced-motion: reduce) {
-  .cov-card {
-    animation: none;
-  }
-  a.cov-card:hover,
-  a.cov-card:focus-visible {
-    transform: none;
-  }
-  .cov-card-arrow {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* ── /coverage scrollytelling: the stack assembles on scroll.

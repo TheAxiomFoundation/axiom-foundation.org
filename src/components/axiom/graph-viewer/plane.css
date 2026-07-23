@@ -1697,3 +1697,213 @@
 .graph-viewer-root .journey-grid.is-focused .journey-matches {
   max-height: 240px;
 }
+
+/* ═══ The guided walk ═══ */
+.graph-viewer-root .walk-panel {
+  position: absolute;
+  top: 84px;
+  right: 24px;
+  bottom: 22px;
+  z-index: 15;
+  width: min(400px, calc(100% - 48px));
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--color-paper-elevated) 90%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 24px 60px -20px rgba(28, 25, 23, 0.4);
+  padding: 16px 18px 18px;
+  animation: inspector-in 0.3s var(--ease-out, ease) both;
+}
+.graph-viewer-root .walk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.graph-viewer-root .walk-direction {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-hover);
+}
+.graph-viewer-root .walk-trail {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.graph-viewer-root .walk-trail button {
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-viewer-root .walk-trail button.is-current {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-light);
+  color: var(--color-accent-hover);
+  font-weight: 600;
+}
+.graph-viewer-root .walk-card {
+  margin-top: 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-paper-elevated);
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px -16px rgba(28, 25, 23, 0.4);
+}
+.graph-viewer-root .walk-kind {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.graph-viewer-root .walk-card h2 {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+.graph-viewer-root .walk-value {
+  margin: 5px 0 0;
+  font-size: 24px;
+  font-weight: 650;
+  color: var(--color-accent-hover);
+  font-variant-numeric: tabular-nums;
+}
+.graph-viewer-root .walk-cite {
+  margin: 7px 0 0;
+  font-size: 11.5px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .walk-formula {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--color-ink-secondary);
+  background: var(--color-rule-subtle);
+  border-radius: 7px;
+  padding: 6px 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-viewer-root .walk-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .walk-next {
+  margin-top: 14px;
+}
+.graph-viewer-root .walk-next-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .walk-choices {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.graph-viewer-root .walk-choices button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-elevated);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.12s var(--ease-out, ease),
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.graph-viewer-root .walk-choices button:hover {
+  transform: translateX(3px);
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 20px -12px rgba(217, 119, 6, 0.5);
+}
+.graph-viewer-root .walk-choices button span {
+  flex-shrink: 0;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .walk-input-chips {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.graph-viewer-root .walk-input-chips span {
+  border: 1px dashed color-mix(in srgb, var(--color-ink-muted) 40%, transparent);
+  border-radius: 999px;
+  padding: 1.5px 9px;
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+  background: var(--color-paper);
+}
+.graph-viewer-root .walk-end {
+  margin-top: 14px;
+  border: 1px solid rgba(22, 101, 52, 0.25);
+  background: rgba(22, 101, 52, 0.05);
+  border-radius: 12px;
+  padding: 13px 15px;
+}
+.graph-viewer-root .walk-end strong {
+  font-size: 13.5px;
+  color: var(--color-success, #166534);
+}
+.graph-viewer-root .walk-end p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .walk-lens {
+  margin-top: 12px;
+  width: 100%;
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+}

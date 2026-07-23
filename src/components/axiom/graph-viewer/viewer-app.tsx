@@ -118,10 +118,17 @@ export function GraphViewerApp() {
   const [intentSearchOpen, setIntentSearchOpen] = useState(false);
   // Which kind of piece: a computed rule (output path) or a raw
   // input (question path).
-  const [intentKind, setIntentKind] = useState<"output" | "input">("output");
+  const [intentKind, setIntentKind] = useState<"output" | "input">("input");
   const [intentInput, setIntentInput] = useState<{
     legalId: string;
     name: string;
+  } | null>(null);
+  // The guided walk: step through the tree one layer at a time.
+  // "up" walks an input toward the results it feeds; "down" walks a
+  // result toward the questions it rests on.
+  const [walk, setWalk] = useState<{
+    direction: "up" | "down";
+    trail: string[];
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
@@ -141,7 +148,7 @@ export function GraphViewerApp() {
     setLauncherStep(effectiveProgram ? "intent" : "program");
     setIntentSearch("");
     setIntentSearchOpen(false);
-    setIntentKind("output");
+    setIntentKind("input");
     setIntentInput(null);
     setLauncher("open");
   };
@@ -158,6 +165,38 @@ export function GraphViewerApp() {
     dismissLauncher();
     openLens(legalId);
   };
+  const walkRuleById = useMemo(
+    () => new Map((graph?.rules ?? []).map((rule) => [rule.legalId, rule])),
+    [graph],
+  );
+  const walkInputById = useMemo(
+    () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
+    [graph],
+  );
+  const consumersOf = (legalId: string) =>
+    (graph?.rules ?? []).filter(
+      (rule) =>
+        rule.ruleDeps.includes(legalId) || rule.inputDeps.includes(legalId),
+    );
+  const startWalk = (direction: "up" | "down", legalId: string) => {
+    dismissLauncher();
+    setWalk({ direction, trail: [legalId] });
+    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+  };
+  const walkTo = (legalId: string) => {
+    setWalk((current) =>
+      current ? { ...current, trail: [...current.trail, legalId] } : current,
+    );
+    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+  };
+  const walkBackTo = (index: number) => {
+    setWalk((current) =>
+      current
+        ? { ...current, trail: current.trail.slice(0, index + 1) }
+        : current,
+    );
+  };
+
   const intentMatches = useMemo(() => {
     const query = intentSearch.trim().toLowerCase();
     if (!query || !graph) return [];
@@ -620,6 +659,33 @@ export function GraphViewerApp() {
     });
   }, [runResult, liveTraces.executed]);
 
+  // Computed values by durable legal id (from the live traces), for
+  // the walk panel.
+  const valueByLegalId = useMemo(() => {
+    const map = new Map<string, string>();
+    const visit = (node: TraceNode, seen: Set<string>) => {
+      if (seen.has(node.legalId)) return;
+      seen.add(node.legalId);
+      if (node.value !== null && node.value !== undefined) {
+        map.set(
+          node.legalId,
+          typeof node.value === "number"
+            ? node.value.toLocaleString("en-US")
+            : typeof node.value === "boolean"
+              ? node.value
+                ? "Yes"
+                : "No"
+              : String(node.value),
+        );
+      }
+      for (const child of node.children ?? []) visit(child, seen);
+    };
+    const seen = new Set<string>();
+    for (const root of Object.values(liveTraces.traces)) visit(root, seen);
+    return map;
+  }, [liveTraces]);
+
+
   function toggleOutput(legalId: LegalId) {
     setSelectedOutputs((current) =>
       current.includes(legalId)
@@ -785,8 +851,8 @@ export function GraphViewerApp() {
                                 type="button"
                                 onClick={() =>
                                   intentKind === "input"
-                                    ? setIntentInput(match)
-                                    : beginRuleLens(match.legalId)
+                                    ? startWalk("up", match.legalId)
+                                    : startWalk("down", match.legalId)
                                 }
                               >
                                 {humanize(match.name)}
@@ -1184,6 +1250,162 @@ export function GraphViewerApp() {
             <div className="empty-state">Select at least one output to render its computation graph.</div>
           )}
         </div>
+
+        {walk && (() => {
+          const currentId = walk.trail[walk.trail.length - 1];
+          const rule = walkRuleById.get(currentId);
+          const input = walkInputById.get(currentId);
+          const isUp = walk.direction === "up";
+          const nextUp = isUp ? consumersOf(currentId) : [];
+          const depRules = !isUp && rule
+            ? rule.ruleDeps
+                .map((id) => walkRuleById.get(id))
+                .filter((dep): dep is NonNullable<typeof dep> => Boolean(dep))
+            : [];
+          const depInputs = !isUp && rule
+            ? rule.inputDeps
+                .map((id) => walkInputById.get(id))
+                .filter((dep): dep is NonNullable<typeof dep> => Boolean(dep))
+            : [];
+          const atEnd = isUp ? nextUp.length === 0 : depRules.length === 0;
+          const name = humanize(
+            (rule?.name ?? input?.name ?? currentId.split("#").pop()) || "",
+          );
+          const value = valueByLegalId.get(currentId) ?? null;
+          return (
+            <aside className="walk-panel" aria-label="Guided walk">
+              <div className="walk-head">
+                <span className="walk-direction">
+                  {isUp ? "↑ Bottom-up · from an input" : "↓ Top-down · from a result"}
+                </span>
+                <button
+                  type="button"
+                  className="results-close"
+                  onClick={() => setWalk(null)}
+                  aria-label="End the walk"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="walk-trail">
+                {walk.trail.map((id, index) => (
+                  <button
+                    key={`${id}-${index}`}
+                    type="button"
+                    className={
+                      index === walk.trail.length - 1 ? "is-current" : ""
+                    }
+                    onClick={() => walkBackTo(index)}
+                  >
+                    {humanize(
+                      (walkRuleById.get(id)?.name ??
+                        walkInputById.get(id)?.name ??
+                        id.split("#").pop()) || "",
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="walk-card">
+                <span className="walk-kind">
+                  {input ? "Input · a question" : "Rule"}
+                </span>
+                <h2>{name}</h2>
+                {value !== null && <p className="walk-value">{value}</p>}
+                {rule?.source && !/composition/i.test(rule.source) && (
+                  <p className="walk-cite">{rule.source}</p>
+                )}
+                {rule?.formula && (
+                  <code className="walk-formula" title={rule.formula}>
+                    = {rule.formula.replace(/[()]/g, " ").slice(0, 160)}
+                  </code>
+                )}
+                {input && (
+                  <p className="walk-note">
+                    A fact asked of the household — the raw material of the
+                    computation.
+                  </p>
+                )}
+              </div>
+
+              {atEnd ? (
+                <div className="walk-end">
+                  {isUp ? (
+                    <>
+                      <strong>🏁 End of the line.</strong>
+                      <p>
+                        {name} feeds nothing further — it is a final result
+                        of this program.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <strong>⚑ Bedrock.</strong>
+                      <p>
+                        {name} rests directly on{" "}
+                        {depInputs.length > 0
+                          ? `${depInputs.length} household ${depInputs.length === 1 ? "question" : "questions"}`
+                          : "no further steps"}
+                        .
+                      </p>
+                      {depInputs.length > 0 && (
+                        <div className="walk-input-chips">
+                          {depInputs.slice(0, 8).map((dep) => (
+                            <span key={dep.legalId}>{humanize(dep.name)}</span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="walk-lens"
+                    onClick={() => {
+                      setWalk(null);
+                      openLens(rule ? currentId : walk.trail[1] ?? currentId);
+                    }}
+                  >
+                    ⊙ Open this on the map
+                  </button>
+                </div>
+              ) : (
+                <div className="walk-next">
+                  <span className="walk-next-label">
+                    {isUp
+                      ? `Feeds ${nextUp.length} ${nextUp.length === 1 ? "rule" : "rules"} — walk on:`
+                      : `Computed from ${depRules.length} ${depRules.length === 1 ? "step" : "steps"} — go deeper:`}
+                  </span>
+                  <div className="walk-choices">
+                    {(isUp ? nextUp : depRules).slice(0, 9).map((next) => (
+                      <button
+                        key={next.legalId}
+                        type="button"
+                        onClick={() => walkTo(next.legalId)}
+                      >
+                        {humanize(next.name)}
+                        <span>
+                          {isUp
+                            ? `feeds ${consumersOf(next.legalId).length || "no"} further`
+                            : `${next.ruleDeps.length} steps · ${next.inputDeps.length} inputs`}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {!isUp && depInputs.length > 0 && (
+                    <div className="walk-input-chips">
+                      {depInputs.slice(0, 6).map((dep) => (
+                        <span key={dep.legalId}>{humanize(dep.name)}</span>
+                      ))}
+                      {depInputs.length > 6 && (
+                        <span>+{depInputs.length - 6} more</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </aside>
+          );
+        })()}
 
         {inspected && (
           <aside className="node-inspector" aria-label="Node details">

@@ -45,6 +45,36 @@ function countSteps(node: TraceNode, seen = new Set<string>()): number {
   return count;
 }
 
+const OPERATOR_RE = /(\band\b|\bor\b|\bnot\b|\bif\b|\belse\b|[+\-*/]|>=|<=|==|!=|>|<)/;
+
+/** Light syntax tint for formula one-liners. */
+function FormulaLine({ formula }: { formula: string }) {
+  const clean = formula.replace(/[()]/g, " ").replace(/\s+/g, " ").trim();
+  const parts = clean.split(
+    /(\band\b|\bor\b|\bnot\b|\bif\b|\belse\b|[+\-*/]|>=|<=|==|!=|>|<)/g,
+  );
+  return (
+    <code className="tree-formula" title={formula}>
+      <span className="tree-formula-eq">=</span>{" "}
+      {parts.map((part, index) =>
+        OPERATOR_RE.test(part) && part.length <= 4 ? (
+          <b key={index}>{part}</b>
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </code>
+  );
+}
+
+/** Boilerplate composition "sources" say nothing — only real legal
+ *  cites earn a chip. */
+function meaningfulCite(source: string | undefined): string | null {
+  if (!source) return null;
+  if (/composition/i.test(source)) return null;
+  return source;
+}
+
 function formatValue(value: TraceNode["value"]): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -113,39 +143,41 @@ function TreeBranch({
 }) {
   if (seen.has(node.legalId) || depth > 10) {
     return (
-      <div className="tree-ref" style={{ marginLeft: depth * 22 }}>
+      <div className="tree-ref">
         ↺ {humanize(node.label ?? "")} — defined above
       </div>
     );
   }
   const nextSeen = new Set(seen).add(node.legalId);
   const steps = (node.children ?? []).filter(
-    (child) => child.dtype !== "input"
+    (child) => child.dtype !== "input",
   );
   const inputs = (node.children ?? []).filter(
-    (child) => child.dtype === "input"
+    (child) => child.dtype === "input",
   );
   const isFolded = folded.has(node.legalId);
   const hidden = isFolded ? countSteps(node) : 0;
   const bucket = bucketOf(node.legalId);
+  const seam = bucket ? (BUCKET_COLOR[bucket] ?? null) : null;
   const value = formatValue(node.value);
+  const cite = meaningfulCite(node.source ?? undefined);
   const isExec = executed.has(node.legalId);
   const isRoot = depth === 0;
 
   return (
-    <div
-      className={`tree-branch ${isRoot ? "is-root" : ""}`}
-      style={{ marginLeft: isRoot ? 0 : 22 }}
-    >
+    <div className={`tree-branch ${isRoot ? "is-root" : ""}`}>
+      {!isRoot && (
+        <span
+          aria-hidden
+          className="tree-joint"
+          style={seam ? { background: seam } : undefined}
+        />
+      )}
       <div
-        className={`tree-card ${isExec ? "is-executed" : ""} ${isRoot ? "is-root" : ""}`}
-        style={
-          bucket && BUCKET_COLOR[bucket]
-            ? { borderLeftColor: BUCKET_COLOR[bucket] }
-            : undefined
-        }
+        className={`tree-card depth-${Math.min(depth, 4)} ${isExec ? "is-executed" : ""} ${isRoot ? "is-root" : ""}`}
       >
         <div className="tree-card-main">
+          {isRoot && <span className="tree-eyebrow">Result</span>}
           <button
             type="button"
             className="tree-name"
@@ -154,6 +186,18 @@ function TreeBranch({
           >
             {humanize(node.label ?? node.legalId.split("#").pop() ?? "")}
           </button>
+          {cite && (
+            <span
+              className="tree-cite-chip"
+              style={
+                seam ? { color: seam, borderColor: `${seam}55` } : undefined
+              }
+              title={cite}
+            >
+              {cite}
+            </span>
+          )}
+          <span className="tree-spacer" />
           {value !== null && (
             <span className={`tree-value ${isExec ? "is-executed" : ""}`}>
               {value}
@@ -165,42 +209,38 @@ function TreeBranch({
               className={`tree-fold ${isFolded ? "" : "is-open"}`}
               onClick={() => onToggleFold(node.legalId)}
             >
-              {isFolded ? `▸ ${hidden} steps` : "▾ fold"}
+              {isFolded ? `▸ ${hidden}` : "▾"}
             </button>
           )}
         </div>
-        {(node.source || node.formula) && (
-          <div className="tree-card-meta">
-            {node.source && <span className="tree-cite">{node.source}</span>}
-            {node.formula && (
-              <code className="tree-formula">{node.formula}</code>
-            )}
-          </div>
-        )}
+        {node.formula && <FormulaLine formula={node.formula} />}
         {inputs.length > 0 && !isFolded && (
           <div className="tree-inputs">
-            {inputs.slice(0, 8).map((input) => (
+            {inputs.slice(0, 6).map((input) => (
               <span key={input.legalId} className="tree-input-chip">
                 {humanize(
                   input.label ??
                     input.legalId.split("#").pop()?.replace(/^input\./, "") ??
-                    ""
+                    "",
                 )}
                 {formatValue(input.value) !== null && (
                   <b> {formatValue(input.value)}</b>
                 )}
               </span>
             ))}
-            {inputs.length > 8 && (
+            {inputs.length > 6 && (
               <span className="tree-input-chip is-more">
-                +{inputs.length - 8} inputs
+                +{inputs.length - 6} inputs
               </span>
             )}
           </div>
         )}
       </div>
       {!isFolded && steps.length > 0 && (
-        <div className="tree-children">
+        <div
+          className="tree-children"
+          style={seam ? { borderColor: `${seam}33` } : undefined}
+        >
           {steps.map((child, index) => (
             <TreeBranch
               key={`${child.legalId}-${index}`}

@@ -1481,3 +1481,148 @@
     animation: none;
   }
 }
+
+/* ═══ The journey: intent step ═══ */
+.graph-viewer-root .journey-grid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  text-align: left;
+}
+.graph-viewer-root .journey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  background: var(--color-paper-elevated);
+  padding: 18px 16px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05);
+  transition:
+    transform 0.15s var(--ease-out, ease),
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  animation: launcher-card-in 0.45s var(--ease-out, ease) both;
+}
+.graph-viewer-root .journey-card:nth-child(2) { animation-delay: 60ms; }
+.graph-viewer-root .journey-card:nth-child(3) { animation-delay: 120ms; }
+.graph-viewer-root .journey-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.06),
+    0 14px 32px -16px rgba(217, 119, 6, 0.5);
+}
+.graph-viewer-root .journey-card.is-search {
+  cursor: default;
+}
+.graph-viewer-root .journey-glyph {
+  font-size: 20px;
+  color: var(--color-accent);
+  line-height: 1;
+}
+.graph-viewer-root .journey-card strong {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+.graph-viewer-root .journey-card > span:not(.journey-glyph):not(.journey-empty) {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .journey-card input[type="search"] {
+  border: 1px solid var(--color-rule);
+  border-radius: 9px;
+  background: var(--color-paper);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  width: 100%;
+}
+.graph-viewer-root .journey-card input[type="search"]:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.graph-viewer-root .journey-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.graph-viewer-root .journey-matches button {
+  border: none;
+  background: none;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+  text-align: left;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.graph-viewer-root .journey-matches button:hover {
+  background: var(--color-accent-light);
+  color: var(--color-accent-hover);
+}
+.graph-viewer-root .journey-empty {
+  font-size: 11.5px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .plane-launcher-alt.as-button {
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Journey re-entry pill beside the Index toggle. */
+.graph-viewer-root .journey-toggle {
+  position: absolute;
+  bottom: 14px;
+  left: 60px;
+  z-index: 13;
+  border: 1px solid var(--color-accent-line);
+  background: color-mix(in srgb, var(--color-paper-elevated) 90%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(217, 119, 6, 0.45);
+}
+.graph-viewer-root .journey-toggle:hover {
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .nav-toggle {
+  left: 178px;
+}
+
+/* Scenario glow when the journey lands here. */
+.graph-viewer-root .scenario-block.is-glowing {
+  animation: scenario-glow 2.4s ease;
+  border-radius: 12px;
+}
+@keyframes scenario-glow {
+  0%, 100% { box-shadow: none; }
+  25% {
+    box-shadow:
+      0 0 0 2px var(--color-accent),
+      0 0 32px -4px rgba(217, 119, 6, 0.55);
+  }
+  70% {
+    box-shadow:
+      0 0 0 2px var(--color-accent),
+      0 0 32px -4px rgba(217, 119, 6, 0.55);
+  }
+}

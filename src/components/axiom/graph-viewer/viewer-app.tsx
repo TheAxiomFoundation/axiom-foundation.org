@@ -111,6 +111,11 @@ export function GraphViewerApp() {
   // The entry launcher: a cold arrival (no deep link) opens with
   // "what law do you want to run?" instead of a bare canvas. Picking
   // a program dissolves the launcher into the graph.
+  const [launcherStep, setLauncherStep] = useState<"program" | "intent">(
+    "program",
+  );
+  const [intentSearch, setIntentSearch] = useState("");
+  const [scenarioGlow, setScenarioGlow] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
       typeof window !== "undefined" &&
@@ -124,6 +129,35 @@ export function GraphViewerApp() {
     setLauncher("leaving");
     window.setTimeout(() => setLauncher("closed"), 420);
   };
+  const reopenJourney = () => {
+    setLauncherStep(effectiveProgram ? "intent" : "program");
+    setIntentSearch("");
+    setLauncher("open");
+  };
+  const beginSurvey = () => {
+    dismissLauncher();
+    setNavOpen(true);
+  };
+  const beginScenario = () => {
+    dismissLauncher();
+    setScenarioGlow(true);
+    window.setTimeout(() => setScenarioGlow(false), 2600);
+  };
+  const beginRuleLens = (legalId: string) => {
+    dismissLauncher();
+    openLens(legalId);
+  };
+  const intentMatches = useMemo(() => {
+    const query = intentSearch.trim().toLowerCase();
+    if (!query || !graph) return [];
+    return graph.rules
+      .filter(
+        (rule) =>
+          rule.kind === "derived" &&
+          rule.name.toLowerCase().includes(query),
+      )
+      .slice(0, 8);
+  }, [intentSearch, graph]);
   // ?compose=us:regulations/47-cfr/54/403[#rule] renders a graph composed
   // on demand from the encodings mirror — for law that is encoded but not
   // yet inside any compiled program package. Choosing a program or
@@ -608,6 +642,77 @@ export function GraphViewerApp() {
       >
         <div className="plane-launcher-inner">
           <p className="plane-launcher-eyebrow">Axiom · Plane</p>
+          {launcherStep === "intent" ? (
+            <>
+              <h1 className="plane-launcher-title">
+                {effectiveProgram?.displayName ?? "This program"} — what do
+                you want to do?
+              </h1>
+              <div className="journey-grid">
+                <button
+                  type="button"
+                  className="journey-card"
+                  onClick={beginSurvey}
+                >
+                  <span className="journey-glyph">⊞</span>
+                  <strong>Survey the whole law</strong>
+                  <span>
+                    The map, dissected — results first, unfold as you go,
+                    with the full index at hand.
+                  </span>
+                </button>
+                <div className="journey-card is-search">
+                  <span className="journey-glyph">⊙</span>
+                  <strong>Understand one rule</strong>
+                  <input
+                    type="search"
+                    placeholder="Search a rule… allotment, eligible, income"
+                    value={intentSearch}
+                    onChange={(event) => setIntentSearch(event.target.value)}
+                    autoFocus
+                  />
+                  {intentMatches.length > 0 && (
+                    <div className="journey-matches">
+                      {intentMatches.map((rule) => (
+                        <button
+                          key={rule.legalId}
+                          type="button"
+                          onClick={() => beginRuleLens(rule.legalId)}
+                        >
+                          {humanize(rule.name)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {intentSearch.trim() && intentMatches.length === 0 && (
+                    <span className="journey-empty">
+                      {graph ? "No rule matches." : "Loading rules…"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="journey-card"
+                  onClick={beginScenario}
+                >
+                  <span className="journey-glyph">▶</span>
+                  <strong>Run a scenario</strong>
+                  <span>
+                    Set a household's numbers and watch the computation
+                    light the path to the result.
+                  </span>
+                </button>
+              </div>
+              <button
+                type="button"
+                className="plane-launcher-alt as-button"
+                onClick={() => setLauncherStep("program")}
+              >
+                ← Pick a different program
+              </button>
+            </>
+          ) : (
+            <>
           <h1 className="plane-launcher-title">
             What law do you want to run?
           </h1>
@@ -627,7 +732,7 @@ export function GraphViewerApp() {
                   style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
                   onClick={() => {
                     selectProgram(programKey(item));
-                    dismissLauncher();
+                    setLauncherStep("intent");
                   }}
                 >
                   <span className="plane-launcher-chip">
@@ -650,6 +755,8 @@ export function GraphViewerApp() {
           <a className="plane-launcher-alt" href="/us">
             Just reading? Open the Library →
           </a>
+            </>
+          )}
         </div>
       </div>
     )}
@@ -745,7 +852,9 @@ export function GraphViewerApp() {
         </section>
 
         {scenarioFields.length > 0 && (
-          <section className="control-block scenario-block">
+          <section
+            className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
+          >
             <div className="section-head stacked">
               <h2>Scenario</h2>
               <span>The levers of the law — edit and run</span>
@@ -826,6 +935,14 @@ export function GraphViewerApp() {
           </div>
         )}
         <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
+          <button
+            type="button"
+            className="journey-toggle"
+            onClick={reopenJourney}
+            title="Start a new journey — survey, one rule, or a scenario"
+          >
+            ✦ Journey
+          </button>
           <button
             type="button"
             className="nav-toggle"

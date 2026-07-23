@@ -42,7 +42,7 @@ describe('Landing sections', () => {
     expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()
   })
 
-  it('renders both layers and the worked example', () => {
+  it('renders both layers (worked example removed)', () => {
     render(<EncodedLawSection />)
     expect(
       screen.getByRole('heading', { name: /two layers, both in the open/i }),
@@ -54,8 +54,8 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /encoded so anyone can compute them/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: /aca premium tax credit, three eras/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: /aca premium tax credit/i }),
+    ).toBeNull()
   })
 
   it('renders the encoder section with terminal + steps', () => {

@@ -718,3 +718,109 @@
     animation: none;
   }
 }
+
+/* ═══ The rule lens: trail + downstream ═══ */
+.graph-viewer-root .graph-stage {
+  position: relative;
+}
+.graph-viewer-root .lens-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 14;
+  max-width: min(720px, calc(100% - 480px));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-paper-elevated) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px -12px rgba(28, 25, 23, 0.35);
+  animation: inspector-in 0.25s var(--ease-out, ease) both;
+}
+.graph-viewer-root .lens-crumb {
+  border: 1px solid transparent;
+  background: none;
+  border-radius: 8px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.graph-viewer-root .lens-crumb:hover {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+}
+.graph-viewer-root .lens-crumb.is-current {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-light);
+  color: var(--color-accent-hover);
+  font-weight: 600;
+}
+.graph-viewer-root .lens-crumb-root {
+  font-weight: 550;
+  color: var(--color-ink);
+}
+.graph-viewer-root .lens-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-viewer-root .lens-sep {
+  color: var(--color-ink-muted);
+  font-size: 10px;
+}
+.graph-viewer-root .lens-consumers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.graph-viewer-root .lens-consumers-label {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .lens-consumer-chip {
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-elevated);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.graph-viewer-root .lens-consumer-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.graph-viewer-root .node-inspector-lens {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-light);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.graph-viewer-root .node-inspector-lens:hover {
+  background: color-mix(in srgb, var(--color-accent-light) 60%, #fff);
+}

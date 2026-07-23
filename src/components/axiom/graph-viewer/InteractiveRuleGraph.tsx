@@ -49,6 +49,9 @@ interface Props {
    * and a link to the Axiom app entry.
    */
   parameterRules?: ParameterRule[];
+  /** Dissection policy: "auto" folds only past the size threshold;
+   *  "always" opens one hop regardless (the rule lens). */
+  dissect?: "auto" | "always";
   /** Run mode: the execution layer is live — executed nodes lift,
    *  the rest recede, the camera flies the executed path. */
   executionActive?: boolean;
@@ -58,6 +61,8 @@ interface Props {
   /** Node click → inspector. Fired for plain clicks (not action
    *  rows, which keep their own routing). */
   onInspect?: (data: IrgNodeData) => void;
+  /** Double-click → open the rule lens on this node. */
+  onLens?: (legalId: string) => void;
 }
 
 /**
@@ -83,26 +88,28 @@ export function InteractiveRuleGraph({
   selectedOutputIds,
   showValues = false,
   parameterRules,
+  dissect = "auto",
   executionActive = false,
   executedLegalIds,
   onInspect,
+  onLens,
 }: Props) {
   // Sub-rules expand inline by default — the user gets the full DAG to atomic
   // inputs out of the box. They can collapse any sub-rule to hide its
   // internals; we track those user-collapses in the `collapsed` set rather
   // than the inverse.
   const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    initialCollapse(traces),
+    initialCollapse(traces, dissect),
   );
-  // Re-dissect when the program (trace set) changes.
-  const traceKey = Object.keys(traces).sort().join("|");
+  // Re-dissect when the program (trace set) or policy changes.
+  const traceKey = Object.keys(traces).sort().join("|") + "::" + dissect;
   const lastTraceKey = useRef(traceKey);
   useEffect(() => {
     if (lastTraceKey.current !== traceKey) {
       lastTraceKey.current = traceKey;
-      setCollapsed(initialCollapse(traces));
+      setCollapsed(initialCollapse(traces, dissect));
     }
-  }, [traceKey, traces]);
+  }, [traceKey, traces, dissect]);
   // "wires": collapse operator boxes — atomic inputs connect directly to
   //   the sub-rule or output that consumes them. Cleanest overview, and
   //   the default since most users care about structure first.
@@ -466,6 +473,12 @@ export function InteractiveRuleGraph({
             if (kind !== "literal") setHighlightNodeId(node.id);
           }}
           onNodeMouseLeave={() => setHighlightNodeId(null)}
+          onNodeDoubleClick={(_e, node) => {
+            const data = node.data as IrgNodeData;
+            if ("legalId" in data && data.legalId && data.kind !== "input") {
+              onLens?.(data.legalId);
+            }
+          }}
           onNodeClick={(e, node) => {
             const data = node.data as IrgNodeData;
             const target = e.target as HTMLElement;
@@ -2074,9 +2087,12 @@ function hiddenDescendantCount(node: TraceNode, seen = new Set<string>()): numbe
  *  everything deeper behind "+ expand" counts. */
 const FOCUS_THRESHOLD = 120;
 
-function initialCollapse(traces: Record<string, TraceNode>): Set<string> {
+function initialCollapse(
+  traces: Record<string, TraceNode>,
+  dissect: "auto" | "always" = "auto",
+): Set<string> {
   const total = flattenTrace(traces).size;
-  if (total <= FOCUS_THRESHOLD) return new Set();
+  if (dissect === "auto" && total <= FOCUS_THRESHOLD) return new Set();
   const collapsed = new Set<string>();
   const walk = (node: TraceNode, depth: number, seen: Set<string>) => {
     if (seen.has(node.legalId)) return;

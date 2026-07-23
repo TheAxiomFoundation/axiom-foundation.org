@@ -45,6 +45,41 @@ export function GraphViewerApp() {
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [inspected, setInspected] = useState<IrgNodeData | null>(null);
+  // The rule lens: "how does this rule work?" — a trail of focused
+  // rules over the map. Entering saves the map's output selection;
+  // the trail's crumbs step back; leaving restores the map exactly.
+  const [lensTrail, setLensTrail] = useState<string[]>([]);
+  const savedSelection = useRef<LegalId[] | null>(null);
+  const openLens = (legalId: string) => {
+    setInspected(null);
+    setLensTrail((trail) => {
+      if (trail.length === 0) savedSelection.current = selectedOutputs;
+      if (trail[trail.length - 1] === legalId) return trail;
+      return [...trail, legalId];
+    });
+    setSelectedOutputs([legalId]);
+  };
+  const jumpLens = (index: number) => {
+    setLensTrail((trail) => {
+      const next = trail.slice(0, index + 1);
+      setSelectedOutputs([next[next.length - 1]]);
+      return next;
+    });
+  };
+  const closeLens = () => {
+    setLensTrail([]);
+    if (savedSelection.current) setSelectedOutputs(savedSelection.current);
+    savedSelection.current = null;
+  };
+  const lensFocusId = lensTrail[lensTrail.length - 1] ?? null;
+  // Downstream: who uses the focused rule — the direction the
+  // upstream tree cannot draw.
+  const lensConsumers = useMemo(() => {
+    if (!lensFocusId || !graph) return [];
+    return graph.rules
+      .filter((rule) => rule.ruleDeps.includes(lensFocusId))
+      .slice(0, 10);
+  }, [lensFocusId, graph]);
   const [runResult, setRunResult] = useState<{
     outputs: Record<string, number | string | boolean | null>;
     trace: Array<{ variable: string; value: unknown }>;
@@ -754,6 +789,41 @@ export function GraphViewerApp() {
           </div>
         )}
         <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
+        {lensFocusId && (
+          <div className="lens-bar" role="navigation" aria-label="Rule lens trail">
+            <button type="button" className="lens-crumb lens-crumb-root" onClick={closeLens}>
+              ⊞ Map
+            </button>
+            {lensTrail.map((id, index) => (
+              <span key={`${id}-${index}`} className="lens-crumb-wrap">
+                <span aria-hidden className="lens-sep">▸</span>
+                <button
+                  type="button"
+                  className={`lens-crumb ${index === lensTrail.length - 1 ? "is-current" : ""}`}
+                  onClick={() => jumpLens(index)}
+                >
+                  {humanize(id.split("#").pop() ?? id)}
+                </button>
+              </span>
+            ))}
+            {lensConsumers.length > 0 && (
+              <span className="lens-consumers">
+                <span className="lens-consumers-label">used by</span>
+                {lensConsumers.map((rule) => (
+                  <button
+                    key={rule.legalId}
+                    type="button"
+                    className="lens-consumer-chip"
+                    onClick={() => openLens(rule.legalId)}
+                  >
+                    {humanize(rule.name)}
+                  </button>
+                ))}
+              </span>
+            )}
+          </div>
+        )}
+
           {error && <div className="status error">{error}</div>}
 
           {loading ? (
@@ -768,7 +838,9 @@ export function GraphViewerApp() {
               showValues={Boolean(runResult)}
               executionActive={Boolean(runResult)}
               executedLegalIds={liveTraces.executed}
+              dissect={lensFocusId ? "always" : "auto"}
               onInspect={setInspected}
+              onLens={openLens}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}
             />
@@ -797,6 +869,17 @@ export function GraphViewerApp() {
             </h2>
             {"value" in inspected && inspected.value ? (
               <p className="node-inspector-value">{inspected.value}</p>
+            ) : null}
+            {"legalId" in inspected &&
+            inspected.legalId &&
+            inspected.kind !== "input" ? (
+              <button
+                type="button"
+                className="node-inspector-lens"
+                onClick={() => openLens(inspected.legalId)}
+              >
+                ⊙ How does this rule work?
+              </button>
             ) : null}
             {"legalId" in inspected && inspected.legalId ? (
               <p className="node-inspector-cite">

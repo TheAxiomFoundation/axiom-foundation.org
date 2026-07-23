@@ -119,15 +119,16 @@ export function StackHero({ data }: { data: CoverageData }) {
             ))}
           </ol>
         </div>
-        {live && (
-          <p
-            className="pscroll-hint"
-            aria-hidden
-            data-done={step >= 3 || undefined}
-          >
-            scroll to assemble the stack ↓
-          </p>
-        )}
+        {/* Rendered in server HTML too (visibility is CSS-gated to
+            scrolly mode) so the loading state's "counting…" line
+            hands off to this without a blink. */}
+        <p
+          className="pscroll-hint pscroll-hint-scroll"
+          aria-hidden
+          data-done={(live && step >= 3) || undefined}
+        >
+          scroll to assemble the stack ↓
+        </p>
       </div>
     </section>
   );

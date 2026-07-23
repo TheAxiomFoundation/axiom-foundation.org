@@ -273,7 +273,10 @@ canvas[aria-hidden] {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-size: 1.9rem;
-  line-height: 1.1;
+  /* Exactly 1em: the odometer reels are 1em-tall clipping boxes, so
+     any other line-height makes the plain-text SSR figure and the
+     hydrated reels differ in height — a visible shift on swap. */
+  line-height: 1;
   letter-spacing: -0.02em;
   color: var(--color-ink);
 }
@@ -607,14 +610,25 @@ a.cov-mini:focus-visible {
   .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
     opacity: 0;
   }
-  /* The entrance animations outrank the opacity rule in the cascade
-     (running animations beat normal declarations), so the later
-     layers were still fading in pre-hydration. Kill their entrances;
-     layer one keeps its. */
-  .pscroll:not(.pscroll-live) .pstack-slot:nth-child(n + 2) .pstack-plane,
-  .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
+  /* In scrolly mode the scroll assembly IS the entrance: no CSS
+     entrance animations at all. This also keeps the loading→loaded
+     swap still — layer one must not re-drop when the streamed page
+     replaces the loading state. (Entrances still play for no-JS and
+     reduced-scrolly visitors.) */
+  .pscroll .pstack-plane,
+  .pscroll .pstack-callout {
     animation: none;
   }
+  /* The scroll hint renders in server HTML; show it whenever the
+     driver will engage so it occupies the same slot the loading
+     state's "counting…" line held — no blink across the swap.
+     (Extra .pscroll ancestor outweighs the base display: none.) */
+  .pscroll .pscroll-hint-scroll {
+    display: block;
+  }
+}
+.pscroll-hint-scroll {
+  display: none;
 }
 
 

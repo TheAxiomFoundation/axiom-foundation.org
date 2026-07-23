@@ -98,8 +98,10 @@ describe('Landing sections', () => {
     expect(screen.getByText(/encode your jurisdiction/i)).toBeInTheDocument()
     expect(screen.getByText(/validate our work/i)).toBeInTheDocument()
     expect(screen.getByText(/underwrite the public layer/i)).toBeInTheDocument()
-    expect(screen.getByText(/live demos/i)).toBeInTheDocument()
-    expect(screen.getByText(/meet the team/i)).toBeInTheDocument()
+    // The quick-links row (Live demos / Meet the team / …) was
+    // removed — the footer carries those destinations.
+    expect(screen.queryByText(/live demos/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/meet the team/i)).not.toBeInTheDocument()
   })
 })
 

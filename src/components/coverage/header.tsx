@@ -18,11 +18,6 @@ export function CoverageHeader() {
         A running census of everything Axiom holds — from source law to
         the machine-executable rules built on it.
       </p>
-      <p className="cov-live">
-        <span className="cov-live-dot" aria-hidden />
-        live &middot; counted from the current corpus release &middot;
-        refreshes every ten minutes
-      </p>
     </>
   );
 }

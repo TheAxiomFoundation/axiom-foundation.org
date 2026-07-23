@@ -5,7 +5,6 @@ import { StackHero } from "@/components/coverage/stack-hero";
 import { ShelfCards } from "@/components/coverage/shelf-cards";
 import {
   getCoverageData,
-  usOnlyCoverage,
   type CoverageData,
 } from "@/lib/axiom/coverage-page";
 
@@ -20,9 +19,7 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 export default async function CoveragePage() {
-  const all = await getCoverageData();
-  // Launch scope: US federal + states only for now.
-  const data = all && usOnlyCoverage(all);
+  const data = await getCoverageData();
 
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">

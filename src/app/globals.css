@@ -706,37 +706,3 @@ a.cov-card:focus-visible .cov-card-arrow {
   }
 }
 
-/* Live status line under the /coverage title. */
-.cov-live {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  font-family: var(--f-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.cov-live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #d97706;
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18);
-  animation: cov-live-pulse 2.4s ease-in-out infinite;
-}
-@keyframes cov-live-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(217, 119, 6, 0.05);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cov-live-dot {
-    animation: none;
-  }
-}

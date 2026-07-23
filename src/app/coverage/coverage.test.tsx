@@ -76,13 +76,12 @@ describe("CoveragePage", () => {
     expect(screen.getByText("Source documents")).toBeInTheDocument();
     expect(screen.getAllByText("Provisions").length).toBeGreaterThan(0);
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
-    // Hero totals are recomputed for the US-only launch scope:
-    // documents 331, provisions 9,897 (hero + card), encodings
-    // 1,200 + 300 = 1,500 — the UK fixture is excluded entirely.
-    expect(screen.getByText("331")).toBeInTheDocument();
-    expect(screen.getAllByText("9,897").length).toBeGreaterThan(1);
-    expect(screen.getByText("1,500")).toBeInTheDocument();
-    expect(screen.queryByText("United Kingdom")).toBeNull();
+    // Hero totals come straight from the data layer — all
+    // jurisdictions included.
+    expect(screen.getByText("405")).toBeInTheDocument();
+    expect(screen.getByText("58,624")).toBeInTheDocument();
+    expect(screen.getByText("4,875")).toBeInTheDocument();
+    expect(screen.getAllByText("United Kingdom").length).toBeGreaterThan(0);
     // Each layer carries its serif support line.
     expect(
       screen.getByText(/Statutes, regulations, and agency guidance/)
@@ -104,8 +103,9 @@ describe("CoveragePage", () => {
         .every((el) => el.closest("a.cov-card") === null)
     ).toBe(true);
     expect(
-      screen.getByText(/encodings published ahead of corpus ingestion/)
-    ).toBeInTheDocument();
+      screen.getAllByText(/encodings published ahead of corpus ingestion/)
+        .length
+    ).toBe(2);
     // Sort controls.
     expect(
       screen.getByRole("group", { name: /sort jurisdictions/i })

@@ -1401,19 +1401,27 @@
 }
 
 /* ═══ 2.5D: the plane is a plane ═══ */
-/* A restrained perspective tilt on the drawing surface only —
-   panels, toolbar, and minimap stay flat. Cards gain true depth:
-   they rise toward the viewer on hover and on execution. */
+/* The tilt is an execution-time effect only. At rest the graph lies
+   flat: any 3D transform makes the browser rasterize nodes into
+   textures and resample them, which blurs text and edges at every
+   zoom. During a run the cinematic lift outranks crispness. */
 .graph-viewer-root .irg-wrap .react-flow__renderer {
-  transform: perspective(1800px) rotateX(7deg);
   transform-origin: 50% 38%;
-  transform-style: preserve-3d;
   transition: transform 0.35s var(--ease-out, ease);
 }
-.graph-viewer-root .irg-wrap[data-lod="near"] .react-flow__renderer {
+.graph-viewer-root .plane-live .irg-wrap .react-flow__renderer,
+.graph-viewer-root .irg-wrap .plane-live .react-flow__renderer {
+  transform: perspective(1800px) rotateX(7deg);
+  transform-style: preserve-3d;
+}
+.graph-viewer-root .plane-live .irg-wrap[data-lod="near"] .react-flow__renderer,
+.graph-viewer-root .irg-wrap[data-lod="near"] .plane-live .react-flow__renderer {
   transform: none;
 }
-.graph-viewer-root .irg-wrap[data-lod="near"] .react-flow__node:hover .irg-node {
+.graph-viewer-root
+  .irg-wrap:not([data-lod="atlas"])
+  .react-flow__node:hover
+  .irg-node {
   transform: translateY(-2px);
 }
 .graph-viewer-root
@@ -1436,8 +1444,10 @@
       0 22px 44px -18px rgba(217, 119, 6, 0.6);
   }
 }
-.graph-viewer-root .irg-wrap .react-flow__viewport,
-.graph-viewer-root .irg-wrap .react-flow__node {
+.graph-viewer-root .plane-live .irg-wrap .react-flow__viewport,
+.graph-viewer-root .irg-wrap .plane-live .react-flow__viewport,
+.graph-viewer-root .plane-live .irg-wrap .react-flow__node,
+.graph-viewer-root .irg-wrap .plane-live .react-flow__node {
   transform-style: preserve-3d;
 }
 .graph-viewer-root .irg-wrap .irg-node {
@@ -1445,7 +1455,8 @@
     transform 0.25s var(--ease-out, ease),
     box-shadow 0.25s ease;
 }
-.graph-viewer-root .irg-wrap .react-flow__node:hover .irg-node {
+.graph-viewer-root .plane-live .irg-wrap .react-flow__node:hover .irg-node,
+.graph-viewer-root .irg-wrap .plane-live .react-flow__node:hover .irg-node {
   transform: translateZ(22px);
   box-shadow:
     0 2px 4px rgba(28, 25, 23, 0.1),
@@ -1982,10 +1993,9 @@
   stroke-opacity: 0.5;
 }
 
-/* The atlas is a map, not a stage — at whole-law zoom the tilt would
-   project the huge plane past the canvas, so it lies flat. */
+/* The atlas is a map, not a stage — never tilt it, even mid-run. */
 .graph-viewer-root .irg-wrap[data-lod="atlas"] .react-flow__renderer {
-  transform: none;
+  transform: none !important;
 }
 .graph-viewer-root .irg-wrap {
   overflow: hidden;

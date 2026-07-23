@@ -1132,15 +1132,6 @@ const RuleRefNode = ({ data }: NodeProps) => {
     >
       <HandleBoth />
       <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
-      {!d.isExpanded && (d.hiddenCount ?? 0) > 0 && (
-        <span
-          className="irg-fold-badge irg-action-clickable"
-          data-action="collapse"
-          title={`${d.hiddenCount} folded steps — click to unfold`}
-        >
-          ▸ {d.hiddenCount}
-        </span>
-      )}
       <div className="irg-eyebrow">
         {d.isParameter ? "Parameter" : d.isOutput ? "Step · result" : "Step"}
       </div>

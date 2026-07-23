@@ -607,7 +607,6 @@
 
 /* ═══ Dissection: semantic zoom (LOD) ═══ */
 /* Mid zoom: secondary chrome yields; the map reads as named cards. */
-.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
   display: none;
 }
@@ -912,50 +911,6 @@
   border-color: var(--color-accent);
 }
 
-/* ═══ On-canvas fold badges: the doors are visible at every zoom ═══ */
-.graph-viewer-root .irg-fold-badge {
-  position: absolute;
-  top: -9px;
-  right: -9px;
-  z-index: 3;
-  border: 1px solid var(--color-accent);
-  background: var(--color-paper-elevated);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-family: var(--f-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-accent-hover);
-  box-shadow: 0 2px 6px -2px rgba(217, 119, 6, 0.5);
-  cursor: pointer;
-  transition: transform 0.12s ease, background 0.15s ease;
-}
-.graph-viewer-root .irg-fold-badge:hover {
-  transform: scale(1.12);
-  background: var(--color-accent-light);
-}
-/* Badges survive every LOD — they ARE the wayfinding. */
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge,
-.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-fold-badge {
-  display: inline-block;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-fold-badge {
-  font-size: 12px;
-  padding: 3px 10px;
-}
-
-/* The outputs block gained the navigator; its fixed grid rows can't
-   host five children — flex column with internal scroll areas. */
-.graph-viewer-root .outputs-control {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.graph-viewer-root .outputs-control .output-list {
-  min-height: 60px;
-  flex: 1;
-}
-
 /* Program block joined the fixed-grid casualty list — flex it. */
 .graph-viewer-root .program-controls {
   display: flex;
@@ -1015,7 +970,6 @@
 
 /* ═══ Dissection: semantic zoom (LOD) ═══ */
 /* Mid zoom: secondary chrome yields; the map reads as named cards. */
-.graph-viewer-root .irg-wrap[data-lod="mid"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
   display: none;
 }
@@ -1454,6 +1408,33 @@
   transform: perspective(1800px) rotateX(7deg);
   transform-origin: 50% 38%;
   transform-style: preserve-3d;
+  transition: transform 0.35s var(--ease-out, ease);
+}
+.graph-viewer-root .irg-wrap[data-lod="near"] .react-flow__renderer {
+  transform: none;
+}
+.graph-viewer-root .irg-wrap[data-lod="near"] .react-flow__node:hover .irg-node {
+  transform: translateY(-2px);
+}
+.graph-viewer-root
+  .irg-wrap[data-lod="near"]
+  .plane-live
+  .react-flow__node.irg-exec-node
+  .irg-node {
+  animation-name: exec-lift-flat;
+}
+@keyframes exec-lift-flat {
+  from {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  }
+  to {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow:
+      0 0 0 1.5px var(--color-accent),
+      0 4px 8px rgba(28, 25, 23, 0.14),
+      0 22px 44px -18px rgba(217, 119, 6, 0.6);
+  }
 }
 .graph-viewer-root .irg-wrap .react-flow__viewport,
 .graph-viewer-root .irg-wrap .react-flow__node {

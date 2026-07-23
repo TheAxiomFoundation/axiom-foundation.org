@@ -1907,3 +1907,24 @@
   color: var(--color-accent-hover);
   cursor: pointer;
 }
+
+/* ═══ Walk mode: the walk owns the surface ═══ */
+.graph-viewer-root .app-shell.walk-active {
+  grid-template-columns: minmax(0, 1fr);
+}
+.graph-viewer-root .app-shell.walk-active .side-panel {
+  display: none;
+}
+/* The walked trail lights on the canvas; the current step strongest. */
+.graph-viewer-root .react-flow__node.irg-walk-trail .irg-node {
+  box-shadow:
+    0 0 0 1.5px var(--color-accent-line),
+    0 6px 18px -10px rgba(217, 119, 6, 0.45);
+}
+.graph-viewer-root .react-flow__node.irg-walk-current .irg-node {
+  box-shadow:
+    0 0 0 2px var(--color-accent),
+    0 4px 8px rgba(28, 25, 23, 0.12),
+    0 22px 44px -16px rgba(217, 119, 6, 0.6);
+  transform: scale(1.03);
+}

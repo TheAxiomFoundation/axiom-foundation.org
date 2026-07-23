@@ -178,23 +178,44 @@ export function GraphViewerApp() {
       (rule) =>
         rule.ruleDeps.includes(legalId) || rule.inputDeps.includes(legalId),
     );
+  const savedWalkSelection = useRef<LegalId[] | null>(null);
+  const focusWalkNode = (legalId: string) => {
+    if (walkRuleById.has(legalId)) {
+      setSelectedOutputs([legalId]);
+    } else {
+      // An input: show its first consumer's neighborhood so the
+      // canvas has something true to stand on.
+      const consumer = consumersOf(legalId)[0];
+      if (consumer) setSelectedOutputs([consumer.legalId]);
+    }
+    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+  };
   const startWalk = (direction: "up" | "down", legalId: string) => {
     dismissLauncher();
+    savedWalkSelection.current = selectedOutputs;
     setWalk({ direction, trail: [legalId] });
-    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+    focusWalkNode(legalId);
   };
   const walkTo = (legalId: string) => {
     setWalk((current) =>
       current ? { ...current, trail: [...current.trail, legalId] } : current,
     );
-    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+    focusWalkNode(legalId);
   };
   const walkBackTo = (index: number) => {
-    setWalk((current) =>
-      current
-        ? { ...current, trail: current.trail.slice(0, index + 1) }
-        : current,
-    );
+    setWalk((current) => {
+      if (!current) return current;
+      const trail = current.trail.slice(0, index + 1);
+      focusWalkNode(trail[trail.length - 1]);
+      return { ...current, trail };
+    });
+  };
+  const endWalk = () => {
+    setWalk(null);
+    if (savedWalkSelection.current) {
+      setSelectedOutputs(savedWalkSelection.current);
+      savedWalkSelection.current = null;
+    }
   };
 
   const intentMatches = useMemo(() => {
@@ -579,7 +600,7 @@ export function GraphViewerApp() {
     const key =
       Object.keys(structureTraces).sort().join("|") +
       "::" +
-      (lensTrail.length > 0 ? "always" : "auto");
+      (lensTrail.length > 0 || walk ? "always" : "auto");
     if (foldedInitialized.current !== key) {
       foldedInitialized.current = key;
       setFolded(
@@ -589,7 +610,7 @@ export function GraphViewerApp() {
         ),
       );
     }
-  }, [structureTraces, lensTrail.length]);
+  }, [structureTraces, lensTrail.length, walk]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -954,7 +975,7 @@ export function GraphViewerApp() {
         </div>
       </div>
     )}
-    <main className="app-shell">
+    <main className={`app-shell ${walk ? "walk-active" : ""}`}>
       <aside className="side-panel">
         <div className="brand">
           <span>Axiom</span>
@@ -1237,10 +1258,11 @@ export function GraphViewerApp() {
               showValues={Boolean(runResult)}
               executionActive={Boolean(runResult)}
               executedLegalIds={liveTraces.executed}
-              dissect={lensFocusId ? "always" : "auto"}
+              dissect={lensFocusId || walk ? "always" : "auto"}
               collapsed={folded}
               onCollapsedChange={setFolded}
               flyTo={flyTarget}
+              walkTrail={walk?.trail ?? null}
               onInspect={setInspected}
               onLens={openLens}
               parameterRules={parameterRules}
@@ -1281,7 +1303,7 @@ export function GraphViewerApp() {
                 <button
                   type="button"
                   className="results-close"
-                  onClick={() => setWalk(null)}
+                  onClick={endWalk}
                   aria-label="End the walk"
                 >
                   ×
@@ -1361,8 +1383,9 @@ export function GraphViewerApp() {
                     type="button"
                     className="walk-lens"
                     onClick={() => {
-                      setWalk(null);
-                      openLens(rule ? currentId : walk.trail[1] ?? currentId);
+                      const target = rule ? currentId : walk.trail[1] ?? currentId;
+                      endWalk();
+                      openLens(target);
                     }}
                   >
                     ⊙ Open this on the map

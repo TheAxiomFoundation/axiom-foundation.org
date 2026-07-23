@@ -57,6 +57,9 @@ interface Props {
   onCollapsedChange?: (next: Set<string>) => void;
   /** Fly the camera to this rule; bump nonce to re-trigger. */
   flyTo?: { legalId: string; nonce: number } | null;
+  /** The guided walk's visited legal ids — lit on the canvas, the
+   *  current step strongest. */
+  walkTrail?: string[] | null;
   /** Run mode: the execution layer is live — executed nodes lift,
    *  the rest recede, the camera flies the executed path. */
   executionActive?: boolean;
@@ -97,6 +100,7 @@ export function InteractiveRuleGraph({
   collapsed: controlledCollapsed,
   onCollapsedChange,
   flyTo,
+  walkTrail,
   executionActive = false,
   executedLegalIds,
   onInspect,
@@ -405,14 +409,24 @@ export function InteractiveRuleGraph({
   }, [edges, executedIds]);
 
 
+  const walkSet = useMemo(() => new Set(walkTrail ?? []), [walkTrail]);
+  const walkCurrent = walkTrail?.[walkTrail.length - 1] ?? null;
+
   const displayNodes = useMemo(() => {
     let out = nodes.map((n) => {
       const d = n.data as IrgNodeData;
       const legalId =
         "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
       const bucket = legalId?.split(":")[1]?.split("/")[0];
-      return bucket
-        ? { ...n, className: `irg-src-${bucket}` }
+      const walkClass = legalId
+        ? legalId === walkCurrent
+          ? " irg-walk-current"
+          : walkSet.has(legalId)
+            ? " irg-walk-trail"
+            : ""
+        : "";
+      return bucket || walkClass
+        ? { ...n, className: `${bucket ? `irg-src-${bucket}` : ""}${walkClass}`.trim() }
         : n;
     });
     if (executionActive) {
@@ -436,7 +450,7 @@ export function InteractiveRuleGraph({
         highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
       }`.trim(),
     }));
-  }, [nodes, highlightSet, executionActive, executedIds]);
+  }, [nodes, highlightSet, executionActive, executedIds, walkSet, walkCurrent]);
 
   const displayEdges = useMemo(() => {
     let out = edges;

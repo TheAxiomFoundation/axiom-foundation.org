@@ -606,6 +606,18 @@ a.cov-mini:focus-visible {
   .pscroll:not(.pscroll-live) {
     min-height: 240vh;
   }
+  /* Identical stage geometry before the driver engages — the live
+     class centers the stage and pins it sticky, and any difference
+     from the loading/pre-hydration state reads as the graphic and
+     callouts jumping when hydration lands. */
+  .pscroll:not(.pscroll-live) .pscroll-sticky {
+    position: sticky;
+    top: 88px;
+  }
+  .pscroll:not(.pscroll-live) .pstack {
+    min-height: calc(100vh - 220px);
+    align-items: center;
+  }
   .pscroll:not(.pscroll-live) .pstack-slot:nth-child(n + 2),
   .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
     opacity: 0;

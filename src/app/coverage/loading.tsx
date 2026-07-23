@@ -1,4 +1,5 @@
 import { RollingNumber } from "@/components/coverage/rolling-number";
+import { CoverageHeader } from "@/components/coverage/header";
 import { STACK_LAYERS } from "@/components/coverage/copy";
 
 /**
@@ -14,13 +15,9 @@ export default function CoverageLoading() {
   return (
     <div className="relative z-1 pt-32 pb-24 px-8" aria-busy>
       <div className="max-w-[1080px] mx-auto">
-        <span className="kicker mb-6 inline-flex">
-          <span className="kicker-mark">&sect;</span>
-          Coverage &middot; Depth &amp; breadth
-        </span>
-        <h1 className="heading-page mb-6 mt-2" suppressHydrationWarning>
-          The whole stack, counted
-        </h1>
+        <div className="max-w-[760px]">
+          <CoverageHeader />
+        </div>
 
         {/* .pscroll (without -live) picks up the same pre-hide rules
             as the real hero, so loading shows exactly what the

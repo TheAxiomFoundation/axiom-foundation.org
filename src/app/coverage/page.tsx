@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
+import { CoverageHeader } from "@/components/coverage/header";
 import { StackHero } from "@/components/coverage/stack-hero";
 import { ShelfCards } from "@/components/coverage/shelf-cards";
 import {
@@ -27,16 +28,7 @@ export default async function CoveragePage() {
     <div className="relative z-1 pt-32 pb-24 px-8">
       <div className="max-w-[1080px] mx-auto">
         <Reveal className="mb-14 max-w-[760px]">
-          <span className="kicker mb-6 inline-flex">
-            <span className="kicker-mark">&sect;</span>
-            Coverage &middot; Depth &amp; breadth
-          </span>
-          {/* GradientSync styles this heading before the streamed
-              boundary hydrates (loading.tsx makes the page stream);
-              the attribute delta is intentional. */}
-          <h1 className="heading-page mb-6 mt-2" suppressHydrationWarning>
-            The whole stack, counted
-          </h1>
+          <CoverageHeader />
         </Reveal>
 
         {data === null ? (

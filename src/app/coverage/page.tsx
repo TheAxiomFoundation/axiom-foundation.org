@@ -28,9 +28,11 @@ export default async function CoveragePage() {
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">
       <div className="max-w-[1080px] mx-auto">
-        <Reveal className="mb-14 max-w-[760px]">
+        {/* No Reveal on the header: the loading state already shows
+            it, so re-animating on the stream swap reads as a jump. */}
+        <div className="mb-14 max-w-[760px]">
           <CoverageHeader />
-        </Reveal>
+        </div>
 
         {data === null ? (
           <Reveal className="py-16 text-center text-[var(--color-ink-muted)]">

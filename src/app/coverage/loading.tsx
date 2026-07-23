@@ -3,68 +3,63 @@ import { CoverageHeader } from "@/components/coverage/header";
 import { STACK_LAYERS } from "@/components/coverage/copy";
 
 /**
- * Loading state for /coverage: the hero itself, mid-count — the
- * isometric planes assemble on the left while every figure's reels
- * spin (pure CSS, so they move before hydration). Header copy and
- * layer copy come from the same sources as the real page, so the
- * handoff when data streams in doesn't jump. (Safe on this route —
+ * Loading state for /coverage: the hero itself, mid-count — reels
+ * spinning in pure CSS so they move before hydration, and a visible
+ * "counting the corpus…" line so a slow load never reads as stuck.
+ *
+ * The markup mirrors the loaded page's structure exactly (same
+ * wrappers, margins, and sticky stage) so the stream swap doesn't
+ * shift a single pixel of the shared frame. (Safe on this route —
  * /coverage never 404s, so committing the response early is fine.)
  */
 export default function CoverageLoading() {
-  const bar = "animate-pulse rounded bg-[var(--color-rule)]/70";
   return (
     <div className="relative z-1 pt-32 pb-24 px-8" aria-busy>
       <div className="max-w-[1080px] mx-auto">
-        <div className="max-w-[760px]">
+        <div className="mb-14 max-w-[760px]">
           <CoverageHeader />
         </div>
 
-        {/* .pscroll (without -live) picks up the same pre-hide rules
-            as the real hero, so loading shows exactly what the
-            hydrated page will: layer one, counting. */}
-        <div className="pscroll mt-14">
-          <div className="pstack">
-            <div className="pstack-visual" aria-hidden>
-            {STACK_LAYERS.map((layer, i) => (
-              <div key={layer.key} className="pstack-slot">
-                <div
-                  className={`pstack-plane pstack-plane-${layer.key}`}
-                  style={{ "--layer": i } as React.CSSProperties}
-                />
-              </div>
-            ))}
-          </div>
-          <ol className="pstack-callouts">
-            {STACK_LAYERS.map((layer, i) => (
-              <li key={layer.key} className="pstack-callout">
-                <div className="pstack-callout-body">
-                  <span className="pstack-callout-name">
-                    <span className="pstack-ordinal" aria-hidden>
-                      0{i + 1}
-                    </span>
-                    {layer.name}
-                  </span>
-                  <span className="pstack-callout-value">
-                    <RollingNumber text={layer.loadingPattern} spin />
-                  </span>
-                  <span className="pstack-callout-detail pstack-prose">
-                    {layer.detail}
-                  </span>
+        <div className="mb-20">
+          <section className="pscroll" aria-label="The stack">
+            <div className="pscroll-sticky">
+              <div className="pstack">
+                <div className="pstack-visual" aria-hidden>
+                  {STACK_LAYERS.map((layer, i) => (
+                    <div key={layer.key} className="pstack-slot">
+                      <div
+                        className={`pstack-plane pstack-plane-${layer.key}`}
+                        style={{ "--layer": i } as React.CSSProperties}
+                      />
+                    </div>
+                  ))}
                 </div>
-              </li>
-            ))}
-            </ol>
-          </div>
-        </div>
-
-        <p className="mt-6 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          counting the corpus…
-        </p>
-
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className={`${bar} h-36 rounded-lg`} />
-          ))}
+                <ol className="pstack-callouts">
+                  {STACK_LAYERS.map((layer, i) => (
+                    <li key={layer.key} className="pstack-callout">
+                      <div className="pstack-callout-body">
+                        <span className="pstack-callout-name">
+                          <span className="pstack-ordinal" aria-hidden>
+                            0{i + 1}
+                          </span>
+                          {layer.name}
+                        </span>
+                        <span className="pstack-callout-value">
+                          <RollingNumber text={layer.loadingPattern} spin />
+                        </span>
+                        <span className="pstack-callout-detail pstack-prose">
+                          {layer.detail}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <p className="pscroll-hint cov-counting" role="status">
+                counting the corpus
+              </p>
+            </div>
+          </section>
         </div>
       </div>
     </div>

@@ -617,3 +617,32 @@ a.cov-mini:focus-visible {
   }
 }
 
+
+/* "counting the corpus…" — animated ellipsis so a slow load never
+   reads as stuck. Static ellipsis under reduced motion. */
+.cov-counting::after {
+  content: "…";
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: cov-dots 1.2s steps(1) infinite;
+}
+@keyframes cov-dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cov-counting::after {
+    animation: none;
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useCallback, useEffect } from "react";
+import { useMemo, useRef, useCallback, useEffect, useState } from "react";
 import ForceGraph3D, {
   type ForceGraphMethods,
   type NodeObject,
@@ -85,6 +85,35 @@ export function Plane3D({
 }) {
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const live = executed.size > 0;
+  // Camera-distance LOD: from afar the field is colored points with
+  // only the results carded; cards materialize as you approach.
+  const [lod, setLod] = useState<"far" | "near">("far");
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    const camera = fg.camera();
+    const controls = fg.controls() as unknown as {
+      addEventListener: (type: string, fn: () => void) => void;
+      removeEventListener: (type: string, fn: () => void) => void;
+    };
+    let frame = 0;
+    const measure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const distance = camera.position.length();
+        setLod((current) => {
+          const next = distance > 780 ? "far" : "near";
+          return current === next ? current : next;
+        });
+      });
+    };
+    controls.addEventListener("change", measure);
+    measure();
+    return () => {
+      controls.removeEventListener("change", measure);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   const data = useMemo(() => {
     const byId = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
@@ -150,6 +179,11 @@ export function Plane3D({
       const isExec = executed.has(n.id);
       const focal = n.isTerminal || selectedSet.has(n.id);
       const dimmed = live && !isExec;
+      // From afar, only the results and the executed path earn cards
+      // — everything else stays a colored point.
+      if (lod === "far" && !focal && !isExec) {
+        return undefined as unknown as Object3D;
+      }
       const value = isExec ? valueOf(n.id) : null;
       const sprite = new SpriteText(
         value ? `${humanizeName(n.name)} · ${value}` : humanizeName(n.name)
@@ -171,8 +205,61 @@ export function Plane3D({
       sprite.textHeight = focal ? 7.5 : isExec ? 6 : 4.6;
       return sprite as unknown as Object3D;
     },
-    [executed, valueOf, selectedSet, live]
+    [executed, valueOf, selectedSet, live, lod]
   );
+
+  // The strata explain themselves: translucent ground planes and
+  // edge labels for each body of law.
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    let disposed = false;
+    void (async () => {
+      const three = await import("three");
+      if (disposed) return;
+      const scene = fg.scene();
+      const xs = data.nodes.map((n) => n.fx as number);
+      const zs = data.nodes.map((n) => n.fz as number);
+      const minX = Math.min(...xs) - 80;
+      const maxX = Math.max(...xs) + 80;
+      const spanZ = Math.max(...zs) - Math.min(...zs) + 160;
+      const group = new three.Group();
+      group.name = "strata-planes";
+      const present = new Set(data.nodes.map((n) => n.bucket));
+      for (const [bucket, band] of Object.entries(BUCKET_BAND)) {
+        if (!present.has(bucket)) continue;
+        const geometry = new three.PlaneGeometry(maxX - minX, spanZ);
+        const material = new three.MeshBasicMaterial({
+          color: BUCKET_COLOR[bucket] ?? "#78716c",
+          transparent: true,
+          opacity: 0.045,
+          side: three.DoubleSide,
+          depthWrite: false,
+        });
+        const plane = new three.Mesh(geometry, material);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.set((minX + maxX) / 2, band - 26, 0);
+        group.add(plane);
+        const label = new SpriteText(
+          bucket.charAt(0).toUpperCase() + bucket.slice(1),
+        );
+        label.color = BUCKET_COLOR[bucket] ?? "#78716c";
+        label.textHeight = 16;
+        label.material.opacity = 0.5;
+        label.position.set(minX - 40, band - 10, 0);
+        group.add(label as unknown as Object3D);
+      }
+      const previous = scene.getObjectByName("strata-planes");
+      if (previous) scene.remove(previous);
+      scene.add(group);
+    })();
+    return () => {
+      disposed = true;
+      const scene = fgRef.current?.scene();
+      const previous = scene?.getObjectByName("strata-planes");
+      if (previous && scene) scene.remove(previous);
+    };
+  }, [data]);
 
   // Establishing shot: once the strata exist, pull back to frame
   // them from a three-quarter vantage.
@@ -181,8 +268,8 @@ export function Plane3D({
       const xs = data.nodes.map((n) => n.fx as number);
       const span = Math.max(...xs) - Math.min(...xs);
       fgRef.current?.cameraPosition(
-        { x: span * 0.18, y: 200, z: span * 0.62 },
-        { x: 0, y: 0, z: 0 },
+        { x: span * 0.1, y: 170, z: span * 0.42 },
+        { x: 0, y: -10, z: 0 },
         0,
       );
     }, 250);
@@ -231,7 +318,7 @@ export function Plane3D({
         warmupTicks={0}
         enableNodeDrag={false}
         nodeId="id"
-        nodeVal={4}
+        nodeVal={2.2}
         nodeColor={(node) => {
           const n = node as PlaneNode;
           if (live && !executed.has(n.id)) return DIM_COLOR;
@@ -239,6 +326,7 @@ export function Plane3D({
           return BUCKET_COLOR[n.bucket] ?? "#78716c";
         }}
         nodeOpacity={0.92}
+        nodeThreeObjectExtend={false}
         nodeThreeObject={nodeObject}
         linkColor={(link) => {
           const s = (link.source as PlaneNode).id ?? link.source;

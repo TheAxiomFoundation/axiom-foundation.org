@@ -8,6 +8,8 @@ import {
   type IrgNodeData,
 } from "./InteractiveRuleGraph";
 
+import { PlaneTree } from "./plane-tree";
+
 // Three.js loads only when the 3D plane is entered.
 const Plane3D = dynamic(
   () => import("./plane3d").then((mod) => mod.Plane3D),
@@ -64,7 +66,7 @@ export function GraphViewerApp() {
   const [lensTrail, setLensTrail] = useState<string[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   // 2D is the stable plane; 3D is the strata view. Kept side by side.
-  const [dimension, setDimension] = useState<"2d" | "3d">("2d");
+  const [dimension, setDimension] = useState<"2d" | "tree" | "3d">("2d");
   // The fold state is shared by the canvas and the navigator tree.
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const foldedInitialized = useRef<string | null>(null);
@@ -839,7 +841,7 @@ export function GraphViewerApp() {
             role="tablist"
             aria-label="Plane dimension"
           >
-            {(["2d", "3d"] as const).map((option) => (
+            {(["2d", "tree", "3d"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -847,9 +849,15 @@ export function GraphViewerApp() {
                 aria-selected={dimension === option}
                 className={`country-toggle-btn ${dimension === option ? "is-active" : ""}`}
                 onClick={() => setDimension(option)}
-                title={option === "3d" ? "The strata of law" : "The flat plane"}
+                title={
+                  option === "3d"
+                    ? "The strata of law"
+                    : option === "tree"
+                      ? "The proof tree — what is this made of?"
+                      : "The map — what connects to what?"
+                }
               >
-                {option.toUpperCase()}
+                {option === "2d" ? "MAP" : option === "tree" ? "TREE" : "3D"}
               </button>
             ))}
           </div>
@@ -973,6 +981,26 @@ export function GraphViewerApp() {
               <span className="loading-spinner" aria-hidden="true" />
               <span>Loading graph...</span>
             </div>
+          ) : dimension === "tree" ? (
+            <PlaneTree
+              roots={selectedOutputs
+                .map((legalId) => liveTraces.traces[legalId])
+                .filter((root): root is TraceNode => Boolean(root))}
+              folded={folded}
+              onToggleFold={(legalId) =>
+                setFolded((current) => {
+                  const next = new Set(current);
+                  if (next.has(legalId)) next.delete(legalId);
+                  else next.add(legalId);
+                  return next;
+                })
+              }
+              executed={liveTraces.executed}
+              onLens={(legalId) => {
+                setDimension("2d");
+                openLens(legalId);
+              }}
+            />
           ) : dimension === "3d" && graph ? (
             <Plane3D
               graph={graph}

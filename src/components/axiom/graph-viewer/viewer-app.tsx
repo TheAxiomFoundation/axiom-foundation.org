@@ -97,18 +97,21 @@ export function GraphViewerApp() {
   const flyFromIndex = (legalId: string) => {
     setFolded((current) => {
       const next = new Set(current);
-      const unfoldPath = (node: TraceNode, ancestors: string[]): boolean => {
-        if (node.legalId === legalId) {
-          for (const id of ancestors) next.delete(id);
-          return true;
+      // The trace tree is a DAG unrolled — the target can sit on
+      // several paths, and the renderer may materialize any of them.
+      // Unfold every ancestor on every path (the target itself keeps
+      // its own fold state).
+      const unfold = (node: TraceNode): boolean => {
+        let viaChild = false;
+        for (const child of node.children ?? []) {
+          if (unfold(child)) viaChild = true;
         }
-        return (node.children ?? []).some((child) =>
-          unfoldPath(child, [...ancestors, node.legalId]),
-        );
+        if (viaChild) next.delete(node.legalId);
+        return viaChild || node.legalId === legalId;
       };
       for (const id of selectedOutputs) {
         const root = structureTraces[id];
-        if (root && unfoldPath(root, [])) break;
+        if (root) unfold(root);
       }
       return next;
     });
@@ -185,6 +188,7 @@ export function GraphViewerApp() {
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [outputsOpen, setOutputsOpen] = useState(false);
+  const [indexSearch, setIndexSearch] = useState("");
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -671,6 +675,32 @@ export function GraphViewerApp() {
     () => buildStructureTraces(graph, selectedOutputs),
     [graph, selectedOutputs],
   );
+  const indexMatches = useMemo(() => {
+    const query = indexSearch.trim().toLowerCase();
+    if (!query) return [];
+    const seen = new Set<string>();
+    const matches: { legalId: string; label: string }[] = [];
+    const walk = (node: TraceNode) => {
+      if (matches.length >= 60) return;
+      const label = humanize(node.label ?? node.legalId.split("#").pop() ?? "");
+      // Same population as the tree: rules only — bare inputs render
+      // no standalone card to fly to.
+      if (
+        node.dtype !== "input" &&
+        !seen.has(node.legalId) &&
+        label.toLowerCase().includes(query)
+      ) {
+        seen.add(node.legalId);
+        matches.push({ legalId: node.legalId, label });
+      }
+      for (const child of node.children ?? []) walk(child);
+    };
+    for (const id of selectedOutputs) {
+      const root = structureTraces[id];
+      if (root) walk(root);
+    }
+    return matches;
+  }, [indexSearch, selectedOutputs, structureTraces]);
 
   // Dissect on program/selection/lens change; unfold the executed
   // path when a run lands.
@@ -1073,6 +1103,33 @@ export function GraphViewerApp() {
             program above to return to compiled packages.
           </p>
         )}
+        <label className="index-search">
+          <input
+            type="search"
+            value={indexSearch}
+            onChange={(event) => setIndexSearch(event.target.value)}
+            placeholder="Search the index..."
+            aria-label="Search the computation index"
+          />
+        </label>
+        {indexSearch.trim() ? (
+          <div className="index-results" aria-label="Index search results">
+            {indexMatches.map((match) => (
+              <button
+                type="button"
+                key={match.legalId}
+                className="index-result"
+                onClick={() => flyFromIndex(match.legalId)}
+                title="Fly to this rule on the canvas"
+              >
+                {match.label}
+              </button>
+            ))}
+            {indexMatches.length === 0 && (
+              <div className="output-empty">No rules match this search.</div>
+            )}
+          </div>
+        ) : (
         <div className="navigator-tree" aria-label="Computation navigator">
           {selectedOutputs.map((legalId) => {
             const root = structureTraces[legalId];
@@ -1096,6 +1153,7 @@ export function GraphViewerApp() {
             );
           })}
         </div>
+        )}
         {scenarioMode && scenarioFields.length > 0 && (
           <section
             className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
@@ -1314,6 +1372,12 @@ export function GraphViewerApp() {
               flyTo={flyTarget}
               walkTrail={walk?.trail ?? null}
               onInspect={focusNode}
+              pinnedLegalId={
+                inspected && "legalId" in inspected && inspected.legalId
+                  ? inspected.legalId
+                  : null
+              }
+              onPaneClear={() => setInspected(null)}
               onLens={openLens}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}

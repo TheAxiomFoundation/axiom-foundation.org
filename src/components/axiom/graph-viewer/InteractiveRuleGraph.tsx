@@ -69,6 +69,10 @@ interface Props {
   /** Node click → inspector. Fired for plain clicks (not action
    *  rows, which keep their own routing). */
   onInspect?: (data: IrgNodeData) => void;
+  /** Keep this node's lineage lit while its info card is open. */
+  pinnedLegalId?: string | null;
+  /** Clicking empty canvas — the app closes the info card. */
+  onPaneClear?: () => void;
   /** Double-click → open the rule lens on this node. */
   onLens?: (legalId: string) => void;
 }
@@ -104,6 +108,8 @@ export function InteractiveRuleGraph({
   executionActive = false,
   executedLegalIds,
   onInspect,
+  pinnedLegalId = null,
+  onPaneClear,
   onLens,
 }: Props) {
   // Sub-rules expand inline by default — the user gets the full DAG to atomic
@@ -305,12 +311,25 @@ export function InteractiveRuleGraph({
     setHighlightNodeId(null);
   }, [nodes]);
 
+  const pinnedNodeId = useMemo(() => {
+    if (!pinnedLegalId) return null;
+    const match = nodes.find(
+      (n) =>
+        (n.data as IrgNodeData & { legalId?: string }).legalId ===
+        pinnedLegalId,
+    );
+    return match?.id ?? null;
+  }, [nodes, pinnedLegalId]);
+  // Hover wins while moving; a click pins its card's lineage until
+  // the info card closes or the pointer travels elsewhere.
+  const activeHighlightId = highlightNodeId ?? pinnedNodeId;
+
   const highlightSet = useMemo(() => {
-    if (!highlightNodeId) return null;
-    const startKind = kindById.get(highlightNodeId);
+    if (!activeHighlightId) return null;
+    const startKind = kindById.get(activeHighlightId);
     if (!startKind) return null;
 
-    const seen = new Set<string>([highlightNodeId]);
+    const seen = new Set<string>([activeHighlightId]);
     const walkAll = (start: string, adj: Map<string, string[]>) => {
       const queue = [start];
       while (queue.length > 0) {
@@ -339,22 +358,22 @@ export function InteractiveRuleGraph({
           }
         }
       };
-      walkThrough(highlightNodeId, adjacency.incoming);
-      walkThrough(highlightNodeId, adjacency.outgoing);
+      walkThrough(activeHighlightId, adjacency.incoming);
+      walkThrough(activeHighlightId, adjacency.outgoing);
       return seen;
     }
 
     if (startKind === "input") {
       // Inputs flow rightward — descendants are the only meaningful chain.
-      walkAll(highlightNodeId, adjacency.outgoing);
+      walkAll(activeHighlightId, adjacency.outgoing);
       return seen;
     }
 
     // Outputs and intermediate sub-rules: ancestors only — the chain
     // that contributes to the hovered node.
-    walkAll(highlightNodeId, adjacency.incoming);
+    walkAll(activeHighlightId, adjacency.incoming);
     return seen;
-  }, [highlightNodeId, adjacency, kindById]);
+  }, [activeHighlightId, adjacency, kindById]);
 
   // Apply the highlight by tagging each node and edge with a className
   // reflecting whether it's on the lineage. CSS handles the dim/emphasize
@@ -538,6 +557,7 @@ export function InteractiveRuleGraph({
             if (kind !== "literal") setHighlightNodeId(node.id);
           }}
           onNodeMouseLeave={() => setHighlightNodeId(null)}
+          onPaneClick={() => onPaneClear?.()}
           onNodeDoubleClick={(_e, node) => {
             const data = node.data as IrgNodeData;
             if ("legalId" in data && data.legalId && data.kind !== "input") {
@@ -581,11 +601,6 @@ export function InteractiveRuleGraph({
           <Controls position="bottom-left" showInteractive={false} />
         </ReactFlow>
         <div className="irg-toolbar">
-          <div className="irg-legend" aria-label="Sources of law">
-            <span><i style={{ background: "#d97706" }} /> statute</span>
-            <span><i style={{ background: "#0f766e" }} /> regulation</span>
-            <span><i style={{ background: "#4f46e5" }} /> policy</span>
-          </div>
           <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
             <button
               type="button"
@@ -812,12 +827,14 @@ function FlyToController({
             chaseId.current,
         );
       if (match) {
-        void flow.fitView({
-          nodes: [{ id: match.id }],
-          duration: 500,
-          padding: 0.5,
-          maxZoom: 1.2,
-        });
+        void flow.setCenter(
+          match.position.x + (match.measured?.width ?? 220) / 2,
+          match.position.y + (match.measured?.height ?? 90) / 2,
+          {
+            duration: 500,
+            zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+          },
+        );
       }
     }, 400);
     return () => window.clearTimeout(timer);
@@ -826,7 +843,7 @@ function FlyToController({
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
     chaseId.current = target.legalId;
-    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 3_000);
+    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
     if (target.legalId === "*") {
       window.setTimeout(() => {
         void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
@@ -841,12 +858,14 @@ function FlyToController({
           target.legalId,
       );
     if (match) {
-      void flow.fitView({
-        nodes: [{ id: match.id }],
-        duration: 700,
-        padding: 0.5,
-        maxZoom: 1.2,
-      });
+      void flow.setCenter(
+        match.position.x + (match.measured?.width ?? 220) / 2,
+        match.position.y + (match.measured?.height ?? 90) / 2,
+        {
+          duration: 700,
+          zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+        },
+      );
     }
   }, [target, flow]);
   return null;

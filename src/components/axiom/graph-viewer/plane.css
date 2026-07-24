@@ -2055,3 +2055,41 @@
   overflow-y: auto;
   padding-right: 4px;
 }
+
+/* Index search: filter the tree, fly to a match. */
+.graph-viewer-root .index-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-paper-elevated);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.graph-viewer-root .index-search input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .index-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 4px;
+}
+.graph-viewer-root .index-result {
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.graph-viewer-root .index-result:hover {
+  background: var(--color-paper-elevated);
+  color: var(--color-accent);
+}

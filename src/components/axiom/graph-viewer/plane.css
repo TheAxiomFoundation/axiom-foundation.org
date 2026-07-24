@@ -2048,4 +2048,6 @@
 .graph-viewer-root .side-panel.index-side .navigator-tree {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }

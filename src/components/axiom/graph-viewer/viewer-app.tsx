@@ -208,6 +208,9 @@ export function GraphViewerApp() {
   const [walk, setWalk] = useState<{
     direction: "up" | "down";
     trail: string[];
+    /** Which step of the trail is in focus — stepping back does not
+     *  drop the steps ahead. */
+    cursor: number;
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [outputsOpen, setOutputsOpen] = useState(false);
@@ -320,23 +323,29 @@ export function GraphViewerApp() {
       outputs: selectedOutputs,
       folded: new Set(folded),
     };
-    setWalk({ direction, trail: [legalId] });
+    setWalk({ direction, trail: [legalId], cursor: 0 });
     focusWalkTrail(direction, [legalId]);
   };
   const walkTo = (legalId: string) => {
     setWalk((current) => {
       if (!current) return current;
-      const trail = [...current.trail, legalId];
+      // Advancing from mid-trail branches off: keep up to the cursor,
+      // then append.
+      const trail = [...current.trail.slice(0, current.cursor + 1), legalId];
       focusWalkTrail(current.direction, trail);
-      return { ...current, trail };
+      return { ...current, trail, cursor: trail.length - 1 };
     });
   };
-  const walkBackTo = (index: number) => {
+  const walkFocus = (index: number) => {
     setWalk((current) => {
-      if (!current) return current;
-      const trail = current.trail.slice(0, index + 1);
-      focusWalkTrail(current.direction, trail);
-      return { ...current, trail };
+      if (!current || index === current.cursor) return current;
+      // Moving the cursor only re-aims the camera — the trail and the
+      // accumulated canvas stay whole.
+      setFlyTarget((prev) => ({
+        legalId: current.trail[index],
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
+      return { ...current, cursor: index };
     });
   };
   const endWalk = () => {
@@ -1523,7 +1532,7 @@ export function GraphViewerApp() {
               collapsed={folded}
               onCollapsedChange={setFolded}
               flyTo={flyTarget}
-              walkTrail={walk?.trail ?? null}
+              walkTrail={walk ? walk.trail.slice(0, walk.cursor + 1) : null}
               onInspect={focusNode}
               pinnedLegalId={
                 inspected && "legalId" in inspected && inspected.legalId
@@ -1542,7 +1551,7 @@ export function GraphViewerApp() {
         </div>
 
         {walk && (() => {
-          const currentId = walk.trail[walk.trail.length - 1];
+          const currentId = walk.trail[walk.cursor];
           const rule = walkRuleById.get(currentId);
           const input = walkInputById.get(currentId);
           const isUp = walk.direction === "up";
@@ -1574,24 +1583,23 @@ export function GraphViewerApp() {
                   ×
                 </button>
               </div>
-              <div className="walk-trail">
+              <ol className="walk-sequence" aria-label="Walk sequence">
                 {walk.trail.map((id, index) => (
-                  <button
-                    key={`${id}-${index}`}
-                    type="button"
-                    className={
-                      index === walk.trail.length - 1 ? "is-current" : ""
-                    }
-                    onClick={() => walkBackTo(index)}
-                  >
-                    {humanize(
-                      (walkRuleById.get(id)?.name ??
-                        walkInputById.get(id)?.name ??
-                        id.split("#").pop()) || "",
-                    )}
-                  </button>
+                  <li key={`${id}-${index}`}>
+                    <button
+                      type="button"
+                      className={index === walk.cursor ? "is-current" : ""}
+                      onClick={() => walkFocus(index)}
+                    >
+                      {humanize(
+                        (walkRuleById.get(id)?.name ??
+                          walkInputById.get(id)?.name ??
+                          id.split("#").pop()) || "",
+                      )}
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ol>
 
               <div className="walk-card">
                 <span className="walk-kind">
@@ -1600,7 +1608,15 @@ export function GraphViewerApp() {
                 <h2>{name}</h2>
                 {value !== null && <p className="walk-value">{value}</p>}
                 {rule?.source && !/composition/i.test(rule.source) && (
-                  <p className="walk-cite">{rule.source}</p>
+                  <p className="walk-cite">
+                    {rule.sourceUrl ? (
+                      <a href={rule.sourceUrl} target="_blank" rel="noreferrer">
+                        {rule.source} ↗
+                      </a>
+                    ) : (
+                      rule.source
+                    )}
+                  </p>
                 )}
                 {input && (
                   <p className="walk-note">
@@ -1634,16 +1650,58 @@ export function GraphViewerApp() {
                     <>
                       <dt>Depends on</dt>
                       <dd>
-                        {[
-                          rule.ruleDeps.length > 0
-                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
-                            : null,
-                          rule.inputDeps.length > 0
-                            ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        <details className="node-inspector-deps">
+                          <summary>
+                            {[
+                              rule.ruleDeps.length > 0
+                                ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                                : null,
+                              rule.inputDeps.length > 0
+                                ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </summary>
+                          <div className="node-inspector-consumers">
+                            {rule.ruleDeps.map((depId) => (
+                              <button
+                                type="button"
+                                key={depId}
+                                onClick={() => flyFromIndex(depId)}
+                                title="Fly to this step on the canvas"
+                              >
+                                {humanize(
+                                  walkRuleById.get(depId)?.name ??
+                                    depId.split("#").pop() ??
+                                    depId,
+                                )}
+                              </button>
+                            ))}
+                            {rule.inputDeps.map((depId) => (
+                              <span
+                                key={depId}
+                                className="node-inspector-dep-q"
+                              >
+                                {humanize(
+                                  walkInputById.get(depId)?.name ??
+                                    (depId.split("#").pop() ?? depId)
+                                      .split(".")
+                                      .pop() ??
+                                    depId,
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        </details>
+                      </dd>
+                    </>
+                  ) : null}
+                  {currentId ? (
+                    <>
+                      <dt>Legal ID</dt>
+                      <dd className="node-inspector-mono" title={currentId}>
+                        {currentId}
                       </dd>
                     </>
                   ) : null}

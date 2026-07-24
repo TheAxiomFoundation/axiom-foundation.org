@@ -2324,7 +2324,7 @@
    floating panels arrive instead of appearing. */
 .graph-viewer-root .react-flow__node {
   transition:
-    transform 0.5s cubic-bezier(0.22, 0.9, 0.28, 1),
+    transform 0.4s cubic-bezier(0.22, 0.9, 0.28, 1),
     opacity 0.3s ease,
     filter 0.3s ease;
 }
@@ -2386,4 +2386,70 @@
 }
 .graph-viewer-root .walk-code {
   margin-top: 8px;
+}
+
+/* The walk sequence: a numbered path you can step in and out of. */
+.graph-viewer-root .walk-sequence {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.graph-viewer-root .walk-sequence li {
+  position: relative;
+  padding-left: 18px;
+}
+.graph-viewer-root .walk-sequence li::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--color-rule);
+}
+.graph-viewer-root .walk-sequence li:first-child::before {
+  top: 50%;
+}
+.graph-viewer-root .walk-sequence li:last-child::before {
+  bottom: 50%;
+}
+.graph-viewer-root .walk-sequence li::after {
+  content: "";
+  position: absolute;
+  left: 2.5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-paper-elevated);
+  border: 1.5px solid var(--color-ink-muted);
+}
+.graph-viewer-root .walk-sequence li:has(button.is-current)::after {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .walk-sequence button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.graph-viewer-root .walk-sequence button:hover {
+  color: var(--color-accent);
+  background: var(--color-paper);
+}
+.graph-viewer-root .walk-sequence button.is-current {
+  color: var(--color-accent-hover, #b45309);
+  font-weight: 600;
 }

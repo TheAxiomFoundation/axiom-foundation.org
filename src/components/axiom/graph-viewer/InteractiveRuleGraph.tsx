@@ -847,12 +847,13 @@ function FlyToController({
           match.position.x + (match.measured?.width ?? 220) / 2,
           match.position.y + (match.measured?.height ?? 90) / 2,
           {
-            duration: 500,
+            duration: 750,
+            interpolate: "smooth",
             zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
           },
         );
       }
-    }, 400);
+    }, 550);
     return () => window.clearTimeout(timer);
   }, [layoutSig, flow]);
   useEffect(() => {
@@ -878,7 +879,8 @@ function FlyToController({
         match.position.x + (match.measured?.width ?? 220) / 2,
         match.position.y + (match.measured?.height ?? 90) / 2,
         {
-          duration: 700,
+          duration: 450,
+          interpolate: "smooth",
           zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
         },
       );

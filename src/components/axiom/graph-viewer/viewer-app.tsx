@@ -789,24 +789,13 @@ export function GraphViewerApp() {
   }
 
   function selectProgram(value: string) {
-    const next = programs.find((item) => programKey(item) === value);
+    const next = allPrograms.find((item) => programKey(item) === value);
     if (!next) return;
     exitComposeMode();
+    setCountry(countryOf(next.jurisdiction));
     setProgram(programRefFromSummary(next));
     setGraph(null);
     setSelectedOutputs([]);
-  }
-
-  function selectCountry(nextCountry: Country) {
-    if (nextCountry === country && !composeFocus) return;
-    exitComposeMode();
-    setCountry(nextCountry);
-    // The selection effect picks the first program of the new country.
-    setProgram(null);
-    setGraph(null);
-    setSelectedOutputs([]);
-    setOutputSearch("");
-    setError(null);
   }
 
   return (
@@ -1052,7 +1041,11 @@ export function GraphViewerApp() {
               {programsLoading
                 ? "Loading programs"
                 : graph
-                  ? `${graph.rules.length} rules loaded`
+                  ? `${
+                      composeFocus
+                        ? "composed view"
+                        : (effectiveProgram?.jurisdiction ?? "").toUpperCase()
+                    } · ${graph.rules.length} rules`
                   : "Loading graph"}
             </span>
           </div>
@@ -1061,17 +1054,25 @@ export function GraphViewerApp() {
             <select
               value={program ? programKey(program) : ""}
               onChange={(event) => selectProgram(event.target.value)}
-              disabled={programs.length === 0}
+              disabled={allPrograms.length === 0}
             >
               {composeFocus && <option value="">Composed view</option>}
               {programs.length === 0 && !composeFocus && (
                 <option value="">No programs available</option>
               )}
-              {programs.map((item) => (
-                <option key={programKey(item)} value={programKey(item)}>
-                  {displayNameForProgram(item)}
-                </option>
-              ))}
+              {[...new Set(allPrograms.map((i) => countryOf(i.jurisdiction)))].map(
+                (group) => (
+                  <optgroup key={group} label={countryLabel(group)}>
+                    {allPrograms
+                      .filter((i) => countryOf(i.jurisdiction) === group)
+                      .map((item) => (
+                        <option key={programKey(item)} value={programKey(item)}>
+                          {displayNameForProgram(item)}
+                        </option>
+                      ))}
+                  </optgroup>
+                ),
+              )}
             </select>
           </label>
           {program && <p className="program-summary">{summaryForProgram(programs, program)}</p>}
@@ -1177,28 +1178,6 @@ export function GraphViewerApp() {
       </aside>
 
       <section className="viewer-panel">
-        <header className="viewer-header">
-          <div>
-            <p>{composeFocus ? "composed view" : effectiveProgram?.jurisdiction ?? ""}</p>
-            <h1>{effectiveProgram?.displayName ?? "RuleSpec program"}</h1>
-          </div>
-          <div className="country-toggle" role="tablist" aria-label="Country">
-            {countries.map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={country === option}
-                className={`country-toggle-btn ${country === option ? "is-active" : ""}`}
-                onClick={() => selectCountry(option)}
-                title={countryLabel(option)}
-              >
-                {countryShortLabel(option)}
-              </button>
-            ))}
-          </div>
-        </header>
-
         {runResult && (
           <div className="exec-pill" role="status">
             <span className="exec-pill-dot" aria-hidden />

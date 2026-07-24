@@ -570,15 +570,7 @@ export function InteractiveRuleGraph({
             executedIds={executedIds}
             outputIds={outputNodeIds}
           />
-          <MiniMap
-            nodeColor={(n) => miniMapColor(n.data as IrgNodeData)}
-            nodeStrokeColor={(n) => miniMapColor(n.data as IrgNodeData)}
-            nodeBorderRadius={2}
-            pannable
-            zoomable
-            position="bottom-right"
-            style={{ background: "var(--color-paper-elevated)", border: "1px solid var(--color-rule)" }}
-          />
+          <GraphMiniMap />
           <Controls position="bottom-left" showInteractive={false} />
         </ReactFlow>
         <div className="irg-toolbar">
@@ -757,6 +749,33 @@ export type IrgNodeData =
 
 /** Inputs only emit edges (rightward), so they don't need a target handle. */
 /** Fly the viewport to a rule by durable legal id. */
+/**
+ * The minimap is a working map, not a picture: drag the viewport box
+ * to pan, wheel to zoom, and click anywhere to travel there — at a
+ * readable zoom, since "go to that section" is the point of a click.
+ */
+function GraphMiniMap() {
+  const flow = useReactFlow();
+  return (
+    <MiniMap
+      nodeColor={(n) => miniMapColor(n.data as IrgNodeData)}
+      nodeStrokeColor={(n) => miniMapColor(n.data as IrgNodeData)}
+      nodeBorderRadius={2}
+      pannable
+      zoomable
+      position="bottom-right"
+      style={{ background: "var(--color-paper-elevated)", border: "1px solid var(--color-rule)" }}
+      onClick={(_event, position) => {
+        const zoom = flow.getViewport().zoom;
+        void flow.setCenter(position.x, position.y, {
+          duration: 500,
+          zoom: Math.max(zoom, 0.6),
+        });
+      }}
+    />
+  );
+}
+
 function FlyToController({
   target,
   layoutSig,

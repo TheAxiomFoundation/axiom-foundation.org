@@ -64,8 +64,12 @@ describe('Landing sections', () => {
       screen.getByRole('heading', { name: /statutes encoded and verified/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/axiom encode "26 USC 32"/i)).toBeInTheDocument()
+    // The Read / Encode / Verify step cards were removed — the
+    // terminal carries the story on its own.
     for (const step of ['Read', 'Encode', 'Verify']) {
-      expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: step }),
+      ).not.toBeInTheDocument()
     }
   })
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import { axiomAppHref } from "@/lib/urls";
-import { Reveal, RevealGroup, RevealItem } from "./reveal";
+import { Reveal } from "./reveal";
 
 interface TerminalLine {
   content: React.ReactNode;
@@ -220,50 +220,6 @@ export function EncoderSection() {
         </Reveal>
 
         <Terminal />
-
-        <RevealGroup
-          className="mt-20 grid gap-6 md:grid-cols-3 max-w-[960px] mx-auto"
-          staggerChildren={0.1}
-        >
-          {[
-            {
-              n: "01",
-              label: "Read",
-              body:
-                "Pull the statute. Walk the subsection tree. Plan the dependency graph between siblings.",
-            },
-            {
-              n: "02",
-              label: "Encode",
-              body:
-                "An agent per subsection drafts the encoding, citing the section it came from. The pipeline logs every conflict and retry.",
-            },
-            {
-              n: "03",
-              label: "Verify",
-              body:
-                "Continuous Integration checks, comparison against independent oracles, reviewer agents that explain any discrepancy.",
-            },
-          ].map((step) => (
-            <RevealItem
-              key={step.n}
-              className="card-edition p-6 transition-transform duration-300 hover:-translate-y-1"
-            >
-              <div className="flex items-baseline justify-between mb-4">
-                <span className="serial">Step {step.n}</span>
-                <span className="serif-italic text-[1rem] text-[var(--color-ink-muted)]">
-                  {step.label.toLowerCase()}
-                </span>
-              </div>
-              <h3 className="font-body text-base font-medium text-[var(--color-ink)] mb-2">
-                {step.label}
-              </h3>
-              <p className="font-body text-[0.88rem] text-[var(--color-ink-secondary)] leading-relaxed m-0">
-                {step.body}
-              </p>
-            </RevealItem>
-          ))}
-        </RevealGroup>
 
         <Reveal
           as="p"

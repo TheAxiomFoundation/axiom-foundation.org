@@ -1917,3 +1917,33 @@
 .graph-viewer-root .irg-wrap {
   overflow: hidden;
 }
+
+/* The surface switch: a single quiet pill in the gap above the
+   canvas, top right — the whole brand block it replaces lives in the
+   site header already. */
+.graph-viewer-root .plane-switch {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  color: var(--color-ink-secondary);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.graph-viewer-root .plane-switch:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}

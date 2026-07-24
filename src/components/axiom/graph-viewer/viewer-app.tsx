@@ -1025,15 +1025,6 @@ export function GraphViewerApp() {
     )}
     <main className={`app-shell ${walk ? "walk-active" : ""}`}>
       <aside className="side-panel">
-        <div className="brand">
-          <span>Axiom</span>
-          <strong>Plane</strong>
-          <p>Law as a system: pick a program, set a household, run it, and watch the computation light up.</p>
-          <a className="brand-switch" href="/us">
-            ⇄ Library — read the law
-          </a>
-        </div>
-
         <section className="control-block program-controls">
           <div className="section-head stacked">
             <h2>Program</h2>
@@ -1178,6 +1169,9 @@ export function GraphViewerApp() {
       </aside>
 
       <section className="viewer-panel">
+        <a className="plane-switch" href="/us" title="Switch to the Library — read the law">
+          ⇄ Library
+        </a>
         {runResult && (
           <div className="exec-pill" role="status">
             <span className="exec-pill-dot" aria-hidden />

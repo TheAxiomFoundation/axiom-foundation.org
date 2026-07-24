@@ -143,6 +143,9 @@ export function GraphViewerApp() {
     trail: string[];
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
+  // The scenario runner belongs to the "Run a scenario" journey only —
+  // survey and rule journeys keep a quieter sidebar.
+  const [scenarioMode, setScenarioMode] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
       typeof window !== "undefined" &&
@@ -166,6 +169,7 @@ export function GraphViewerApp() {
   };
   const beginSurvey = () => {
     dismissLauncher();
+    setScenarioMode(false);
     // The whole law, literally: every result selected, everything
     // unfolded, camera framing it all. The LOD constellation and the
     // Index keep it legible.
@@ -180,11 +184,13 @@ export function GraphViewerApp() {
   };
   const beginScenario = () => {
     dismissLauncher();
+    setScenarioMode(true);
     setScenarioGlow(true);
     window.setTimeout(() => setScenarioGlow(false), 2600);
   };
   const beginRuleLens = (legalId: string) => {
     dismissLauncher();
+    setScenarioMode(false);
     openLens(legalId);
   };
   const walkRuleById = useMemo(
@@ -214,6 +220,7 @@ export function GraphViewerApp() {
   };
   const startWalk = (direction: "up" | "down", legalId: string) => {
     dismissLauncher();
+    setScenarioMode(false);
     savedWalkSelection.current = selectedOutputs;
     setWalk({ direction, trail: [legalId] });
     focusWalkNode(legalId);
@@ -1095,7 +1102,7 @@ export function GraphViewerApp() {
           </div>
         </section>
 
-        {scenarioFields.length > 0 && (
+        {scenarioMode && scenarioFields.length > 0 && (
           <section
             className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
           >

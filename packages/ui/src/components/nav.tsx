@@ -80,7 +80,6 @@ const DEFAULT_LINKS: NavLink[] = [
         label: "Power products on rules you don't rebuild",
         items: [
           { href: "/demos?d=builder", label: "Form Builder" },
-          { href: "/demos?d=regdemo", label: "Small company checker" },
         ],
       },
       {

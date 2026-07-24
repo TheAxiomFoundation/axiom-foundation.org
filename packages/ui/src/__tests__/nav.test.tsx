@@ -40,8 +40,10 @@ describe("Nav", () => {
       screen.getAllByText("Simulate policy on real rules").length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Small company checker")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos?d=regdemo");
+      screen.getAllByText("Form Builder")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=builder");
+    // The small company checker was pulled from the gallery.
+    expect(screen.queryByText("Small company checker")).not.toBeInTheDocument();
     expect(
       screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=finbot");

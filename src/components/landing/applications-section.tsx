@@ -16,9 +16,9 @@ const APPLICATIONS = [
       "Tax software, benefit estimators, eligibility tools — all running off the same encoding, all able to point at the statute behind any number.",
     actor: "for builders",
     demo: {
-      label: "Run law in the browser",
-      href: "/demos?d=regdemo",
-      src: "https://axiom-reg-demo.vercel.app/",
+      label: "SNAP workflow checker",
+      href: "/demos?d=workflow",
+      src: "https://co-snap-workflow-checker.vercel.app/",
     },
   },
   {

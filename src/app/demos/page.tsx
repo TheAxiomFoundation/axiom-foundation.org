@@ -20,7 +20,6 @@ const DEMO_SHELL_URL = "https://axiom-demo-shell.vercel.app";
 /** Modal ids the shell accepts via ?d= — mirrors its data.js. */
 const SHELL_DEMO_IDS = new Set([
   "finbot",
-  "regdemo",
   "builder",
   "workflow",
   "snap",

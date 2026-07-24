@@ -87,6 +87,23 @@ export function GraphViewerApp() {
     if (savedSelection.current) setSelectedOutputs(savedSelection.current);
     savedSelection.current = null;
   };
+  // One click does the whole move: open the card's info, dissect its
+  // neighborhood, and fly to it. During a walk the walk owns the
+  // surface, so a click only inspects.
+  const focusNode = (data: IrgNodeData) => {
+    setInspected(data);
+    const legalId = "legalId" in data && data.legalId ? data.legalId : null;
+    if (!legalId || walk) return;
+    if (data.kind !== "rule" && data.kind !== "output" && data.kind !== "ruleRef")
+      return;
+    setLensTrail((trail) => {
+      if (trail.length === 0) savedSelection.current = selectedOutputs;
+      if (trail[trail.length - 1] === legalId) return trail;
+      return [...trail, legalId];
+    });
+    setSelectedOutputs([legalId]);
+    flyTo(legalId);
+  };
   const lensFocusId = lensTrail[lensTrail.length - 1] ?? null;
   // Downstream: who uses the focused rule — the direction the
   // upstream tree cannot draw.
@@ -1281,7 +1298,7 @@ export function GraphViewerApp() {
               onCollapsedChange={setFolded}
               flyTo={flyTarget}
               walkTrail={walk?.trail ?? null}
-              onInspect={setInspected}
+              onInspect={focusNode}
               onLens={openLens}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}

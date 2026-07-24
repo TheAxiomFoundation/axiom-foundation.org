@@ -766,28 +766,47 @@ function FlyToController({
 }) {
   const flow = useReactFlow();
   const last = useRef(0);
-  const surveyUntil = useRef(0);
-  // A survey fit chases the layout, not the clock: a whole-law unfold
-  // relays out asynchronously (and slowly), so keep re-fitting on
-  // every geometry change until the layout stops moving.
+  const chaseUntil = useRef(0);
+  const chaseId = useRef<string | null>(null);
+  // The camera chases the layout, not the clock: a target usually
+  // triggers a re-dissect whose relayout lands later, so keep
+  // re-fitting on every geometry change until it stops moving.
   useEffect(() => {
-    if (Date.now() > surveyUntil.current) return;
+    if (Date.now() > chaseUntil.current) return;
     const timer = window.setTimeout(() => {
-      void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
+      if (chaseId.current === "*") {
+        void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
+        return;
+      }
+      const match = flow
+        .getNodes()
+        .find(
+          (node) =>
+            (node.data as IrgNodeData & { legalId?: string }).legalId ===
+            chaseId.current,
+        );
+      if (match) {
+        void flow.fitView({
+          nodes: [{ id: match.id }],
+          duration: 500,
+          padding: 0.5,
+          maxZoom: 1.2,
+        });
+      }
     }, 400);
     return () => window.clearTimeout(timer);
   }, [layoutSig, flow]);
   useEffect(() => {
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
+    chaseId.current = target.legalId;
+    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 3_000);
     if (target.legalId === "*") {
-      surveyUntil.current = Date.now() + 10_000;
       window.setTimeout(() => {
         void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
       }, 350);
       return;
     }
-    surveyUntil.current = 0;
     const match = flow
       .getNodes()
       .find(

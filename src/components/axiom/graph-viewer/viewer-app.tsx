@@ -64,11 +64,21 @@ export function GraphViewerApp() {
       legalId,
       nonce: (current?.nonce ?? 0) + 1,
     }));
-  const savedSelection = useRef<LegalId[] | null>(null);
+  const savedSelection = useRef<{
+    outputs: LegalId[];
+    folded: Set<string>;
+  } | null>(null);
+  // A restored view must come back exactly as it was — the dissect
+  // effect consumes this instead of re-collapsing the restored graph.
+  const restoreFoldedRef = useRef<Set<string> | null>(null);
   const openLens = (legalId: string) => {
     setInspected(null);
     setLensTrail((trail) => {
-      if (trail.length === 0) savedSelection.current = selectedOutputs;
+      if (trail.length === 0)
+        savedSelection.current = {
+          outputs: selectedOutputs,
+          folded: new Set(folded),
+        };
       if (trail[trail.length - 1] === legalId) return trail;
       return [...trail, legalId];
     });
@@ -106,7 +116,11 @@ export function GraphViewerApp() {
   };
   const closeLens = () => {
     setLensTrail([]);
-    if (savedSelection.current) setSelectedOutputs(savedSelection.current);
+    if (savedSelection.current) {
+      setSelectedOutputs(savedSelection.current.outputs);
+      restoreFoldedRef.current = savedSelection.current.folded;
+      setFolded(savedSelection.current.folded);
+    }
     savedSelection.current = null;
     // "Back to the map" should show the map — reframe the restored graph.
     setFlyTarget((current) => ({
@@ -233,7 +247,10 @@ export function GraphViewerApp() {
       (rule) =>
         rule.ruleDeps.includes(legalId) || rule.inputDeps.includes(legalId),
     );
-  const savedWalkSelection = useRef<LegalId[] | null>(null);
+  const savedWalkSelection = useRef<{
+    outputs: LegalId[];
+    folded: Set<string>;
+  } | null>(null);
   const focusWalkNode = (legalId: string) => {
     if (walkRuleById.has(legalId)) {
       setSelectedOutputs([legalId]);
@@ -248,7 +265,10 @@ export function GraphViewerApp() {
   const startWalk = (direction: "up" | "down", legalId: string) => {
     dismissLauncher();
     setScenarioMode(false);
-    savedWalkSelection.current = selectedOutputs;
+    savedWalkSelection.current = {
+      outputs: selectedOutputs,
+      folded: new Set(folded),
+    };
     setWalk({ direction, trail: [legalId] });
     focusWalkNode(legalId);
   };
@@ -269,7 +289,9 @@ export function GraphViewerApp() {
   const endWalk = () => {
     setWalk(null);
     if (savedWalkSelection.current) {
-      setSelectedOutputs(savedWalkSelection.current);
+      setSelectedOutputs(savedWalkSelection.current.outputs);
+      restoreFoldedRef.current = savedWalkSelection.current.folded;
+      setFolded(savedWalkSelection.current.folded);
       savedWalkSelection.current = null;
     }
   };
@@ -659,7 +681,12 @@ export function GraphViewerApp() {
       (lensTrail.length > 0 || walk ? "always" : "auto");
     if (foldedInitialized.current !== key) {
       foldedInitialized.current = key;
-      if (surveyRef.current) {
+      if (restoreFoldedRef.current) {
+        // A lens or walk just closed — bring back the exact fold
+        // state the user left, not a fresh dissection.
+        setFolded(restoreFoldedRef.current);
+        restoreFoldedRef.current = null;
+      } else if (surveyRef.current) {
         // A survey just selected everything — keep it unfolded
         // instead of re-dissecting the new selection.
         surveyRef.current = false;

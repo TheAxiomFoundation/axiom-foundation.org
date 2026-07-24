@@ -2254,3 +2254,126 @@
 .graph-viewer-root .irg-input.irg-input-user {
   background: #eef5ee;
 }
+
+/* Add-input picker in the scenario panel. */
+.graph-viewer-root .lever-picker {
+  position: relative;
+  margin-bottom: 10px;
+}
+.graph-viewer-root .lever-picker-toggle {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px dashed var(--color-rule);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.graph-viewer-root .lever-picker-toggle:hover,
+.graph-viewer-root .lever-picker-toggle[aria-expanded="true"] {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .lever-picker-panel {
+  margin-top: 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-paper-elevated);
+  padding: 8px;
+  animation: panel-in 0.2s var(--ease-out, ease) both;
+}
+.graph-viewer-root .lever-picker-panel input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--color-paper);
+}
+.graph-viewer-root .lever-picker-panel input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .lever-picker-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.graph-viewer-root .lever-picker-list button {
+  text-align: left;
+  padding: 6px 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.graph-viewer-root .lever-picker-list button:hover {
+  background: var(--color-paper);
+  color: var(--color-accent);
+}
+
+/* ═══ Motion pack: the map glides ═══ */
+/* Relayouts glide instead of jumping; lit/dim states cross-fade;
+   floating panels arrive instead of appearing. */
+.graph-viewer-root .react-flow__node {
+  transition:
+    transform 0.5s cubic-bezier(0.22, 0.9, 0.28, 1),
+    opacity 0.3s ease,
+    filter 0.3s ease;
+}
+.graph-viewer-root .react-flow__node.dragging {
+  transition: none;
+}
+.graph-viewer-root .react-flow__edge-path {
+  transition:
+    stroke 0.25s ease,
+    stroke-width 0.25s ease,
+    opacity 0.25s ease;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.graph-viewer-root .node-inspector {
+  animation: panel-in 0.26s var(--ease-out, ease) both;
+}
+.graph-viewer-root .outputs-panel {
+  animation: panel-in 0.2s var(--ease-out, ease) both;
+}
+.graph-viewer-root .walk-panel {
+  animation: panel-in 0.28s var(--ease-out, ease) both;
+}
+.graph-viewer-root .results-sheet {
+  animation: panel-in 0.3s var(--ease-out, ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .react-flow__node,
+  .graph-viewer-root .react-flow__edge-path {
+    transition: none;
+  }
+  .graph-viewer-root .node-inspector,
+  .graph-viewer-root .outputs-panel,
+  .graph-viewer-root .walk-panel,
+  .graph-viewer-root .results-sheet {
+    animation: none;
+  }
+}
+
+.graph-viewer-root .nav-name.is-active {
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.12));
+  color: var(--color-accent-hover, #b45309);
+  border-radius: 6px;
+}

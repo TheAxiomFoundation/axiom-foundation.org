@@ -116,6 +116,29 @@ export function GraphViewerApp() {
       return next;
     });
     flyTo(legalId);
+    // An Index click is a card click: open the info sheet, which also
+    // pins the path highlight until it closes.
+    const rule = walkRuleById.get(legalId);
+    if (rule) {
+      setInspected({
+        kind: "ruleRef",
+        label: rule.name,
+        legalId,
+        canExpand: false,
+        isParameter: rule.kind === "parameter",
+        isOutput: selectedSet.has(legalId),
+        verdictCls: "",
+        value: "",
+        isExpanded: false,
+        showValues: false,
+        meta: {
+          kindLine: `${rule.kind === "parameter" ? "Parameter" : "Step"}${
+            rule.dtype ? ` · ${rule.dtype}` : ""
+          }`,
+          legalId,
+        },
+      });
+    }
   };
   const closeLens = () => {
     setLensTrail([]);
@@ -190,6 +213,11 @@ export function GraphViewerApp() {
   const [outputsOpen, setOutputsOpen] = useState(false);
   const [indexSearch, setIndexSearch] = useState("");
   const [indexHover, setIndexHover] = useState<string | null>(null);
+  const [extraLevers, setExtraLevers] = useState<
+    Array<{ name: string; sample: number | boolean }>
+  >([]);
+  const [leverSearch, setLeverSearch] = useState("");
+  const [leverPickerOpen, setLeverPickerOpen] = useState(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -407,15 +435,38 @@ export function GraphViewerApp() {
     return fields.slice(0, 16);
   }, [graph, effectiveProgram]);
 
+  const allScenarioFields = useMemo(() => {
+    const seen = new Set(scenarioFields.map((field) => field.name));
+    const extras = extraLevers
+      .filter((lever) => !seen.has(lever.name))
+      .map((lever) => ({
+        name: lever.name,
+        label: lever.name,
+        sample: lever.sample,
+      }));
+    return [...scenarioFields, ...extras];
+  }, [scenarioFields, extraLevers]);
+
   useEffect(() => {
-    setScenario(
-      Object.fromEntries(
-        scenarioFields.map((field) => [field.name, field.sample]),
-      ),
-    );
+    setExtraLevers([]);
+    setLeverSearch("");
+    setLeverPickerOpen(false);
     setRunResult(null);
     setRunError(null);
-  }, [scenarioFields]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveProgram?.programId]);
+
+  useEffect(() => {
+    // Adding a lever must not wipe values the user already edited.
+    setScenario((current) =>
+      Object.fromEntries(
+        allScenarioFields.map((field) => [
+          field.name,
+          current[field.name] ?? field.sample,
+        ]),
+      ),
+    );
+  }, [allScenarioFields]);
 
   const runScenario = async () => {
     if (!effectiveProgram || running) return;
@@ -1153,12 +1204,17 @@ export function GraphViewerApp() {
                 }
                 onFly={flyFromIndex}
                 onHover={setIndexHover}
+                activeId={
+                  inspected && "legalId" in inspected
+                    ? (inspected.legalId ?? null)
+                    : null
+                }
               />
             );
           })}
         </div>
         )}
-        {scenarioMode && scenarioFields.length > 0 && (
+        {scenarioMode && allScenarioFields.length > 0 && (
           <section
             className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
           >
@@ -1167,7 +1223,7 @@ export function GraphViewerApp() {
               <span>The levers of the law — edit and run</span>
             </div>
             <div className="scenario-fields">
-              {scenarioFields.map((field) => (
+              {allScenarioFields.map((field) => (
                 <label key={field.name} className="scenario-field">
                   <span>{humanize(field.name)}</span>
                   {typeof field.sample === "boolean" ? (
@@ -1195,6 +1251,75 @@ export function GraphViewerApp() {
                   )}
                 </label>
               ))}
+            </div>
+            <div className="lever-picker">
+              <button
+                type="button"
+                className="lever-picker-toggle"
+                onClick={() => setLeverPickerOpen((open) => !open)}
+                aria-expanded={leverPickerOpen}
+              >
+                ＋ Add input
+              </button>
+              {leverPickerOpen && (
+                <div className="lever-picker-panel">
+                  <input
+                    type="search"
+                    value={leverSearch}
+                    onChange={(event) => setLeverSearch(event.target.value)}
+                    placeholder="Search inputs..."
+                    aria-label="Search inputs to add"
+                  />
+                  <div className="lever-picker-list">
+                    {(graph?.inputs ?? [])
+                      .filter((input, index, list) => {
+                        if (
+                          list.findIndex((i) => i.name === input.name) !==
+                          index
+                        )
+                          return false;
+                        if (
+                          allScenarioFields.some(
+                            (field) => field.name === input.name,
+                          )
+                        )
+                          return false;
+                        const query = leverSearch.trim().toLowerCase();
+                        return (
+                          !query ||
+                          humanize(input.name)
+                            .toLowerCase()
+                            .includes(query)
+                        );
+                      })
+                      .slice(0, 24)
+                      .map((input) => (
+                        <button
+                          type="button"
+                          key={input.legalId}
+                          onClick={() => {
+                            const sample = input.sample;
+                            setExtraLevers((current) => [
+                              ...current,
+                              {
+                                name: input.name,
+                                sample:
+                                  typeof sample === "number" ||
+                                  typeof sample === "boolean"
+                                    ? sample
+                                    : 0,
+                              },
+                            ]);
+                            setLeverPickerOpen(false);
+                            setLeverSearch("");
+                          }}
+                        >
+                          {humanize(input.name)}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -2092,6 +2217,7 @@ function NavigatorBranch({
   onToggleFold,
   onFly,
   onHover,
+  activeId,
 }: {
   node: TraceNode;
   depth: number;
@@ -2099,6 +2225,7 @@ function NavigatorBranch({
   onToggleFold: (legalId: string) => void;
   onFly: (legalId: string) => void;
   onHover: (legalId: string | null) => void;
+  activeId: string | null;
 }) {
   const isRule = node.dtype !== "input" && Boolean(node.formula);
   const children = (node.children ?? []).filter(
@@ -2122,7 +2249,9 @@ function NavigatorBranch({
         )}
         <button
           type="button"
-          className={`nav-name ${depth === 0 ? "is-root" : ""}`}
+          className={`nav-name ${depth === 0 ? "is-root" : ""} ${
+            activeId === node.legalId ? "is-active" : ""
+          }`}
           onClick={() => onFly(node.legalId)}
           onMouseEnter={() => onHover(node.legalId)}
           onMouseLeave={() => onHover(null)}
@@ -2151,6 +2280,7 @@ function NavigatorBranch({
             onToggleFold={onToggleFold}
             onFly={onFly}
             onHover={onHover}
+            activeId={activeId}
           />
         ))}
     </div>

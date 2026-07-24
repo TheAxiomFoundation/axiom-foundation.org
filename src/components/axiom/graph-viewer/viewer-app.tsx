@@ -1622,16 +1622,41 @@ export function GraphViewerApp() {
                 <>
                   <dt>Depends on</dt>
                   <dd>
-                    {[
-                      rule.ruleDeps.length > 0
-                        ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
-                        : null,
-                      rule.inputDeps.length > 0
-                        ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    <details className="node-inspector-deps">
+                      <summary>
+                        {[
+                          rule.ruleDeps.length > 0
+                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                            : null,
+                          rule.inputDeps.length > 0
+                            ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </summary>
+                      <div className="node-inspector-consumers">
+                        {rule.ruleDeps.map((depId) => (
+                          <button
+                            type="button"
+                            key={depId}
+                            onClick={() => flyFromIndex(depId)}
+                            title="Fly to this step on the canvas"
+                          >
+                            {humanize(
+                              walkRuleById.get(depId)?.name ??
+                                depId.split("#").pop() ??
+                                depId,
+                            )}
+                          </button>
+                        ))}
+                        {rule.inputDeps.map((depId) => (
+                          <span key={depId} className="node-inspector-dep-q">
+                            {humanize(depId.split("#").pop() ?? depId)}
+                          </span>
+                        ))}
+                      </div>
+                    </details>
                   </dd>
                 </>
               ) : null}
@@ -1694,7 +1719,9 @@ export function GraphViewerApp() {
             {formula ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
-                <pre>{formula}</pre>
+                <div className="node-inspector-code-body">
+                  <FormulaPretty source={formula} />
+                </div>
               </details>
             ) : null}
             {"legalId" in inspected &&
@@ -1968,6 +1995,74 @@ const BUCKET_DOT: Record<string, string> = {
  * it on the canvas and in the tree — the same fold state drives
  * both projections.
  */
+/**
+ * Formula, readable: identifiers become their humanized names,
+ * keywords / numbers / operators get their own weight so the
+ * expression reads as a sentence about rules, not engine code.
+ */
+const FORMULA_TOKEN_RE =
+  /[A-Za-z_][A-Za-z0-9_.]*|\d+(?:\.\d+)?|"[^"]*"|'[^']*'|\s+|./g;
+const FORMULA_KEYWORDS = new Set([
+  "if",
+  "then",
+  "else",
+  "and",
+  "or",
+  "not",
+  "in",
+  "true",
+  "false",
+  "null",
+  "min",
+  "max",
+  "abs",
+  "floor",
+  "ceil",
+  "round",
+  "sum",
+  "any",
+  "all",
+  "count",
+  "count_where",
+  "where",
+]);
+function FormulaPretty({ source }: { source: string }) {
+  const tokens = source.match(FORMULA_TOKEN_RE) ?? [source];
+  return (
+    <code className="formula-pretty">
+      {tokens.map((token, index) => {
+        if (/^\s+$/.test(token)) return token;
+        if (/^[A-Za-z_]/.test(token)) {
+          if (FORMULA_KEYWORDS.has(token.toLowerCase())) {
+            return (
+              <span key={index} className="fp-kw">
+                {token}
+              </span>
+            );
+          }
+          return (
+            <span key={index} className="fp-id" title={token}>
+              {humanize(token.split(".").pop() ?? token)}
+            </span>
+          );
+        }
+        if (/^[\d"']/.test(token)) {
+          return (
+            <span key={index} className="fp-num">
+              {token}
+            </span>
+          );
+        }
+        return (
+          <span key={index} className="fp-op">
+            {token}
+          </span>
+        );
+      })}
+    </code>
+  );
+}
+
 function NavigatorBranch({
   node,
   depth,

@@ -2183,3 +2183,58 @@
   font-size: 11px;
   color: var(--color-ink-muted);
 }
+
+.graph-viewer-root .node-inspector-deps summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.graph-viewer-root .node-inspector-deps summary::after {
+  content: " ▾";
+  color: var(--color-ink-muted);
+  font-size: 10px;
+}
+.graph-viewer-root .node-inspector-deps[open] summary::after {
+  content: " ▴";
+}
+.graph-viewer-root .node-inspector-deps > div {
+  margin-top: 6px;
+}
+.graph-viewer-root .node-inspector-dep-q {
+  padding: 2px 8px;
+  border: 1px dashed var(--color-rule);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+
+.graph-viewer-root .node-inspector-code-body {
+  padding: 10px 12px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--color-paper);
+}
+.graph-viewer-root .formula-pretty {
+  display: block;
+  font-family: var(--f-mono, monospace);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.graph-viewer-root .formula-pretty .fp-id {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.graph-viewer-root .formula-pretty .fp-kw {
+  color: var(--color-accent-hover, #b45309);
+  font-style: italic;
+}
+.graph-viewer-root .formula-pretty .fp-num {
+  color: #0f766e;
+  font-weight: 600;
+}
+.graph-viewer-root .formula-pretty .fp-op {
+  color: var(--color-ink-muted);
+}

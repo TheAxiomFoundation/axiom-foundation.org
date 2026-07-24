@@ -21,6 +21,7 @@ describe('ValidationPage', () => {
       'PolicyEngine',
       'TAXSIM',
       'UKMOD / EUROMOD / SOUTHMOD',
+      'SPSD/M',
       'PSL Tax-Calculator',
       'ACCESS NYC',
       'SNAP quality-control data',
@@ -28,7 +29,7 @@ describe('ValidationPage', () => {
       expect(screen.getByRole('heading', { name: oracle })).toBeInTheDocument()
     }
     const outs = screen.getAllByRole('link', { name: /visit the oracle/i })
-    expect(outs).toHaveLength(6)
+    expect(outs).toHaveLength(7)
     for (const link of outs) {
       expect(link).toHaveAttribute('target', '_blank')
     }

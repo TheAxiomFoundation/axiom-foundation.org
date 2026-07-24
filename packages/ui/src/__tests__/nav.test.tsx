@@ -24,10 +24,19 @@ describe("Nav", () => {
 
   it("renders the demos dropdown grouped by stakeholder", () => {
     render(<Nav />);
-    // Group headers mirror the demo-gallery taxonomy in axiom-demo-shell.
-    expect(screen.getAllByText("Builders").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI labs").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Government").length).toBeGreaterThan(0);
+    // Group headers are the demo-gallery row sentences from axiom-demo-shell.
+    expect(
+      screen.getAllByText("Build government systems on the law").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Ground AI models in citable law").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Power products on rules you don't rebuild").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Simulate policy on real rules").length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Small company checker")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=regdemo");

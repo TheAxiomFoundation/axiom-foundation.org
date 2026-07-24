@@ -6,7 +6,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 export const metadata: Metadata = {
   title: "Validation — Axiom Foundation",
   description:
-    "How the Axiom Foundation checks its encodings: cross-checks against independent oracles — PolicyEngine, TAXSIM, EUROMOD-family models, ACCESS NYC, and government quality-control data.",
+    "How the Axiom Foundation checks its encodings: cross-checks against independent oracles — PolicyEngine, TAXSIM, EUROMOD-family models, SPSD/M, ACCESS NYC, and government quality-control data.",
 };
 
 interface Oracle {
@@ -34,6 +34,12 @@ const ORACLES: Oracle[] = [
     scope: "UK, EU & Global South",
     body: "The EUROMOD family of tax-benefit microsimulation models, maintained by university and EC research teams.",
     href: "https://euromod-web.jrc.ec.europa.eu",
+  },
+  {
+    name: "SPSD/M",
+    scope: "Canada tax & transfers",
+    body: "Statistics Canada's Social Policy Simulation Database and Model — the reference microsimulation of Canadian federal and provincial taxes and transfers.",
+    href: "https://www.statcan.gc.ca/en/microsimulation/spsdm/spsdm",
   },
   {
     name: "PSL Tax-Calculator",

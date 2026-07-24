@@ -53,6 +53,11 @@ export default function CoverageLoading() {
                       </div>
                     </li>
                   ))}
+                  {/* Same in-column status as the loaded hero — the
+                      bottom line is below the fold on tall stages. */}
+                  <li className="pstack-counting" aria-hidden data-on>
+                    <span className="cov-counting">counting the corpus</span>
+                  </li>
                 </ol>
               </div>
               <p className="pscroll-hint cov-counting" role="status">

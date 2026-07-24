@@ -137,6 +137,8 @@ describe("CoverageLoading", () => {
     // Same layer names as the real hero (shared copy module).
     expect(screen.getByText("Source documents")).toBeInTheDocument();
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
-    expect(screen.getByText(/counting the corpus/)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/counting the corpus/).length,
+    ).toBeGreaterThan(0);
   });
 });

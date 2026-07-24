@@ -132,6 +132,16 @@ export function StackHero({ data }: { data: CoverageData }) {
                 </div>
               </li>
             ))}
+            {/* The status lives WITH the numbers — the stage is nearly
+                viewport-tall, so the bottom hint is below the fold
+                exactly while the digits roll. */}
+            <li
+              className="pstack-counting"
+              aria-hidden
+              data-on={counting || undefined}
+            >
+              <span className="cov-counting">counting the corpus</span>
+            </li>
           </ol>
         </div>
         {/* Rendered in server HTML too (visibility is CSS-gated to

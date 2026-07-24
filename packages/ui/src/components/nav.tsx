@@ -64,24 +64,28 @@ const DEFAULT_LINKS: NavLink[] = [
     // match the shell's data.js.
     groups: [
       {
-        label: "Builders",
+        label: "Build government systems on the law",
         items: [
-          { href: "/demos?d=regdemo", label: "Small company checker" },
-          { href: "/demos?d=builder", label: "Form Builder" },
-          { href: "/demos?d=architecture", label: "Architecture map" },
-        ],
-      },
-      {
-        label: "AI labs",
-        items: [
-          { href: "/demos?d=finbot", label: "Grounded benefits assistant" },
+          { href: "/demos?d=workflow", label: "SNAP workflow checker" },
           { href: "/demos?d=guidance", label: "Guidance impact visualizer" },
         ],
       },
       {
-        label: "Government",
+        label: "Ground AI models in citable law",
         items: [
-          { href: "/demos?d=workflow", label: "SNAP workflow checker" },
+          { href: "/demos?d=finbot", label: "Grounded benefits assistant" },
+        ],
+      },
+      {
+        label: "Power products on rules you don't rebuild",
+        items: [
+          { href: "/demos?d=builder", label: "Form Builder" },
+          { href: "/demos?d=regdemo", label: "Small company checker" },
+        ],
+      },
+      {
+        label: "Simulate policy on real rules",
+        items: [
           { href: "/demos?d=snap", label: "Colorado SNAP cliffs" },
           { href: "/demos?d=microsim", label: "Microsimulation" },
         ],
@@ -206,17 +210,21 @@ export function Nav({
     return entries;
   }
 
-  /** Grouped desktop panel — one column per stakeholder, unlabeled
-   *  groups (e.g. "All demos") as a footer row under a hairline. */
+  /** Grouped desktop panel — a 2×2 grid of use-cases, each headed by
+   *  the demo-gallery row sentence, unlabeled groups (e.g. "All
+   *  demos") as a footer row under a hairline. */
   function renderGroupedPanel(groups: NonNullable<NavLink["groups"]>) {
     const columns = groups.filter((g) => g.label);
     const footer = groups.filter((g) => !g.label);
     return (
       <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
-        <div className="flex gap-10">
+        {/* Fixed column tracks: fr-based tracks collapse to zero inside
+            the shrink-to-fit absolute panel; the nav container's
+            uppercase/tracking must be explicitly reset. */}
+        <div className="grid grid-cols-[220px_220px] gap-x-12 gap-y-7">
           {columns.map((group) => (
-            <div key={group.label} className="min-w-[140px]">
-              <div className="mb-3 font-mono text-[0.7rem] font-semibold tracking-[0.18em] uppercase text-[var(--color-ink)]">
+            <div key={group.label}>
+              <div className="mb-2.5 font-display text-[0.98rem] font-normal normal-case tracking-normal leading-snug text-[var(--color-ink)]">
                 {group.label}
                 <span
                   aria-hidden

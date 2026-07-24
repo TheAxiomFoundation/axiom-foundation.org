@@ -1,4 +1,9 @@
 @import "tailwindcss";
+/* The nav (and other shared components) live in packages/ui — outside
+   Tailwind's automatic source detection, so their utility classes are
+   only generated if the same class happens to appear in src/. Register
+   the package source explicitly. */
+@source "../../packages/ui/src";
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 
@@ -653,6 +658,60 @@ a.cov-mini:focus-visible {
   }
 }
 
+
+/* ── Landing "what it powers": live demo previews inside the use-case
+   cards — the demo-shell gallery's scaled-iframe thumb, inlined. The
+   iframe renders the real app at full width and scales down; clicks
+   pass through to the wrapping link (pointer-events: none). */
+.landing-demo-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+}
+.landing-demo-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.05));
+}
+.landing-demo-thumb iframe {
+  --preview-scale: 0.2;
+  position: absolute;
+  inset: 0;
+  width: calc(100% / var(--preview-scale));
+  height: calc(100% / var(--preview-scale));
+  border: 0;
+  pointer-events: none;
+  transform: scale(var(--preview-scale));
+  transform-origin: 0 0;
+}
+
+/* The counting status that sits with the numbers — the stage is
+   nearly viewport-tall, so the bottom hint is below the fold exactly
+   while the digits roll. Gated to scripting+motion: without either
+   the figures render settled and there is nothing to count. */
+.pstack-counting {
+  display: none;
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.pstack-counting[data-on] {
+  opacity: 1;
+}
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .pstack-counting {
+    display: block;
+  }
+}
 
 /* "counting the corpus…" — animated ellipsis so a slow load never
    reads as stuck. Static ellipsis under reduced motion. */

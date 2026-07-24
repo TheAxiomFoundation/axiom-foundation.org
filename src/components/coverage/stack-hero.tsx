@@ -25,10 +25,25 @@ const n = (value: number) => numberFormat.format(value);
 /** How far through the tall section each layer joins the stack. */
 const STEP_THRESHOLDS = [0.28, 0.6];
 
+/** Longest odometer settle: delay + per-digit stagger + strip transition. */
+const SETTLE_MS = 1900;
+
 export function StackHero({ data }: { data: CoverageData }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [live, setLive] = useState(false);
   const [step, setStep] = useState(3);
+  const [counting, setCounting] = useState(true);
+
+  // While any odometer is still rolling toward its figure, the hint
+  // line reads "counting the corpus…" — the same line the loading
+  // state shows, so the handoff is seamless — and only becomes the
+  // scroll cue once the digits settle. Each step change starts a new
+  // roll, so the window restarts with it.
+  useEffect(() => {
+    setCounting(true);
+    const t = setTimeout(() => setCounting(false), SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [live, step]);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -123,11 +138,15 @@ export function StackHero({ data }: { data: CoverageData }) {
             scrolly mode) so the loading state's "counting…" line
             hands off to this without a blink. */}
         <p
-          className="pscroll-hint pscroll-hint-scroll"
+          className={
+            counting
+              ? "pscroll-hint pscroll-hint-scroll cov-counting"
+              : "pscroll-hint pscroll-hint-scroll"
+          }
           aria-hidden
           data-done={(live && step >= 3) || undefined}
         >
-          scroll to assemble the stack ↓
+          {counting ? "counting the corpus" : <>scroll to assemble the stack ↓</>}
         </p>
       </div>
     </section>

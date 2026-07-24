@@ -642,6 +642,16 @@ a.cov-mini:focus-visible {
 .pscroll-hint-scroll {
   display: none;
 }
+/* While the odometers are rolling, the hero's hint line carries the
+   "counting…" status at ANY width — narrow viewports never enter
+   scrolly mode but their digits still roll on mount. Gated to
+   scripting+motion: without either, the digits render as plain text
+   and there is nothing to count. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .pscroll .pscroll-hint-scroll.cov-counting {
+    display: block;
+  }
+}
 
 
 /* "counting the corpus…" — animated ellipsis so a slow load never

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ArrowRightIcon } from "@/components/icons";
 import { Reveal } from "@/components/landing/reveal";
 
 export const metadata: Metadata = {
@@ -29,8 +28,6 @@ const SHELL_DEMO_IDS = new Set([
   "architecture",
   "law",
   "graph",
-  "oracles",
-  "bills",
 ]);
 
 interface PageProps {
@@ -62,20 +59,9 @@ export default async function DemosPage({ searchParams }: PageProps) {
         </Reveal>
 
         <Reveal as="section" amount={0.1}>
-          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-5">
-            <h2 className="m-0 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
-              The gallery
-            </h2>
-            <a
-              href={gallerySrc}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-            >
-              Open full size
-              <ArrowRightIcon className="w-4 h-4" />
-            </a>
-          </div>
+          <h2 className="m-0 mb-5 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
+            The gallery
+          </h2>
           <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
             <iframe
               src={gallerySrc}

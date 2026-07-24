@@ -2607,3 +2607,10 @@
     transform: translateX(-50%);
   }
 }
+
+/* Scenario setup inside the launcher card. */
+.graph-viewer-root .journey-scenario-body {
+  max-height: min(58vh, 560px);
+  overflow-y: auto;
+  padding-right: 4px;
+}

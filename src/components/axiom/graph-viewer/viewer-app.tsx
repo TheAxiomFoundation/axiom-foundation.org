@@ -232,6 +232,7 @@ export function GraphViewerApp() {
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
+  const [scenarioSetupOpen, setScenarioSetupOpen] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
       typeof window !== "undefined" &&
@@ -247,6 +248,7 @@ export function GraphViewerApp() {
   };
   const reopenJourney = () => {
     setLauncherStep(effectiveProgram ? "intent" : "program");
+    setScenarioSetupOpen(false);
     setIntentSearch("");
     setIntentSearchOpen(false);
     setIntentKind("input");
@@ -1006,316 +1008,16 @@ export function GraphViewerApp() {
     setSelectedOutputs([]);
   }
 
-  return (
-    <div className="graph-viewer-root">
-    {launcher !== "closed" && (
-      <div
-        className={`plane-launcher ${launcher === "leaving" ? "is-leaving" : ""}`}
-        role="dialog"
-        aria-label="Choose a program to run"
-      >
-        <div className="plane-launcher-inner">
-          <p className="plane-launcher-eyebrow">Axiom · Plane</p>
-          {launcherStep === "intent" ? (
-            <>
-              <h1 className="plane-launcher-title">
-                {effectiveProgram?.displayName ?? "This program"} — what do
-                you want to do?
-              </h1>
-              <div
-                className={`journey-grid ${intentSearchOpen ? "is-focused" : ""}`}
-              >
-                {!intentSearchOpen && (
-                <button
-                  type="button"
-                  className="journey-card"
-                  onClick={beginSurvey}
-                >
-                  <span className="journey-glyph">⊞</span>
-                  <strong>Survey the whole law</strong>
-                  <span>
-                    The map, dissected — results first, unfold as you go,
-                    with the full index at hand.
-                  </span>
-                </button>
-                )}
-                {intentSearchOpen ? (
-                  <div className="journey-card is-search">
-                    <div className="journey-head">
-                      <span className="journey-glyph">⊙</span>
-                      <strong>Understand one rule</strong>
-                      <button
-                        type="button"
-                        className="journey-back"
-                        onClick={() => {
-                          setIntentSearchOpen(false);
-                          setIntentInput(null);
-                          setIntentSearch("");
-                        }}
-                      >
-                        ← all journeys
-                      </button>
-                    </div>
-                    <div
-                      className="journey-kind"
-                      role="tablist"
-                      aria-label="Kind of piece"
-                    >
-                      {(["input", "output"] as const).map((kind) => (
-                        <button
-                          key={kind}
-                          type="button"
-                          role="tab"
-                          aria-selected={intentKind === kind}
-                          className={intentKind === kind ? "is-active" : ""}
-                          onClick={() => {
-                            setIntentKind(kind);
-                            setIntentInput(null);
-                            setIntentSearch("");
-                          }}
-                        >
-                          {kind === "output" ? "Output · a rule" : "Input · a question"}
-                        </button>
-                      ))}
-                    </div>
-                    {intentInput ? (
-                      <>
-                        <span className="journey-picked">
-                          {humanize(intentInput.name)} feeds{" "}
-                          {intentInputConsumers.length}
-                          {intentInputConsumers.length === 8 ? "+" : ""}{" "}
-                          {intentInputConsumers.length === 1 ? "rule" : "rules"} — pick a path:
-                        </span>
-                        <div className="journey-matches">
-                          {intentInputConsumers.map((rule) => (
-                            <button
-                              key={rule.legalId}
-                              type="button"
-                              onClick={() => beginRuleLens(rule.legalId)}
-                            >
-                              {humanize(rule.name)}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="journey-back"
-                          onClick={() => setIntentInput(null)}
-                        >
-                          ← different input
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <input
-                          type="search"
-                          placeholder={
-                            intentKind === "input"
-                              ? "Search an input… income, age, household"
-                              : "Search a rule… allotment, eligible, income"
-                          }
-                          value={intentSearch}
-                          onChange={(event) =>
-                            setIntentSearch(event.target.value)
-                          }
-                          autoFocus
-                        />
-                        {intentMatches.length > 0 && (
-                          <div className="journey-matches">
-                            {intentMatches.map((match) => (
-                              <button
-                                key={match.legalId}
-                                type="button"
-                                onClick={() =>
-                                  intentKind === "input"
-                                    ? startWalk("up", match.legalId)
-                                    : startWalk("down", match.legalId)
-                                }
-                              >
-                                {humanize(match.name)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {intentSearch.trim() && intentMatches.length === 0 && (
-                          <span className="journey-empty">
-                            {graph ? "No matches." : "Loading…"}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="journey-card"
-                    onClick={() => setIntentSearchOpen(true)}
-                  >
-                    <span className="journey-glyph">⊙</span>
-                    <strong>Understand one rule</strong>
-                    <span>
-                      Find a single rule and open its lens — what it reads,
-                      what it feeds, how it computes.
-                    </span>
-                  </button>
-                )}
-                {!intentSearchOpen && (
-                <button
-                  type="button"
-                  className="journey-card"
-                  onClick={beginScenario}
-                >
-                  <span className="journey-glyph">▶</span>
-                  <strong>Run a scenario</strong>
-                  <span>
-                    Set a household's numbers and watch the computation
-                    light the path to the result.
-                  </span>
-                </button>
-                )}
-              </div>
-              <button
-                type="button"
-                className="plane-launcher-alt as-button"
-                onClick={() => setLauncherStep("program")}
-              >
-                ← Pick a different program
-              </button>
-            </>
-          ) : (
-            <>
-          <h1 className="plane-launcher-title">
-            What law do you want to run?
-          </h1>
-          <p className="plane-launcher-sub">
-            Pick a program — its rule graph opens on the canvas, ready to
-            explore, set a scenario, and execute.
-          </p>
-          {programsLoading ? (
-            <p className="plane-launcher-loading">Loading programs…</p>
-          ) : (
-            <div className="plane-launcher-grid">
-              {allPrograms.map((item, index) => (
-                <button
-                  key={programKey(item)}
-                  type="button"
-                  className="plane-launcher-card"
-                  style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
-                  onClick={() => {
-                    selectProgram(programKey(item));
-                    setLauncherStep("intent");
-                  }}
-                >
-                  <span className="plane-launcher-chip">
-                    {countryShortLabel(countryOf(item.jurisdiction))}
-                    {item.jurisdiction.includes("-")
-                      ? ` · ${item.jurisdiction.split("-")[1].toUpperCase()}`
-                      : ""}
-                  </span>
-                  <strong>{displayNameForProgram(item)}</strong>
-                  <span className="plane-launcher-meta">
-                    {item.outputCount
-                      ? `${item.outputCount} outputs`
-                      : "compiled program"}
-                    {item.inputCount ? ` · ${item.inputCount} inputs` : ""}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-          <a className="plane-launcher-alt" href="/us">
-            Just reading? Open the Library →
-          </a>
-            </>
-          )}
-        </div>
-      </div>
-    )}
-    <main className={`app-shell ${walk ? "walk-active" : ""}`}>
-      <aside className="side-panel index-side">
-        {graph && (
-          <p className="program-anatomy">
-            This program decides{" "}
-            <strong>{graph.terminalOutputs.length} results</strong> from{" "}
-            <strong>{graph.inputs.length} inputs</strong> through{" "}
-            <strong>{graph.rules.length} rules</strong>.
-          </p>
-        )}
-        {composeFocus && (
-          <p className="program-summary">
-            Composed on demand from {composedFiles.length || "the"} encoded{" "}
-            {composedFiles.length === 1 ? "file" : "files"}
-            {composedTruncated ? " (import walk truncated)" : ""}. Pick a
-            program above to return to compiled packages.
-          </p>
-        )}
-        <label className="index-search">
-          <input
-            type="search"
-            value={indexSearch}
-            onChange={(event) => setIndexSearch(event.target.value)}
-            placeholder="Search the index..."
-            aria-label="Search the computation index"
-          />
-        </label>
-        {indexSearch.trim() ? (
-          <div className="index-results" aria-label="Index search results">
-            {indexMatches.map((match) => (
-              <button
-                type="button"
-                key={match.legalId}
-                className="index-result"
-                onClick={() => flyFromIndex(match.legalId)}
-                onMouseEnter={() => setIndexHover(match.legalId)}
-                onMouseLeave={() => setIndexHover(null)}
-                title="Fly to this rule on the canvas"
-              >
-                {match.label}
-              </button>
-            ))}
-            {indexMatches.length === 0 && (
-              <div className="output-empty">No rules match this search.</div>
-            )}
-          </div>
-        ) : (
-        <div className="navigator-tree" aria-label="Computation navigator">
-          {selectedOutputs.map((legalId) => {
-            const root = structureTraces[legalId];
-            if (!root) return null;
-            return (
-              <NavigatorBranch
-                key={legalId}
-                node={root}
-                depth={0}
-                folded={folded}
-                onToggleFold={(id) =>
-                  setFolded((current) => {
-                    const next = new Set(current);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    return next;
-                  })
-                }
-                onFly={flyFromIndex}
-                onHover={setIndexHover}
-                activeId={
-                  inspected && "legalId" in inspected
-                    ? (inspected.legalId ?? null)
-                    : null
-                }
-              />
-            );
-          })}
-        </div>
-        )}
-        {scenarioMode && allScenarioFields.length > 0 && (
-          <section
-            className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
-          >
-            <div className="section-head stacked">
-              <h2>Scenario</h2>
-              <span>The levers of the law — edit and run</span>
-            </div>
+  const launchRun = (mode: "all" | "steps") => {
+    setScenarioMode(true);
+    if (launcher !== "closed") dismissLauncher();
+    void runScenario(mode);
+  };
+
+  // One scenario flow, two homes: the launcher's middle screen and
+  // the sidebar panel render the same staged UI.
+  const scenarioFlowUI = (
+    <>
             <div className="scenario-steps" role="tablist" aria-label="Scenario stages">
               {(
                 [
@@ -1506,7 +1208,7 @@ export function GraphViewerApp() {
                   type="button"
                   className="run-button"
                   disabled={running || selectedOutputs.length === 0}
-                  onClick={() => void runScenario("all")}
+                  onClick={() => launchRun("all")}
                 >
                   {running ? "Running…" : "▶ Run it all"}
                 </button>
@@ -1514,13 +1216,348 @@ export function GraphViewerApp() {
                   type="button"
                   className="run-button run-button-secondary"
                   disabled={running || selectedOutputs.length === 0}
-                  onClick={() => void runScenario("steps")}
+                  onClick={() => launchRun("steps")}
                 >
                   ⧉ Run step by step
                 </button>
                 {runError && <p className="run-error">{runError}</p>}
               </>
             )}
+    </>
+  );
+
+  return (
+    <div className="graph-viewer-root">
+    {launcher !== "closed" && (
+      <div
+        className={`plane-launcher ${launcher === "leaving" ? "is-leaving" : ""}`}
+        role="dialog"
+        aria-label="Choose a program to run"
+      >
+        <div className="plane-launcher-inner">
+          <p className="plane-launcher-eyebrow">Axiom · Plane</p>
+          {launcherStep === "intent" ? (
+            <>
+              <h1 className="plane-launcher-title">
+                {effectiveProgram?.displayName ?? "This program"} — what do
+                you want to do?
+              </h1>
+              <div
+                className={`journey-grid ${intentSearchOpen || scenarioSetupOpen ? "is-focused" : ""}`}
+              >
+                {!intentSearchOpen && !scenarioSetupOpen && (
+                <button
+                  type="button"
+                  className="journey-card"
+                  onClick={beginSurvey}
+                >
+                  <span className="journey-glyph">⊞</span>
+                  <strong>Survey the whole law</strong>
+                  <span>
+                    The map, dissected — results first, unfold as you go,
+                    with the full index at hand.
+                  </span>
+                </button>
+                )}
+                {intentSearchOpen ? (
+                  <div className="journey-card is-search">
+                    <div className="journey-head">
+                      <span className="journey-glyph">⊙</span>
+                      <strong>Understand one rule</strong>
+                      <button
+                        type="button"
+                        className="journey-back"
+                        onClick={() => {
+                          setIntentSearchOpen(false);
+                          setIntentInput(null);
+                          setIntentSearch("");
+                        }}
+                      >
+                        ← all journeys
+                      </button>
+                    </div>
+                    <div
+                      className="journey-kind"
+                      role="tablist"
+                      aria-label="Kind of piece"
+                    >
+                      {(["input", "output"] as const).map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="tab"
+                          aria-selected={intentKind === kind}
+                          className={intentKind === kind ? "is-active" : ""}
+                          onClick={() => {
+                            setIntentKind(kind);
+                            setIntentInput(null);
+                            setIntentSearch("");
+                          }}
+                        >
+                          {kind === "output" ? "Output · a rule" : "Input · a question"}
+                        </button>
+                      ))}
+                    </div>
+                    {intentInput ? (
+                      <>
+                        <span className="journey-picked">
+                          {humanize(intentInput.name)} feeds{" "}
+                          {intentInputConsumers.length}
+                          {intentInputConsumers.length === 8 ? "+" : ""}{" "}
+                          {intentInputConsumers.length === 1 ? "rule" : "rules"} — pick a path:
+                        </span>
+                        <div className="journey-matches">
+                          {intentInputConsumers.map((rule) => (
+                            <button
+                              key={rule.legalId}
+                              type="button"
+                              onClick={() => beginRuleLens(rule.legalId)}
+                            >
+                              {humanize(rule.name)}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="journey-back"
+                          onClick={() => setIntentInput(null)}
+                        >
+                          ← different input
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="search"
+                          placeholder={
+                            intentKind === "input"
+                              ? "Search an input… income, age, household"
+                              : "Search a rule… allotment, eligible, income"
+                          }
+                          value={intentSearch}
+                          onChange={(event) =>
+                            setIntentSearch(event.target.value)
+                          }
+                          autoFocus
+                        />
+                        {intentMatches.length > 0 && (
+                          <div className="journey-matches">
+                            {intentMatches.map((match) => (
+                              <button
+                                key={match.legalId}
+                                type="button"
+                                onClick={() =>
+                                  intentKind === "input"
+                                    ? startWalk("up", match.legalId)
+                                    : startWalk("down", match.legalId)
+                                }
+                              >
+                                {humanize(match.name)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {intentSearch.trim() && intentMatches.length === 0 && (
+                          <span className="journey-empty">
+                            {graph ? "No matches." : "Loading…"}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : !scenarioSetupOpen ? (
+                  <button
+                    type="button"
+                    className="journey-card"
+                    onClick={() => setIntentSearchOpen(true)}
+                  >
+                    <span className="journey-glyph">⊙</span>
+                    <strong>Understand one rule</strong>
+                    <span>
+                      Find a single rule and open its lens — what it reads,
+                      what it feeds, how it computes.
+                    </span>
+                  </button>
+                ) : null}
+                {scenarioSetupOpen ? (
+                  <div className="journey-card is-search is-scenario">
+                    <div className="journey-head">
+                      <span className="journey-glyph">▶</span>
+                      <strong>Run a scenario</strong>
+                      <button
+                        type="button"
+                        className="journey-back"
+                        onClick={() => setScenarioSetupOpen(false)}
+                      >
+                        ← all journeys
+                      </button>
+                    </div>
+                    <div className="journey-scenario-body">{scenarioFlowUI}</div>
+                  </div>
+                ) : (
+                  !intentSearchOpen && (
+                    <button
+                      type="button"
+                      className="journey-card"
+                      onClick={() => {
+                        setScenarioSetupOpen(true);
+                        setScenarioStep("inputs");
+                        setReplay(null);
+                      }}
+                    >
+                      <span className="journey-glyph">▶</span>
+                      <strong>Run a scenario</strong>
+                      <span>
+                        Set a household's numbers and watch the computation
+                        light the path to the result.
+                      </span>
+                    </button>
+                  )
+                )}
+              </div>
+              <button
+                type="button"
+                className="plane-launcher-alt as-button"
+                onClick={() => setLauncherStep("program")}
+              >
+                ← Pick a different program
+              </button>
+            </>
+          ) : (
+            <>
+          <h1 className="plane-launcher-title">
+            What law do you want to run?
+          </h1>
+          <p className="plane-launcher-sub">
+            Pick a program — its rule graph opens on the canvas, ready to
+            explore, set a scenario, and execute.
+          </p>
+          {programsLoading ? (
+            <p className="plane-launcher-loading">Loading programs…</p>
+          ) : (
+            <div className="plane-launcher-grid">
+              {allPrograms.map((item, index) => (
+                <button
+                  key={programKey(item)}
+                  type="button"
+                  className="plane-launcher-card"
+                  style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
+                  onClick={() => {
+                    selectProgram(programKey(item));
+                    setLauncherStep("intent");
+                  }}
+                >
+                  <span className="plane-launcher-chip">
+                    {countryShortLabel(countryOf(item.jurisdiction))}
+                    {item.jurisdiction.includes("-")
+                      ? ` · ${item.jurisdiction.split("-")[1].toUpperCase()}`
+                      : ""}
+                  </span>
+                  <strong>{displayNameForProgram(item)}</strong>
+                  <span className="plane-launcher-meta">
+                    {item.outputCount
+                      ? `${item.outputCount} outputs`
+                      : "compiled program"}
+                    {item.inputCount ? ` · ${item.inputCount} inputs` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <a className="plane-launcher-alt" href="/us">
+            Just reading? Open the Library →
+          </a>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+    <main className={`app-shell ${walk ? "walk-active" : ""}`}>
+      <aside className="side-panel index-side">
+        {graph && (
+          <p className="program-anatomy">
+            This program decides{" "}
+            <strong>{graph.terminalOutputs.length} results</strong> from{" "}
+            <strong>{graph.inputs.length} inputs</strong> through{" "}
+            <strong>{graph.rules.length} rules</strong>.
+          </p>
+        )}
+        {composeFocus && (
+          <p className="program-summary">
+            Composed on demand from {composedFiles.length || "the"} encoded{" "}
+            {composedFiles.length === 1 ? "file" : "files"}
+            {composedTruncated ? " (import walk truncated)" : ""}. Pick a
+            program above to return to compiled packages.
+          </p>
+        )}
+        <label className="index-search">
+          <input
+            type="search"
+            value={indexSearch}
+            onChange={(event) => setIndexSearch(event.target.value)}
+            placeholder="Search the index..."
+            aria-label="Search the computation index"
+          />
+        </label>
+        {indexSearch.trim() ? (
+          <div className="index-results" aria-label="Index search results">
+            {indexMatches.map((match) => (
+              <button
+                type="button"
+                key={match.legalId}
+                className="index-result"
+                onClick={() => flyFromIndex(match.legalId)}
+                onMouseEnter={() => setIndexHover(match.legalId)}
+                onMouseLeave={() => setIndexHover(null)}
+                title="Fly to this rule on the canvas"
+              >
+                {match.label}
+              </button>
+            ))}
+            {indexMatches.length === 0 && (
+              <div className="output-empty">No rules match this search.</div>
+            )}
+          </div>
+        ) : (
+        <div className="navigator-tree" aria-label="Computation navigator">
+          {selectedOutputs.map((legalId) => {
+            const root = structureTraces[legalId];
+            if (!root) return null;
+            return (
+              <NavigatorBranch
+                key={legalId}
+                node={root}
+                depth={0}
+                folded={folded}
+                onToggleFold={(id) =>
+                  setFolded((current) => {
+                    const next = new Set(current);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+                onFly={flyFromIndex}
+                onHover={setIndexHover}
+                activeId={
+                  inspected && "legalId" in inspected
+                    ? (inspected.legalId ?? null)
+                    : null
+                }
+              />
+            );
+          })}
+        </div>
+        )}
+        {scenarioMode && allScenarioFields.length > 0 && (
+          <section
+            className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
+          >
+            <div className="section-head stacked">
+              <h2>Scenario</h2>
+              <span>The levers of the law — edit and run</span>
+            </div>
+{scenarioFlowUI}
           </section>
         )}
       </aside>

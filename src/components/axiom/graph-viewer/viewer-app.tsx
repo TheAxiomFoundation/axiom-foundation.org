@@ -94,8 +94,7 @@ export function GraphViewerApp() {
     setInspected(data);
     const legalId = "legalId" in data && data.legalId ? data.legalId : null;
     if (!legalId || walk) return;
-    if (data.kind !== "rule" && data.kind !== "output" && data.kind !== "ruleRef")
-      return;
+    if (data.kind !== "output" && data.kind !== "ruleRef") return;
     setLensTrail((trail) => {
       if (trail.length === 0) savedSelection.current = selectedOutputs;
       if (trail[trail.length - 1] === legalId) return trail;

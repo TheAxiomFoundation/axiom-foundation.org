@@ -1955,7 +1955,8 @@
 .graph-viewer-root .top-controls {
   position: absolute;
   top: 2px;
-  left: 0;
+  /* flush with the graph box's left edge (the canvas sits 24px in) */
+  left: 24px;
   z-index: 16;
   display: flex;
   align-items: center;

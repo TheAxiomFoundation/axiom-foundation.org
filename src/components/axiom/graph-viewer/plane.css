@@ -2048,6 +2048,10 @@
 .graph-viewer-root .side-panel.index-side .navigator-tree {
   flex: 1;
   min-height: 0;
+  /* the old floating panel capped the tree at 40vh — as the sidebar
+     it fills the full graph-box height */
+  max-height: none;
+  border-bottom: none;
   overflow-y: auto;
   padding-right: 4px;
 }

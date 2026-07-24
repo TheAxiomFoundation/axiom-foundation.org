@@ -27,8 +27,10 @@ const V1_ONLY_JURISDICTIONS = new Set(["ca", "canada"]);
 // section depth and deeper the v2 reader. The app root ("/") stays
 // on the v1 landing until it is rebuilt.
 function appPagePath(pathname: string): string {
-  // The app root is the two-door portal (Library / Plane).
-  if (pathname === "/") return "/axiom/v2";
+  // The Plane is the app: the root serves the graph. The Library
+  // returns later as the corpus app; its routes stay reachable for
+  // the in-graph law popup.
+  if (pathname === "/") return "/axiom/graph";
   if (!APP_ROOT_PREFIX_RE.test(pathname)) return `/axiom${pathname}`;
   const slug = pathname.split("/")[1];
   return V1_ONLY_JURISDICTIONS.has(slug)

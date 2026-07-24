@@ -230,6 +230,10 @@ export function GraphViewerApp() {
   } | null>(null);
   const lastRunRequest = useRef<Record<string, unknown> | null>(null);
   const [copiedRun, setCopiedRun] = useState(false);
+  // The law popup: the provision page at the node's level, embedded
+  // read-only — the Plane is the only surface that navigates.
+  const [lawPopup, setLawPopup] = useState<string | null>(null);
+  const graphJustLoaded = useRef(false);
   const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
@@ -636,6 +640,7 @@ export function GraphViewerApp() {
     fetchProgramGraph(program)
       .then((nextGraph) => {
         if (cancelled) return;
+        graphJustLoaded.current = true;
         setGraph(nextGraph);
         setSelectedOutputs((current) => {
           const focus = pendingFocusRef.current;
@@ -813,6 +818,17 @@ export function GraphViewerApp() {
     }
     return matches;
   }, [indexSearch, selectedOutputs, structureTraces]);
+
+  // A fresh graph opens on its most top-level piece — the first
+  // selected result (Allotment, Benefit) — instead of a wall of map.
+  useEffect(() => {
+    if (!graphJustLoaded.current || selectedOutputs.length === 0) return;
+    graphJustLoaded.current = false;
+    setFlyTarget((current) => ({
+      legalId: selectedOutputs[0],
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
+  }, [selectedOutputs]);
 
   // Dissect on program/selection/lens change; unfold the executed
   // path when a run lands.
@@ -1560,9 +1576,6 @@ export function GraphViewerApp() {
               ))}
             </div>
           )}
-          <a className="plane-launcher-alt" href="/us">
-            Just reading? Open the Library →
-          </a>
             </>
           )}
         </div>
@@ -1791,9 +1804,6 @@ export function GraphViewerApp() {
                 : "Loading graph"}
           </span>
         </div>
-        <a className="plane-switch" href="/us" title="Switch to the Library — read the law">
-          ⇄ Library
-        </a>
         {runResult && (
           <div className="exec-pill" role="status">
             <span className="exec-pill-dot" aria-hidden />
@@ -2378,13 +2388,21 @@ export function GraphViewerApp() {
             ) : null}
             {"legalId" in inspected &&
             inspected.legalId &&
+            /:(statutes|regulations)\//.test(
+              fileLegalIdOf(inspected.legalId),
+            ) &&
             axiomAppUrl(fileLegalIdOf(inspected.legalId)) ? (
-              <a
+              <button
+                type="button"
                 className="node-inspector-link"
-                href={axiomAppUrl(fileLegalIdOf(inspected.legalId)) ?? "#"}
+                onClick={() =>
+                  setLawPopup(
+                    `${axiomAppUrl(fileLegalIdOf(inspected.legalId)) ?? ""}?embed=1`,
+                  )
+                }
               >
-                Read in the Library →
-              </a>
+                § Read the law →
+              </button>
             ) : null}
           </aside>
             );
@@ -2522,6 +2540,29 @@ export function GraphViewerApp() {
         )}
       </section>
     </main>
+    {lawPopup && (
+      <div
+        className="law-popup-backdrop"
+        role="dialog"
+        aria-label="The law at this node"
+        onClick={() => setLawPopup(null)}
+      >
+        <div className="law-popup" onClick={(event) => event.stopPropagation()}>
+          <div className="law-popup-head">
+            <span>§ The law at this node</span>
+            <button
+              type="button"
+              className="results-close"
+              onClick={() => setLawPopup(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <iframe src={lawPopup} title="Provision text" />
+        </div>
+      </div>
+    )}
     </div>
   );
 }

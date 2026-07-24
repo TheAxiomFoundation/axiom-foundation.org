@@ -191,3 +191,21 @@ canvas[aria-hidden] {
   color: var(--color-accent);
 }
 
+
+/* Embed mode: the Plane's law popup shows the page content with no
+   chrome and no cross-navigation — the text and the code, read-only. */
+body:has(.embed-page) .nav-bar,
+body:has(.embed-page) header,
+body:has(.embed-page) footer {
+  display: none !important;
+}
+body:has(.embed-page) {
+  padding-top: 0 !important;
+}
+.embed-page {
+  padding-top: 8px;
+}
+.embed-page a {
+  pointer-events: none;
+  cursor: default;
+}

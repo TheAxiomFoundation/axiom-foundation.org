@@ -2795,3 +2795,55 @@
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
+
+/* Law popup: the provision page, embedded read-only. */
+.graph-viewer-root .law-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(28, 25, 23, 0.35);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: panel-in 0.2s ease-out both;
+}
+.graph-viewer-root .law-popup {
+  width: min(880px, calc(100vw - 48px));
+  height: min(78vh, 860px);
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+  box-shadow: 0 40px 120px -30px rgba(28, 25, 23, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.graph-viewer-root .law-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper-elevated);
+}
+.graph-viewer-root .law-popup-head span {
+  font-family: var(--f-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .law-popup iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: var(--color-paper);
+}
+.graph-viewer-root .node-inspector-link {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}

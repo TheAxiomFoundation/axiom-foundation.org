@@ -113,13 +113,13 @@ describe("proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("rewrites the app host root into the two-door portal", () => {
+  it("rewrites the app host root into the graph (the Plane is the app)", () => {
     const response = proxy(
       request("https://app.axiom-foundation.org/", "app.axiom-foundation.org")
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "https://app.axiom-foundation.org/axiom/v2"
+      "https://app.axiom-foundation.org/axiom/graph"
     );
   });
 

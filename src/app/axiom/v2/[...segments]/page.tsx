@@ -43,7 +43,7 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ segments: string[] }>;
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; embed?: string }>;
 }
 
 function decodeSegments(segments: string[]): string[] {
@@ -112,7 +112,13 @@ export default async function SectionPage({
 }: PageProps) {
   const { segments } = await params;
   const decoded = decodeSegments(segments);
-  const rawPage = Number((await searchParams)?.page ?? "0");
+  const query = await searchParams;
+  // ?embed=1 renders the page for the Plane's law popup: same
+  // content, no site chrome, no cross-navigation (CSS handles both).
+  const embed = query?.embed === "1";
+  const shell = (node: React.ReactNode) =>
+    embed ? <div className="embed-page">{node}</div> : <>{node}</>;
+  const rawPage = Number(query?.page ?? "0");
   const page =
     Number.isInteger(rawPage) && rawPage > 0 ? Math.min(rawPage, 50) : 0;
 
@@ -123,10 +129,10 @@ export default async function SectionPage({
     if (browse === "unavailable") {
       // Transient backend failure — render a retryable notice, never
       // a 404 for a valid URL.
-      return <BrowseUnavailable path={decoded.join("/")} />;
+      return shell(<BrowseUnavailable path={decoded.join("/")} />);
     }
     if (!browse) notFound();
-    return <BrowseView data={browse} />;
+    return shell(<BrowseView data={browse} />);
   }
 
   const resolution = await resolveSection(decoded);
@@ -140,14 +146,14 @@ export default async function SectionPage({
       allowDeep: true,
     }).catch(() => null);
     if (browse && browse !== "unavailable" && browse.nodes.length > 0) {
-      return <BrowseView data={browse} />;
+      return shell(<BrowseView data={browse} />);
     }
   }
   if (!resolution) notFound();
 
-  return (
+  return shell(
     <Suspense fallback={<SectionSkeleton />}>
       <SectionBody resolution={resolution} decoded={decoded} />
-    </Suspense>
+    </Suspense>,
   );
 }

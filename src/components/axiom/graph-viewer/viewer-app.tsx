@@ -290,15 +290,6 @@ export function GraphViewerApp() {
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
-  const inputUsageCount = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const rule of graph?.rules ?? []) {
-      for (const dep of rule.inputDeps) {
-        counts.set(dep, (counts.get(dep) ?? 0) + 1);
-      }
-    }
-    return counts;
-  }, [graph]);
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(
       (rule) =>
@@ -1100,8 +1091,9 @@ export function GraphViewerApp() {
                   <div className="lever-row lever-row-head" aria-hidden>
                     <span className="lever-row-name">Input</span>
                     <span className="lever-row-cell">Entity</span>
+                    <span className="lever-row-cell">Type</span>
                     <span className="lever-row-cell">Default</span>
-                    <span className="lever-row-cell">Used</span>
+                    <span />
                   </div>
                   <div className="lever-picker-list">
                     {(graph?.inputs ?? [])
@@ -1109,12 +1101,6 @@ export function GraphViewerApp() {
                         if (
                           list.findIndex((i) => i.name === input.name) !==
                           index
-                        )
-                          return false;
-                        if (
-                          allScenarioFields.some(
-                            (field) => field.name === input.name,
-                          )
                         )
                           return false;
                         const query = leverSearch.trim().toLowerCase();
@@ -1125,45 +1111,80 @@ export function GraphViewerApp() {
                             .includes(query)
                         );
                       })
-                      .slice(0, 24)
-                      .map((input) => (
-                        <button
-                          type="button"
-                          key={input.legalId}
-                          className="lever-row"
-                          onClick={() => {
-                            const sample = input.sample;
-                            setExtraLevers((current) => [
-                              ...current,
-                              {
-                                name: input.name,
-                                sample:
-                                  typeof sample === "number" ||
-                                  typeof sample === "boolean"
-                                    ? sample
-                                    : 0,
-                              },
-                            ]);
-                            setLeverPickerOpen(false);
-                            setLeverSearch("");
-                          }}
-                        >
-                          <span className="lever-row-name">
-                            {humanize(input.name)}
-                          </span>
-                          <span className="lever-row-cell">
-                            {input.entity ? humanize(input.entity) : "—"}
-                          </span>
-                          <span className="lever-row-cell">
-                            {input.sample !== undefined && input.sample !== null
-                              ? String(input.sample)
-                              : "—"}
-                          </span>
-                          <span className="lever-row-cell">
-                            {inputUsageCount.get(input.legalId) ?? 0}×
-                          </span>
-                        </button>
-                      ))}
+                      .slice(0, 30)
+                      .map((input) => {
+                        const isBase = scenarioFields.some(
+                          (field) => field.name === input.name,
+                        );
+                        const isExtra = extraLevers.some(
+                          (lever) => lever.name === input.name,
+                        );
+                        const selected = isBase || isExtra;
+                        return (
+                          <button
+                            type="button"
+                            key={input.legalId}
+                            className={`lever-row ${selected ? "is-selected" : ""}`}
+                            disabled={isBase}
+                            title={
+                              isBase
+                                ? "Always part of this scenario"
+                                : selected
+                                  ? "Remove from the scenario"
+                                  : "Add to the scenario"
+                            }
+                            onClick={() => {
+                              if (isBase) return;
+                              if (isExtra) {
+                                setExtraLevers((current) =>
+                                  current.filter(
+                                    (lever) => lever.name !== input.name,
+                                  ),
+                                );
+                                return;
+                              }
+                              const sample = input.sample;
+                              setExtraLevers((current) => [
+                                ...current,
+                                {
+                                  name: input.name,
+                                  sample:
+                                    typeof sample === "number" ||
+                                    typeof sample === "boolean"
+                                      ? sample
+                                      : 0,
+                                },
+                              ]);
+                            }}
+                          >
+                            <span className="lever-row-name">
+                              {humanize(input.name)}
+                            </span>
+                            <span className="lever-row-cell">
+                              {input.entity ? humanize(input.entity) : "—"}
+                            </span>
+                            <span className="lever-row-cell">
+                              {typeof input.sample === "boolean"
+                                ? "yes / no"
+                                : typeof input.sample === "number"
+                                  ? "number"
+                                  : "—"}
+                            </span>
+                            <span className="lever-row-cell">
+                              {input.sample !== undefined &&
+                              input.sample !== null
+                                ? String(input.sample)
+                                : "—"}
+                            </span>
+                            <span
+                              className={`lever-row-add ${selected ? "is-checked" : ""}`}
+                              aria-hidden
+                            >
+                              {selected ? "✓" : "＋"}
+                            </span>
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               )}

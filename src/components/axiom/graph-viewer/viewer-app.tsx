@@ -228,6 +228,8 @@ export function GraphViewerApp() {
     stages: string[][];
     cursor: number;
   } | null>(null);
+  const lastRunRequest = useRef<Record<string, unknown> | null>(null);
+  const [copiedRun, setCopiedRun] = useState(false);
   const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
@@ -528,7 +530,7 @@ export function GraphViewerApp() {
       const reachable = new Set<string>();
       const byId = new Map((graph?.rules ?? []).map((r) => [r.legalId, r]));
       const walk = (id: string) => {
-        if (reachable.has(id) || reachable.size > 60) return;
+        if (reachable.has(id) || reachable.size > 160) return;
         const rule = byId.get(id);
         if (!rule) return;
         if (rule.kind === "derived") reachable.add(id);
@@ -546,13 +548,23 @@ export function GraphViewerApp() {
             variables,
           }),
         });
-      let response = await attempt([...reachable].slice(0, 32));
-      if (!response.ok && reachable.size > 0) {
-        // A rejected trace variable fails the whole run — fall back
-        // to the outputs alone rather than failing the scenario.
-        response = await attempt([]);
+      // One bad or excess trace variable fails the whole run, so walk
+      // a ladder — each rung keeps as many intermediates as the
+      // engine will accept before giving up on tracing entirely.
+      let response: Response | null = null;
+      for (const cap of [96, 48, 24, 0]) {
+        const variables = [...reachable].slice(0, cap);
+        lastRunRequest.current = {
+          jurisdiction: effectiveProgram.jurisdiction,
+          program_id: effectiveProgram.programId,
+          values: scenario,
+          variables,
+        };
+        response = await attempt(variables);
+        if (response.ok) break;
       }
-      if (!response.ok) throw new Error(`run failed (${response.status})`);
+      if (!response || !response.ok)
+        throw new Error(`run failed (${response?.status ?? "?"})`);
       const data = (await response.json()) as {
         outputs: Record<string, number | string | boolean | null>;
         trace: Array<{ variable: string; value: unknown }>;
@@ -2490,6 +2502,22 @@ export function GraphViewerApp() {
               Computed by the Axiom engine from your scenario — the graph
               above shows every intermediate value.
             </p>
+            <button
+              type="button"
+              className="results-copy"
+              onClick={() => {
+                const request = lastRunRequest.current;
+                if (!request) return;
+                const body = JSON.stringify(request, null, 2);
+                void navigator.clipboard.writeText(
+                  `curl -X POST '${window.location.origin}/api/axiom/runtime/calculate' \\\n  -H 'content-type: application/json' \\\n  -d '${body.replace(/'/g, "'\\''")}'`,
+                );
+                setCopiedRun(true);
+                window.setTimeout(() => setCopiedRun(false), 2000);
+              }}
+            >
+              {copiedRun ? "✓ Copied" : "⧉ Copy run as code"}
+            </button>
           </aside>
         )}
       </section>

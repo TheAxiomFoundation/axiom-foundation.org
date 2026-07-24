@@ -2778,3 +2778,20 @@
 .graph-viewer-root .selected-output-summary button:hover {
   text-decoration: underline;
 }
+
+.graph-viewer-root .results-copy {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-family: var(--f-mono, monospace);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.graph-viewer-root .results-copy:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}

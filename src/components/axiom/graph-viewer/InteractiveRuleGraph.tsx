@@ -906,7 +906,10 @@ function ExecutionCamera({
   const flow = useReactFlow();
   const wasActive = useRef(false);
   useEffect(() => {
-    if (active && executedIds.size > 0) {
+    // Fly only when the execution layer ACTIVATES — stage-by-stage
+    // replays change executedIds constantly and must not wrestle the
+    // camera away from the user.
+    if (active && executedIds.size > 0 && !wasActive.current) {
       wasActive.current = true;
       const executed = [...executedIds].map((id) => ({ id }));
       void flow.fitView({

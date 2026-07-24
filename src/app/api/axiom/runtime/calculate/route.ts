@@ -12,7 +12,7 @@ const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const INPUT_NAME_RE = /^[a-z0-9_]{1,64}$/;
 const VARIABLE_RE = /^[\w.:#/–-]{1,140}$/;
 const MAX_VALUES = 48;
-const MAX_VARIABLES = 32;
+const MAX_VARIABLES = 96;
 
 /**
  * Scenario execution for the Plane: the caller names a program,

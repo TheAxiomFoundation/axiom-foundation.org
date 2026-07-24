@@ -82,6 +82,29 @@ export function GraphViewerApp() {
       return next;
     });
   };
+  // Clicking an Index entry must land on the canvas even when the
+  // target sits inside a folded branch: unfold its ancestry first,
+  // then fly — the camera chases the relayout to where it settles.
+  const flyFromIndex = (legalId: string) => {
+    setFolded((current) => {
+      const next = new Set(current);
+      const unfoldPath = (node: TraceNode, ancestors: string[]): boolean => {
+        if (node.legalId === legalId) {
+          for (const id of ancestors) next.delete(id);
+          return true;
+        }
+        return (node.children ?? []).some((child) =>
+          unfoldPath(child, [...ancestors, node.legalId]),
+        );
+      };
+      for (const id of selectedOutputs) {
+        const root = structureTraces[id];
+        if (root && unfoldPath(root, [])) break;
+      }
+      return next;
+    });
+    flyTo(legalId);
+  };
   const closeLens = () => {
     setLensTrail([]);
     if (savedSelection.current) setSelectedOutputs(savedSelection.current);
@@ -1238,7 +1261,7 @@ export function GraphViewerApp() {
                       return next;
                     })
                   }
-                  onFly={flyTo}
+                  onFly={flyFromIndex}
                 />
               );
             })}

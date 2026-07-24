@@ -108,6 +108,11 @@ export function GraphViewerApp() {
     setLensTrail([]);
     if (savedSelection.current) setSelectedOutputs(savedSelection.current);
     savedSelection.current = null;
+    // "Back to the map" should show the map — reframe the restored graph.
+    setFlyTarget((current) => ({
+      legalId: "*",
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
   };
   // A click opens the card's info and glides the camera to it — the
   // graph itself stays exactly as drawn (no re-dissection; that's the

@@ -298,6 +298,13 @@ export function InteractiveRuleGraph({
   //     rule itself is expanded inline).
   //   - Outputs: ancestors (the only meaningful direction — outputs
   //     have nothing downstream).
+  // A dissection can unmount the hovered card mid-hover, so its
+  // mouseleave never fires and the stale lineage would dim the whole
+  // rebuilt graph. Any rebuild clears the hover highlight.
+  useEffect(() => {
+    setHighlightNodeId(null);
+  }, [nodes]);
+
   const highlightSet = useMemo(() => {
     if (!highlightNodeId) return null;
     const startKind = kindById.get(highlightNodeId);

@@ -1544,12 +1544,24 @@ export function GraphViewerApp() {
           );
         })()}
 
-        {inspected && (
+        {inspected &&
+          (() => {
+            const legalId =
+              "legalId" in inspected && inspected.legalId
+                ? inspected.legalId
+                : null;
+            const rule = legalId ? (walkRuleById.get(legalId) ?? null) : null;
+            const consumers = legalId ? consumersOf(legalId) : [];
+            const meta = "meta" in inspected ? inspected.meta : undefined;
+            const formula = meta?.formula ?? rule?.formula ?? null;
+            return (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
               <span className="node-inspector-kind">
-                {("meta" in inspected && inspected.meta?.kindLine) ||
-                  inspected.kind}
+                {meta?.kindLine ||
+                  (rule
+                    ? `${rule.kind ?? "rule"}${rule.dtype ? ` · ${rule.dtype}` : ""}`
+                    : inspected.kind)}
               </span>
               <button
                 type="button"
@@ -1570,20 +1582,75 @@ export function GraphViewerApp() {
               <p className="node-inspector-value">{inspected.value}</p>
             ) : null}
             <dl className="node-inspector-meta">
-              {"meta" in inspected && inspected.meta?.citation ? (
+              {meta?.citation || rule?.source ? (
                 <>
                   <dt>Source</dt>
                   <dd>
-                    {inspected.meta.sourceUrl ? (
+                    {(meta?.sourceUrl ?? rule?.sourceUrl) ? (
                       <a
-                        href={inspected.meta.sourceUrl}
+                        href={(meta?.sourceUrl ?? rule?.sourceUrl) as string}
                         target="_blank"
                         rel="noreferrer"
                       >
-                        {inspected.meta.citation} ↗
+                        {meta?.citation ?? rule?.source} ↗
                       </a>
                     ) : (
-                      inspected.meta.citation
+                      (meta?.citation ?? rule?.source)
+                    )}
+                  </dd>
+                </>
+              ) : null}
+              {rule?.entity ? (
+                <>
+                  <dt>Entity</dt>
+                  <dd>{humanize(rule.entity)}</dd>
+                </>
+              ) : null}
+              {rule?.period ? (
+                <>
+                  <dt>Period</dt>
+                  <dd>{rule.period}</dd>
+                </>
+              ) : null}
+              {rule?.unit ? (
+                <>
+                  <dt>Unit</dt>
+                  <dd>{rule.unit}</dd>
+                </>
+              ) : null}
+              {rule && (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
+                <>
+                  <dt>Depends on</dt>
+                  <dd>
+                    {[
+                      rule.ruleDeps.length > 0
+                        ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                        : null,
+                      rule.inputDeps.length > 0
+                        ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </dd>
+                </>
+              ) : null}
+              {consumers.length > 0 ? (
+                <>
+                  <dt>Used by</dt>
+                  <dd className="node-inspector-consumers">
+                    {consumers.slice(0, 4).map((consumer) => (
+                      <button
+                        type="button"
+                        key={consumer.legalId}
+                        onClick={() => flyFromIndex(consumer.legalId)}
+                        title="Fly to this rule on the canvas"
+                      >
+                        {humanize(consumer.name)}
+                      </button>
+                    ))}
+                    {consumers.length > 4 && (
+                      <span>+{consumers.length - 4} more</span>
                     )}
                   </dd>
                 </>
@@ -1598,11 +1665,11 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
-              {"meta" in inspected && inspected.meta?.parameterValue ? (
+              {meta?.parameterValue ? (
                 <>
                   <dt>Value</dt>
                   <dd className="node-inspector-mono">
-                    {inspected.meta.parameterValue}
+                    {meta.parameterValue}
                   </dd>
                 </>
               ) : null}
@@ -1624,10 +1691,10 @@ export function GraphViewerApp() {
                 </>
               ) : null}
             </dl>
-            {"meta" in inspected && inspected.meta?.formula ? (
+            {formula ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
-                <pre>{inspected.meta.formula}</pre>
+                <pre>{formula}</pre>
               </details>
             ) : null}
             {"legalId" in inspected &&
@@ -1652,7 +1719,8 @@ export function GraphViewerApp() {
               </a>
             ) : null}
           </aside>
-        )}
+            );
+          })()}
 
         {runResult && (
           <aside className="results-sheet" role="status">

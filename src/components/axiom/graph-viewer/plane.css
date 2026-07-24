@@ -2245,3 +2245,12 @@
 .graph-viewer-root .react-flow__edges > svg {
   z-index: 0 !important;
 }
+
+/* Question cards are opaque — wires pass behind them, not through
+   their faces. Solid equivalents of the old translucent tints. */
+.graph-viewer-root .irg-input.irg-input-default {
+  background: #f7f2ed;
+}
+.graph-viewer-root .irg-input.irg-input-user {
+  background: #eef5ee;
+}

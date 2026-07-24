@@ -2238,3 +2238,10 @@
 .graph-viewer-root .formula-pretty .fp-op {
   color: var(--color-ink-muted);
 }
+
+/* Wires stay beneath the cards — a line crossing a Question should
+   pass behind it, never over its face. Selection must not elevate an
+   edge above other cards. */
+.graph-viewer-root .react-flow__edges > svg {
+  z-index: 0 !important;
+}

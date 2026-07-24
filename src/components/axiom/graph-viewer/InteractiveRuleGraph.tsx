@@ -531,6 +531,7 @@ export function InteractiveRuleGraph({
           nodes={displayNodes}
           edges={displayEdges}
           nodeTypes={NODE_TYPES}
+          elevateEdgesOnSelect={false}
           fitView
           fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.4 }}
           minZoom={0.01}

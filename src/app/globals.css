@@ -4,6 +4,14 @@
    only generated if the same class happens to appear in src/. Register
    the package source explicitly. */
 @source "../../packages/ui/src";
+
+/* tokens.css's global `a { text-decoration: underline }` is unlayered,
+   so it outranks Tailwind's layered .no-underline utility on every
+   anchor. This unlayered, higher-specificity rule restores the
+   utility's intent. */
+a.no-underline {
+  text-decoration: none;
+}
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 

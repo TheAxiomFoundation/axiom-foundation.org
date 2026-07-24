@@ -4,10 +4,12 @@ import { Nav } from "../components/nav";
 describe("Nav", () => {
   it("renders the full launch navigation links (pages only, no scroll anchors)", () => {
     render(<Nav />);
-    expect(screen.getAllByText("Axiom")[0]).toHaveAttribute(
+    // The app entry is the "Get started" CTA button, not a tab.
+    expect(screen.getAllByText("Get started")[0]).toHaveAttribute(
       "href",
       "https://app.axiom-foundation.org",
     );
+    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
     expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);

@@ -210,7 +210,7 @@ export function EncoderSection() {
             III &middot; The encoder
           </span>
           <h2 className="heading-section mb-6 mt-2">
-            Statutes, encoded automatically. Verified before they ship.
+            Statutes encoded and verified
           </h2>
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[640px] mx-auto leading-relaxed">
             An AI-driven pipeline reads a statute, encodes it section by

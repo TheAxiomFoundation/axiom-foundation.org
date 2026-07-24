@@ -59,7 +59,7 @@ describe('Nav', () => {
   it('renders the full launch navigation links (pages only, no scroll anchors)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
-    expect(screen.getAllByText('Axiom').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Get started').length).toBeGreaterThan(0)
     expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0)
     expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Validation').length).toBeGreaterThan(0)

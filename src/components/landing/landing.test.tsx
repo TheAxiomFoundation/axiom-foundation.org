@@ -61,7 +61,7 @@ describe('Landing sections', () => {
   it('renders the encoder section with terminal + steps', () => {
     render(<EncoderSection />)
     expect(
-      screen.getByRole('heading', { name: /encoded automatically/i }),
+      screen.getByRole('heading', { name: /statutes encoded and verified/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/axiom encode "26 USC 32"/i)).toBeInTheDocument()
     for (const step of ['Read', 'Encode', 'Verify']) {

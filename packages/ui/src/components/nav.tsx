@@ -114,9 +114,11 @@ export function Nav({
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
+  // The app entry is no longer a tab — it's the "Get started" CTA
+  // button at the right edge of the bar.
   const navLinks = useMemo(
-    () => [{ href: appUrl, label: "Axiom" }, ...DEFAULT_LINKS, ...extraLinks],
-    [appUrl, extraLinks],
+    () => [...DEFAULT_LINKS, ...extraLinks],
+    [extraLinks],
   );
 
   const resolvedLogoSrc = logoSrc
@@ -344,6 +346,12 @@ export function Nav({
           >
             <GitHubIcon className="w-5 h-5" />
           </a>
+          <a
+            href={appUrl}
+            className="inline-flex items-center rounded-full bg-[var(--color-accent)] px-5 py-2 font-mono text-[0.7rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            Get started
+          </a>
         </nav>
 
         {/* Hamburger button */}
@@ -375,6 +383,13 @@ export function Nav({
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderMobileEntry(link))}
+          <a
+            href={appUrl}
+            onClick={close}
+            className="mt-5 inline-flex items-center rounded-full bg-[var(--color-accent)] px-6 py-2.5 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            Get started
+          </a>
           {rightSlot && (
             <div className="mt-4" onClick={close}>
               {rightSlot}

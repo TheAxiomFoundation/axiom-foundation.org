@@ -284,16 +284,34 @@ export function GraphViewerApp() {
     outputs: LegalId[];
     folded: Set<string>;
   } | null>(null);
-  const focusWalkNode = (legalId: string) => {
-    if (walkRuleById.has(legalId)) {
-      setSelectedOutputs([legalId]);
+  // Resolve a trail entry to the rule that anchors it on the canvas
+  // (inputs stand on their first consumer).
+  const walkAnchorOf = (legalId: string): string | null => {
+    if (walkRuleById.has(legalId)) return legalId;
+    return consumersOf(legalId)[0]?.legalId ?? null;
+  };
+  const focusWalkTrail = (direction: "up" | "down", trail: string[]) => {
+    const current = trail[trail.length - 1];
+    if (direction === "up") {
+      // Climbing accumulates: every visited step stays on the canvas,
+      // so the graph grows with the journey.
+      const anchors = [
+        ...new Set(
+          trail
+            .map((id) => walkAnchorOf(id))
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      if (anchors.length > 0) setSelectedOutputs(anchors);
     } else {
-      // An input: show its first consumer's neighborhood so the
-      // canvas has something true to stand on.
-      const consumer = consumersOf(legalId)[0];
-      if (consumer) setSelectedOutputs([consumer.legalId]);
+      // Descending narrows: the canvas is the subtree still ahead.
+      const anchor = walkAnchorOf(current);
+      if (anchor) setSelectedOutputs([anchor]);
     }
-    setFlyTarget((current) => ({ legalId, nonce: (current?.nonce ?? 0) + 1 }));
+    setFlyTarget((prev) => ({
+      legalId: current,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
   };
   const startWalk = (direction: "up" | "down", legalId: string) => {
     dismissLauncher();
@@ -303,19 +321,21 @@ export function GraphViewerApp() {
       folded: new Set(folded),
     };
     setWalk({ direction, trail: [legalId] });
-    focusWalkNode(legalId);
+    focusWalkTrail(direction, [legalId]);
   };
   const walkTo = (legalId: string) => {
-    setWalk((current) =>
-      current ? { ...current, trail: [...current.trail, legalId] } : current,
-    );
-    focusWalkNode(legalId);
+    setWalk((current) => {
+      if (!current) return current;
+      const trail = [...current.trail, legalId];
+      focusWalkTrail(current.direction, trail);
+      return { ...current, trail };
+    });
   };
   const walkBackTo = (index: number) => {
     setWalk((current) => {
       if (!current) return current;
       const trail = current.trail.slice(0, index + 1);
-      focusWalkNode(trail[trail.length - 1]);
+      focusWalkTrail(current.direction, trail);
       return { ...current, trail };
     });
   };
@@ -1585,16 +1605,69 @@ export function GraphViewerApp() {
                 {rule?.source && !/composition/i.test(rule.source) && (
                   <p className="walk-cite">{rule.source}</p>
                 )}
-                {rule?.formula && (
-                  <code className="walk-formula" title={rule.formula}>
-                    = {rule.formula.replace(/[()]/g, " ").slice(0, 160)}
-                  </code>
-                )}
                 {input && (
                   <p className="walk-note">
                     A fact asked of the household — the raw material of the
                     computation.
                   </p>
+                )}
+                <dl className="node-inspector-meta walk-meta">
+                  {(rule?.entity ?? input?.entity) ? (
+                    <>
+                      <dt>Entity</dt>
+                      <dd>
+                        {humanize((rule?.entity ?? input?.entity) as string)}
+                      </dd>
+                    </>
+                  ) : null}
+                  {rule?.period ? (
+                    <>
+                      <dt>Period</dt>
+                      <dd>{rule.period}</dd>
+                    </>
+                  ) : null}
+                  {rule?.unit ? (
+                    <>
+                      <dt>Unit</dt>
+                      <dd>{rule.unit}</dd>
+                    </>
+                  ) : null}
+                  {rule &&
+                  (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
+                    <>
+                      <dt>Depends on</dt>
+                      <dd>
+                        {[
+                          rule.ruleDeps.length > 0
+                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                            : null,
+                          rule.inputDeps.length > 0
+                            ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </dd>
+                    </>
+                  ) : null}
+                  {input && input.sample !== undefined && input.sample !== null ? (
+                    <>
+                      <dt>Default</dt>
+                      <dd className="node-inspector-mono">
+                        {typeof input.sample === "object"
+                          ? JSON.stringify(input.sample)
+                          : String(input.sample)}
+                      </dd>
+                    </>
+                  ) : null}
+                </dl>
+                {rule?.formula && (
+                  <details className="node-inspector-code walk-code">
+                    <summary>Formula</summary>
+                    <div className="node-inspector-code-body">
+                      <FormulaPretty source={rule.formula} />
+                    </div>
+                  </details>
                 )}
               </div>
 

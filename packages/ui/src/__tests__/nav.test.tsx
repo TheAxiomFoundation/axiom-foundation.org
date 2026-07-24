@@ -30,13 +30,13 @@ describe("Nav", () => {
     expect(screen.getAllByText("Government").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Small company checker")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#reg-demo");
+    ).toHaveAttribute("href", "/demos?d=regdemo");
     expect(
       screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#finbot");
+    ).toHaveAttribute("href", "/demos?d=finbot");
     expect(
       screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#co-snap-cliffs");
+    ).toHaveAttribute("href", "/demos?d=snap");
     expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
       "href",
       "/demos",

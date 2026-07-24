@@ -59,29 +59,31 @@ const DEFAULT_LINKS: NavLink[] = [
     href: "/demos",
     label: "What's possible",
     // Stakeholder grouping mirrors the demo-gallery taxonomy in
-    // axiom-demo-shell (Builders / AI labs / Government).
+    // axiom-demo-shell (Builders / AI labs / Government). ?d=<id>
+    // deep-links into the embedded shell gallery's modal — ids must
+    // match the shell's data.js.
     groups: [
       {
         label: "Builders",
         items: [
-          { href: "/demos#reg-demo", label: "Small company checker" },
-          { href: "/demos#form-builder", label: "Form Builder" },
-          { href: "/demos#architecture", label: "Architecture map" },
+          { href: "/demos?d=regdemo", label: "Small company checker" },
+          { href: "/demos?d=builder", label: "Form Builder" },
+          { href: "/demos?d=architecture", label: "Architecture map" },
         ],
       },
       {
         label: "AI labs",
         items: [
-          { href: "/demos#finbot", label: "Grounded benefits assistant" },
-          { href: "/demos#guidance-impact", label: "Guidance impact visualizer" },
+          { href: "/demos?d=finbot", label: "Grounded benefits assistant" },
+          { href: "/demos?d=guidance", label: "Guidance impact visualizer" },
         ],
       },
       {
         label: "Government",
         items: [
-          { href: "/demos#workflow-checker", label: "SNAP workflow checker" },
-          { href: "/demos#co-snap-cliffs", label: "Colorado SNAP cliffs" },
-          { href: "/demos#microsim", label: "Microsimulation" },
+          { href: "/demos?d=workflow", label: "SNAP workflow checker" },
+          { href: "/demos?d=snap", label: "Colorado SNAP cliffs" },
+          { href: "/demos?d=microsim", label: "Microsimulation" },
         ],
       },
       {

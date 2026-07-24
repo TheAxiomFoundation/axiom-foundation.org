@@ -330,27 +330,31 @@ export function GraphViewerApp() {
   };
 
   const intentMatches = useMemo(() => {
+    // Search AND dropdown: an empty query browses the full list,
+    // typing filters it.
     const query = intentSearch.trim().toLowerCase();
-    if (!query || !graph) return [];
+    if (!graph) return [];
     if (intentKind === "input") {
       const seen = new Set<string>();
       return graph.inputs
         .filter((input) => {
           if (seen.has(input.name)) return false;
           seen.add(input.name);
-          return input.name.toLowerCase().includes(query);
+          return !query || input.name.toLowerCase().includes(query);
         })
-        .slice(0, 8)
-        .map((input) => ({ legalId: input.legalId, name: input.name }));
+        .map((input) => ({ legalId: input.legalId, name: input.name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(0, 60);
     }
     return graph.rules
       .filter(
         (rule) =>
           rule.kind === "derived" &&
-          rule.name.toLowerCase().includes(query),
+          (!query || rule.name.toLowerCase().includes(query)),
       )
-      .slice(0, 8)
-      .map((rule) => ({ legalId: rule.legalId, name: rule.name }));
+      .map((rule) => ({ legalId: rule.legalId, name: rule.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 60);
   }, [intentSearch, graph, intentKind]);
 
   // The chosen input's consumers — the paths it feeds.

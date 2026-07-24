@@ -182,9 +182,16 @@ export default function AboutPage() {
 
         <ProseBand label="How we're organized">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            The Axiom Foundation is a fiscally sponsored project of the PSL
-            Foundation. Our code, our data, and our encoding decisions are
-            public.
+            The Axiom Foundation is a fiscally sponsored project of the{" "}
+            <a
+              href="https://psl-foundation.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] no-underline"
+            >
+              PSL Foundation
+            </a>
+            . Our code, our data, and our encoding decisions are public.
           </p>
         </ProseBand>
 

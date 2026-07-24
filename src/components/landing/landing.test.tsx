@@ -98,10 +98,16 @@ describe('Landing sections', () => {
     expect(screen.getByText(/everything we publish/i)).toBeInTheDocument()
     // The fiscal-sponsorship line was removed (Jul 14).
     expect(screen.queryByText(/fiscally sponsored/i)).not.toBeInTheDocument()
-    // Contribute / Verify / Fund cards are back for the v2 launch.
-    expect(screen.getByText(/encode your jurisdiction/i)).toBeInTheDocument()
-    expect(screen.getByText(/validate our work/i)).toBeInTheDocument()
-    expect(screen.getByText(/underwrite the public layer/i)).toBeInTheDocument()
+    // The Contribute / Verify / Fund cards gave way to two CTAs (Jul 24).
+    expect(screen.queryByText(/encode your jurisdiction/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/get in touch/i).closest('a')).toHaveAttribute(
+      'href',
+      'mailto:hello@axiom.org',
+    )
+    expect(screen.getByText(/stay updated/i).closest('a')).toHaveAttribute(
+      'href',
+      expect.stringContaining('list-manage.com/subscribe'),
+    )
     // The quick-links row (Live demos / Meet the team / …) was
     // removed — the footer carries those destinations.
     expect(screen.queryByText(/live demos/i)).not.toBeInTheDocument()

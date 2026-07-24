@@ -2034,6 +2034,10 @@
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
+  /* match the graph box's vertical extent: the canvas starts below
+     the top-selectors band and ends above the panel's bottom inset */
+  margin-top: 48px;
+  height: calc(100% - 72px);
 }
 .graph-viewer-root .side-panel.index-side .program-anatomy {
   margin: 0;

@@ -221,6 +221,14 @@ export function GraphViewerApp() {
   >([]);
   const [leverSearch, setLeverSearch] = useState("");
   const [leverPickerOpen, setLeverPickerOpen] = useState(false);
+  const [scenarioStep, setScenarioStep] = useState<
+    "inputs" | "outputs" | "run"
+  >("inputs");
+  const [replay, setReplay] = useState<{
+    stages: string[][];
+    cursor: number;
+  } | null>(null);
+  const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -262,6 +270,8 @@ export function GraphViewerApp() {
   const beginScenario = () => {
     dismissLauncher();
     setScenarioMode(true);
+    setScenarioStep("inputs");
+    setReplay(null);
     setScenarioGlow(true);
     window.setTimeout(() => setScenarioGlow(false), 2600);
   };
@@ -501,8 +511,10 @@ export function GraphViewerApp() {
     );
   }, [allScenarioFields]);
 
-  const runScenario = async () => {
+  const runScenario = async (mode: "all" | "steps" = "all") => {
     if (!effectiveProgram || running) return;
+    pendingReplay.current = mode === "steps";
+    setReplay(null);
     setRunning(true);
     setRunError(null);
     try {
@@ -820,6 +832,32 @@ export function GraphViewerApp() {
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
   // fragment) and the scenario's input values.
+  // Topological stages of the executed path — the step-by-step replay
+  // steps through these, values and all.
+  const buildExecStages = (executed: Set<string>): string[][] => {
+    const executedRules = [...executed].filter((id) => walkRuleById.has(id));
+    const done = new Set<string>();
+    const stages: string[][] = [];
+    let remaining = executedRules;
+    while (remaining.length > 0) {
+      const fireable = remaining.filter((id) => {
+        const rule = walkRuleById.get(id);
+        if (!rule) return true;
+        return rule.ruleDeps.every(
+          (dep) => !executed.has(dep) || done.has(dep),
+        );
+      });
+      if (fireable.length === 0) {
+        stages.push(remaining);
+        break;
+      }
+      stages.push(fireable);
+      for (const id of fireable) done.add(id);
+      remaining = remaining.filter((id) => !done.has(id));
+    }
+    return stages;
+  };
+
   const liveTraces = useMemo(() => {
     if (!runResult) return { traces: structureTraces, executed: new Set<string>() };
     const valueByFragment = new Map<string, unknown>();
@@ -872,6 +910,29 @@ export function GraphViewerApp() {
       executed,
     };
   }, [structureTraces, runResult, scenario]);
+
+  useEffect(() => {
+    if (!runResult || !pendingReplay.current) return;
+    pendingReplay.current = false;
+    const stages = buildExecStages(liveTraces.executed);
+    if (stages.length > 0) setReplay({ stages, cursor: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runResult, liveTraces]);
+
+  // The canvas lights only up to the replay cursor while stepping.
+  const effectiveExecuted = useMemo(() => {
+    if (!replay) return liveTraces.executed;
+    const subset = new Set<string>();
+    for (let index = 0; index <= replay.cursor; index++) {
+      for (const id of replay.stages[index] ?? []) subset.add(id);
+    }
+    // Inputs feeding the lit rules stay lit too.
+    for (const id of liveTraces.executed) {
+      if (!walkRuleById.has(id)) subset.add(id);
+    }
+    return subset;
+  }, [replay, liveTraces, walkRuleById]);
+
 
   useEffect(() => {
     if (!runResult) return;
@@ -1255,6 +1316,28 @@ export function GraphViewerApp() {
               <h2>Scenario</h2>
               <span>The levers of the law — edit and run</span>
             </div>
+            <div className="scenario-steps" role="tablist" aria-label="Scenario stages">
+              {(
+                [
+                  ["inputs", "1 · Inputs"],
+                  ["outputs", "2 · Outputs"],
+                  ["run", "3 · Run"],
+                ] as const
+              ).map(([step, label]) => (
+                <button
+                  key={step}
+                  type="button"
+                  role="tab"
+                  aria-selected={scenarioStep === step}
+                  className={`scenario-step-tab ${scenarioStep === step ? "is-active" : ""}`}
+                  onClick={() => setScenarioStep(step)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {scenarioStep === "inputs" && (
+            <>
             <div className="scenario-fields">
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="scenario-field">
@@ -1356,13 +1439,88 @@ export function GraphViewerApp() {
             </div>
             <button
               type="button"
-              className="run-button"
-              disabled={running || selectedOutputs.length === 0}
-              onClick={() => void runScenario()}
+              className="run-button scenario-next"
+              onClick={() => setScenarioStep("outputs")}
             >
-              {running ? "Running…" : "▶ Run this scenario"}
+              Next · pick outputs →
             </button>
-            {runError && <p className="run-error">{runError}</p>}
+            </>
+            )}
+            {scenarioStep === "outputs" && (
+              <>
+                {selectedOutputRules.length > 0 && (
+                  <div className="selected-output-list" aria-label="Selected outputs">
+                    {selectedOutputRules.map((output) => (
+                      <button
+                        type="button"
+                        key={output.legalId}
+                        onClick={() => toggleOutput(output.legalId)}
+                        title="Remove output"
+                      >
+                        {output.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <label className="output-search">
+                  <span>Search outputs</span>
+                  <input
+                    type="search"
+                    value={outputSearch}
+                    onChange={(event) => setOutputSearch(event.target.value)}
+                    placeholder="Eligibility, allotment, income..."
+                  />
+                </label>
+                <div className="output-list scenario-output-list">
+                  {filteredOutputRules.map((rule) => (
+                    <button
+                      type="button"
+                      key={rule.legalId}
+                      className={`output-option ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
+                      onClick={() => toggleOutput(rule.legalId)}
+                    >
+                      <span>{humanize(rule.name)}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="run-button scenario-next"
+                  disabled={selectedOutputs.length === 0}
+                  onClick={() => setScenarioStep("run")}
+                >
+                  Next · run →
+                </button>
+              </>
+            )}
+            {scenarioStep === "run" && (
+              <>
+                <p className="scenario-run-summary">
+                  {allScenarioFields.length}{" "}
+                  {allScenarioFields.length === 1 ? "input" : "inputs"} ·{" "}
+                  {selectedOutputs.length}{" "}
+                  {selectedOutputs.length === 1 ? "output" : "outputs"}{" "}
+                  selected.
+                </p>
+                <button
+                  type="button"
+                  className="run-button"
+                  disabled={running || selectedOutputs.length === 0}
+                  onClick={() => void runScenario("all")}
+                >
+                  {running ? "Running…" : "▶ Run it all"}
+                </button>
+                <button
+                  type="button"
+                  className="run-button run-button-secondary"
+                  disabled={running || selectedOutputs.length === 0}
+                  onClick={() => void runScenario("steps")}
+                >
+                  ⧉ Run step by step
+                </button>
+                {runError && <p className="run-error">{runError}</p>}
+              </>
+            )}
           </section>
         )}
       </aside>
@@ -1527,7 +1685,7 @@ export function GraphViewerApp() {
               traces={liveTraces.traces}
               showValues={Boolean(runResult)}
               executionActive={Boolean(runResult)}
-              executedLegalIds={liveTraces.executed}
+              executedLegalIds={effectiveExecuted}
               dissect={lensFocusId || walk ? "always" : "auto"}
               collapsed={folded}
               onCollapsedChange={setFolded}
@@ -2028,7 +2186,80 @@ export function GraphViewerApp() {
             );
           })()}
 
-        {runResult && (
+        {replay && runResult && (() => {
+          const stage = replay.stages[replay.cursor] ?? [];
+          const atLast = replay.cursor >= replay.stages.length - 1;
+          return (
+            <aside className="replay-bar" role="status" aria-label="Step-by-step execution">
+              <div className="replay-head">
+                <strong>
+                  Step {replay.cursor + 1} of {replay.stages.length}
+                </strong>
+                <div className="replay-nav">
+                  <button
+                    type="button"
+                    disabled={replay.cursor === 0}
+                    onClick={() =>
+                      setReplay((current) =>
+                        current
+                          ? { ...current, cursor: Math.max(0, current.cursor - 1) }
+                          : current,
+                      )
+                    }
+                  >
+                    ◀
+                  </button>
+                  <button
+                    type="button"
+                    disabled={atLast}
+                    onClick={() =>
+                      setReplay((current) =>
+                        current
+                          ? {
+                              ...current,
+                              cursor: Math.min(
+                                current.stages.length - 1,
+                                current.cursor + 1,
+                              ),
+                            }
+                          : current,
+                      )
+                    }
+                  >
+                    ▶
+                  </button>
+                  <button type="button" onClick={() => setReplay(null)}>
+                    Show everything
+                  </button>
+                </div>
+              </div>
+              <div className="replay-stage">
+                {stage.slice(0, 4).map((id) => {
+                  const value = valueByLegalId.get(id);
+                  return (
+                    <button
+                      type="button"
+                      key={id}
+                      className="replay-item"
+                      onClick={() => flyTo(id)}
+                      title="Fly to this step"
+                    >
+                      <span>{humanize(walkRuleById.get(id)?.name ?? id)}</span>
+                      {value !== undefined && value !== null && (
+                        <strong>{String(value)}</strong>
+                      )}
+                    </button>
+                  );
+                })}
+                {stage.length > 4 && (
+                  <span className="replay-more">+{stage.length - 4} more</span>
+                )}
+              </div>
+            </aside>
+          );
+        })()}
+
+        {!replay && runResult && (
           <aside className="results-sheet" role="status">
             <div className="results-head">
               <div>

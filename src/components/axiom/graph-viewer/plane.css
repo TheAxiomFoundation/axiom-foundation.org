@@ -2453,3 +2453,157 @@
   color: var(--color-accent-hover, #b45309);
   font-weight: 600;
 }
+
+/* Scenario stages: 1 Inputs · 2 Outputs · 3 Run. */
+.graph-viewer-root .scenario-steps {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.graph-viewer-root .scenario-step-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-family: var(--f-mono, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.graph-viewer-root .scenario-step-tab.is-active {
+  background: var(--color-paper-elevated);
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .scenario-output-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.graph-viewer-root .scenario-next {
+  margin-top: 10px;
+}
+.graph-viewer-root .scenario-run-summary {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .run-button-secondary {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--color-accent-hover, #b45309);
+  border: 1px solid var(--color-accent);
+}
+.graph-viewer-root .run-button-secondary:hover:not(:disabled) {
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.1));
+}
+
+/* Replay bar: the execution, one stage at a time. */
+.graph-viewer-root .replay-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 48px));
+  z-index: 15;
+  background: color-mix(in srgb, var(--color-paper-elevated) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 24px 60px -24px rgba(28, 25, 23, 0.4);
+  animation: panel-in 0.28s var(--ease-out, ease) both;
+}
+.graph-viewer-root .replay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.graph-viewer-root .replay-head strong {
+  font-family: var(--f-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .replay-nav {
+  display: flex;
+  gap: 6px;
+}
+.graph-viewer-root .replay-nav button {
+  padding: 4px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.graph-viewer-root .replay-nav button:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .replay-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.graph-viewer-root .replay-stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.graph-viewer-root .replay-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper);
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+}
+.graph-viewer-root .replay-item:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .replay-item strong {
+  font-family: var(--f-mono, monospace);
+  color: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .replay-more {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+}
+
+/* Center-anchored sheets need their translateX preserved through the
+   entrance — panel-in ends at transform:none and un-centers them. */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.graph-viewer-root .results-sheet,
+.graph-viewer-root .replay-bar {
+  animation: sheet-in 0.3s var(--ease-out, ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .results-sheet,
+  .graph-viewer-root .replay-bar {
+    animation: none;
+    transform: translateX(-50%);
+  }
+}

@@ -1652,7 +1652,13 @@ export function GraphViewerApp() {
                         ))}
                         {rule.inputDeps.map((depId) => (
                           <span key={depId} className="node-inspector-dep-q">
-                            {humanize(depId.split("#").pop() ?? depId)}
+                            {humanize(
+                              walkInputById.get(depId)?.name ??
+                                (depId.split("#").pop() ?? depId)
+                                  .split(".")
+                                  .pop() ??
+                                depId,
+                            )}
                           </span>
                         ))}
                       </div>

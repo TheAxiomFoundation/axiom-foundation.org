@@ -1565,9 +1565,6 @@ export function GraphViewerApp() {
           return (
             <aside className="walk-panel" aria-label="Guided walk">
               <div className="walk-head">
-                <span className="walk-direction">
-                  {isUp ? "↑ Bottom-up · from an input" : "↓ Top-down · from a result"}
-                </span>
                 <button
                   type="button"
                   className="results-close"

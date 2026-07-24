@@ -121,7 +121,7 @@ export function ApplicationsSection() {
                   />
                 </span>
                 <span className="mt-2.5 inline-flex items-center gap-2 font-mono text-[0.58rem] tracking-[0.16em] uppercase text-[var(--color-accent)] group-hover/demo:text-[var(--color-accent-hover)] transition-colors">
-                  see it live &mdash; {app.demo.label}
+                  Explore
                   <ArrowRightIcon className="w-3 h-3" />
                 </span>
               </a>

@@ -49,7 +49,7 @@ export function FoundationSection() {
               kicker: "Fund",
               title: "Underwrite the public layer",
               body:
-                "Encoded law belongs in the public domain. If you’d like to help keep it there, we’d like to talk.",
+                "Encoded law belongs in the open. If you’d like to help keep it there, we’d like to talk.",
               href: "mailto:hello@axiom.org",
               cta: "hello@axiom.org",
               icon: null,

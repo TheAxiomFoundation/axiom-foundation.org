@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ArrowRightIcon } from "@/components/icons";
 import { Reveal } from "@/components/landing/reveal";
 
 export const metadata: Metadata = {
@@ -62,12 +63,31 @@ export default async function DemosPage({ searchParams }: PageProps) {
           <h2 className="m-0 mb-5 font-display text-[1.35rem] font-light tracking-[0.02em] text-[var(--color-ink)]">
             The gallery
           </h2>
-          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+          {/* The shell doesn't fit an embedded frame on small screens
+              (and some demos error inside it) — below md we link out
+              instead. The iframe is lazy, so the hidden container
+              never loads it on mobile. */}
+          <div className="hidden md:block border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
             <iframe
               src={gallerySrc}
               title="Axiom demo gallery"
+              loading="lazy"
               className="block w-full h-[80vh] min-h-[640px] border-0"
             />
+          </div>
+          <div className="md:hidden border border-[var(--color-rule)] rounded-md bg-[var(--color-paper-elevated)] p-8 text-center">
+            <p className="m-0 mb-5 font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed">
+              The gallery works best full-screen on mobile.
+            </p>
+            <a
+              href={gallerySrc}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-rule)] px-6 py-3 font-mono text-[0.8rem] tracking-[0.12em] uppercase text-[var(--color-accent)] no-underline transition-colors hover:border-[var(--color-accent)]"
+            >
+              Open the gallery
+              <ArrowRightIcon className="w-4 h-4" />
+            </a>
           </div>
         </Reveal>
 

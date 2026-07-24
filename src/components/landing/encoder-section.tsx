@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowRightIcon } from "@/components/icons";
+import { axiomAppHref } from "@/lib/urls";
 import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 interface TerminalLine {
@@ -271,6 +273,16 @@ export function EncoderSection() {
           <span className="serif-italic text-[var(--color-ink-secondary)]">
             Disagreements get explained, not erased.
           </span>
+        </Reveal>
+
+        <Reveal className="mt-8 text-center">
+          <a
+            href={axiomAppHref()}
+            className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+          >
+            Explore the encodings
+            <ArrowRightIcon className="w-4 h-4" />
+          </a>
         </Reveal>
       </div>
     </section>

@@ -1924,7 +1924,8 @@
 .graph-viewer-root .plane-switch {
   position: absolute;
   top: 2px;
-  right: 0;
+  /* flush with the graph box's right edge (the canvas sits 24px in) */
+  right: 24px;
   z-index: 15;
   display: inline-flex;
   align-items: center;

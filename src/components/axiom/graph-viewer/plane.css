@@ -610,25 +610,13 @@
 .graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
   display: none;
 }
-/* Far zoom: constellation mode — pills with names only, weight by
-   role. The graph becomes a sky map instead of unreadable micro text. */
+/* Far zoom: cards keep their shape; only secondary chrome yields so
+   the map stays quiet instead of unreadable micro text. */
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-eyebrow,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
   display: none;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node {
-  border-radius: 999px;
-  padding: 8px 14px;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-label {
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-output .irg-label {
-  font-size: 17px;
 }
 /* Keep computed values visible in run mode even from afar — the
    execution layer outranks the LOD. */
@@ -973,25 +961,13 @@
 .graph-viewer-root .irg-wrap[data-lod="mid"] .irg-info-badge {
   display: none;
 }
-/* Far zoom: constellation mode — pills with names only, weight by
-   role. The graph becomes a sky map instead of unreadable micro text. */
+/* Far zoom: cards keep their shape; only secondary chrome yields so
+   the map stays quiet instead of unreadable micro text. */
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-eyebrow,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
   display: none;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node {
-  border-radius: 999px;
-  padding: 8px 14px;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-label {
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.graph-viewer-root .irg-wrap[data-lod="far"] .irg-output .irg-label {
-  font-size: 17px;
 }
 /* Keep computed values visible in run mode even from afar — the
    execution layer outranks the LOD. */

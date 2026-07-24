@@ -71,6 +71,9 @@ interface Props {
   onInspect?: (data: IrgNodeData) => void;
   /** Keep this node's lineage lit while its info card is open. */
   pinnedLegalId?: string | null;
+  /** Light this node's lineage while the pointer rests on its Index
+   *  entry — the sidebar and the canvas are the same map. */
+  hoverLegalId?: string | null;
   /** Clicking empty canvas — the app closes the info card. */
   onPaneClear?: () => void;
   /** Double-click → open the rule lens on this node. */
@@ -109,6 +112,7 @@ export function InteractiveRuleGraph({
   executedLegalIds,
   onInspect,
   pinnedLegalId = null,
+  hoverLegalId = null,
   onPaneClear,
   onLens,
 }: Props) {
@@ -311,18 +315,27 @@ export function InteractiveRuleGraph({
     setHighlightNodeId(null);
   }, [nodes]);
 
-  const pinnedNodeId = useMemo(() => {
-    if (!pinnedLegalId) return null;
+  const nodeIdForLegalId = (legalId: string | null) => {
+    if (!legalId) return null;
     const match = nodes.find(
       (n) =>
-        (n.data as IrgNodeData & { legalId?: string }).legalId ===
-        pinnedLegalId,
+        (n.data as IrgNodeData & { legalId?: string }).legalId === legalId,
     );
     return match?.id ?? null;
-  }, [nodes, pinnedLegalId]);
-  // Hover wins while moving; a click pins its card's lineage until
-  // the info card closes or the pointer travels elsewhere.
-  const activeHighlightId = highlightNodeId ?? pinnedNodeId;
+  };
+  const pinnedNodeId = useMemo(
+    () => nodeIdForLegalId(pinnedLegalId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, pinnedLegalId],
+  );
+  const hoverNodeId = useMemo(
+    () => nodeIdForLegalId(hoverLegalId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, hoverLegalId],
+  );
+  // Canvas hover wins while moving, then an Index hover, then the
+  // pin that lasts while the info card is open.
+  const activeHighlightId = highlightNodeId ?? hoverNodeId ?? pinnedNodeId;
 
   const highlightSet = useMemo(() => {
     if (!activeHighlightId) return null;

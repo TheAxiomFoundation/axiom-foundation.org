@@ -189,6 +189,7 @@ export function GraphViewerApp() {
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [outputsOpen, setOutputsOpen] = useState(false);
   const [indexSearch, setIndexSearch] = useState("");
+  const [indexHover, setIndexHover] = useState<string | null>(null);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -1120,6 +1121,8 @@ export function GraphViewerApp() {
                 key={match.legalId}
                 className="index-result"
                 onClick={() => flyFromIndex(match.legalId)}
+                onMouseEnter={() => setIndexHover(match.legalId)}
+                onMouseLeave={() => setIndexHover(null)}
                 title="Fly to this rule on the canvas"
               >
                 {match.label}
@@ -1149,6 +1152,7 @@ export function GraphViewerApp() {
                   })
                 }
                 onFly={flyFromIndex}
+                onHover={setIndexHover}
               />
             );
           })}
@@ -1377,6 +1381,7 @@ export function GraphViewerApp() {
                   ? inspected.legalId
                   : null
               }
+              hoverLegalId={indexHover}
               onPaneClear={() => setInspected(null)}
               onLens={openLens}
               parameterRules={parameterRules}
@@ -2086,12 +2091,14 @@ function NavigatorBranch({
   folded,
   onToggleFold,
   onFly,
+  onHover,
 }: {
   node: TraceNode;
   depth: number;
   folded: Set<string>;
   onToggleFold: (legalId: string) => void;
   onFly: (legalId: string) => void;
+  onHover: (legalId: string | null) => void;
 }) {
   const isRule = node.dtype !== "input" && Boolean(node.formula);
   const children = (node.children ?? []).filter(
@@ -2117,6 +2124,8 @@ function NavigatorBranch({
           type="button"
           className={`nav-name ${depth === 0 ? "is-root" : ""}`}
           onClick={() => onFly(node.legalId)}
+          onMouseEnter={() => onHover(node.legalId)}
+          onMouseLeave={() => onHover(null)}
           title="Fly to this rule on the canvas"
         >
           {humanize(node.label ?? node.legalId.split("#").pop() ?? "")}
@@ -2141,6 +2150,7 @@ function NavigatorBranch({
             folded={folded}
             onToggleFold={onToggleFold}
             onFly={onFly}
+            onHover={onHover}
           />
         ))}
     </div>

@@ -2679,3 +2679,69 @@
   cursor: default;
   opacity: 0.75;
 }
+
+/* Collapsible index: the left panel folds to a slim rail. */
+.graph-viewer-root .app-shell.sidebar-collapsed {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+.graph-viewer-root .app-shell.sidebar-collapsed .side-panel.index-side > *:not(.sidebar-toggle) {
+  display: none;
+}
+.graph-viewer-root .sidebar-toggle {
+  align-self: flex-end;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.graph-viewer-root .sidebar-toggle:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .app-shell.sidebar-collapsed .sidebar-toggle {
+  align-self: center;
+}
+
+/* Walk arrows: the journey's own forward and back. */
+.graph-viewer-root .walk-arrows {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin: 10px 0 2px;
+}
+.graph-viewer-root .walk-arrows button {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  color: var(--color-accent-hover, #b45309);
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+.graph-viewer-root .walk-arrows button:hover:not(:disabled) {
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.12));
+  transform: translateY(-1px);
+}
+.graph-viewer-root .walk-arrows button:disabled {
+  opacity: 0.35;
+  border-color: var(--color-rule);
+  color: var(--color-ink-muted);
+  cursor: default;
+}

@@ -233,6 +233,7 @@ export function GraphViewerApp() {
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
   const [scenarioSetupOpen, setScenarioSetupOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
       typeof window !== "undefined" &&
@@ -821,12 +822,20 @@ export function GraphViewerApp() {
         surveyRef.current = false;
         setFolded(new Set());
       } else {
-        setFolded(
-          initialCollapse(
-            structureTraces,
-            lensTrail.length > 0 ? "always" : "auto",
-          ),
+        const next = initialCollapse(
+          structureTraces,
+          lensTrail.length > 0 ? "always" : "auto",
         );
+        if (walk) {
+          // The path already walked stays open — a fresh dissection
+          // must not fold the trail's tail back up.
+          for (const id of walk.trail) {
+            next.delete(id);
+            const anchor = walkAnchorOf(id);
+            if (anchor) next.delete(anchor);
+          }
+        }
+        setFolded(next);
       }
     }
   }, [structureTraces, lensTrail.length, walk]);
@@ -1540,8 +1549,21 @@ export function GraphViewerApp() {
         </div>
       </div>
     )}
-    <main className={`app-shell ${walk ? "walk-active" : ""}`}>
+    <main
+      className={`app-shell ${walk ? "walk-active" : ""} ${
+        sidebarCollapsed ? "sidebar-collapsed" : ""
+      }`}
+    >
       <aside className="side-panel index-side">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          title={sidebarCollapsed ? "Open the index" : "Collapse the index"}
+          aria-expanded={!sidebarCollapsed}
+        >
+          {sidebarCollapsed ? "⟩" : "⟨"}
+        </button>
         {graph && (
           <p className="program-anatomy">
             This program decides{" "}
@@ -2008,6 +2030,35 @@ export function GraphViewerApp() {
                 )}
               </div>
 
+              <div className="walk-arrows" aria-label="Walk navigation">
+                <button
+                  type="button"
+                  disabled={walk.cursor === 0}
+                  onClick={() => walkFocus(walk.cursor - 1)}
+                  aria-label="Previous step"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    walk.cursor >= walk.trail.length - 1 &&
+                    (isUp ? nextUp.length === 0 : depRules.length === 0)
+                  }
+                  onClick={() => {
+                    if (walk.cursor < walk.trail.length - 1) {
+                      walkFocus(walk.cursor + 1);
+                    } else if (isUp && nextUp.length > 0) {
+                      walkTo(nextUp[0].legalId);
+                    } else if (!isUp && depRules.length > 0) {
+                      walkTo(depRules[0].legalId);
+                    }
+                  }}
+                  aria-label="Next step"
+                >
+                  →
+                </button>
+              </div>
               {atEnd ? (
                 <div className="walk-end">
                   {isUp ? (

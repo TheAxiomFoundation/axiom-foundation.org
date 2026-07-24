@@ -1111,29 +1111,6 @@ function softBreak(s: string): string {
  * focusing it opens the popover; the box itself stays clean so the user
  * can drag/click without accidental popovers cluttering every motion.
  */
-const InfoBadge = ({
-  open,
-  onEnter,
-  onLeave,
-}: {
-  open: boolean;
-  onEnter: () => void;
-  onLeave: () => void;
-}) => (
-  <button
-    type="button"
-    className={`irg-info-badge ${open ? "is-open" : ""}`}
-    aria-label="Show details"
-    onMouseEnter={onEnter}
-    onMouseLeave={onLeave}
-    onFocus={onEnter}
-    onBlur={onLeave}
-    onClick={(e) => e.stopPropagation()}
-    tabIndex={-1}
-  >
-    i
-  </button>
-);
 
 const OutputNode = ({ data }: NodeProps) => {
   const d = data as Extract<IrgNodeData, { kind: "output" }>;
@@ -1145,7 +1122,6 @@ const OutputNode = ({ data }: NodeProps) => {
       className={`irg-node irg-output ${d.showValues ? d.verdictCls : "irg-neutral"}`}
     >
       <HandleBoth />
-      <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
       <div className="irg-eyebrow">Result</div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
@@ -1188,7 +1164,6 @@ const InputNode = ({ data }: NodeProps) => {
       className={`irg-node irg-input irg-input-${d.source} ${d.canExpose ? "irg-can-expose" : ""}`}
     >
       <HandleSource />
-      <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
       <div className="irg-eyebrow">
         Question · <span className={`irg-status irg-status-${d.source}`}>{d.source === "user" ? "asked" : "not asked"}</span>
       </div>
@@ -1244,7 +1219,6 @@ const RuleRefNode = ({ data }: NodeProps) => {
       className={`irg-node irg-rule ${d.isParameter ? "irg-parameter" : ""} ${d.showValues ? d.verdictCls : "irg-neutral"} ${d.canExpand ? "irg-can-expand" : ""} ${d.isOutput ? "irg-rule-output" : ""}`}
     >
       <HandleBoth />
-      <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
       <div className="irg-eyebrow">
         {d.isParameter ? "Parameter" : d.isOutput ? "Step · result" : "Step"}
       </div>
@@ -1291,9 +1265,6 @@ const UnknownNode = ({ data }: NodeProps) => {
   return (
     <div ref={ref} className={`irg-node irg-unknown ${d.isParameter ? "irg-parameter" : ""}`}>
       <HandleSource />
-      {d.meta && (
-        <InfoBadge open={pop.open} onEnter={pop.enter} onLeave={pop.leave} />
-      )}
       <div className="irg-eyebrow">{d.isParameter ? "Parameter" : "Unresolved"}</div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       {d.meta && (

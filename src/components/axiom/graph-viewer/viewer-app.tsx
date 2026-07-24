@@ -1551,6 +1551,7 @@ export function GraphViewerApp() {
                 ? inspected.legalId
                 : null;
             const rule = legalId ? (walkRuleById.get(legalId) ?? null) : null;
+            const input = legalId ? (walkInputById.get(legalId) ?? null) : null;
             const consumers = legalId ? consumersOf(legalId) : [];
             const meta = "meta" in inspected ? inspected.meta : undefined;
             const formula = meta?.formula ?? rule?.formula ?? null;
@@ -1600,10 +1601,10 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
-              {rule?.entity ? (
+              {(rule?.entity ?? input?.entity) ? (
                 <>
                   <dt>Entity</dt>
-                  <dd>{humanize(rule.entity)}</dd>
+                  <dd>{humanize((rule?.entity ?? input?.entity) as string)}</dd>
                 </>
               ) : null}
               {rule?.period ? (
@@ -1693,6 +1694,16 @@ export function GraphViewerApp() {
                     {inspected.source === "user"
                       ? "by your scenario"
                       : "by its default"}
+                  </dd>
+                </>
+              ) : null}
+              {input && input.sample !== undefined && input.sample !== null ? (
+                <>
+                  <dt>Default</dt>
+                  <dd className="node-inspector-mono">
+                    {typeof input.sample === "object"
+                      ? JSON.stringify(input.sample)
+                      : String(input.sample)}
                   </dd>
                 </>
               ) : null}

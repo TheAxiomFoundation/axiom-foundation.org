@@ -52,7 +52,6 @@ export function GraphViewerApp() {
   // rules over the map. Entering saves the map's output selection;
   // the trail's crumbs step back; leaving restores the map exactly.
   const [lensTrail, setLensTrail] = useState<string[]>([]);
-  const [navOpen, setNavOpen] = useState(false);
   // The fold state is shared by the canvas and the navigator tree.
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const foldedInitialized = useRef<string | null>(null);
@@ -166,6 +165,7 @@ export function GraphViewerApp() {
     trail: string[];
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
+  const [outputsOpen, setOutputsOpen] = useState(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -199,7 +199,6 @@ export function GraphViewerApp() {
     surveyRef.current = true;
     setSelectedOutputs(outputRules.map((rule) => rule.legalId));
     setFolded(new Set());
-    setNavOpen(true);
     setFlyTarget((current) => ({
       legalId: "*",
       nonce: (current?.nonce ?? 0) + 1,
@@ -792,6 +791,7 @@ export function GraphViewerApp() {
     const next = allPrograms.find((item) => programKey(item) === value);
     if (!next) return;
     exitComposeMode();
+    setOutputsOpen(false);
     setCountry(countryOf(next.jurisdiction));
     setProgram(programRefFromSummary(next));
     setGraph(null);
@@ -1024,99 +1024,46 @@ export function GraphViewerApp() {
       </div>
     )}
     <main className={`app-shell ${walk ? "walk-active" : ""}`}>
-      <aside className="side-panel">
-        <section className="control-block program-controls">
-          <div className="section-head stacked">
-            <h2>Program</h2>
-            <span>
-              {programsLoading
-                ? "Loading programs"
-                : graph
-                  ? `${
-                      composeFocus
-                        ? "composed view"
-                        : (effectiveProgram?.jurisdiction ?? "").toUpperCase()
-                    } · ${graph.rules.length} rules`
-                  : "Loading graph"}
-            </span>
-          </div>
-          <label>
-            Select program
-            <select
-              value={program ? programKey(program) : ""}
-              onChange={(event) => selectProgram(event.target.value)}
-              disabled={allPrograms.length === 0}
-            >
-              {composeFocus && <option value="">Composed view</option>}
-              {programs.length === 0 && !composeFocus && (
-                <option value="">No programs available</option>
-              )}
-              {[...new Set(allPrograms.map((i) => countryOf(i.jurisdiction)))].map(
-                (group) => (
-                  <optgroup key={group} label={countryLabel(group)}>
-                    {allPrograms
-                      .filter((i) => countryOf(i.jurisdiction) === group)
-                      .map((item) => (
-                        <option key={programKey(item)} value={programKey(item)}>
-                          {displayNameForProgram(item)}
-                        </option>
-                      ))}
-                  </optgroup>
-                ),
-              )}
-            </select>
-          </label>
-          {program && <p className="program-summary">{summaryForProgram(programs, program)}</p>}
-        </section>
-
-        <section className="control-block outputs-control">
-          <div className="section-head outputs-head">
-            <div>
-              <h2>Outputs</h2>
-              <span>Pick the graph results to show</span>
-            </div>
-            <strong>{selectedOutputs.length} selected</strong>
-          </div>
-          {selectedOutputRules.length > 0 && (
-            <div className="selected-output-list" aria-label="Selected outputs">
-              {selectedOutputRules.map((output) => (
-                <button
-                  type="button"
-                  key={output.legalId}
-                  onClick={() => toggleOutput(output.legalId)}
-                  title="Remove output from graph"
-                >
-                  {output.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <label className="output-search">
-            <span>Search outputs</span>
-            <input
-              type="search"
-              value={outputSearch}
-              onChange={(event) => setOutputSearch(event.target.value)}
-              placeholder="Eligibility, allotment, income..."
-            />
-          </label>
-          <div className="output-list">
-            {filteredOutputRules.map((rule) => (
-              <button
-                type="button"
-                key={rule.legalId}
-                className={`output-option ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
-                onClick={() => toggleOutput(rule.legalId)}
-              >
-                <span>{humanize(rule.name)}</span>
-              </button>
-            ))}
-            {filteredOutputRules.length === 0 && (
-              <div className="output-empty">No outputs match this search.</div>
-            )}
-          </div>
-        </section>
-
+      <aside className="side-panel index-side">
+        {graph && (
+          <p className="program-anatomy">
+            This program decides{" "}
+            <strong>{graph.terminalOutputs.length} results</strong> from{" "}
+            <strong>{graph.inputs.length} inputs</strong> through{" "}
+            <strong>{graph.rules.length} rules</strong>.
+          </p>
+        )}
+        {composeFocus && (
+          <p className="program-summary">
+            Composed on demand from {composedFiles.length || "the"} encoded{" "}
+            {composedFiles.length === 1 ? "file" : "files"}
+            {composedTruncated ? " (import walk truncated)" : ""}. Pick a
+            program above to return to compiled packages.
+          </p>
+        )}
+        <div className="navigator-tree" aria-label="Computation navigator">
+          {selectedOutputs.map((legalId) => {
+            const root = structureTraces[legalId];
+            if (!root) return null;
+            return (
+              <NavigatorBranch
+                key={legalId}
+                node={root}
+                depth={0}
+                folded={folded}
+                onToggleFold={(id) =>
+                  setFolded((current) => {
+                    const next = new Set(current);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+                onFly={flyFromIndex}
+              />
+            );
+          })}
+        </div>
         {scenarioMode && scenarioFields.length > 0 && (
           <section
             className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
@@ -1169,6 +1116,96 @@ export function GraphViewerApp() {
       </aside>
 
       <section className="viewer-panel">
+        <div className="top-controls">
+            <select
+              className="program-select"
+              aria-label="Select program"
+              value={program ? programKey(program) : ""}
+              onChange={(event) => selectProgram(event.target.value)}
+              disabled={allPrograms.length === 0}
+            >
+              {composeFocus && <option value="">Composed view</option>}
+              {programs.length === 0 && !composeFocus && (
+                <option value="">No programs available</option>
+              )}
+              {[...new Set(allPrograms.map((i) => countryOf(i.jurisdiction)))].map(
+                (group) => (
+                  <optgroup key={group} label={countryLabel(group)}>
+                    {allPrograms
+                      .filter((i) => countryOf(i.jurisdiction) === group)
+                      .map((item) => (
+                        <option key={programKey(item)} value={programKey(item)}>
+                          {displayNameForProgram(item)}
+                        </option>
+                      ))}
+                  </optgroup>
+                ),
+              )}
+            </select>
+            <div className="outputs-select">
+              <button
+                type="button"
+                className="outputs-select-btn"
+                onClick={() => setOutputsOpen((open) => !open)}
+                aria-expanded={outputsOpen}
+              >
+                Outputs · {selectedOutputs.length} ▾
+              </button>
+              {outputsOpen && (
+                <div className="outputs-panel" aria-label="Pick the graph results to show">
+                  <label className="output-search">
+                    <span>Search outputs</span>
+                    <input
+                      type="search"
+                      value={outputSearch}
+                      onChange={(event) => setOutputSearch(event.target.value)}
+                      placeholder="Eligibility, allotment, income..."
+                    />
+                  </label>
+                  {selectedOutputRules.length > 0 && (
+                    <div className="selected-output-list" aria-label="Selected outputs">
+                      {selectedOutputRules.map((output) => (
+                        <button
+                          type="button"
+                          key={output.legalId}
+                          onClick={() => toggleOutput(output.legalId)}
+                          title="Remove output from graph"
+                        >
+                          {output.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="output-list">
+                    {filteredOutputRules.map((rule) => (
+                      <button
+                        type="button"
+                        key={rule.legalId}
+                        className={`output-option ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
+                        onClick={() => toggleOutput(rule.legalId)}
+                      >
+                        <span>{humanize(rule.name)}</span>
+                      </button>
+                    ))}
+                    {filteredOutputRules.length === 0 && (
+                      <div className="output-empty">No outputs match this search.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          <span className="top-meta">
+            {programsLoading
+              ? "Loading programs"
+              : graph
+                ? `${
+                    composeFocus
+                      ? "composed view"
+                      : (effectiveProgram?.jurisdiction ?? "").toUpperCase()
+                  } · ${graph.rules.length} rules`
+                : "Loading graph"}
+          </span>
+        </div>
         <a className="plane-switch" href="/us" title="Switch to the Library — read the law">
           ⇄ Library
         </a>
@@ -1190,57 +1227,6 @@ export function GraphViewerApp() {
           >
             ✦ Journey
           </button>
-          <button
-            type="button"
-            className="nav-toggle"
-            onClick={() => setNavOpen((open) => !open)}
-            aria-expanded={navOpen}
-          >
-            ☰ Index{graph ? ` · ${graph.rules.length}` : ""}
-          </button>
-          {navOpen && (
-            <div className="nav-panel" aria-label="Computation index">
-          {graph && (
-            <p className="program-anatomy">
-              This program decides{" "}
-              <strong>{graph.terminalOutputs.length} results</strong> from{" "}
-              <strong>{graph.inputs.length} inputs</strong> through{" "}
-              <strong>{graph.rules.length} rules</strong>.
-            </p>
-          )}
-          {composeFocus && (
-            <p className="program-summary">
-              Composed on demand from {composedFiles.length || "the"} encoded{" "}
-              {composedFiles.length === 1 ? "file" : "files"}
-              {composedTruncated ? " (import walk truncated)" : ""}. Pick a
-              program above to return to compiled packages.
-            </p>
-          )}
-          <div className="navigator-tree" aria-label="Computation navigator">
-            {selectedOutputs.map((legalId) => {
-              const root = structureTraces[legalId];
-              if (!root) return null;
-              return (
-                <NavigatorBranch
-                  key={legalId}
-                  node={root}
-                  depth={0}
-                  folded={folded}
-                  onToggleFold={(id) =>
-                    setFolded((current) => {
-                      const next = new Set(current);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      return next;
-                    })
-                  }
-                  onFly={flyFromIndex}
-                />
-              );
-            })}
-          </div>
-            </div>
-          )}
         {lensFocusId && (
           <div className="lens-bar" role="navigation" aria-label="Rule lens trail">
             <button type="button" className="lens-crumb lens-crumb-root" onClick={closeLens}>

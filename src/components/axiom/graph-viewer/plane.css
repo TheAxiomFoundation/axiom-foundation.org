@@ -1948,3 +1948,99 @@
   border-color: var(--color-accent);
   transform: translateY(-1px);
 }
+
+/* ═══ Top selectors + index sidebar ═══ */
+/* Program and Outputs live as compact selectors in the band above
+   the canvas; the left bar is the computation index itself. */
+.graph-viewer-root .top-controls {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.graph-viewer-root .top-controls .program-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 7px 30px 7px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background:
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0l4 6 4-6z' fill='%2378716c'/%3E%3C/svg%3E")
+      no-repeat right 12px center,
+    var(--color-paper-elevated);
+  color: var(--color-ink);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 300px;
+}
+.graph-viewer-root .top-controls .program-select:hover {
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .outputs-select {
+  position: relative;
+}
+.graph-viewer-root .outputs-select-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  color: var(--color-ink-secondary);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  cursor: pointer;
+}
+.graph-viewer-root .outputs-select-btn:hover,
+.graph-viewer-root .outputs-select-btn[aria-expanded="true"] {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .outputs-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: min(400px, 72vw);
+  max-height: 64vh;
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 24px 60px -24px rgba(28, 25, 23, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.graph-viewer-root .top-meta {
+  font-family: var(--f-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+/* The sidebar is the index: anatomy line on top, tree scrolling under
+   it, scenario levers above everything in a run journey. */
+.graph-viewer-root .side-panel.index-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+.graph-viewer-root .side-panel.index-side .program-anatomy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .side-panel.index-side .navigator-tree {
+  flex: 1;
+  min-height: 0;
+}

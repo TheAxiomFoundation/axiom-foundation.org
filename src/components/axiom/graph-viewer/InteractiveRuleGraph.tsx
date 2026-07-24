@@ -697,6 +697,8 @@ interface NodeMeta {
   formulaPreview?: string;
   /** For parameters: the constant value or expression backing the parameter. */
   parameterValue?: string;
+  /** Full formula text — shown only behind an unfold in the inspector. */
+  formula?: string;
 }
 
 export type IrgNodeData =
@@ -2323,6 +2325,7 @@ function buildMeta(t: TraceNode, kind: "Output" | "Input" | "Rule" | "Parameter"
       kind === "Parameter" && t.formula
         ? truncate(t.formula.replace(/\s+/g, " ").trim(), 140)
         : undefined,
+    formula: t.formula ?? undefined,
   };
 }
 

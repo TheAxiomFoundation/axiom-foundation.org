@@ -1547,7 +1547,10 @@ export function GraphViewerApp() {
         {inspected && (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
-              <span className="node-inspector-kind">{inspected.kind}</span>
+              <span className="node-inspector-kind">
+                {("meta" in inspected && inspected.meta?.kindLine) ||
+                  inspected.kind}
+              </span>
               <button
                 type="button"
                 className="results-close"
@@ -1558,12 +1561,74 @@ export function GraphViewerApp() {
               </button>
             </div>
             <h2 className="node-inspector-title">
-              {humanize(
-                "label" in inspected ? (inspected.label ?? "") : "",
-              )}
+              {humanize("label" in inspected ? (inspected.label ?? "") : "")}
             </h2>
-            {"value" in inspected && inspected.value ? (
+            {"value" in inspected &&
+            inspected.value &&
+            "showValues" in inspected &&
+            inspected.showValues ? (
               <p className="node-inspector-value">{inspected.value}</p>
+            ) : null}
+            <dl className="node-inspector-meta">
+              {"meta" in inspected && inspected.meta?.citation ? (
+                <>
+                  <dt>Source</dt>
+                  <dd>
+                    {inspected.meta.sourceUrl ? (
+                      <a
+                        href={inspected.meta.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {inspected.meta.citation} ↗
+                      </a>
+                    ) : (
+                      inspected.meta.citation
+                    )}
+                  </dd>
+                </>
+              ) : null}
+              {"kind" in inspected && inspected.kind === "input" ? (
+                <>
+                  <dt>Answered</dt>
+                  <dd>
+                    {inspected.source === "user"
+                      ? "by your scenario"
+                      : "by its default"}
+                  </dd>
+                </>
+              ) : null}
+              {"meta" in inspected && inspected.meta?.parameterValue ? (
+                <>
+                  <dt>Value</dt>
+                  <dd className="node-inspector-mono">
+                    {inspected.meta.parameterValue}
+                  </dd>
+                </>
+              ) : null}
+              {"hiddenCount" in inspected && inspected.hiddenCount ? (
+                <>
+                  <dt>Contains</dt>
+                  <dd>{inspected.hiddenCount} steps</dd>
+                </>
+              ) : null}
+              {"legalId" in inspected && inspected.legalId ? (
+                <>
+                  <dt>Legal ID</dt>
+                  <dd
+                    className="node-inspector-mono"
+                    title={inspected.legalId}
+                  >
+                    {inspected.legalId}
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+            {"meta" in inspected && inspected.meta?.formula ? (
+              <details className="node-inspector-code">
+                <summary>Formula</summary>
+                <pre>{inspected.meta.formula}</pre>
+              </details>
             ) : null}
             {"legalId" in inspected &&
             inspected.legalId &&
@@ -1575,19 +1640,6 @@ export function GraphViewerApp() {
               >
                 ⊙ How does this rule work?
               </button>
-            ) : null}
-            {"legalId" in inspected && inspected.legalId ? (
-              <p className="node-inspector-cite">
-                {humanizeCitation(fileLegalIdOf(inspected.legalId))}
-              </p>
-            ) : null}
-            {"meta" in inspected &&
-            (inspected.meta?.formulaPreview ||
-              inspected.meta?.parameterValue) ? (
-              <pre className="node-inspector-formula">
-                {inspected.meta.formulaPreview ??
-                  inspected.meta.parameterValue}
-              </pre>
             ) : null}
             {"legalId" in inspected &&
             inspected.legalId &&

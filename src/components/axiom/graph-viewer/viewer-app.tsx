@@ -1209,7 +1209,14 @@ export function GraphViewerApp() {
             )}
             {scenarioStep === "outputs" && (
               <>
-                {selectedOutputRules.length > 0 && (
+                {selectedOutputRules.length > 12 ? (
+                  <div className="selected-output-summary">
+                    <span>{selectedOutputRules.length} results selected</span>
+                    <button type="button" onClick={() => setSelectedOutputs([])}>
+                      Clear all
+                    </button>
+                  </div>
+                ) : selectedOutputRules.length > 0 ? (
                   <div className="selected-output-list" aria-label="Selected outputs">
                     {selectedOutputRules.map((output) => (
                       <button
@@ -1222,7 +1229,7 @@ export function GraphViewerApp() {
                       </button>
                     ))}
                   </div>
-                )}
+                ) : null}
                 <label className="output-search">
                   <span>Search outputs</span>
                   <input
@@ -1699,7 +1706,17 @@ export function GraphViewerApp() {
                       placeholder="Eligibility, allotment, income..."
                     />
                   </label>
-                  {selectedOutputRules.length > 0 && (
+                  {selectedOutputRules.length > 12 ? (
+                    <div className="selected-output-summary">
+                      <span>{selectedOutputRules.length} results selected</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOutputs([])}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  ) : selectedOutputRules.length > 0 ? (
                     <div className="selected-output-list" aria-label="Selected outputs">
                       {selectedOutputRules.map((output) => (
                         <button
@@ -1712,7 +1729,7 @@ export function GraphViewerApp() {
                         </button>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                   <div className="output-row output-row-head" aria-hidden>
                     <span className="output-row-name">Result</span>
                     <span className="output-row-cell">Type</span>

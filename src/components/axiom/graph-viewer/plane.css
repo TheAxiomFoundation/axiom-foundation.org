@@ -2745,3 +2745,36 @@
   color: var(--color-ink-muted);
   cursor: default;
 }
+
+/* Inside the outputs popover and the scenario stage the container
+   scrolls — the selected pills need no cap of their own. */
+.graph-viewer-root .outputs-panel .selected-output-list,
+.graph-viewer-root .scenario-block .selected-output-list,
+.graph-viewer-root .journey-scenario-body .selected-output-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.graph-viewer-root .selected-output-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-paper);
+  font-size: 12.5px;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .selected-output-summary button {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.graph-viewer-root .selected-output-summary button:hover {
+  text-decoration: underline;
+}

@@ -290,6 +290,15 @@ export function GraphViewerApp() {
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
+  const inputUsageCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const rule of graph?.rules ?? []) {
+      for (const dep of rule.inputDeps) {
+        counts.set(dep, (counts.get(dep) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [graph]);
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(
       (rule) =>
@@ -1088,6 +1097,12 @@ export function GraphViewerApp() {
                     placeholder="Search inputs..."
                     aria-label="Search inputs to add"
                   />
+                  <div className="lever-row lever-row-head" aria-hidden>
+                    <span className="lever-row-name">Input</span>
+                    <span className="lever-row-cell">Entity</span>
+                    <span className="lever-row-cell">Default</span>
+                    <span className="lever-row-cell">Used</span>
+                  </div>
                   <div className="lever-picker-list">
                     {(graph?.inputs ?? [])
                       .filter((input, index, list) => {
@@ -1115,6 +1130,7 @@ export function GraphViewerApp() {
                         <button
                           type="button"
                           key={input.legalId}
+                          className="lever-row"
                           onClick={() => {
                             const sample = input.sample;
                             setExtraLevers((current) => [
@@ -1132,7 +1148,20 @@ export function GraphViewerApp() {
                             setLeverSearch("");
                           }}
                         >
-                          {humanize(input.name)}
+                          <span className="lever-row-name">
+                            {humanize(input.name)}
+                          </span>
+                          <span className="lever-row-cell">
+                            {input.entity ? humanize(input.entity) : "—"}
+                          </span>
+                          <span className="lever-row-cell">
+                            {input.sample !== undefined && input.sample !== null
+                              ? String(input.sample)
+                              : "—"}
+                          </span>
+                          <span className="lever-row-cell">
+                            {inputUsageCount.get(input.legalId) ?? 0}×
+                          </span>
                         </button>
                       ))}
                   </div>
@@ -1173,15 +1202,33 @@ export function GraphViewerApp() {
                     placeholder="Eligibility, allotment, income..."
                   />
                 </label>
+                <div className="output-row output-row-head" aria-hidden>
+                  <span className="output-row-name">Result</span>
+                  <span className="output-row-cell">Type</span>
+                  <span className="output-row-cell">Entity</span>
+                  <span className="output-row-cell">Period</span>
+                </div>
                 <div className="output-list scenario-output-list">
                   {filteredOutputRules.map((rule) => (
                     <button
                       type="button"
                       key={rule.legalId}
-                      className={`output-option ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
+                      className={`output-option output-row ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
                       onClick={() => toggleOutput(rule.legalId)}
                     >
-                      <span>{humanize(rule.name)}</span>
+                      <span className="output-row-name">
+                        {humanize(rule.name)}
+                      </span>
+                      <span className="output-row-cell">
+                        {[rule.dtype, rule.unit].filter(Boolean).join(" · ") ||
+                          "—"}
+                      </span>
+                      <span className="output-row-cell">
+                        {rule.entity ? humanize(rule.entity) : "—"}
+                      </span>
+                      <span className="output-row-cell">
+                        {rule.period ?? "—"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1623,15 +1670,34 @@ export function GraphViewerApp() {
                       ))}
                     </div>
                   )}
+                  <div className="output-row output-row-head" aria-hidden>
+                    <span className="output-row-name">Result</span>
+                    <span className="output-row-cell">Type</span>
+                    <span className="output-row-cell">Entity</span>
+                    <span className="output-row-cell">Period</span>
+                  </div>
                   <div className="output-list">
                     {filteredOutputRules.map((rule) => (
                       <button
                         type="button"
                         key={rule.legalId}
-                        className={`output-option ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
+                        className={`output-option output-row ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
                         onClick={() => toggleOutput(rule.legalId)}
                       >
-                        <span>{humanize(rule.name)}</span>
+                        <span className="output-row-name">
+                          {humanize(rule.name)}
+                        </span>
+                        <span className="output-row-cell">
+                          {[rule.dtype, rule.unit]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                        <span className="output-row-cell">
+                          {rule.entity ? humanize(rule.entity) : "—"}
+                        </span>
+                        <span className="output-row-cell">
+                          {rule.period ?? "—"}
+                        </span>
                       </button>
                     ))}
                     {filteredOutputRules.length === 0 && (

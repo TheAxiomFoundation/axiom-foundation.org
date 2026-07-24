@@ -2614,3 +2614,49 @@
   overflow-y: auto;
   padding-right: 4px;
 }
+
+/* Picker tables: name + the facts that matter (entity, default,
+   usage for inputs; type, entity, period for results). */
+.graph-viewer-root .lever-row,
+.graph-viewer-root .output-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px 64px 44px;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+}
+.graph-viewer-root .output-row {
+  grid-template-columns: minmax(0, 1fr) 104px 74px 50px;
+}
+.graph-viewer-root .lever-row-head,
+.graph-viewer-root .output-row-head {
+  padding: 2px 9px 6px;
+  border-bottom: 1px solid var(--color-rule);
+  margin-bottom: 4px;
+}
+.graph-viewer-root .lever-row-head span,
+.graph-viewer-root .output-row-head span {
+  font-family: var(--f-mono, monospace);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .lever-row-name,
+.graph-viewer-root .output-row-name {
+  overflow-wrap: anywhere;
+}
+.graph-viewer-root .lever-row-cell,
+.graph-viewer-root .output-row-cell {
+  font-family: var(--f-mono, monospace);
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.graph-viewer-root .output-option.is-selected .output-row-cell {
+  color: inherit;
+  opacity: 0.75;
+}

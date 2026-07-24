@@ -13,96 +13,96 @@
       "destination": "https://axiom-demo-shell.vercel.app/demos"
     },
     {
-      "source": "/demos/:path*",
-      "destination": "https://axiom-demo-shell.vercel.app/demos/:path*"
+      "source": "/demos/:path(.*)",
+      "destination": "https://axiom-demo-shell.vercel.app/demos/:path(.*)"
     },
     {
       "source": "/chatbot",
       "destination": "https://finbot-snap-demo.vercel.app/chatbot"
     },
     {
-      "source": "/chatbot/:path*",
-      "destination": "https://finbot-snap-demo.vercel.app/chatbot/:path*"
+      "source": "/chatbot/:path(.*)",
+      "destination": "https://finbot-snap-demo.vercel.app/chatbot/:path(.*)"
     },
     {
       "source": "/reg-demo",
       "destination": "https://axiom-reg-demo.vercel.app/reg-demo"
     },
     {
-      "source": "/reg-demo/:path*",
-      "destination": "https://axiom-reg-demo.vercel.app/reg-demo/:path*"
+      "source": "/reg-demo/:path(.*)",
+      "destination": "https://axiom-reg-demo.vercel.app/reg-demo/:path(.*)"
     },
     {
       "source": "/builder",
       "destination": "https://dashboard-builder-flax.vercel.app/builder"
     },
     {
-      "source": "/builder/:path*",
-      "destination": "https://dashboard-builder-flax.vercel.app/builder/:path*"
+      "source": "/builder/:path(.*)",
+      "destination": "https://dashboard-builder-flax.vercel.app/builder/:path(.*)"
     },
     {
       "source": "/workflow",
       "destination": "https://co-snap-workflow-checker.vercel.app/workflow"
     },
     {
-      "source": "/workflow/:path*",
-      "destination": "https://co-snap-workflow-checker.vercel.app/workflow/:path*"
+      "source": "/workflow/:path(.*)",
+      "destination": "https://co-snap-workflow-checker.vercel.app/workflow/:path(.*)"
     },
     {
       "source": "/snap",
       "destination": "https://axiom-co-snap.vercel.app/snap"
     },
     {
-      "source": "/snap/:path*",
-      "destination": "https://axiom-co-snap.vercel.app/snap/:path*"
+      "source": "/snap/:path(.*)",
+      "destination": "https://axiom-co-snap.vercel.app/snap/:path(.*)"
     },
     {
       "source": "/microsim",
       "destination": "https://axiom-microsim.vercel.app/microsim"
     },
     {
-      "source": "/microsim/:path*",
-      "destination": "https://axiom-microsim.vercel.app/microsim/:path*"
+      "source": "/microsim/:path(.*)",
+      "destination": "https://axiom-microsim.vercel.app/microsim/:path(.*)"
     },
     {
       "source": "/guidance",
       "destination": "https://guidance-impact-visualizer.vercel.app/guidance"
     },
     {
-      "source": "/guidance/:path*",
-      "destination": "https://guidance-impact-visualizer.vercel.app/guidance/:path*"
+      "source": "/guidance/:path(.*)",
+      "destination": "https://guidance-impact-visualizer.vercel.app/guidance/:path(.*)"
     },
     {
       "source": "/architecture",
       "destination": "https://axiom-architecture-one.vercel.app/architecture"
     },
     {
-      "source": "/architecture/:path*",
-      "destination": "https://axiom-architecture-one.vercel.app/architecture/:path*"
+      "source": "/architecture/:path(.*)",
+      "destination": "https://axiom-architecture-one.vercel.app/architecture/:path(.*)"
     },
     {
       "source": "/graph-viewer",
       "destination": "https://rulespec-graph-viewer.vercel.app/graph-viewer"
     },
     {
-      "source": "/graph-viewer/:path*",
-      "destination": "https://rulespec-graph-viewer.vercel.app/graph-viewer/:path*"
+      "source": "/graph-viewer/:path(.*)",
+      "destination": "https://rulespec-graph-viewer.vercel.app/graph-viewer/:path(.*)"
     },
     {
       "source": "/oracles",
       "destination": "https://axiom-oracles.vercel.app/oracles"
     },
     {
-      "source": "/oracles/:path*",
-      "destination": "https://axiom-oracles.vercel.app/oracles/:path*"
+      "source": "/oracles/:path(.*)",
+      "destination": "https://axiom-oracles.vercel.app/oracles/:path(.*)"
     },
     {
       "source": "/bills",
       "destination": "https://axiom-bills.vercel.app/bills"
     },
     {
-      "source": "/bills/:path*",
-      "destination": "https://axiom-bills.vercel.app/bills/:path*"
+      "source": "/bills/:path(.*)",
+      "destination": "https://axiom-bills.vercel.app/bills/:path(.*)"
     }
   ],
   "redirects": [

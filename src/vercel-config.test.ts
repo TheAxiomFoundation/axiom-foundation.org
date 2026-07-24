@@ -68,9 +68,11 @@ describe("demo zone rewrites", () => {
             source: `/${slug}`,
             destination: `https://${project}.vercel.app/${slug}`,
           },
+          // :path(.*) (not :path*) so the bare trailing-slash URL
+          // /<slug>/ matches too — :path* rejects the empty segment.
           {
-            source: `/${slug}/:path*`,
-            destination: `https://${project}.vercel.app/${slug}/:path*`,
+            source: `/${slug}/:path(.*)`,
+            destination: `https://${project}.vercel.app/${slug}/:path(.*)`,
           },
         ]),
       );

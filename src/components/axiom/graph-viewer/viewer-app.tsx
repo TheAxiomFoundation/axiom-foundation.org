@@ -2086,7 +2086,6 @@ export function GraphViewerApp() {
                             onClick={() => walkTo(next.legalId, "down")}
                           >
                             {humanize(next.name)}
-                            <span>{`${next.ruleDeps.length} ${next.ruleDeps.length === 1 ? "rule" : "rules"} · ${next.inputDeps.length} ${next.inputDeps.length === 1 ? "question" : "questions"}`}</span>
                           </button>
                         ))}
                       </div>
@@ -2106,7 +2105,6 @@ export function GraphViewerApp() {
                             onClick={() => walkTo(next.legalId, "up")}
                           >
                             {humanize(next.name)}
-                            <span>{`feeds ${consumersOf(next.legalId).length || "no"} further`}</span>
                           </button>
                         ))}
                       </div>
@@ -2138,11 +2136,6 @@ export function GraphViewerApp() {
                         onClick={() => walkTo(next.legalId)}
                       >
                         {humanize(next.name)}
-                        <span>
-                          {isUp
-                            ? `feeds ${consumersOf(next.legalId).length || "no"} further`
-                            : `${next.ruleDeps.length} ${next.ruleDeps.length === 1 ? "rule" : "rules"} · ${next.inputDeps.length} ${next.inputDeps.length === 1 ? "question" : "questions"}`}
-                        </span>
                       </button>
                     ))}
                   </div>

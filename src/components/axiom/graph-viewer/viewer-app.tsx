@@ -239,7 +239,6 @@ export function GraphViewerApp() {
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
   const [scenarioSetupOpen, setScenarioSetupOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [launcher, setLauncher] = useState<"open" | "leaving" | "closed">(
     () =>
       typeof window !== "undefined" &&
@@ -1607,108 +1606,7 @@ export function GraphViewerApp() {
         </div>
       </div>
     )}
-    <main
-      className={`app-shell ${walk ? "walk-active" : ""} ${
-        sidebarCollapsed ? "sidebar-collapsed" : ""
-      }`}
-    >
-      <aside className="side-panel index-side">
-        <button
-          type="button"
-          className="sidebar-toggle"
-          onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
-          title={sidebarCollapsed ? "Open the index" : "Collapse the index"}
-          aria-expanded={!sidebarCollapsed}
-        >
-          {sidebarCollapsed ? "⟩" : "⟨"}
-        </button>
-        {graph && (
-          <p className="program-anatomy">
-            This program decides{" "}
-            <strong>{graph.terminalOutputs.length} results</strong> from{" "}
-            <strong>{graph.inputs.length} inputs</strong> through{" "}
-            <strong>{graph.rules.length} rules</strong>.
-          </p>
-        )}
-        {composeFocus && (
-          <p className="program-summary">
-            Composed on demand from {composedFiles.length || "the"} encoded{" "}
-            {composedFiles.length === 1 ? "file" : "files"}
-            {composedTruncated ? " (import walk truncated)" : ""}. Pick a
-            program above to return to compiled packages.
-          </p>
-        )}
-        <label className="index-search">
-          <input
-            type="search"
-            value={indexSearch}
-            onChange={(event) => setIndexSearch(event.target.value)}
-            placeholder="Search the index..."
-            aria-label="Search the computation index"
-          />
-        </label>
-        {indexSearch.trim() ? (
-          <div className="index-results" aria-label="Index search results">
-            {indexMatches.map((match) => (
-              <button
-                type="button"
-                key={match.legalId}
-                className="index-result"
-                onClick={() => flyFromIndex(match.legalId)}
-                onMouseEnter={() => setIndexHover(match.legalId)}
-                onMouseLeave={() => setIndexHover(null)}
-                title="Fly to this rule on the canvas"
-              >
-                {match.label}
-              </button>
-            ))}
-            {indexMatches.length === 0 && (
-              <div className="output-empty">No rules match this search.</div>
-            )}
-          </div>
-        ) : (
-        <div className="navigator-tree" aria-label="Computation navigator">
-          {selectedOutputs.map((legalId) => {
-            const root = structureTraces[legalId];
-            if (!root) return null;
-            return (
-              <NavigatorBranch
-                key={legalId}
-                node={root}
-                depth={0}
-                folded={folded}
-                onToggleFold={(id) =>
-                  setFolded((current) => {
-                    const next = new Set(current);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    return next;
-                  })
-                }
-                onFly={flyFromIndex}
-                onHover={setIndexHover}
-                activeId={
-                  inspected && "legalId" in inspected
-                    ? (inspected.legalId ?? null)
-                    : null
-                }
-              />
-            );
-          })}
-        </div>
-        )}
-        {scenarioMode && allScenarioFields.length > 0 && (
-          <section
-            className={`control-block scenario-block ${scenarioGlow ? "is-glowing" : ""}`}
-          >
-            <div className="section-head stacked">
-              <h2>Scenario</h2>
-              <span>The levers of the law — edit and run</span>
-            </div>
-{scenarioFlowUI}
-          </section>
-        )}
-      </aside>
+    <main className={`app-shell no-sidebar ${walk ? "walk-active" : ""}`}>
 
       <section className="viewer-panel">
         <div className="top-controls">
@@ -1737,84 +1635,31 @@ export function GraphViewerApp() {
                 ),
               )}
             </select>
-            <div className="outputs-select">
-              <button
-                type="button"
-                className="outputs-select-btn"
-                onClick={() => setOutputsOpen((open) => !open)}
-                aria-expanded={outputsOpen}
-              >
-                Outputs · {selectedOutputs.length} ▾
-              </button>
-              {outputsOpen && (
-                <div className="outputs-panel" aria-label="Pick the graph results to show">
-                  <label className="output-search">
-                    <span>Search outputs</span>
-                    <input
-                      type="search"
-                      value={outputSearch}
-                      onChange={(event) => setOutputSearch(event.target.value)}
-                      placeholder="Eligibility, allotment, income..."
-                    />
-                  </label>
-                  {selectedOutputRules.length > 12 ? (
-                    <div className="selected-output-summary">
-                      <span>{selectedOutputRules.length} results selected</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOutputs([])}
-                      >
-                        Clear all
-                      </button>
-                    </div>
-                  ) : selectedOutputRules.length > 0 ? (
-                    <div className="selected-output-list" aria-label="Selected outputs">
-                      {selectedOutputRules.map((output) => (
-                        <button
-                          type="button"
-                          key={output.legalId}
-                          onClick={() => toggleOutput(output.legalId)}
-                          title="Remove output from graph"
-                        >
-                          {output.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="output-row output-row-head" aria-hidden>
-                    <span className="output-row-name">Result</span>
-                    <span className="output-row-cell">Type</span>
-                    <span className="output-row-cell">Entity</span>
-                    <span className="output-row-cell">Period</span>
-                  </div>
-                  <div className="output-list">
-                    {filteredOutputRules.map((rule) => (
-                      <button
-                        type="button"
-                        key={rule.legalId}
-                        className={`output-option output-row ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
-                        onClick={() => toggleOutput(rule.legalId)}
-                      >
-                        <span className="output-row-name">
-                          {humanize(rule.name)}
-                        </span>
-                        <span className="output-row-cell">
-                          {[rule.dtype, rule.unit]
-                            .filter(Boolean)
-                            .join(" · ") || "—"}
-                        </span>
-                        <span className="output-row-cell">
-                          {rule.entity ? humanize(rule.entity) : "—"}
-                        </span>
-                        <span className="output-row-cell">
-                          {rule.period ?? "—"}
-                        </span>
-                      </button>
-                    ))}
-                    {filteredOutputRules.length === 0 && (
-                      <div className="output-empty">No outputs match this search.</div>
-                    )}
-                  </div>
+            <div className="top-search">
+              <input
+                type="search"
+                value={indexSearch}
+                onChange={(event) => setIndexSearch(event.target.value)}
+                placeholder="Search the law..."
+                aria-label="Search rules"
+              />
+              {indexSearch.trim() && (
+                <div className="top-search-results" aria-label="Search results">
+                  {indexMatches.map((match) => (
+                    <button
+                      type="button"
+                      key={match.legalId}
+                      onClick={() => flyFromIndex(match.legalId)}
+                      onMouseEnter={() => setIndexHover(match.legalId)}
+                      onMouseLeave={() => setIndexHover(null)}
+                      title="Fly to this rule on the canvas"
+                    >
+                      {match.label}
+                    </button>
+                  ))}
+                  {indexMatches.length === 0 && (
+                    <div className="output-empty">No rules match this search.</div>
+                  )}
                 </div>
               )}
             </div>
@@ -2860,79 +2705,3 @@ function FormulaPretty({ source }: { source: string }) {
   );
 }
 
-function NavigatorBranch({
-  node,
-  depth,
-  folded,
-  onToggleFold,
-  onFly,
-  onHover,
-  activeId,
-}: {
-  node: TraceNode;
-  depth: number;
-  folded: Set<string>;
-  onToggleFold: (legalId: string) => void;
-  onFly: (legalId: string) => void;
-  onHover: (legalId: string | null) => void;
-  activeId: string | null;
-}) {
-  const isRule = node.dtype !== "input" && Boolean(node.formula);
-  const children = (node.children ?? []).filter(
-    (child) => child.dtype !== "input",
-  );
-  const isFolded = folded.has(node.legalId);
-  const hidden = isFolded
-    ? children.length
-    : 0;
-  const bucket = sourceBucket(node.legalId);
-  if (depth > 6) return null;
-  return (
-    <div className="nav-branch" style={{ paddingLeft: depth === 0 ? 0 : 12 }}>
-      <div className="nav-row">
-        {bucket && BUCKET_DOT[bucket] && (
-          <i
-            className="nav-dot"
-            style={{ background: BUCKET_DOT[bucket] }}
-            aria-hidden
-          />
-        )}
-        <button
-          type="button"
-          className={`nav-name ${depth === 0 ? "is-root" : ""} ${
-            activeId === node.legalId ? "is-active" : ""
-          }`}
-          onClick={() => onFly(node.legalId)}
-          onMouseEnter={() => onHover(node.legalId)}
-          onMouseLeave={() => onHover(null)}
-          title="Fly to this rule on the canvas"
-        >
-          {humanize(node.label ?? node.legalId.split("#").pop() ?? "")}
-        </button>
-        {isRule && children.length > 0 && (
-          <button
-            type="button"
-            className={`nav-fold ${isFolded ? "" : "is-open"}`}
-            onClick={() => onToggleFold(node.legalId)}
-            title={isFolded ? "Unfold on the canvas" : "Fold"}
-          >
-            {isFolded ? `▸ ${hidden}` : "▾"}
-          </button>
-        )}
-      </div>
-      {!isFolded &&
-        children.map((child, index) => (
-          <NavigatorBranch
-            key={`${child.legalId}-${index}`}
-            node={child}
-            depth={depth + 1}
-            folded={folded}
-            onToggleFold={onToggleFold}
-            onFly={onFly}
-            onHover={onHover}
-            activeId={activeId}
-          />
-        ))}
-    </div>
-  );
-}

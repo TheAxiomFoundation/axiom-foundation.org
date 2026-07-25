@@ -2867,3 +2867,58 @@
 .graph-viewer-root .react-flow__viewport {
   will-change: transform;
 }
+
+/* No sidebar: the canvas owns the full width; search lives on top. */
+.graph-viewer-root .app-shell.no-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+.graph-viewer-root .top-search {
+  position: relative;
+}
+.graph-viewer-root .top-search input {
+  width: 280px;
+  padding: 7px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  color: var(--color-ink);
+  font-size: 12.5px;
+}
+.graph-viewer-root .top-search input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .top-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: min(420px, 76vw);
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.08),
+    0 24px 60px -24px rgba(28, 25, 23, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: panel-in 0.18s var(--ease-out, ease) both;
+}
+.graph-viewer-root .top-search-results button {
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.graph-viewer-root .top-search-results button:hover {
+  background: var(--color-paper);
+  color: var(--color-accent);
+}

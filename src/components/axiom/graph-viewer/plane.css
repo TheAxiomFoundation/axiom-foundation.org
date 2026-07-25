@@ -2782,8 +2782,8 @@
   animation: panel-in 0.2s ease-out both;
 }
 .graph-viewer-root .law-popup {
-  width: min(880px, calc(100vw - 48px));
-  height: min(78vh, 860px);
+  width: min(1160px, calc(100vw - 48px));
+  height: min(88vh, 1000px);
   background: var(--color-paper);
   border: 1px solid var(--color-rule);
   border-radius: 16px;

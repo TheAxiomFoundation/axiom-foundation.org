@@ -208,4 +208,11 @@ body:has(.embed-page) {
 .embed-page a {
   pointer-events: none;
   cursor: default;
+  /* dead links must not dress as live ones */
+  text-decoration: none !important;
+  color: inherit !important;
+}
+/* no travel inside the popup: hide the prev/next section pager */
+.embed-page nav[aria-label="Adjacent sections"] {
+  display: none !important;
 }

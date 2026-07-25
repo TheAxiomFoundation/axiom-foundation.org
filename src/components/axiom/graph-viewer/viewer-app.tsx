@@ -206,7 +206,8 @@ export function GraphViewerApp() {
   // "up" walks an input toward the results it feeds; "down" walks a
   // result toward the questions it rests on.
   const [walk, setWalk] = useState<{
-    direction: "up" | "down";
+    /** null at the origin — the first step picks the direction. */
+    direction: "up" | "down" | null;
     trail: string[];
     /** Which step of the trail is in focus — stepping back does not
      *  drop the steps ahead. */
@@ -285,8 +286,7 @@ export function GraphViewerApp() {
   };
   const beginRuleLens = (legalId: string) => {
     dismissLauncher();
-    setScenarioMode(false);
-    openLens(legalId);
+    startWalkAt(legalId);
   };
   const walkRuleById = useMemo(
     () => new Map((graph?.rules ?? []).map((rule) => [rule.legalId, rule])),
@@ -337,7 +337,10 @@ export function GraphViewerApp() {
     if (walkRuleById.has(legalId)) return legalId;
     return consumersOf(legalId)[0]?.legalId ?? null;
   };
-  const focusWalkTrail = (direction: "up" | "down", trail: string[]) => {
+  const focusWalkTrail = (
+    direction: "up" | "down" | null,
+    trail: string[],
+  ) => {
     const current = trail[trail.length - 1];
     if (direction === "up") {
       // Climbing accumulates: every visited step stays on the canvas,
@@ -360,6 +363,18 @@ export function GraphViewerApp() {
       nonce: (prev?.nonce ?? 0) + 1,
     }));
   };
+  // "How does this rule work?" — open the walk AT the rule, both
+  // directions on offer; the first step decides up or down.
+  const startWalkAt = (legalId: string) => {
+    setInspected(null);
+    setScenarioMode(false);
+    savedWalkSelection.current = {
+      outputs: selectedOutputs,
+      folded: new Set(folded),
+    };
+    setWalk({ direction: null, trail: [legalId], cursor: 0 });
+    focusWalkTrail(null, [legalId]);
+  };
   const startWalk = (direction: "up" | "down", legalId: string) => {
     dismissLauncher();
     setScenarioMode(false);
@@ -370,14 +385,15 @@ export function GraphViewerApp() {
     setWalk({ direction, trail: [legalId], cursor: 0 });
     focusWalkTrail(direction, [legalId]);
   };
-  const walkTo = (legalId: string) => {
+  const walkTo = (legalId: string, direction?: "up" | "down") => {
     setWalk((current) => {
       if (!current) return current;
+      const nextDirection = current.direction ?? direction ?? "down";
       // Advancing from mid-trail branches off: keep up to the cursor,
       // then append.
       const trail = [...current.trail.slice(0, current.cursor + 1), legalId];
-      focusWalkTrail(current.direction, trail);
-      return { ...current, trail, cursor: trail.length - 1 };
+      focusWalkTrail(nextDirection, trail);
+      return { ...current, direction: nextDirection, trail, cursor: trail.length - 1 };
     });
   };
   const walkFocus = (index: number) => {
@@ -558,14 +574,31 @@ export function GraphViewerApp() {
       // fails the whole run ("unknown derived output").
       const reachable = new Set<string>();
       const byId = new Map((graph?.rules ?? []).map((r) => [r.legalId, r]));
+      const visited = new Set<string>();
       const walk = (id: string) => {
-        if (reachable.has(id) || reachable.size > 160) return;
+        if (visited.has(id) || reachable.size > 160) return;
+        visited.add(id);
         const rule = byId.get(id);
         if (!rule) return;
-        if (rule.kind === "derived") reachable.add(id);
+        // Person/member-entity rules cannot be traced against the
+        // abstract unit household — one of them fails the whole run.
+        // Traverse through them, but never request them as variables.
+        const personLevel =
+          rule.entity != null && /person|member/i.test(rule.entity);
+        if (rule.kind === "derived" && !personLevel) reachable.add(id);
         for (const dep of rule.ruleDeps) walk(dep);
       };
-      for (const id of selectedOutputs) walk(id);
+      // A survey selects every ranked result; tracing from that soup
+      // includes variables the engine rejects and starves the whole
+      // trace. Big selections trace from the true computation — the
+      // terminal results — instead.
+      const traceRoots =
+        selectedOutputs.length > 24
+          ? (graph?.terminalOutputs ?? []).filter((id) =>
+              walkRuleById.has(id),
+            )
+          : selectedOutputs;
+      for (const id of traceRoots) walk(id);
       const attempt = (variables: string[]) =>
         fetch("/api/axiom/runtime/calculate", {
           method: "POST",
@@ -1769,7 +1802,9 @@ export function GraphViewerApp() {
           const rule = walkRuleById.get(currentId);
           const input = walkInputById.get(currentId);
           const isUp = walk.direction === "up";
-          const nextUp = isUp ? consumersOf(currentId) : [];
+          const atOrigin = walk.direction === null;
+          const nextUp =
+            isUp || atOrigin ? consumersOf(currentId) : [];
           const depRules = !isUp && rule
             ? rule.ruleDeps
                 .map((id) => walkRuleById.get(id))
@@ -1780,7 +1815,11 @@ export function GraphViewerApp() {
                 .map((id) => walkInputById.get(id))
                 .filter((dep): dep is NonNullable<typeof dep> => Boolean(dep))
             : [];
-          const atEnd = isUp ? nextUp.length === 0 : depRules.length === 0;
+          const atEnd = atOrigin
+            ? nextUp.length === 0 && depRules.length === 0
+            : isUp
+              ? nextUp.length === 0
+              : depRules.length === 0;
           const name = humanize(
             (rule?.name ?? input?.name ?? currentId.split("#").pop()) || "",
           );
@@ -1963,13 +2002,13 @@ export function GraphViewerApp() {
                 </button>
                 <button
                   type="button"
-                  disabled={
-                    walk.cursor >= walk.trail.length - 1 &&
-                    (isUp ? nextUp.length === 0 : depRules.length === 0)
-                  }
+                  disabled={walk.cursor >= walk.trail.length - 1 && atEnd}
                   onClick={() => {
                     if (walk.cursor < walk.trail.length - 1) {
                       walkFocus(walk.cursor + 1);
+                    } else if (atOrigin) {
+                      if (depRules.length > 0) walkTo(depRules[0].legalId, "down");
+                      else if (nextUp.length > 0) walkTo(nextUp[0].legalId, "up");
                     } else if (isUp && nextUp.length > 0) {
                       walkTo(nextUp[0].legalId);
                     } else if (!isUp && depRules.length > 0) {
@@ -2021,6 +2060,59 @@ export function GraphViewerApp() {
                   >
                     ⊙ Open this on the map
                   </button>
+                </div>
+              ) : atOrigin ? (
+                <div className="walk-next">
+                  {depRules.length > 0 && (
+                    <>
+                      <span className="walk-next-label">
+                        Built from {depRules.length}{" "}
+                        {depRules.length === 1 ? "step" : "steps"} — walk down:
+                      </span>
+                      <div className="walk-choices">
+                        {depRules.slice(0, 6).map((next) => (
+                          <button
+                            key={next.legalId}
+                            type="button"
+                            onClick={() => walkTo(next.legalId, "down")}
+                          >
+                            {humanize(next.name)}
+                            <span>{`${next.ruleDeps.length} steps · ${next.inputDeps.length} inputs`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {nextUp.length > 0 && (
+                    <>
+                      <span className="walk-next-label">
+                        Feeds {nextUp.length}{" "}
+                        {nextUp.length === 1 ? "rule" : "rules"} — walk up:
+                      </span>
+                      <div className="walk-choices">
+                        {nextUp.slice(0, 6).map((next) => (
+                          <button
+                            key={next.legalId}
+                            type="button"
+                            onClick={() => walkTo(next.legalId, "up")}
+                          >
+                            {humanize(next.name)}
+                            <span>{`feeds ${consumersOf(next.legalId).length || "no"} further`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {depInputs.length > 0 && (
+                    <div className="walk-input-chips">
+                      {depInputs.slice(0, 6).map((dep) => (
+                        <span key={dep.legalId}>{humanize(dep.name)}</span>
+                      ))}
+                      {depInputs.length > 6 && (
+                        <span>+{depInputs.length - 6} more</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="walk-next">
@@ -2233,6 +2325,43 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
+              {input ? (
+                <>
+                  <dt>Your answer</dt>
+                  <dd>
+                    {typeof (scenario[input.name] ?? input.sample) ===
+                    "boolean" ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(scenario[input.name] ?? input.sample)}
+                        onChange={(event) =>
+                          setScenario((current) => ({
+                            ...current,
+                            [input.name]: event.target.checked,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <input
+                        className="node-inspector-answer"
+                        type="number"
+                        value={String(
+                          scenario[input.name] ??
+                            (typeof input.sample === "number"
+                              ? input.sample
+                              : 0),
+                        )}
+                        onChange={(event) =>
+                          setScenario((current) => ({
+                            ...current,
+                            [input.name]: Number(event.target.value),
+                          }))
+                        }
+                      />
+                    )}
+                  </dd>
+                </>
+              ) : null}
               {parameterValue ? (
                 <>
                   <dt>Value</dt>
@@ -2271,9 +2400,19 @@ export function GraphViewerApp() {
               <button
                 type="button"
                 className="node-inspector-lens"
-                onClick={() => openLens(inspected.legalId)}
+                onClick={() => startWalkAt(inspected.legalId)}
               >
                 ⊙ How does this rule work?
+              </button>
+            ) : null}
+            {"kind" in inspected && inspected.kind === "input" ? (
+              <button
+                type="button"
+                className="node-inspector-lens"
+                disabled={running}
+                onClick={() => void runScenario("steps")}
+              >
+                {running ? "Running…" : "▶ Run with these values · guided tour"}
               </button>
             ) : null}
             {"legalId" in inspected &&

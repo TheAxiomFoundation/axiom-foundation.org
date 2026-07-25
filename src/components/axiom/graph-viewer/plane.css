@@ -2922,3 +2922,16 @@
   background: var(--color-paper);
   color: var(--color-accent);
 }
+
+.graph-viewer-root .node-inspector-answer {
+  width: 120px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper);
+  font-size: 12.5px;
+}
+.graph-viewer-root .node-inspector-answer:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

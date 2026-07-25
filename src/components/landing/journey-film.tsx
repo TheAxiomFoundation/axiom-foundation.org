@@ -733,8 +733,11 @@ type GNode = {
   value?: string; // …and the value that computes once wired
   vAt?: number;
 };
-// the three fresh rules appear when their card ARRIVES from scene II
-const ARRIVE = [0.504, 0.514, 0.525];
+// the three fresh rules appear when their card ARRIVES from scene II.
+// The flights are deliberately long (~1.7× the original timing) — in
+// the scrolly the float across the stage was over in a flick and read
+// as a jump, not a journey.
+const ARRIVE = [0.525, 0.54, 0.555];
 const NODES: GNode[] = [
   { id: "tfp", x: 180, y: 130, glyph: "¶", repo: "rulespec-us", title: "tfp/amount", at: 0.485 },
   { id: "inc", x: 150, y: 270, glyph: "¶", repo: "rulespec-us", title: "income/net", at: 0.49 },
@@ -869,7 +872,7 @@ function SceneGraph() {
           const m = (sx + tx) / 2;
           return (
             <g key={`hr${k}`} opacity={O2()}>
-              <Vis a={q.at} b={W.s3[1] - 0.004} r={0.014} max={0.75} />
+              <Vis a={q.at} b={W.s3[1] - 0.004} r={0.014} max={0.9} />
               <path className="jw-edge" d={`M ${sx} ${sy} C ${m} ${sy}, ${m} ${ty}, ${tx - 6} ${ty}`} markerEnd="url(#jw-earr)" />
               <GhostMotifCard x={q.x - NODE_W / 2} y={q.y - NODE_H / 2} />
             </g>
@@ -1014,7 +1017,7 @@ function GhostMotifCard({ x, y }: { x: number; y: number }) {
 
 // one constellation of the family: its own count and silhouette, the
 // same cards, the same curved arrowed edges
-function GraphMotif({ cx, cy, at, spec, max = 0.65 }: { cx: number; cy: number; at: number; spec: MotifSpec; max?: number }) {
+function GraphMotif({ cx, cy, at, spec, max = 0.85 }: { cx: number; cy: number; at: number; spec: MotifSpec; max?: number }) {
   return (
     <g opacity={O2()}>
       <Vis a={at} b={W.s3[1] - 0.004} r={0.018} max={max} />
@@ -1070,9 +1073,9 @@ function CrossEdge({ a, b, at }: { a: readonly [number, number]; b: readonly [nu
   return (
     <path
       d={`M ${p0[0]} ${p0[1]} C ${p0[0] + h} ${p0[1]}, ${p1[0] - h} ${p1[1]}, ${p1[0]} ${p1[1]}`}
-      fill="none" stroke="rgba(87,83,78,0.18)" strokeWidth="0.6" vectorEffect="non-scaling-stroke" opacity={O2()}
+      fill="none" stroke="rgba(87,83,78,0.32)" strokeWidth="0.9" vectorEffect="non-scaling-stroke" opacity={O2()}
     >
-      <Vis a={at} b={W.s3[1] - 0.004} r={0.018} max={0.35} />
+      <Vis a={at} b={W.s3[1] - 0.004} r={0.018} max={0.6} />
     </path>
   );
 }

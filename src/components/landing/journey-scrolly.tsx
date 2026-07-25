@@ -31,10 +31,12 @@ const EASE = 0.08;
 // carries less story-per-second than the film — a quarter feels right.
 const LIB_SHARE = 0.26;
 
-// Film scrub range — the same window the demo plays: the statute page,
-// settled, through the wide graph shot (JourneyDemo's FILM_START/END).
+// Film scrub range — the statute page, settled, through the wide
+// graph shot. Ends at 0.848: the constellation's own fade-out ramp
+// begins at ~0.852 of the cycle, and the scroll must land on the
+// fully-lit wide shot, not mid-fade.
 const FILM_FROM = 0.207 * CYCLE;
-const FILM_TO = 0.862 * CYCLE;
+const FILM_TO = 0.848 * CYCLE;
 
 function AutoJourney() {
   const [phase, setPhase] = useState<"lib" | "film">("lib");

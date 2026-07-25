@@ -1928,7 +1928,7 @@ export function GraphViewerApp() {
                           <summary>
                             {[
                               rule.ruleDeps.length > 0
-                                ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                                ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "rule" : "rules"}`
                                 : null,
                               rule.inputDeps.length > 0
                                 ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
@@ -1943,7 +1943,7 @@ export function GraphViewerApp() {
                                 type="button"
                                 key={depId}
                                 onClick={() => flyFromIndex(depId)}
-                                title="Fly to this step on the canvas"
+                                title="Fly to this rule on the canvas"
                               >
                                 {humanize(
                                   walkRuleById.get(depId)?.name ??
@@ -2046,7 +2046,7 @@ export function GraphViewerApp() {
                         {name} rests directly on{" "}
                         {depInputs.length > 0
                           ? `${depInputs.length} household ${depInputs.length === 1 ? "question" : "questions"}`
-                          : "no further steps"}
+                          : "no further rules"}
                         .
                       </p>
                       {depInputs.length > 0 && (
@@ -2076,7 +2076,7 @@ export function GraphViewerApp() {
                     <>
                       <span className="walk-next-label">
                         Built from {depRules.length}{" "}
-                        {depRules.length === 1 ? "step" : "steps"} — walk down:
+                        {depRules.length === 1 ? "rule" : "rules"} — walk down:
                       </span>
                       <div className="walk-choices">
                         {depRules.slice(0, 6).map((next) => (
@@ -2086,7 +2086,7 @@ export function GraphViewerApp() {
                             onClick={() => walkTo(next.legalId, "down")}
                           >
                             {humanize(next.name)}
-                            <span>{`${next.ruleDeps.length} steps · ${next.inputDeps.length} inputs`}</span>
+                            <span>{`${next.ruleDeps.length} ${next.ruleDeps.length === 1 ? "rule" : "rules"} · ${next.inputDeps.length} ${next.inputDeps.length === 1 ? "question" : "questions"}`}</span>
                           </button>
                         ))}
                       </div>
@@ -2128,7 +2128,7 @@ export function GraphViewerApp() {
                   <span className="walk-next-label">
                     {isUp
                       ? `Feeds ${nextUp.length} ${nextUp.length === 1 ? "rule" : "rules"} — walk on:`
-                      : `Computed from ${depRules.length} ${depRules.length === 1 ? "step" : "steps"} — go deeper:`}
+                      : `Computed from ${depRules.length} ${depRules.length === 1 ? "rule" : "rules"}:`}
                   </span>
                   <div className="walk-choices">
                     {(isUp ? nextUp : depRules).slice(0, 9).map((next) => (
@@ -2141,7 +2141,7 @@ export function GraphViewerApp() {
                         <span>
                           {isUp
                             ? `feeds ${consumersOf(next.legalId).length || "no"} further`
-                            : `${next.ruleDeps.length} steps · ${next.inputDeps.length} inputs`}
+                            : `${next.ruleDeps.length} ${next.ruleDeps.length === 1 ? "rule" : "rules"} · ${next.inputDeps.length} ${next.inputDeps.length === 1 ? "question" : "questions"}`}
                         </span>
                       </button>
                     ))}
@@ -2254,7 +2254,7 @@ export function GraphViewerApp() {
                       <summary>
                         {[
                           rule.ruleDeps.length > 0
-                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "step" : "steps"}`
+                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "rule" : "rules"}`
                             : null,
                           rule.inputDeps.length > 0
                             ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
@@ -2269,7 +2269,7 @@ export function GraphViewerApp() {
                             type="button"
                             key={depId}
                             onClick={() => flyFromIndex(depId)}
-                            title="Fly to this step on the canvas"
+                            title="Fly to this rule on the canvas"
                           >
                             {humanize(
                               walkRuleById.get(depId)?.name ??
@@ -2380,7 +2380,7 @@ export function GraphViewerApp() {
               {"hiddenCount" in inspected && inspected.hiddenCount ? (
                 <>
                   <dt>Contains</dt>
-                  <dd>{inspected.hiddenCount} steps</dd>
+                  <dd>{inspected.hiddenCount} rules</dd>
                 </>
               ) : null}
               {"legalId" in inspected && inspected.legalId ? (
@@ -2453,7 +2453,7 @@ export function GraphViewerApp() {
             <aside className="replay-bar" role="status" aria-label="Step-by-step execution">
               <div className="replay-head">
                 <strong>
-                  Step {replay.cursor + 1} of {replay.stages.length}
+                  Stage {replay.cursor + 1} of {replay.stages.length}
                 </strong>
                 <div className="replay-nav">
                   <button

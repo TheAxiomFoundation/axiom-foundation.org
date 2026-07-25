@@ -1196,7 +1196,7 @@ const OutputNode = ({ data }: NodeProps) => {
           {d.isExpanded
             ? "− collapse"
             : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} steps`
+              ? `+ expand · ${d.hiddenCount} rules`
               : "+ expand"}
         </div>
       )}
@@ -1295,7 +1295,7 @@ const RuleRefNode = ({ data }: NodeProps) => {
           {d.isExpanded
             ? "− collapse"
             : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} steps`
+              ? `+ expand · ${d.hiddenCount} rules`
               : "+ expand"}
         </div>
       )}

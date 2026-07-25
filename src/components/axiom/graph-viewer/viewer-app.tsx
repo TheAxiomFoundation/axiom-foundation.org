@@ -118,27 +118,29 @@ export function GraphViewerApp() {
     flyTo(legalId);
     // An Index click is a card click: open the info sheet, which also
     // pins the path highlight until it closes.
+    inspectRule(legalId);
+  };
+  const inspectRule = (legalId: string) => {
     const rule = walkRuleById.get(legalId);
-    if (rule) {
-      setInspected({
-        kind: "ruleRef",
-        label: rule.name,
+    if (!rule) return;
+    setInspected({
+      kind: "ruleRef",
+      label: rule.name,
+      legalId,
+      canExpand: false,
+      isParameter: rule.kind === "parameter",
+      isOutput: selectedSet.has(legalId),
+      verdictCls: "",
+      value: "",
+      isExpanded: false,
+      showValues: false,
+      meta: {
+        kindLine: `${rule.kind === "parameter" ? "Parameter" : "Step"}${
+          rule.dtype ? ` · ${rule.dtype}` : ""
+        }`,
         legalId,
-        canExpand: false,
-        isParameter: rule.kind === "parameter",
-        isOutput: selectedSet.has(legalId),
-        verdictCls: "",
-        value: "",
-        isExpanded: false,
-        showValues: false,
-        meta: {
-          kindLine: `${rule.kind === "parameter" ? "Parameter" : "Step"}${
-            rule.dtype ? ` · ${rule.dtype}` : ""
-          }`,
-          legalId,
-        },
-      });
-    }
+      },
+    });
   };
   const closeLens = () => {
     setLensTrail([]);
@@ -268,13 +270,21 @@ export function GraphViewerApp() {
     // The whole law, literally: every result selected, everything
     // unfolded — but the camera opens on the summit (Allotment,
     // Benefit), the easiest handhold; the map spreads out below it.
-    surveyRef.current = true;
-    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
-    setFolded(new Set());
-    setFlyTarget((current) => ({
-      legalId: summitOutput ?? outputRules[0]?.legalId ?? "*",
-      nonce: (current?.nonce ?? 0) + 1,
-    }));
+    // The heavy unfold (a one-time full-graph layout) waits for the
+    // launcher fade to finish so the stall lands on a still screen
+    // and every visible motion stays smooth.
+    window.setTimeout(() => {
+      surveyRef.current = true;
+      setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+      setFolded(new Set());
+      const summit = summitOutput ?? outputRules[0]?.legalId ?? null;
+      setFlyTarget((current) => ({
+        legalId: summit ?? "*",
+        nonce: (current?.nonce ?? 0) + 1,
+      }));
+      // Arriving at the summit, its story opens with it.
+      if (summit) inspectRule(summit);
+    }, 460);
   };
   const beginScenario = () => {
     dismissLauncher();
@@ -904,15 +914,16 @@ export function GraphViewerApp() {
         restoreFoldedRef.current = null;
       } else if (surveyRef.current) {
         // A survey just selected everything — keep it unfolded
-        // instead of re-dissecting the new selection.
+        // instead of re-dissecting the new selection. Identity-stable:
+        // a fresh empty Set would trigger a second full relayout.
         surveyRef.current = false;
-        setFolded(new Set());
+        setFolded((current) => (current.size === 0 ? current : new Set()));
       } else if (walk) {
         // Walk scope is the selection itself: the origin shows the
         // rule's whole downstream tree, descending re-roots into a
         // smaller fully-open tree, ascending accumulates a larger
         // one. Nothing folds while walking.
-        setFolded(new Set());
+        setFolded((current) => (current.size === 0 ? current : new Set()));
       } else {
         setFolded(
           initialCollapse(

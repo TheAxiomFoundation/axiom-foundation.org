@@ -608,7 +608,9 @@
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
-  display: none;
+  /* visibility, not display: crossing the LOD threshold mid-flight
+     must not reflow 400 cards — that was the scroll hitch. */
+  visibility: hidden;
 }
 /* Keep computed values visible in run mode even from afar — the
    execution layer outranks the LOD. */
@@ -953,7 +955,9 @@
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-action,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-info-badge,
 .graph-viewer-root .irg-wrap[data-lod="far"] .irg-node .irg-value {
-  display: none;
+  /* visibility, not display: crossing the LOD threshold mid-flight
+     must not reflow 400 cards — that was the scroll hitch. */
+  visibility: hidden;
 }
 /* Keep computed values visible in run mode even from afar — the
    execution layer outranks the LOD. */

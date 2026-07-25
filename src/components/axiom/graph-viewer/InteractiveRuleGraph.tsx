@@ -177,6 +177,7 @@ export function InteractiveRuleGraph({
   // Semantic zoom: far viewports render constellation pills, mid
   // hides secondary chrome, near shows full cards.
   const [lod, setLod] = useState<"near" | "mid" | "far">("near");
+  const lodTimer = useRef<number | null>(null);
   // When the user hovers any node, dim everything that isn't part of its
   // lineage (ancestors that feed into it + descendants it feeds). For a
   // mathematical operator that means "the boxes it pertains to"; for an
@@ -556,7 +557,12 @@ export function InteractiveRuleGraph({
                 : viewport.zoom < 0.75
                   ? "mid"
                   : "near";
-            setLod((current) => (current === next ? current : next));
+            // Defer LOD swaps until the camera rests — a style recalc
+            // of 400+ cards mid-flight is a visible hitch.
+            if (lodTimer.current) window.clearTimeout(lodTimer.current);
+            lodTimer.current = window.setTimeout(() => {
+              setLod((current) => (current === next ? current : next));
+            }, 140);
           }}
           connectionLineType={ConnectionLineType.SmoothStep}
           nodesDraggable

@@ -13,6 +13,9 @@
 a.no-underline {
   text-decoration: none;
 }
+a.text-white {
+  color: #fff;
+}
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 

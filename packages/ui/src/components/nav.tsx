@@ -347,7 +347,7 @@ export function Nav({
           </a>
           <a
             href={appUrl}
-            className="inline-flex items-center rounded-full bg-[var(--color-accent)] px-5 py-2 font-mono text-[0.7rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
+            className="inline-flex items-center rounded-full bg-[var(--color-accent)] px-5 py-2 -mr-4 font-mono text-[0.7rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
           >
             Get started
           </a>

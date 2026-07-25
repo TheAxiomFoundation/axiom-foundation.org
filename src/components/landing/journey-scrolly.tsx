@@ -14,7 +14,13 @@ import { CYCLE, JourneyFilm } from "./journey-film";
  * film renders as its normal self-running loop in normal flow — the
  * film's own reduced-motion branch shows a composed still.
  */
-const TRACK_VH = 420; // scroll distance that spans the full film
+const TRACK_VH = 640; // scroll distance that spans the scrubbed range
+
+// Scrub range: skip scene I (the wall of provision dots) and open on
+// scene II — the provision shelf — through to the final frame. Scene
+// windows live in journey-film.tsx (W.s2 starts at 0.183).
+const SCRUB_FROM = 0.183 * CYCLE;
+const SCRUB_TO = CYCLE - 0.4;
 
 export function JourneyScrolly() {
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -46,9 +52,9 @@ export function JourneyScrolly() {
         const rect = track.getBoundingClientRect();
         const total = rect.height - window.innerHeight;
         const p = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-        // Stop a hair short of the wrap so p=1 holds the final frame
-        // instead of looping back to scene one.
-        svg.setCurrentTime(p * (CYCLE - 0.4));
+        // SCRUB_TO stops a hair short of the wrap so p=1 holds the
+        // final frame instead of looping back to scene one.
+        svg.setCurrentTime(SCRUB_FROM + p * (SCRUB_TO - SCRUB_FROM));
       });
     };
     onScroll();

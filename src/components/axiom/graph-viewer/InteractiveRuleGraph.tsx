@@ -4,7 +4,6 @@ import {
   Background,
   BackgroundVariant,
   ConnectionLineType,
-  Controls,
   Handle,
   MarkerType,
   MiniMap,
@@ -612,7 +611,7 @@ export function InteractiveRuleGraph({
             outputIds={outputNodeIds}
           />
           <GraphMiniMap />
-          <Controls position="bottom-left" showInteractive={false} />
+          <SmoothControls />
         </ReactFlow>
         <div className="irg-toolbar">
           <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
@@ -814,6 +813,59 @@ function GraphMiniMap() {
   );
 }
 
+/** Zoom controls that glide — the stock Controls snap. */
+function SmoothControls() {
+  const flow = useReactFlow();
+  return (
+    <div className="smooth-controls" aria-label="Zoom controls">
+      <button
+        type="button"
+        onClick={() => void flow.zoomIn({ duration: 320 })}
+        aria-label="Zoom in"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        onClick={() => void flow.zoomOut({ duration: 320 })}
+        aria-label="Zoom out"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          void flow.fitView({
+            duration: 950,
+            padding: 0.12,
+            interpolate: "smooth",
+            minZoom: 0.01,
+          })
+        }
+        aria-label="Fit the whole graph"
+        title="Fit the whole graph"
+      >
+        ⛶
+      </button>
+    </div>
+  );
+}
+
+/** Duration scaled to how far the camera must travel — short hops
+ *  stay quick, cross-map flights take a long smooth arc. */
+function flightDuration(
+  flow: ReturnType<typeof useReactFlow>,
+  targetX: number,
+  targetY: number,
+): number {
+  const viewport = flow.getViewport();
+  const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
+  const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
+  const screenDistance =
+    Math.hypot(targetX - centerX, targetY - centerY) * viewport.zoom;
+  return Math.min(1700, Math.max(600, Math.round(screenDistance * 0.6)));
+}
+
 function FlyToController({
   target,
   layoutSig,
@@ -843,15 +895,13 @@ function FlyToController({
             chaseId.current,
         );
       if (match) {
-        void flow.setCenter(
-          match.position.x + (match.measured?.width ?? 220) / 2,
-          match.position.y + (match.measured?.height ?? 90) / 2,
-          {
-            duration: 750,
-            interpolate: "smooth",
-            zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
-          },
-        );
+        const targetX = match.position.x + (match.measured?.width ?? 220) / 2;
+        const targetY = match.position.y + (match.measured?.height ?? 90) / 2;
+        void flow.setCenter(targetX, targetY, {
+          duration: flightDuration(flow, targetX, targetY),
+          interpolate: "smooth",
+          zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+        });
       }
     }, 550);
     return () => window.clearTimeout(timer);
@@ -875,15 +925,13 @@ function FlyToController({
           target.legalId,
       );
     if (match) {
-      void flow.setCenter(
-        match.position.x + (match.measured?.width ?? 220) / 2,
-        match.position.y + (match.measured?.height ?? 90) / 2,
-        {
-          duration: 850,
-          interpolate: "smooth",
-          zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
-        },
-      );
+      const targetX = match.position.x + (match.measured?.width ?? 220) / 2;
+      const targetY = match.position.y + (match.measured?.height ?? 90) / 2;
+      void flow.setCenter(targetX, targetY, {
+        duration: flightDuration(flow, targetX, targetY),
+        interpolate: "smooth",
+        zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+      });
     }
   }, [target, flow]);
   return null;

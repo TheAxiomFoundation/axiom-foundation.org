@@ -1,40 +1,72 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CorpusLibrary, DUR as LIB_DUR } from "./corpus-library";
 import { CYCLE, JourneyFilm } from "./journey-film";
 
 /**
- * The journey film as a scrolly story: the film is one 56s SMIL clock,
- * so instead of re-authoring its five scenes for scroll we pause the
- * SVG's clock and scrub `setCurrentTime` from scroll progress — the
- * reader drives the camera.
+ * The journey as a scrolly story, opening exactly like the
+ * architecture repo's Journey tab: the reading room — five bays of
+ * cloth spines, Title 7 pulled off the shelf, opened to § 2017 — and
+ * only then the film: segmentation, the gates, the graph, the
+ * registry pull-back.
  *
- * Scrolly mode engages only on wide viewports with motion allowed.
- * Everywhere else (mobile, reduced motion, no JS worth of it) the
- * film renders as its normal self-running loop in normal flow — the
- * film's own reduced-motion branch shows a composed still.
+ * Both acts run on SMIL clocks (library 14.2s, film 56s), so scroll
+ * doesn't re-author anything: we pause each SVG's clock and scrub
+ * `setCurrentTime` from scroll progress. The film crossfades in over
+ * the landed page, same as the demo's auto mode.
+ *
+ * Scrolly engages on wide viewports with motion allowed; elsewhere
+ * the two acts run themselves (library → film → library), a compact
+ * version of the demo's autopilot.
  */
-const TRACK_VH = 640; // scroll distance that spans the scrubbed range
+const TRACK_VH = 640;
 
-// Scrub range: skip scene I (the wall of provision dots) and open on
-// scene II — the provision shelf — through to the final frame. Scene
-// windows live in journey-film.tsx (W.s2 starts at 0.183).
-const SCRUB_FROM = 0.183 * CYCLE;
-const SCRUB_TO = CYCLE - 0.4;
+// Share of the track given to the library act. The library's 14.2s
+// carries less story-per-second than the film — a quarter feels right.
+const LIB_SHARE = 0.26;
+
+// Film scrub range — the same window the demo plays: the statute page,
+// settled, through the wide graph shot (JourneyDemo's FILM_START/END).
+const FILM_FROM = 0.207 * CYCLE;
+const FILM_TO = 0.862 * CYCLE;
+
+function AutoJourney() {
+  const [phase, setPhase] = useState<"lib" | "film">("lib");
+  const [cycle, setCycle] = useState(0);
+  return (
+    <div className="jdemo__stage">
+      <div key={`lib-${cycle}`} className="jdemo__layer">
+        <CorpusLibrary autopilot onArrived={() => setPhase("film")} />
+      </div>
+      {phase === "film" && (
+        <div className="jdemo__over">
+          <JourneyFilm
+            startOffset={FILM_FROM}
+            endAt={FILM_TO}
+            onCycleEnd={() => {
+              setPhase("lib");
+              setCycle((c) => c + 1);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function JourneyScrolly() {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [scrolly, setScrolly] = useState(false);
+  const [filmOn, setFilmOn] = useState(false);
 
   useEffect(() => {
-    // One commit: the film must mount with the right `paused` value.
-    const wide =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(min-width: 901px)").matches;
+    // One commit: the acts must mount with the right mode.
+    const mm = typeof window.matchMedia === "function";
+    const wide = mm && window.matchMedia("(min-width: 901px)").matches;
     const noMotion =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      mm && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setScrolly(wide && !noMotion);
     setMounted(true);
   }, []);
@@ -42,9 +74,18 @@ export function JourneyScrolly() {
   useEffect(() => {
     if (!mounted || !scrolly) return;
     const track = trackRef.current;
-    const svg = track?.querySelector<SVGSVGElement>("svg.lsk");
-    if (!track || !svg || typeof svg.pauseAnimations !== "function") return;
-    svg.pauseAnimations();
+    const lib = track?.querySelector<SVGSVGElement>("svg.clib-svg");
+    const film = track?.querySelector<SVGSVGElement>("svg.lsk");
+    if (
+      !track ||
+      !lib ||
+      !film ||
+      typeof lib.pauseAnimations !== "function" ||
+      typeof film.pauseAnimations !== "function"
+    )
+      return;
+    lib.pauseAnimations();
+    film.pauseAnimations();
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -52,9 +93,18 @@ export function JourneyScrolly() {
         const rect = track.getBoundingClientRect();
         const total = rect.height - window.innerHeight;
         const p = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-        // SCRUB_TO stops a hair short of the wrap so p=1 holds the
-        // final frame instead of looping back to scene one.
-        svg.setCurrentTime(SCRUB_FROM + p * (SCRUB_TO - SCRUB_FROM));
+        if (p < LIB_SHARE) {
+          // hold just short of the freeze frame so the last SMIL ramp
+          // still has range to scrub through
+          lib.setCurrentTime((p / LIB_SHARE) * (LIB_DUR - 0.05));
+          film.setCurrentTime(FILM_FROM);
+          setFilmOn(false);
+        } else {
+          lib.setCurrentTime(LIB_DUR - 0.05);
+          const fp = (p - LIB_SHARE) / (1 - LIB_SHARE);
+          film.setCurrentTime(FILM_FROM + fp * (FILM_TO - FILM_FROM));
+          setFilmOn(true);
+        }
       });
     };
     onScroll();
@@ -73,16 +123,30 @@ export function JourneyScrolly() {
       style={scrolly ? { height: `${TRACK_VH}vh` } : undefined}
     >
       <div className={scrolly ? "sticky top-[96px]" : undefined}>
-        {mounted ? (
-          <JourneyFilm paused={scrolly} />
-        ) : (
+        {!mounted ? (
           <div aria-hidden className="w-full aspect-[1420/620] min-h-[320px]" />
+        ) : scrolly ? (
+          <div className="jdemo__stage">
+            <div className="jdemo__layer">
+              <CorpusLibrary autopilot />
+            </div>
+            <div
+              className="jdemo__over"
+              style={{
+                animation: "none",
+                opacity: filmOn ? 1 : 0,
+                pointerEvents: filmOn ? undefined : "none",
+                transition: "opacity 600ms var(--ease-out, ease-out)",
+              }}
+            >
+              <JourneyFilm paused startOffset={FILM_FROM} />
+            </div>
+          </div>
+        ) : (
+          <AutoJourney />
         )}
         {scrolly && (
-          <p
-            className="pscroll-hint mt-3"
-            aria-hidden
-          >
+          <p className="pscroll-hint mt-3" aria-hidden>
             scroll to run the pipeline ↓
           </p>
         )}

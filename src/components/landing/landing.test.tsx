@@ -66,8 +66,10 @@ describe('Landing sections', () => {
     // The terminal animation gave way to the journey film (scroll-
     // scrubbed on wide viewports, self-running elsewhere).
     expect(screen.queryByText(/axiom encode/i)).not.toBeInTheDocument()
+    // The journey opens on the reading-room act (the film crossfades
+    // in after it).
     expect(
-      screen.getByRole('img', { name: /one continuous shot, five scenes/i }),
+      screen.getByRole('img', { name: /a law library: five bays/i }),
     ).toBeInTheDocument()
     // The Read / Encode / Verify step cards stay removed.
     for (const step of ['Read', 'Encode', 'Verify']) {

@@ -237,6 +237,9 @@ export function GraphViewerApp() {
   // read-only — the Plane is the only surface that navigates.
   const [lawPopup, setLawPopup] = useState<string | null>(null);
   const graphJustLoaded = useRef(false);
+  const surveyPendingRef = useRef(false);
+  const pendingOpeningRef = useRef<string | null>(null);
+  const launcherRef = useRef<"open" | "leaving" | "closed">("open");
   const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
@@ -253,7 +256,19 @@ export function GraphViewerApp() {
   );
   const dismissLauncher = () => {
     setLauncher("leaving");
-    window.setTimeout(() => setLauncher("closed"), 420);
+    launcherRef.current = "leaving";
+    window.setTimeout(() => {
+      setLauncher("closed");
+      launcherRef.current = "closed";
+      // The opening flight waited for the fade — fire it now unless a
+      // journey has claimed the camera in the meantime.
+      const pending = pendingOpeningRef.current;
+      if (pending) {
+        pendingOpeningRef.current = null;
+        flyTo(pending);
+        inspectRule(pending);
+      }
+    }, 420);
   };
   const reopenJourney = () => {
     setLauncherStep(effectiveProgram ? "intent" : "program");
@@ -264,27 +279,33 @@ export function GraphViewerApp() {
     setIntentInput(null);
     setLauncher("open");
   };
+  const applySurvey = () => {
+    pendingOpeningRef.current = null;
+    surveyRef.current = true;
+
+    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+    setFolded((current) => (current.size === 0 ? current : new Set()));
+    const summit = summitOutput ?? outputRules[0]?.legalId ?? null;
+    setFlyTarget((current) => ({
+      legalId: summit ?? "*",
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
+    // Arriving at the summit, its story opens with it.
+    if (summit) inspectRule(summit);
+  };
   const beginSurvey = () => {
     dismissLauncher();
     setScenarioMode(false);
     // The whole law, literally: every result selected, everything
-    // unfolded — but the camera opens on the summit (Allotment,
-    // Benefit), the easiest handhold; the map spreads out below it.
-    // The heavy unfold (a one-time full-graph layout) waits for the
-    // launcher fade to finish so the stall lands on a still screen
-    // and every visible motion stays smooth.
-    window.setTimeout(() => {
-      surveyRef.current = true;
-      setSelectedOutputs(outputRules.map((rule) => rule.legalId));
-      setFolded(new Set());
-      const summit = summitOutput ?? outputRules[0]?.legalId ?? null;
-      setFlyTarget((current) => ({
-        legalId: summit ?? "*",
-        nonce: (current?.nonce ?? 0) + 1,
-      }));
-      // Arriving at the summit, its story opens with it.
-      if (summit) inspectRule(summit);
-    }, 460);
+    // unfolded, camera on the summit. If the graph is still loading,
+    // the survey applies the moment it lands — one intent, no interim
+    // flight. Otherwise the heavy unfold waits for the launcher fade
+    // so its one-time layout stall hits a still screen.
+    if (outputRules.length === 0) {
+      surveyPendingRef.current = true;
+      return;
+    }
+    window.setTimeout(applySurvey, 460);
   };
   const beginScenario = () => {
     dismissLauncher();
@@ -376,7 +397,9 @@ export function GraphViewerApp() {
   // "How does this rule work?" — open the walk AT the rule, both
   // directions on offer; the first step decides up or down.
   const startWalkAt = (legalId: string) => {
+    pendingOpeningRef.current = null;
     setInspected(null);
+
     setScenarioMode(false);
     savedWalkSelection.current = {
       outputs: selectedOutputs,
@@ -386,7 +409,9 @@ export function GraphViewerApp() {
     focusWalkTrail(null, [legalId]);
   };
   const startWalk = (direction: "up" | "down", legalId: string) => {
+    pendingOpeningRef.current = null;
     dismissLauncher();
+
     setScenarioMode(false);
     savedWalkSelection.current = {
       outputs: selectedOutputs,
@@ -710,6 +735,20 @@ export function GraphViewerApp() {
         if (cancelled) return;
         graphJustLoaded.current = true;
         setGraph(nextGraph);
+        if (surveyPendingRef.current) {
+          // Survey was chosen while the graph loaded: the very first
+          // render is already the survey — no interim default view,
+          // no interim flight.
+          surveyPendingRef.current = false;
+          surveyRef.current = true;
+          setFolded((current) => (current.size === 0 ? current : new Set()));
+          setSelectedOutputs(
+            rankOutputRules(nextGraph, { includeLeaves: false }).map(
+              (rule) => rule.legalId,
+            ),
+          );
+          return;
+        }
         setSelectedOutputs((current) => {
           const focus = pendingFocusRef.current;
           if (focus) {
@@ -887,16 +926,25 @@ export function GraphViewerApp() {
     return matches;
   }, [indexSearch, selectedOutputs, structureTraces]);
 
-  // A fresh graph opens on its most top-level piece — the first
-  // selected result (Allotment, Benefit) — instead of a wall of map.
+  // A fresh graph opens on the summit — the same box every other
+  // entry lands on, so no flight ever retargets mid-air.
   useEffect(() => {
     if (!graphJustLoaded.current || selectedOutputs.length === 0) return;
     graphJustLoaded.current = false;
+    const summit = summitOutput ?? selectedOutputs[0];
+    if (launcherRef.current !== "closed") {
+      // Never move the camera behind the launcher — it reads as a
+      // random zoom through the backdrop. Fly when the fade ends.
+      pendingOpeningRef.current = summit;
+      return;
+    }
     setFlyTarget((current) => ({
-      legalId: selectedOutputs[0],
+      legalId: summit,
       nonce: (current?.nonce ?? 0) + 1,
     }));
-  }, [selectedOutputs]);
+    if (summitOutput) inspectRule(summitOutput);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOutputs, summitOutput]);
 
   // Dissect on program/selection/lens change; unfold the executed
   // path when a run lands.

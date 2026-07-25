@@ -927,7 +927,7 @@ function FlyToController({
         // not yank the camera back.
         chaseUntil.current = Date.now() + 1_200;
       }
-    }, 480);
+    }, 640);
     return () => window.clearTimeout(timer);
   }, [layoutSig, armed, flow]);
   return null;

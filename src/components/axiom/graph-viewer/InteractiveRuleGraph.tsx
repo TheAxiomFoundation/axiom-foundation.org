@@ -877,14 +877,29 @@ function FlyToController({
   const last = useRef(0);
   const chaseUntil = useRef(0);
   const chaseId = useRef<string | null>(null);
-  // The camera chases the layout, not the clock: a target usually
-  // triggers a re-dissect whose relayout lands later, so keep
-  // re-fitting on every geometry change until it stops moving.
+  const [armed, setArmed] = useState(0);
+  // ONE flight per destination: never fly at click time (the target
+  // usually triggers a re-dissect whose relayout lands later — an
+  // eager flight plus a correction reads as a stutter). A settle
+  // timer re-arms on every geometry change and fires once things
+  // stop moving.
   useEffect(() => {
-    if (Date.now() > chaseUntil.current) return;
+    if (!target || target.nonce === last.current) return;
+    last.current = target.nonce;
+    chaseId.current = target.legalId;
+    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
+    setArmed((tick) => tick + 1);
+  }, [target]);
+  useEffect(() => {
+    if (armed === 0 || Date.now() > chaseUntil.current) return;
     const timer = window.setTimeout(() => {
       if (chaseId.current === "*") {
-        void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
+        void flow.fitView({
+          duration: 900,
+          padding: 0.1,
+          minZoom: 0.01,
+          interpolate: "smooth",
+        });
         return;
       }
       const match = flow
@@ -902,38 +917,13 @@ function FlyToController({
           interpolate: "smooth",
           zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
         });
+        // The destination is reached — later unrelated relayouts must
+        // not yank the camera back.
+        chaseUntil.current = Date.now() + 1_200;
       }
-    }, 550);
+    }, 480);
     return () => window.clearTimeout(timer);
-  }, [layoutSig, flow]);
-  useEffect(() => {
-    if (!target || target.nonce === last.current) return;
-    last.current = target.nonce;
-    chaseId.current = target.legalId;
-    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
-    if (target.legalId === "*") {
-      window.setTimeout(() => {
-        void flow.fitView({ duration: 600, padding: 0.1, minZoom: 0.01 });
-      }, 350);
-      return;
-    }
-    const match = flow
-      .getNodes()
-      .find(
-        (node) =>
-          (node.data as IrgNodeData & { legalId?: string }).legalId ===
-          target.legalId,
-      );
-    if (match) {
-      const targetX = match.position.x + (match.measured?.width ?? 220) / 2;
-      const targetY = match.position.y + (match.measured?.height ?? 90) / 2;
-      void flow.setCenter(targetX, targetY, {
-        duration: flightDuration(flow, targetX, targetY),
-        interpolate: "smooth",
-        zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
-      });
-    }
-  }, [target, flow]);
+  }, [layoutSig, armed, flow]);
   return null;
 }
 

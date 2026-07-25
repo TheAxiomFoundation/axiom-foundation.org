@@ -77,11 +77,12 @@ export const layerTrust: Record<string, LayerTrust> = {
     checkable: [
       "Engine releases publish a sha256 per platform target and a build attestation resolving to the release workflow and commit.",
       "Program artifacts are content-addressed; the manifest declares each artifact's sha256 before you download it.",
-      "Encodings are checked against calculators built by other people, and the disagreement counts are published.",
+      "Encodings are compared against calculators built by other people, and every disagreement on a covered policy is classified with evidence that CI recomputes.",
     ],
     open: [
       "The released engine cannot currently execute the published artifacts — a format-version gap, with the error and fix on the verify page.",
-      "Oracle agreement shows two implementations agree; where both misread the statute the same way, it shows nothing.",
+      "Coverage is the live limit: 34 of 127 in-scope US policies have a comparison suite today.",
+      "Agreement shows two implementations agree; where both misread a provision the same way, it shows nothing.",
     ],
   },
 

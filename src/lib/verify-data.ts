@@ -84,11 +84,13 @@ export const surfaces: Surface[] = [
     name: "Validation against independent calculators",
     tier: "verified",
     claim:
-      "Encodings are checked against calculators we did not write, and the disagreements are published as counts, not rates.",
-    check: "Per-program oracle results, with denominators, in the table below.",
-    expect: "Counts that match what we publish.",
+      "Where a policy is covered, every disagreement with the reference calculator is accounted for — reconciled arithmetically, or traced to a bug in the other engine and filed there.",
+    check:
+      "git clone https://github.com/TheAxiomFoundation/axiom-oracles\ncat conformance/scoreboard.json\nuv run scripts/apply_dispositions.py --check",
+    expect:
+      "The scoreboard's own predicate: covered == in_scope, unexplained == 0, Axiom-attributed == 0. The dispositions check recomputes every classification's arithmetic from the committed evidence.",
     limit:
-      "Oracle agreement shows two implementations agree. Where both read the statute the same wrong way, it shows nothing.",
+      "Coverage, not accuracy, is the live limit — 34 of 127 in-scope US policies have a comparison suite. And agreement only shows two implementations agree; where both misread a provision the same way, it shows nothing.",
   },
   {
     id: "api",
@@ -124,36 +126,129 @@ export const surfaces: Surface[] = [
   },
 ];
 
-export interface OracleRow {
-  program: string;
+/**
+ * Conformance is a predicate, not a match rate:
+ *
+ *   conformant = covered == in_scope
+ *             && unexplained_total == 0
+ *             && axiom_attributed_open == 0
+ *
+ * Source: axiom-oracles `scripts/conformance_scoreboard.py`, values read from
+ * the committed `conformance/scoreboard.json` on main (2026-07-25).
+ *
+ * A raw match rate is the wrong number to publish, because it counts a residual
+ * we have chased to a documented bug in the other engine the same as one we
+ * cannot account for. Every mismatch is classified, with evidence, into one of
+ * five kinds — and `axiom_encoding_gap` and `unexplained` never count as
+ * explained. So the number that matters is how many mismatches remain
+ * unaccounted for, and it is zero.
+ */
+export interface ConformanceRow {
+  jurisdiction: string;
   oracle: string;
-  agree: string;
+  inScope: number;
+  covered: number;
+  unexplained: number;
+  axiomOpen: number;
+  conformant: boolean;
   note: string;
 }
 
+export const conformanceRows: ConformanceRow[] = [
+  {
+    jurisdiction: "Belgium",
+    oracle: "EUROMOD J2.0 / BE_2025",
+    inScope: 23,
+    covered: 23,
+    unexplained: 0,
+    axiomOpen: 0,
+    conformant: true,
+    note: "28 residuals attributed to the oracle, each with evidence.",
+  },
+  {
+    jurisdiction: "United Kingdom",
+    oracle: "UKMOD_PUBLIC B2026.03 / UK_2026",
+    inScope: 21,
+    covered: 21,
+    unexplained: 0,
+    axiomOpen: 0,
+    conformant: true,
+    note: "16 residuals attributed to the oracle.",
+  },
+  {
+    jurisdiction: "United Kingdom",
+    oracle: "policyengine-uk 2.89.2",
+    inScope: 23,
+    covered: 23,
+    unexplained: 0,
+    axiomOpen: 0,
+    conformant: true,
+    note: "238 residuals attributed to the oracle.",
+  },
+  {
+    jurisdiction: "United States",
+    oracle: "policyengine-us 1.767.3",
+    inScope: 127,
+    covered: 34,
+    unexplained: 0,
+    axiomOpen: 0,
+    conformant: false,
+    note: "Not conformant, and the reason is coverage rather than disagreement: 93 in-scope policies have no live comparison suite yet. Across the 34 that do, 46.7M comparisons and nothing unexplained.",
+  },
+];
+
 /**
- * Counts, not percentages, wherever a denominator exists — a rate hides how
- * many cases were tried. Rows where we disagree stay in.
+ * One suite, fully decomposed. This is the page's load-bearing example: it is
+ * the difference between "we agree 99.5% of the time" and "we can tell you what
+ * every one of the 18,791 disagreements is."
  */
-export const oracleRows: OracleRow[] = [
-  {
-    program: "Colorado SNAP",
-    oracle: "PolicyEngine",
-    agree: "2,144 / 2,144",
-    note: "Benefit calculation. 51 modules, 51 / 51 module tests.",
-  },
-  {
-    program: "Colorado SNAP",
-    oracle: "SNAP Quality Control administrative sample",
-    agree: "816 / 856",
-    note: "40 cases disagree. Administrative data, not a reference implementation — a disagreement is a lead, not automatically our bug.",
-  },
-  {
-    program: "Federal individual income tax",
-    oracle: "PolicyEngine",
-    agree: "99.6%",
-    note: "Reported as a rate in our own materials; the denominator belongs here and is being added.",
-  },
+export const workedExample = {
+  suite: "Federal income tax vs PolicyEngine",
+  basis:
+    "Every tax unit in the pinned Populace artifact populace-us-2024-f0af251. The oracle is pinned to policyengine-us 1.729.0 to match that build.",
+  comparisons: "3,881,635",
+  matches: "3,862,844",
+  mismatches: "18,791",
+  rawRate: "99.52%",
+  rows: [
+    {
+      concept: "eitc",
+      count: "16,660",
+      kind: "Filed upstream",
+      detail:
+        "Earned-income input composition. PolicyEngine 1.729.0 predates PE-US #8614, which split partnership and S-corp income inputs. Axiom follows 26 USC 32(c)(2)(A) and 1402(a). Diverges in both directions — 10,008 rows Axiom-high, 6,652 Axiom-low, the two halves of that split.",
+    },
+    {
+      concept: "tax_before_credits",
+      count: "2,118",
+      kind: "Reconciled",
+      detail: "Bracket-boundary rounding. Every row within $5.83, on values up to $2.79M.",
+    },
+    {
+      concept: "capital_gain",
+      count: "8",
+      kind: "Reconciled",
+      detail: "Floating-point noise. Every row within $3.25.",
+    },
+    {
+      concept: "ctc",
+      count: "5",
+      kind: "Reconciled",
+      detail: "Excess-AGI phaseout rounding. Every row exactly $50.",
+    },
+  ],
+  closes:
+    "16,660 + 2,118 + 8 + 5 = 18,791 — every mismatch in the report, not a sample. Unexplained: 0.",
+};
+
+/** What stops a classification from being an excuse. */
+export const enforcement = [
+  "Evidence is mandatory. A disposition needs a stated mechanism plus arithmetic that reconciles or an upstream citation. Classifications must reconcile numerically, not assert.",
+  "The arithmetic is checked. Expressions are evaluated in CI and must equal the claimed value within tolerance.",
+  "Citations cannot dangle. Non-URL sources are repo paths and must exist.",
+  "Dispositions expire with their sources. When a mismatch moves or disappears, its disposition stops applying rather than silently relabelling a new residual.",
+  "The ratchet only turns one way. Covered may rise; unexplained and Axiom-attributed may only fall. CI refuses regressions.",
+  "Coverage is gated separately: every executable output must be mapped to an oracle concept and covered by companion tests, or the build fails.",
 ];
 
 export interface OpenIssue {

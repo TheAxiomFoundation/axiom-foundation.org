@@ -20,7 +20,12 @@ import { CYCLE, JourneyFilm } from "./journey-film";
  * the two acts run themselves (library → film → library), a compact
  * version of the demo's autopilot.
  */
-const TRACK_VH = 640;
+const TRACK_VH = 820;
+
+// Damping for the scrub: scroll sets a target, and each frame the
+// clock eases toward it by this fraction. ~0.08 at 60fps ≈ a 200ms
+// settle — wheel flicks glide instead of teleporting the camera.
+const EASE = 0.08;
 
 // Share of the track given to the library act. The library's 14.2s
 // carries less story-per-second than the film — a quarter feels right.
@@ -86,34 +91,59 @@ export function JourneyScrolly() {
       return;
     lib.pauseAnimations();
     film.pauseAnimations();
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const rect = track.getBoundingClientRect();
-        const total = rect.height - window.innerHeight;
-        const p = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-        if (p < LIB_SHARE) {
-          // hold just short of the freeze frame so the last SMIL ramp
-          // still has range to scrub through
-          lib.setCurrentTime((p / LIB_SHARE) * (LIB_DUR - 0.05));
-          film.setCurrentTime(FILM_FROM);
-          setFilmOn(false);
-        } else {
-          lib.setCurrentTime(LIB_DUR - 0.05);
-          const fp = (p - LIB_SHARE) / (1 - LIB_SHARE);
-          film.setCurrentTime(FILM_FROM + fp * (FILM_TO - FILM_FROM));
-          setFilmOn(true);
-        }
-      });
+
+    // Apply a smoothed progress value to both clocks.
+    const apply = (p: number) => {
+      if (p < LIB_SHARE) {
+        // hold just short of the freeze frame so the last SMIL ramp
+        // still has range to scrub through
+        lib.setCurrentTime((p / LIB_SHARE) * (LIB_DUR - 0.05));
+        film.setCurrentTime(FILM_FROM);
+        setFilmOn(false);
+      } else {
+        lib.setCurrentTime(LIB_DUR - 0.05);
+        const fp = (p - LIB_SHARE) / (1 - LIB_SHARE);
+        film.setCurrentTime(FILM_FROM + fp * (FILM_TO - FILM_FROM));
+        setFilmOn(true);
+      }
     };
-    onScroll();
+
+    // Damped follower: scroll only moves the target; a rAF loop eases
+    // the applied progress toward it and stops when settled.
+    const s = { target: 0, current: 0, raf: 0, running: false };
+    const tick = () => {
+      const d = s.target - s.current;
+      if (Math.abs(d) < 0.0004) {
+        s.current = s.target;
+        apply(s.current);
+        s.running = false;
+        return;
+      }
+      s.current += d * EASE;
+      apply(s.current);
+      s.raf = requestAnimationFrame(tick);
+    };
+    const onScroll = () => {
+      const rect = track.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      s.target = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
+      if (!s.running) {
+        s.running = true;
+        s.raf = requestAnimationFrame(tick);
+      }
+    };
+    // First paint lands directly on the target — no glide on load.
+    const rect = track.getBoundingClientRect();
+    const total = rect.height - window.innerHeight;
+    s.target = s.current =
+      total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
+    apply(s.current);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(s.raf);
     };
   }, [mounted, scrolly]);
 

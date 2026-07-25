@@ -907,21 +907,19 @@ export function GraphViewerApp() {
         // instead of re-dissecting the new selection.
         surveyRef.current = false;
         setFolded(new Set());
+      } else if (walk) {
+        // Walk scope is the selection itself: the origin shows the
+        // rule's whole downstream tree, descending re-roots into a
+        // smaller fully-open tree, ascending accumulates a larger
+        // one. Nothing folds while walking.
+        setFolded(new Set());
       } else {
-        const next = initialCollapse(
-          structureTraces,
-          lensTrail.length > 0 ? "always" : "auto",
+        setFolded(
+          initialCollapse(
+            structureTraces,
+            lensTrail.length > 0 ? "always" : "auto",
+          ),
         );
-        if (walk) {
-          // The path already walked stays open — a fresh dissection
-          // must not fold the trail's tail back up.
-          for (const id of walk.trail) {
-            next.delete(id);
-            const anchor = walkAnchorOf(id);
-            if (anchor) next.delete(anchor);
-          }
-        }
-        setFolded(next);
       }
     }
   }, [structureTraces, lensTrail.length, walk]);

@@ -244,12 +244,13 @@ describe("proxy", () => {
     );
   });
 
-  it("rewrites /start to the portal on every host", () => {
+  it("redirects the retired /start portal to the graph", () => {
     const response = proxy(
       request("http://localhost:4944/start", "localhost:4944")
     );
-    expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://localhost:4944/axiom/v2"
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:4944/graph"
     );
   });
 

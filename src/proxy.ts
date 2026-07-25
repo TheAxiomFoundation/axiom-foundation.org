@@ -133,13 +133,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(target, 308);
   }
 
-  // The two-door portal has a public path on every host — the app
-  // root serves it in production, /start reaches it from localhost
-  // and previews (where "/" belongs to the marketing site).
+  // The two-door portal is retired — the Plane is the app. Old
+  // /start links land on the graph.
   if (pathname === "/start") {
     const target = request.nextUrl.clone();
-    target.pathname = "/axiom/v2";
-    return NextResponse.rewrite(target);
+    target.pathname = "/graph";
+    return NextResponse.redirect(target, 308);
   }
 
   // The in-app graph viewer resolves on every host, like

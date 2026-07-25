@@ -1821,17 +1821,29 @@ export function GraphViewerApp() {
                 </span>
                 <h2>{name}</h2>
                 {value !== null && <p className="walk-value">{value}</p>}
-                {rule?.source && !/composition/i.test(rule.source) && (
-                  <p className="walk-cite">
-                    {rule.sourceUrl ? (
-                      <a href={rule.sourceUrl} target="_blank" rel="noreferrer">
-                        {rule.source} ↗
-                      </a>
-                    ) : (
-                      rule.source
-                    )}
-                  </p>
-                )}
+                {(() => {
+                  const cite =
+                    rule?.source ??
+                    (currentId
+                      ? humanizeCitation(fileLegalIdOf(currentId))
+                      : null);
+                  if (!cite || /composition/i.test(cite)) return null;
+                  return (
+                    <p className="walk-cite">
+                      {rule?.sourceUrl ? (
+                        <a
+                          href={rule.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {cite} ↗
+                        </a>
+                      ) : (
+                        cite
+                      )}
+                    </p>
+                  );
+                })()}
                 {input && (
                   <p className="walk-note">
                     A fact asked of the household — the raw material of the
@@ -2060,6 +2072,15 @@ export function GraphViewerApp() {
             const consumers = legalId ? consumersOf(legalId) : [];
             const meta = "meta" in inspected ? inspected.meta : undefined;
             const formula = meta?.formula ?? rule?.formula ?? null;
+            const citation =
+              meta?.citation ??
+              rule?.source ??
+              (legalId ? humanizeCitation(fileLegalIdOf(legalId)) : null);
+            const parameterValue =
+              meta?.parameterValue ??
+              (rule?.kind === "parameter" && rule.formula
+                ? rule.formula.replace(/\s+/g, " ").trim().slice(0, 140)
+                : null);
             return (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
@@ -2088,7 +2109,7 @@ export function GraphViewerApp() {
               <p className="node-inspector-value">{inspected.value}</p>
             ) : null}
             <dl className="node-inspector-meta">
-              {meta?.citation || rule?.source ? (
+              {citation ? (
                 <>
                   <dt>Source</dt>
                   <dd>
@@ -2098,10 +2119,10 @@ export function GraphViewerApp() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        {meta?.citation ?? rule?.source} ↗
+                        {citation} ↗
                       </a>
                     ) : (
-                      (meta?.citation ?? rule?.source)
+                      citation
                     )}
                   </dd>
                 </>
@@ -2212,12 +2233,10 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
-              {meta?.parameterValue ? (
+              {parameterValue ? (
                 <>
                   <dt>Value</dt>
-                  <dd className="node-inspector-mono">
-                    {meta.parameterValue}
-                  </dd>
+                  <dd className="node-inspector-mono">{parameterValue}</dd>
                 </>
               ) : null}
               {"hiddenCount" in inspected && inspected.hiddenCount ? (

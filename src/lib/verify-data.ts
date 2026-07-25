@@ -193,7 +193,10 @@ export const conformanceRows: ConformanceRow[] = [
     unexplained: 0,
     axiomOpen: 0,
     conformant: false,
-    note: "Not conformant, and the reason is coverage rather than disagreement: 93 in-scope policies have no live comparison suite yet. Across the 34 that do, 46.7M comparisons and nothing unexplained.",
+    // Not the sum of per-policy comparison counts: twelve federal policies are
+    // scored from the one fiit-ecps run, so summing across policy rows counts
+    // that suite twelve times. This is the distinct-suite total.
+    note: "Not conformant, and the reason is coverage rather than disagreement: 93 in-scope policies have no live comparison suite yet. The 34 that do are scored from 23 suites totalling 3,997,891 comparisons, with nothing unexplained.",
   },
 ];
 

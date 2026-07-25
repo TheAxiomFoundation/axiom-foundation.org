@@ -266,13 +266,13 @@ export function GraphViewerApp() {
     dismissLauncher();
     setScenarioMode(false);
     // The whole law, literally: every result selected, everything
-    // unfolded, camera framing it all. The LOD constellation and the
-    // Index keep it legible.
+    // unfolded — but the camera opens on the summit (Allotment,
+    // Benefit), the easiest handhold; the map spreads out below it.
     surveyRef.current = true;
     setSelectedOutputs(outputRules.map((rule) => rule.legalId));
     setFolded(new Set());
     setFlyTarget((current) => ({
-      legalId: "*",
+      legalId: summitOutput ?? outputRules[0]?.legalId ?? "*",
       nonce: (current?.nonce ?? 0) + 1,
     }));
   };
@@ -297,6 +297,32 @@ export function GraphViewerApp() {
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
+  // The summit: the terminal result with the deepest dependency
+  // closure — the box the whole law rolls up into (Allotment,
+  // Benefit). The easiest handhold for a first look.
+  const summitOutput = useMemo(() => {
+    if (!graph) return null;
+    const byId = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
+    let best: string | null = null;
+    let bestSize = -1;
+    for (const id of graph.terminalOutputs) {
+      const seen = new Set<string>();
+      const stack = [id];
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        if (seen.has(current)) continue;
+        seen.add(current);
+        const rule = byId.get(current);
+        if (rule) stack.push(...rule.ruleDeps);
+      }
+      if (seen.size > bestSize) {
+        bestSize = seen.size;
+        best = id;
+      }
+    }
+    return best;
+  }, [graph]);
+
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(
       (rule) =>

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./architecture-graphics.css";
 /* The nav (and other shared components) live in packages/ui — outside
    Tailwind's automatic source detection, so their utility classes are
    only generated if the same class happens to appear in src/. Register

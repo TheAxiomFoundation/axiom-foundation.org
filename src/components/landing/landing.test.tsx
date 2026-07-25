@@ -58,14 +58,18 @@ describe('Landing sections', () => {
     ).toBeNull()
   })
 
-  it('renders the encoder section with terminal + steps', () => {
+  it('renders the encoder section with the journey film', () => {
     render(<EncoderSection />)
     expect(
       screen.getByRole('heading', { name: /statutes encoded and verified/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/axiom encode "26 USC 32"/i)).toBeInTheDocument()
-    // The Read / Encode / Verify step cards were removed — the
-    // terminal carries the story on its own.
+    // The terminal animation gave way to the journey film (scroll-
+    // scrubbed on wide viewports, self-running elsewhere).
+    expect(screen.queryByText(/axiom encode/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /one continuous shot, five scenes/i }),
+    ).toBeInTheDocument()
+    // The Read / Encode / Verify step cards stay removed.
     for (const step of ['Read', 'Encode', 'Verify']) {
       expect(
         screen.queryByRole('heading', { name: step }),

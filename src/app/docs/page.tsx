@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
+import { ArchitectureStrip } from "@/components/docs/architecture-strip";
 import { Reveal } from "@/components/landing/reveal";
 import { axiomAppHref } from "@/lib/urls";
 
@@ -170,32 +171,16 @@ export default function DocsPage() {
           </p>
         </Reveal>
 
-        {/* Live architecture map — embedded, not a list entry */}
+        {/* The pipeline strip — rendered natively, not an embed */}
         <Reveal as="section" className="mb-20">
-          <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
-            <h2 className="heading-section m-0">The architecture, live</h2>
-            <a
-              href="https://axiom-architecture-one.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-            >
-              Open full size
-              <ArrowRightIcon className="w-4 h-4" />
-            </a>
-          </div>
+          <h2 className="heading-section m-0 mb-6">The architecture</h2>
           <p className="mb-6 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-            How the source, claim, RuleSpec, encoder, runtime, and app layers
-            fit together &mdash; explore the map directly.
+            The whole pipeline as five stations &mdash; intake, corpus,
+            encoding loop, RuleSpec, graph &mdash; then the compile seal and
+            the surfaces it powers. One example, &sect;&nbsp;2017&apos;s
+            &ldquo;30 per centum&rdquo;, runs the whole way.
           </p>
-          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
-            <iframe
-              src="https://axiom-architecture-one.vercel.app"
-              title="Cross-system architecture map"
-              loading="lazy"
-              className="block w-full h-[560px] border-0"
-            />
-          </div>
+          <ArchitectureStrip />
         </Reveal>
 
         {/* Canonical docs */}

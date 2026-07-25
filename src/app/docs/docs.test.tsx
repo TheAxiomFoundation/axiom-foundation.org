@@ -60,11 +60,16 @@ describe("DocsPage", () => {
     expect(screen.queryByText(/methods log/i)).not.toBeInTheDocument();
   });
 
-  it("embeds the live architecture map", () => {
+  it("renders the pipeline strip natively — no architecture iframe", () => {
     render(<DocsPage />);
+    expect(screen.queryByTitle("Cross-system architecture map")).toBeNull();
     expect(
-      screen.getByTitle("Cross-system architecture map")
-    ).toHaveAttribute("src", "https://axiom-architecture-one.vercel.app");
+      screen.getByRole("heading", { name: /^the architecture$/i })
+    ).toBeInTheDocument();
+    // The strip mounts client-side (jsdom runs effects, so it's here).
+    expect(
+      screen.getByRole("img", { name: /five equal stations/i })
+    ).toBeInTheDocument();
   });
 
   it("links to canonical repo docs and related maps", () => {

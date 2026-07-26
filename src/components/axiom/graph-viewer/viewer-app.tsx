@@ -569,7 +569,11 @@ export function GraphViewerApp() {
       seenTargets.add(target);
       fields.push({
         name: alias,
-        label: alias,
+        // Label by what the knob actually sets (the alias target),
+        // never by an alias that collides with a computed rule's
+        // name — "Gross Monthly Income" is a formula in NY; this
+        // lever sets Monthly Earnings Per Adult.
+        label: target,
         sample: CURATED_SAMPLES[alias] ?? 0,
       });
     }
@@ -1329,7 +1333,7 @@ export function GraphViewerApp() {
             <div className="scenario-fields">
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="scenario-field">
-                  <span>{humanize(field.name)}</span>
+                  <span>{humanize(field.label)}</span>
                   {typeof field.sample === "boolean" ? (
                     <input
                       type="checkbox"

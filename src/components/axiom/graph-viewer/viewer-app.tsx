@@ -1859,7 +1859,11 @@ export function GraphViewerApp() {
 
               <div className="walk-card">
                 <span className="walk-kind">
-                  {input ? "Input · a question" : "Rule"}
+                  {input
+                    ? "Question"
+                    : rule?.kind === "parameter"
+                      ? "Parameter · a constant of the law"
+                      : "Rule"}
                 </span>
                 <h2>{name}</h2>
                 {value !== null && <p className="walk-value">{value}</p>}
@@ -1911,6 +1915,14 @@ export function GraphViewerApp() {
                     <>
                       <dt>Unit</dt>
                       <dd>{rule.unit}</dd>
+                    </>
+                  ) : null}
+                  {rule?.kind === "parameter" && rule.formula ? (
+                    <>
+                      <dt>Value</dt>
+                      <dd className="node-inspector-mono">
+                        {rule.formula.replace(/\s+/g, " ").trim().slice(0, 140)}
+                      </dd>
                     </>
                   ) : null}
                   {rule &&
@@ -1984,7 +1996,7 @@ export function GraphViewerApp() {
                     </>
                   ) : null}
                 </dl>
-                {rule?.formula && (
+                {rule?.formula && rule.kind !== "parameter" && (
                   <details className="node-inspector-code walk-code">
                     <summary>Formula</summary>
                     <div className="node-inspector-code-body">

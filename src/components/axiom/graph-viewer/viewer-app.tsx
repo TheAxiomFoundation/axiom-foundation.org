@@ -443,16 +443,12 @@ export function GraphViewerApp() {
     });
   };
   const walkFocus = (index: number) => {
-    setWalk((current) => {
-      if (!current || index === current.cursor) return current;
-      // Moving the cursor only re-aims the camera — the trail and the
-      // accumulated canvas stay whole.
-      setFlyTarget((prev) => ({
-        legalId: current.trail[index],
-        nonce: (prev?.nonce ?? 0) + 1,
-      }));
-      return { ...current, cursor: index };
-    });
+    if (!walk || index === walk.cursor) return;
+    // The cursor drives the scope: stepping back re-roots the canvas
+    // to that step's view (down-walks widen again, up-walks shrink),
+    // and the camera flies with it.
+    setWalk({ ...walk, cursor: index });
+    focusWalkTrail(walk.direction, walk.trail.slice(0, index + 1));
   };
   const endWalk = () => {
     setWalk(null);

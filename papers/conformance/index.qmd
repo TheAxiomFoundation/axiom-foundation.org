@@ -24,12 +24,14 @@ abstract: |
   away by asserting that it is fine.
 
   We report results for four jurisdiction-oracle pairs. Three are conformant.
-  The fourth, the United States against PolicyEngine, is not — and fails on
-  coverage rather than on disagreement, which is a materially different and more
-  useful statement than any percentage would have produced. We give one suite
-  decomposed in full, in which 18,791 mismatches across 3.9 million comparisons
-  resolve into four documented causes with no remainder, and one policy that sits
-  at 42% raw agreement while being conformant.
+  The fourth, the United States against PolicyEngine, is not — failing on both
+  coverage and currently-unexplained residuals, stated as counts rather than
+  blended into a percentage. We give one suite decomposed in full, in which
+  18,791 mismatches across 3.9 million comparisons resolve into four documented
+  causes with no remainder; one policy that sits at 42% raw agreement while
+  being conformant; and a suite the machinery retired the day before this
+  snapshot for promoting a narrow comparison as final-liability coverage —
+  the predicate got worse and the scheme worked.
 keywords:
   - tax-benefit microsimulation
   - rules as code
@@ -199,31 +201,49 @@ rather than a running total.
 
 ### Covered verdicts are reproducible outside the harness
 
-For each covered suite, a committed composition records the runnable program the
-harness assembles — the import set and the repository-relative files, the query
-entity, the supplied-input surface, and the bridge from oracle inputs to encoding
-inputs. A reader can rebuild the comparison without the harness, which is what
-makes "covered" checkable rather than merely asserted.
+For covered Belgian suites, a committed composition records the runnable
+program the harness assembles — the import set and the repository-relative
+files, the query entity, the supplied-input surface, and the bridge from
+oracle inputs to encoding inputs — so a reader can rebuild the comparison
+without the harness. Extending committed compositions to every jurisdiction
+is open work; until it lands, "covered" is independently rebuildable for
+Belgium and checkable-from-artifacts elsewhere.
 
 ## Results
 
-Values below are read from the committed scoreboard on 25 July 2026. Coverage
-counts policies; the three explained kinds are counted in mismatches.
+Values below are read from the committed scoreboard at repository commit
+`27968c8` (26 July 2026). The scoreboard regenerates with every report
+refresh, so the live values move; the commit pin makes this table a checkable
+snapshot rather than a floating claim. Coverage counts policies; the three
+explained kinds are counted in mismatches.
 
 | Jurisdiction | Oracle | Covered | Unexplained | Ours, open | Conformant |
 |---|---|---:|---:|---:|---|
 | Belgium | EUROMOD J2.0 / BE_2025 | 23 / 23 | 0 | 0 | yes |
 | United Kingdom | UKMOD_PUBLIC B2026.03 / UK_2026 | 21 / 21 | 0 | 0 | yes |
 | United Kingdom | policyengine-uk 2.89.2 | 23 / 23 | 0 | 0 | yes |
-| United States | policyengine-us 1.767.3 | 34 / 127 | 0 | 0 | **no** |
+| United States | PolicyEngine-US, mixed suite-pinned versions | 33 / 127 | 441 | 243 | **no** |
 
-The United States row is the informative one. It fails the predicate, and it
-fails on the first conjunct: 93 in-scope policies have no live comparison suite.
-Across the 34 that do — scored from 23 suites totalling 3,997,891 comparisons —
-nothing is unexplained and nothing is attributed to our encoding. That is a
-precise and unflattering statement of where the work stands, and it is the
-statement a percentage would have hidden. Any single rate over the covered
-subset would have read as a claim about the whole system.
+Two notes on the United States row's oracle label and history. Each suite pins
+the PolicyEngine release its population was built against, so the aggregate
+oracle is not one version: of the covered comparisons, 3.88M ran against
+1.729.0, 0.1M against 1.752.2, and smaller suites against other pins, while
+the policy universe is enumerated from 1.767.3. And the row is *worse* than it
+was the day before this snapshot — on 25 July it read 34/127 with zero
+unexplained. The regression is the machinery working: canonical review found
+that an Alabama pilot suite promoted a narrow schedule comparison as if it
+covered the state's final income tax, so the suite was retired and the
+rescoring surfaced 441 unexplained mismatches, 243 of them attributed to our
+own encoding and now open. A scheme that could only ever report improvement
+would be advertising, not measurement.
+
+The United States row remains the informative one. It fails the predicate
+twice over: 94 in-scope policies have no live comparison suite, and the
+covered 33 — scored from 22 suites totalling 3,997,401 comparisons — carry
+unexplained residuals under active classification. That is a precise and
+unflattering statement of where the work stands, and it is the statement a
+percentage would have hidden. Any single rate over the covered subset would
+have read as a claim about the whole system.
 
 ### One suite, decomposed
 
@@ -237,7 +257,7 @@ The dispositions file characterises all 18,791 — not a sample:
 | Count | Concept | Kind | Cause |
 |---:|---|---|---|
 | 16,660 | `eitc` | upstream | Earned-income input composition. The pinned oracle release predates an upstream change that split partnership and S-corporation income into separate inputs; the encoding follows 26 U.S.C. §32(c)(2)(A) and §1402(a). Diverges in both directions — 10,008 rows high, 6,652 low — the two halves of that split. |
-| 2,118 | `tax_before_credits` | reconciled | Bracket-boundary rounding. Every row within $5.83, on values up to $2.79M. |
+| 2,118 | `tax_before_credits` | reconciled | Bracket-boundary rounding. Maximum difference $5.83, occurring at a $2.79M value; mismatch-row values extend to $13.11M. |
 | 8 | `capital_gain` | reconciled | Floating-point noise. Every row within $3.25. |
 | 5 | `ctc` | reconciled | Excess-AGI phase-out rounding. Every row exactly $50. |
 
@@ -263,8 +283,8 @@ We include this because it is the case that most embarrasses the match rate. Any
 publication regime that leads with agreement percentages either suppresses this
 row or reports a number that will be read as a failure. Neither is a description
 of the evidence. Two further United Kingdom policies sit at 0% raw agreement and
-are likewise conformant: in both, the oracle computes a payable amount that our
-comparison surface reaches through a different, documented route.
+are likewise conformant: in both, the residuals are documented annualization and rounding
+conventions recorded in their dispositions.
 
 ## What the predicate does not show
 

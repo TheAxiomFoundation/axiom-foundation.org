@@ -730,12 +730,14 @@ classifications never count as explained, so a residual cannot be dispositioned
 away by asserting that it is fine.
 
 We report results for four jurisdiction-oracle pairs. Three are conformant.
-The fourth, the United States against PolicyEngine, is not — and fails on
-coverage rather than on disagreement, which is a materially different and more
-useful statement than any percentage would have produced. We give one suite
-decomposed in full, in which 18,791 mismatches across 3.9 million comparisons
-resolve into four documented causes with no remainder, and one policy that sits
-at 42% raw agreement while being conformant.
+The fourth, the United States against PolicyEngine, is not — failing on both
+coverage and currently-unexplained residuals, stated as counts rather than
+blended into a percentage. We give one suite decomposed in full, in which
+18,791 mismatches across 3.9 million comparisons resolve into four documented
+causes with no remainder; one policy that sits at 42% raw agreement while
+being conformant; and a suite the machinery retired the day before this
+snapshot for promoting a narrow comparison as final-liability coverage —
+the predicate got worse and the scheme worked.
 ">
 <meta name="citation_keywords" content="tax-benefit microsimulation,rules as code,differential testing,test oracles,validation">
 <meta name="citation_author" content="The Axiom Foundation">
@@ -765,7 +767,7 @@ at 42% raw agreement while being conformant.
 <div class="abstract-title">Abstract</div>
 <p>Machine-readable encodings of tax and benefit law are usually validated by comparing them against an existing microsimulation model and reporting an agreement rate. We argue that an agreement rate is the wrong summary, because it counts a difference that has been traced to a documented defect in the reference implementation the same as a difference nobody has explained. The two are not comparable evidence, and a single percentage destroys the distinction precisely where a reader needs it.</p>
 <p>We describe a validation harness that replaces the rate with a predicate. A jurisdiction is conformant when every policy the reference model simulates is either covered by a live comparison or excluded for a declared reason, no mismatch is unexplained, and no mismatch is attributed to our own encoding. Each residual difference must be classified with evidence that the build recomputes: an arithmetic reconciliation that must evaluate to the claimed value, or a citation to a defect in the reference model. Two of the five classifications never count as explained, so a residual cannot be dispositioned away by asserting that it is fine.</p>
-<p>We report results for four jurisdiction-oracle pairs. Three are conformant. The fourth, the United States against PolicyEngine, is not — and fails on coverage rather than on disagreement, which is a materially different and more useful statement than any percentage would have produced. We give one suite decomposed in full, in which 18,791 mismatches across 3.9 million comparisons resolve into four documented causes with no remainder, and one policy that sits at 42% raw agreement while being conformant.</p>
+<p>We report results for four jurisdiction-oracle pairs. Three are conformant. The fourth, the United States against PolicyEngine, is not — failing on both coverage and currently-unexplained residuals, stated as counts rather than blended into a percentage. We give one suite decomposed in full, in which 18,791 mismatches across 3.9 million comparisons resolve into four documented causes with no remainder; one policy that sits at 42% raw agreement while being conformant; and a suite the machinery retired the day before this snapshot for promoting a narrow comparison as final-liability coverage — the predicate got worse and the scheme worked.</p>
 </div>
 </header>
 
@@ -885,12 +887,12 @@ at 42% raw agreement while being conformant.
 </section>
 <section id="covered-verdicts-are-reproducible-outside-the-harness" class="level3">
 <h3 class="anchored">Covered verdicts are reproducible outside the harness</h3>
-<p>For each covered suite, a committed composition records the runnable program the harness assembles — the import set and the repository-relative files, the query entity, the supplied-input surface, and the bridge from oracle inputs to encoding inputs. A reader can rebuild the comparison without the harness, which is what makes “covered” checkable rather than merely asserted.</p>
+<p>For covered Belgian suites, a committed composition records the runnable program the harness assembles — the import set and the repository-relative files, the query entity, the supplied-input surface, and the bridge from oracle inputs to encoding inputs — so a reader can rebuild the comparison without the harness. Extending committed compositions to every jurisdiction is open work; until it lands, “covered” is independently rebuildable for Belgium and checkable-from-artifacts elsewhere.</p>
 </section>
 </section>
 <section id="results" class="level2">
 <h2 class="anchored">Results</h2>
-<p>Values below are read from the committed scoreboard on 25 July 2026. Coverage counts policies; the three explained kinds are counted in mismatches.</p>
+<p>Values below are read from the committed scoreboard at repository commit <code>27968c8</code> (26 July 2026). The scoreboard regenerates with every report refresh, so the live values move; the commit pin makes this table a checkable snapshot rather than a floating claim. Coverage counts policies; the three explained kinds are counted in mismatches.</p>
 <table class="caption-top">
 <colgroup>
 <col style="width: 14%">
@@ -937,15 +939,16 @@ at 42% raw agreement while being conformant.
 </tr>
 <tr class="even">
 <td>United States</td>
-<td>policyengine-us 1.767.3</td>
-<td style="text-align: right;">34 / 127</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
+<td>PolicyEngine-US, mixed suite-pinned versions</td>
+<td style="text-align: right;">33 / 127</td>
+<td style="text-align: right;">441</td>
+<td style="text-align: right;">243</td>
 <td><strong>no</strong></td>
 </tr>
 </tbody>
 </table>
-<p>The United States row is the informative one. It fails the predicate, and it fails on the first conjunct: 93 in-scope policies have no live comparison suite. Across the 34 that do — scored from 23 suites totalling 3,997,891 comparisons — nothing is unexplained and nothing is attributed to our encoding. That is a precise and unflattering statement of where the work stands, and it is the statement a percentage would have hidden. Any single rate over the covered subset would have read as a claim about the whole system.</p>
+<p>Two notes on the United States row’s oracle label and history. Each suite pins the PolicyEngine release its population was built against, so the aggregate oracle is not one version: of the covered comparisons, 3.88M ran against 1.729.0, 0.1M against 1.752.2, and smaller suites against other pins, while the policy universe is enumerated from 1.767.3. And the row is <em>worse</em> than it was the day before this snapshot — on 25 July it read 34/127 with zero unexplained. The regression is the machinery working: canonical review found that an Alabama pilot suite promoted a narrow schedule comparison as if it covered the state’s final income tax, so the suite was retired and the rescoring surfaced 441 unexplained mismatches, 243 of them attributed to our own encoding and now open. A scheme that could only ever report improvement would be advertising, not measurement.</p>
+<p>The United States row remains the informative one. It fails the predicate twice over: 94 in-scope policies have no live comparison suite, and the covered 33 — scored from 22 suites totalling 3,997,401 comparisons — carry unexplained residuals under active classification. That is a precise and unflattering statement of where the work stands, and it is the statement a percentage would have hidden. Any single rate over the covered subset would have read as a claim about the whole system.</p>
 <section id="one-suite-decomposed" class="level3">
 <h3 class="anchored">One suite, decomposed</h3>
 <p>Federal income tax against PolicyEngine, over every tax unit in a pinned microdata artefact, with the oracle pinned to the release that artefact was built with: 3,881,635 comparisons, 3,862,844 matches, 18,791 mismatches, raw agreement 99.52%.</p>
@@ -976,7 +979,7 @@ at 42% raw agreement while being conformant.
 <td style="text-align: right;">2,118</td>
 <td><code>tax_before_credits</code></td>
 <td>reconciled</td>
-<td>Bracket-boundary rounding. Every row within $5.83, on values up to $2.79M.</td>
+<td>Bracket-boundary rounding. Maximum difference $5.83, occurring at a $2.79M value; mismatch-row values extend to $13.11M.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">8</td>
@@ -998,7 +1001,7 @@ at 42% raw agreement while being conformant.
 <section id="a-conformant-policy-at-42-agreement" class="level3">
 <h3 class="anchored">A conformant policy at 42% agreement</h3>
 <p>The United Kingdom’s Universal Credit suite compares 19 cases and matches 8, for raw agreement of 42.1%. Every residual is a documented behaviour of the reference model. The policy is conformant.</p>
-<p>We include this because it is the case that most embarrasses the match rate. Any publication regime that leads with agreement percentages either suppresses this row or reports a number that will be read as a failure. Neither is a description of the evidence. Two further United Kingdom policies sit at 0% raw agreement and are likewise conformant: in both, the oracle computes a payable amount that our comparison surface reaches through a different, documented route.</p>
+<p>We include this because it is the case that most embarrasses the match rate. Any publication regime that leads with agreement percentages either suppresses this row or reports a number that will be read as a failure. Neither is a description of the evidence. Two further United Kingdom policies sit at 0% raw agreement and are likewise conformant: in both, the residuals are documented annualization and rounding conventions recorded in their dispositions.</p>
 </section>
 </section>
 <section id="what-the-predicate-does-not-show" class="level2">

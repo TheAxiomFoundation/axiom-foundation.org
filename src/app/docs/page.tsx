@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRightIcon } from "@/components/icons";
 import { ArchitectureStrip } from "@/components/docs/architecture-strip";
 import { Reveal } from "@/components/landing/reveal";
 import { axiomAppHref } from "@/lib/urls";
@@ -10,76 +9,6 @@ export const metadata: Metadata = {
   description:
     "Canonical Axiom documentation map for architecture, RuleSpec, corpus, claims, and encoder validation.",
 };
-
-// Ordered by pipeline: source corpus → claims → the RuleSpec format
-// and its time model → encoding contracts → where rules live →
-// cross-engine validation.
-const docHomes = [
-  {
-    name: "Signed corpus releases",
-    owner: "axiom-corpus",
-    location: "docs/named-release-publication.md",
-    description:
-      "The immutable named-release model: content-addressed artifacts, signature verification, and transactional activation of the serving projection.",
-    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md",
-  },
-  {
-    name: "Source claims format",
-    owner: "axiom-corpus",
-    location: "docs/claims-format.md",
-    description:
-      "Thin, reviewed, evidence-backed assertions about what a source span says — the layer between raw text and executable rules.",
-    href: "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/claims-format.md",
-  },
-  {
-    name: "The RuleSpec schema",
-    owner: "axiom-rules-engine",
-    location: "docs/rulespec.md",
-    description:
-      "The canonical authoring and interchange schema for rules — the format every encoding is written in.",
-    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/rulespec.md",
-  },
-  {
-    name: "Bitemporal semantics",
-    owner: "axiom-rules-engine",
-    location: "docs/bitemporal.md",
-    description:
-      "Valid time vs. assessment time — how effective-dated versions work today and where the second time axis is headed.",
-    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/bitemporal.md",
-  },
-  {
-    name: "RuleSpec proof validation",
-    owner: "axiom-encode",
-    location: "docs/rulespec-proof-validation.md",
-    description:
-      "Proof-tree contract for keeping corpus anchors, accepted source claims, and executable RuleSpec separate.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/rulespec-proof-validation.md",
-  },
-  {
-    name: "Upstream-first encoding",
-    owner: "axiom-encode",
-    location: "docs/upstream-first-encoding-plan.md",
-    description:
-      "Source-ordering and source-graph plan for encoding statutes, regulations, guidance, and downstream manuals.",
-    href: "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/upstream-first-encoding-plan.md",
-  },
-  {
-    name: "Jurisdiction repositories",
-    owner: "axiom-rules-engine",
-    location: "docs/jurisdiction-repos.md",
-    description:
-      "Where the actual rules live: the rulespec-* repos hold canonical rule content; the engine repo stays runtime and schema only.",
-    href: "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/jurisdiction-repos.md",
-  },
-  {
-    name: "Oracle adapters & comparisons",
-    owner: "axiom-oracles",
-    location: "README.md",
-    description:
-      "The cross-engine validation harness behind the validation dashboard — adapters, concept-keyed cases, and mismatch reports.",
-    href: "https://github.com/TheAxiomFoundation/axiom-oracles",
-  },
-];
 
 const repoMap = [
   {
@@ -110,35 +39,6 @@ const RELATED = [
   { href: "/validation", label: "How we validate", internal: true },
 ];
 
-function DocLink({ doc }: { doc: (typeof docHomes)[number] }) {
-  return (
-    <a
-      href={doc.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-t border-[var(--color-rule)] py-6 no-underline transition-colors hover:border-[var(--color-accent)]"
-    >
-      <div>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 className="m-0 font-body text-[1.1rem] font-medium text-[var(--color-ink)] group-hover:text-[var(--color-accent)] transition-colors">
-            {doc.name}
-          </h3>
-          <span className="font-mono text-[0.65rem] tracking-[0.14em] uppercase text-[var(--color-ink-muted)]">
-            {doc.owner}
-          </span>
-        </div>
-        <p className="mt-2 mb-0 font-body text-[0.92rem] leading-relaxed text-[var(--color-ink-secondary)]">
-          {doc.description}
-        </p>
-        <p className="mt-2.5 mb-0 font-mono text-[0.75rem] text-[var(--color-ink-muted)]">
-          {doc.location}
-        </p>
-      </div>
-      <ArrowRightIcon className="mt-1.5 h-5 w-5 shrink-0 text-[var(--color-ink-muted)] transition-all group-hover:translate-x-1 group-hover:text-[var(--color-accent)]" />
-    </a>
-  );
-}
-
 export default function DocsPage() {
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">
@@ -154,8 +54,7 @@ export default function DocsPage() {
           </h1>
           <p className="font-body text-[1.2rem] leading-relaxed text-[var(--color-ink-secondary)] text-pretty">
             This page is the public map. Implementation detail stays in the
-            owning repo &mdash; what you find here is every doc worth reading
-            across the ecosystem, in one place.
+            owning repo, with the system that enforces it.
           </p>
         </Reveal>
 
@@ -181,19 +80,6 @@ export default function DocsPage() {
             &ldquo;30 per centum&rdquo;, runs the whole way.
           </p>
           <ArchitectureStrip />
-        </Reveal>
-
-        {/* Canonical docs */}
-        <Reveal as="section" className="mb-20">
-          <h2 className="heading-section mb-3">Documentation homes</h2>
-          <p className="mb-8 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-            The current canonical docs for architecture and validation work.
-          </p>
-          <div className="border-b border-[var(--color-rule)]">
-            {docHomes.map((doc) => (
-              <DocLink key={`${doc.owner}:${doc.location}`} doc={doc} />
-            ))}
-          </div>
         </Reveal>
 
         {/* Related maps — a simple row, not an aside */}

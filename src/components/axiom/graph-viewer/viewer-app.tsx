@@ -2436,6 +2436,42 @@ export function GraphViewerApp() {
                   </div>
                 ))}
             </div>
+            <div className="results-adjust" aria-label="Adjust and run again">
+              {allScenarioFields.map((field) => (
+                <label key={field.name} className="results-adjust-field">
+                  <span>{humanize(field.label)}</span>
+                  <input
+                    type="number"
+                    value={
+                      scenario[field.name] === undefined
+                        ? ""
+                        : String(scenario[field.name])
+                    }
+                    placeholder={`e.g. ${field.sample}`}
+                    onChange={(event) =>
+                      setScenario((current) => {
+                        if (event.target.value === "") {
+                          const { [field.name]: _gone, ...rest } = current;
+                          return rest;
+                        }
+                        return {
+                          ...current,
+                          [field.name]: Number(event.target.value),
+                        };
+                      })
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                className="results-rerun"
+                disabled={running}
+                onClick={() => void runScenario("all")}
+              >
+                {running ? "Running…" : "▶ Run again"}
+              </button>
+            </div>
             <p className="results-note">
               Computed by the Axiom engine from your scenario — the graph
               above shows every intermediate value.

@@ -3264,3 +3264,55 @@
 .graph-viewer-root .lever-row.run-overview-row {
   grid-template-columns: minmax(0, 1fr) 80px;
 }
+
+/* Adjust-and-run-again, right in the results sheet. */
+.graph-viewer-root .results-adjust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 12px 0 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-rule);
+}
+.graph-viewer-root .results-adjust-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.graph-viewer-root .results-adjust-field span {
+  font-family: var(--f-mono, monospace);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .results-adjust-field input {
+  width: 108px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper);
+  font-size: 12.5px;
+}
+.graph-viewer-root .results-adjust-field input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .results-rerun {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.graph-viewer-root .results-rerun:hover:not(:disabled) {
+  background: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .results-rerun:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

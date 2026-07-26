@@ -3107,3 +3107,45 @@
 .graph-viewer-root .node-inspector-head {
   justify-content: flex-end;
 }
+
+/* Run sheet overview: levers on top, the rest of the law's
+   questions browsable below — visible, honest, read-only. */
+.graph-viewer-root .run-section-label {
+  margin: 0 0 10px;
+  font-family: var(--f-mono, monospace);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .run-overview {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-rule);
+}
+.graph-viewer-root .run-overview-search {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-paper);
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+.graph-viewer-root .run-overview-search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .run-overview-list {
+  max-height: 32vh;
+  overflow-y: auto;
+}
+.graph-viewer-root .run-overview-row {
+  padding: 5px 9px;
+  color: var(--color-ink-secondary);
+  font-size: 12.5px;
+}
+.graph-viewer-root .lever-row.run-overview-row,
+.graph-viewer-root .run-overview .lever-row-head {
+  grid-template-columns: minmax(0, 1fr) 80px 64px;
+}

@@ -223,6 +223,7 @@ export function GraphViewerApp() {
   const [indexHover, setIndexHover] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [runPanelOpen, setRunPanelOpen] = useState(false);
+  const [runBrowseSearch, setRunBrowseSearch] = useState("");
   // The runtime's supported scenario knobs (alias → abstract field).
   const [householdAliases, setHouseholdAliases] = useState<
     Record<string, string>
@@ -1300,6 +1301,7 @@ export function GraphViewerApp() {
   // the sidebar panel render the same staged UI.
   const scenarioFlowUI = (
     <>
+            <p className="run-section-label">Your answers — the levers the engine accepts</p>
             <div className="scenario-fields">
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="scenario-field">
@@ -1358,6 +1360,64 @@ export function GraphViewerApp() {
               ⧉ Run step by step
             </button>
             {runError && <p className="run-error">{runError}</p>}
+            {(() => {
+              const knobNames = new Set(allScenarioFields.map((f) => f.name));
+              const seen = new Set<string>();
+              const others = (graph?.inputs ?? []).filter((input) => {
+                if (knobNames.has(input.name) || seen.has(input.name)) {
+                  return false;
+                }
+                seen.add(input.name);
+                return true;
+              });
+              const query = runBrowseSearch.trim().toLowerCase();
+              const shown = others
+                .filter(
+                  (input) =>
+                    !query || humanize(input.name).toLowerCase().includes(query),
+                )
+                .slice(0, 40);
+              return (
+                <div className="run-overview">
+                  <p className="run-section-label">
+                    The law's other {others.length} questions — answered by
+                    its defaults (per-question answers need runtime support)
+                  </p>
+                  <input
+                    type="search"
+                    className="run-overview-search"
+                    value={runBrowseSearch}
+                    onChange={(event) => setRunBrowseSearch(event.target.value)}
+                    placeholder="Browse the questions..."
+                  />
+                  <div className="run-overview-list">
+                    <div className="lever-row lever-row-head" aria-hidden>
+                      <span className="lever-row-name">Question</span>
+                      <span className="lever-row-cell">Entity</span>
+                      <span className="lever-row-cell">Default</span>
+                    </div>
+                    {shown.map((input) => (
+                      <div key={input.legalId} className="lever-row run-overview-row">
+                        <span className="lever-row-name">
+                          {humanize(input.name)}
+                        </span>
+                        <span className="lever-row-cell">
+                          {input.entity ? humanize(input.entity) : "—"}
+                        </span>
+                        <span className="lever-row-cell">
+                          {input.sample !== undefined && input.sample !== null
+                            ? String(input.sample)
+                            : "—"}
+                        </span>
+                      </div>
+                    ))}
+                    {shown.length === 0 && (
+                      <div className="output-empty">No questions match.</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
     </>
   );
 

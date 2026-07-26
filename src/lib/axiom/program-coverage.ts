@@ -17,6 +17,9 @@ export interface ProgramCoverage {
 const CACHE_TTL_MS = 600_000;
 let cached: { at: number; value: ProgramCoverage[] } | null = null;
 
+/** Held back from the public census for now (2026-07). */
+const HIDDEN_FAMILIES = new Set(["universal-credit"]);
+
 /** Test hook: module-level cache must reset between tests. */
 export function _resetProgramCoverageCache() {
   cached = null;
@@ -39,6 +42,7 @@ export async function getProgramCoverage(): Promise<ProgramCoverage[]> {
     families.set(family, slugs);
   }
   const value = [...families.entries()]
+    .filter(([family]) => !HIDDEN_FAMILIES.has(family))
     .map(([family, slugs]) => ({
       family,
       jurisdictions: [...slugs].sort(),

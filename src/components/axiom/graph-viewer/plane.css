@@ -433,7 +433,7 @@
   z-index: 5 !important;
 }
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
-  transform: scale(1.04);
+  /* no persistent transform — fractional scale renders text blurry */
   box-shadow:
     0 0 0 1.5px var(--color-accent),
     0 2px 6px rgba(28, 25, 23, 0.12),
@@ -445,7 +445,6 @@
   stroke: var(--color-accent);
   stroke-width: 2;
   stroke-dasharray: 7 5;
-  filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.55));
 }
 /* The current flows briefly when a run lands, then holds still —
    hundreds of forever-running dash animations shimmer the world. */
@@ -489,7 +488,7 @@
   height: 7px;
   border-radius: 999px;
   background: var(--color-success, #166534);
-  animation: exec-pulse 1.6s ease-in-out infinite;
+  /* static — a forever-pulsing dot reads as flicker */
 }
 @keyframes exec-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0.35); }
@@ -679,20 +678,24 @@
 
 /* ═══ Execution wave ═══ */
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
-  animation: exec-lift 0.5s var(--ease-out, ease) both;
+  /* Ring persists via the class; the lift is a transient pulse that
+     settles back to scale(1) — a card left at 1.04 renders blurry. */
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 2px 6px rgba(28, 25, 23, 0.12),
+    0 14px 30px -14px rgba(217, 119, 6, 0.45);
+  animation: exec-lift 0.6s var(--ease-out, ease);
   animation-delay: calc(var(--exec-order, 0) * 130ms);
 }
 @keyframes exec-lift {
-  from {
+  0% {
     transform: scale(1);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
   }
-  to {
-    transform: scale(1.04);
-    box-shadow:
-      0 0 0 1.5px var(--color-accent),
-      0 2px 6px rgba(28, 25, 23, 0.12),
-      0 18px 40px -14px rgba(217, 119, 6, 0.55);
+  45% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 .graph-viewer-root .plane-live .irg-exec-node .irg-value {
@@ -1027,20 +1030,24 @@
 
 /* ═══ Execution wave ═══ */
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
-  animation: exec-lift 0.5s var(--ease-out, ease) both;
+  /* Ring persists via the class; the lift is a transient pulse that
+     settles back to scale(1) — a card left at 1.04 renders blurry. */
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 2px 6px rgba(28, 25, 23, 0.12),
+    0 14px 30px -14px rgba(217, 119, 6, 0.45);
+  animation: exec-lift 0.6s var(--ease-out, ease);
   animation-delay: calc(var(--exec-order, 0) * 130ms);
 }
 @keyframes exec-lift {
-  from {
+  0% {
     transform: scale(1);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
   }
-  to {
-    transform: scale(1.04);
-    box-shadow:
-      0 0 0 1.5px var(--color-accent),
-      0 2px 6px rgba(28, 25, 23, 0.12),
-      0 18px 40px -14px rgba(217, 119, 6, 0.55);
+  45% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 .graph-viewer-root .plane-live .irg-exec-node .irg-value {
@@ -1393,16 +1400,14 @@
   animation-name: exec-lift-flat;
 }
 @keyframes exec-lift-flat {
-  from {
+  0% {
     transform: translateY(0) scale(1);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
   }
-  to {
+  45% {
     transform: translateY(-3px) scale(1.02);
-    box-shadow:
-      0 0 0 1.5px var(--color-accent),
-      0 4px 8px rgba(28, 25, 23, 0.14),
-      0 22px 44px -18px rgba(217, 119, 6, 0.6);
+  }
+  100% {
+    transform: none;
   }
 }
 .graph-viewer-root .plane-live .irg-wrap .react-flow__viewport,
@@ -1425,20 +1430,18 @@
 }
 /* Execution lifts higher than hover — computed law sits above. */
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-node .irg-node {
-  animation: exec-lift-3d 0.55s var(--ease-out, ease) both;
+  animation: exec-lift-3d 0.6s var(--ease-out, ease);
   animation-delay: calc(var(--exec-order, 0) * 130ms);
 }
 @keyframes exec-lift-3d {
-  from {
+  0% {
     transform: translateZ(0) scale(1);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
   }
-  to {
+  45% {
     transform: translateZ(34px) scale(1.02);
-    box-shadow:
-      0 0 0 1.5px var(--color-accent),
-      0 4px 8px rgba(28, 25, 23, 0.14),
-      0 26px 52px -18px rgba(217, 119, 6, 0.6);
+  }
+  100% {
+    transform: none;
   }
 }
 /* Receded matter sinks slightly below the plane. */
@@ -2874,7 +2877,9 @@
 
 /* Panning is a pure compositor transform — promote the layer and
    never let anything repaint under the pan. */
-.graph-viewer-root .react-flow__viewport {
+.graph-viewer-root .irg-wrap.is-moving .react-flow__viewport {
+  /* Promote only during motion — a permanently cached layer is why
+     zoomed text went blurry. At rest the browser re-rasterizes crisp. */
   will-change: transform;
 }
 

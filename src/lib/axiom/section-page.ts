@@ -11,6 +11,8 @@ import {
   type BreadcrumbItem,
 } from "@/lib/tree-data";
 import { getProvisionByCitationPath } from "@/lib/axiom/navigation-index/read";
+import { UK_LEGISLATION_CLASSES } from "@/lib/axiom/uk-legal-names";
+import { ukGovukTaxonomyTwin } from "@/lib/axiom/citation-path-aliases";
 import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import {
@@ -492,6 +494,27 @@ async function getSubtreeProvisions(
   return { provisions: rows, truncated: rows.length >= SUBTREE_LIMIT };
 }
 
+/**
+ * Drop a sort-key neighbour that belongs to a different UK act or
+ * instrument. Neighbours are meant to be siblings; a flat navigation
+ * index (no parent rows) makes the sibling group the whole
+ * jurisdiction, which offers readers a jump into unrelated law.
+ */
+function neighborWithinInstrument(
+  citationPath: string,
+  neighbor: SectionNeighbor | null
+): SectionNeighbor | null {
+  if (!neighbor) return null;
+  const parts = citationPath.split("/");
+  if (parts[0] !== "uk" || !UK_LEGISLATION_CLASSES.has(parts[2] ?? "")) {
+    return neighbor;
+  }
+  const instrumentPrefix = parts.slice(0, 5).join("/");
+  return neighbor.citationPath.startsWith(`${instrumentPrefix}/`)
+    ? neighbor
+    : null;
+}
+
 async function getNeighbor(
   node: NavigationNodeRow,
   direction: "prev" | "next"
@@ -663,6 +686,28 @@ export async function resolveSection(
     }
   }
   if (!root) {
+    // GOV.UK taxonomy fork: encodings and their browse links live at
+    // uk/policy/govuk/* while the corpus rows are at
+    // uk/guidance/govuk/*. Resolve the twin so encoded-index links
+    // reach the ingested text.
+    const twinPath = ukGovukTaxonomyTwin(requestedPath);
+    if (twinPath) {
+      root = await getProvisionByCitationPath(twinPath).catch(() => null);
+      if (root) {
+        citationPath = twinPath;
+      } else {
+        const probe = await getSubtreeProvisions(twinPath);
+        if (probe.provisions.length > 0) {
+          const navNode = await getNavigationNode(twinPath);
+          root = synthesizeSectionRoot(twinPath, resolved, navNode?.label);
+          citationPath = twinPath;
+          synthetic = true;
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
+  if (!root) {
     for (let end = ruleSegments.length - 1; end >= 2; end--) {
       const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
       const rule = await getProvisionByCitationPath(candidate).catch(
@@ -690,6 +735,21 @@ export async function resolveSection(
   if (!root.body) {
     const navNode = await getNavigationNode(citationPath);
     containerCandidate = navNode?.has_children === true;
+  }
+  // UK container depths (class, year, act/instrument) must divert to
+  // browse: the flat UK navigation index has no container rows, so
+  // the has_children check above can never fire, and the synthetic
+  // reader otherwise stitches a whole year of unrelated acts into
+  // one column.
+  if (!containerCandidate && synthetic) {
+    const parts = citationPath.split("/");
+    if (
+      parts[0] === "uk" &&
+      UK_LEGISLATION_CLASSES.has(parts[2] ?? "") &&
+      parts.length <= 5
+    ) {
+      containerCandidate = true;
+    }
   }
   return {
     root,
@@ -765,12 +825,18 @@ export async function getSectionPageDataFromResolution(
     relativeDepth: (rule.citation_path as string).split("/").length - rootDepth,
   }));
 
-  const [prev, next] = node
+  const [prevRaw, nextRaw] = node
     ? await Promise.all([
         getNeighbor(node, "prev"),
         getNeighbor(node, "next"),
       ])
     : [null, null];
+  // The UK navigation index is flat (leaves parented to root), so
+  // sort-key neighbours span unrelated acts — s.141 SSCBA otherwise
+  // offers a DLA section as "previous". Only offer prev/next within
+  // the same act or instrument.
+  const prev = neighborWithinInstrument(citationPath, prevRaw);
+  const next = neighborWithinInstrument(citationPath, nextRaw);
 
   // Corpus rows are the preferred structure source; body parsing is
   // the fallback for section-granular corpora (the common case).

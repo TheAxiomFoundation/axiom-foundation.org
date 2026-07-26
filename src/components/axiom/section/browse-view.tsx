@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { BrowsePageData } from "@/lib/axiom/browse-page";
+import { ukLabelForPath } from "@/lib/axiom/uk-legal-names";
 
 /** Source labels arrive in every shape — ALL-CAPS USC title names,
  *  section headings leaking into title rows. Title-case the shouty
@@ -251,6 +252,13 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
                 data.segments[1] === "regulation")
                 ? `Title ${node.segment}`
                 : raw;
+            // UK acts/instruments and legislation.gov.uk classes get
+            // their registered names — the UK corpus has no labelled
+            // container rows for these levels.
+            const ukLabel = ukLabelForPath(
+              node.rule?.citation_path ?? `${basePath}/${node.segment}`
+            );
+            if (ukLabel) label = ukLabel;
             const key = orderingKey(node.segment);
             const showKey = key !== null && label !== node.segment;
             // The key column already says "C" — "Subpart C - Education…"

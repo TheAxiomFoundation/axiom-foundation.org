@@ -13,3 +13,23 @@ export function citationPathLookupCandidates(citationPath: string): string[] {
   if (alias && alias !== citationPath) candidates.push(alias);
   return candidates;
 }
+
+/**
+ * GOV.UK documents fork across two taxonomies: the corpus ingests
+ * them as ``uk/guidance/govuk/*`` (they are public guidance), while
+ * rulespec-uk must keep their encodings under ``policies/`` — the
+ * engine's atomic module roots have no ``guidance`` — which mirrors
+ * to ``uk/policy/govuk/*``. Until the two agree, each side's path
+ * maps to its twin: the reader resolves policy URLs against the
+ * guidance corpus rows, and the encoding rail finds policy-mirrored
+ * files for guidance pages.
+ */
+export function ukGovukTaxonomyTwin(citationPath: string): string | null {
+  if (citationPath.startsWith("uk/policy/govuk/")) {
+    return `uk/guidance/govuk/${citationPath.slice("uk/policy/govuk/".length)}`;
+  }
+  if (citationPath.startsWith("uk/guidance/govuk/")) {
+    return `uk/policy/govuk/${citationPath.slice("uk/guidance/govuk/".length)}`;
+  }
+  return null;
+}

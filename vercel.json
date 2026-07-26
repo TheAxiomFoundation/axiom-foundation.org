@@ -33,44 +33,36 @@
       "destination": "https://axiom-reg-demo.vercel.app/reg-demo/:path(.*)"
     },
     {
-      "source": "/builder",
-      "destination": "https://dashboard-builder-flax.vercel.app/builder"
+      "source": "/gallery/builder",
+      "destination": "https://dashboard-builder-flax.vercel.app/gallery/builder"
     },
     {
-      "source": "/builder/:path(.*)",
-      "destination": "https://dashboard-builder-flax.vercel.app/builder/:path(.*)"
+      "source": "/gallery/builder/:path(.*)",
+      "destination": "https://dashboard-builder-flax.vercel.app/gallery/builder/:path(.*)"
     },
     {
-      "source": "/workflow",
-      "destination": "https://co-snap-workflow-checker.vercel.app/workflow"
+      "source": "/gallery/workflow",
+      "destination": "https://co-snap-workflow-checker.vercel.app/gallery/workflow"
     },
     {
-      "source": "/workflow/:path(.*)",
-      "destination": "https://co-snap-workflow-checker.vercel.app/workflow/:path(.*)"
+      "source": "/gallery/workflow/:path(.*)",
+      "destination": "https://co-snap-workflow-checker.vercel.app/gallery/workflow/:path(.*)"
     },
     {
-      "source": "/snap",
-      "destination": "https://axiom-co-snap.vercel.app/snap"
+      "source": "/gallery/snap",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/snap"
     },
     {
-      "source": "/snap/:path(.*)",
-      "destination": "https://axiom-co-snap.vercel.app/snap/:path(.*)"
+      "source": "/gallery/snap/:path(.*)",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/snap/:path(.*)"
     },
     {
-      "source": "/microsim",
-      "destination": "https://axiom-microsim.vercel.app/microsim"
+      "source": "/gallery/microsim",
+      "destination": "https://axiom-microsim.vercel.app/gallery/microsim"
     },
     {
-      "source": "/microsim/:path(.*)",
-      "destination": "https://axiom-microsim.vercel.app/microsim/:path(.*)"
-    },
-    {
-      "source": "/guidance",
-      "destination": "https://guidance-impact-visualizer.vercel.app/guidance"
-    },
-    {
-      "source": "/guidance/:path(.*)",
-      "destination": "https://guidance-impact-visualizer.vercel.app/guidance/:path(.*)"
+      "source": "/gallery/microsim/:path(.*)",
+      "destination": "https://axiom-microsim.vercel.app/gallery/microsim/:path(.*)"
     },
     {
       "source": "/architecture",
@@ -120,6 +112,56 @@
     {
       "source": "/pbif-proposal/:path*",
       "destination": "https://pbif-proposal.axiom-foundation.org/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/builder",
+      "destination": "/gallery/builder",
+      "permanent": false
+    },
+    {
+      "source": "/builder/:path(.*)",
+      "destination": "/gallery/builder/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/workflow",
+      "destination": "/gallery/workflow",
+      "permanent": false
+    },
+    {
+      "source": "/workflow/:path(.*)",
+      "destination": "/gallery/workflow/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/snap",
+      "destination": "/gallery/snap",
+      "permanent": false
+    },
+    {
+      "source": "/snap/:path(.*)",
+      "destination": "/gallery/snap/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/microsim",
+      "destination": "/gallery/microsim",
+      "permanent": false
+    },
+    {
+      "source": "/microsim/:path(.*)",
+      "destination": "/gallery/microsim/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/guidance",
+      "destination": "https://guidance-impact-visualizer.vercel.app/",
+      "permanent": false
+    },
+    {
+      "source": "/guidance/:path(.*)",
+      "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
       "permanent": false
     }
   ]

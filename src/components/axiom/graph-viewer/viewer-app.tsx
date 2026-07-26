@@ -394,6 +394,14 @@ export function GraphViewerApp() {
     trail: string[],
   ) => {
     const current = trail[trail.length - 1];
+    // Most steps stay inside the already-rendered subtree — no
+    // relayout is coming, so the flight can start at once. Only a
+    // scope change (new anchors) re-roots the canvas and needs the
+    // settle-then-fly.
+    const sameScope = (next: string[]) =>
+      next.length === selectedOutputs.length &&
+      next.every((id) => selectedOutputs.includes(id));
+    let scopeChanges = false;
     if (direction === "up") {
       // Climbing accumulates: every visited step stays on the canvas,
       // so the graph grows with the journey.
@@ -404,15 +412,22 @@ export function GraphViewerApp() {
             .filter((id): id is string => Boolean(id)),
         ),
       ];
-      if (anchors.length > 0) setSelectedOutputs(anchors);
+      if (anchors.length > 0 && !sameScope(anchors)) {
+        scopeChanges = true;
+        setSelectedOutputs(anchors);
+      }
     } else {
       // Descending narrows: the canvas is the subtree still ahead.
       const anchor = walkAnchorOf(current);
-      if (anchor) setSelectedOutputs([anchor]);
+      if (anchor && !sameScope([anchor])) {
+        scopeChanges = true;
+        setSelectedOutputs([anchor]);
+      }
     }
     setFlyTarget((prev) => ({
       legalId: current,
       nonce: (prev?.nonce ?? 0) + 1,
+      immediate: !scopeChanges,
     }));
   };
   // "How does this rule work?" — open the walk AT the rule, both

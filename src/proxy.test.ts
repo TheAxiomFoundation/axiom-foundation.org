@@ -244,25 +244,25 @@ describe("proxy", () => {
     );
   });
 
-  it("redirects the retired /start portal to the graph", () => {
+  it("redirects the retired /start portal to the app", () => {
     const response = proxy(
       request("http://localhost:4944/start", "localhost:4944")
     );
     expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:4944/graph"
+      "http://localhost:4944/app"
     );
   });
 
-  it("rewrites /graph to the in-app viewer on every host", () => {
+  it("rewrites /app to the in-app viewer on every host", () => {
     for (const [url, host, expected] of [
       [
-        "https://app.axiom-foundation.org/graph?program=us-co/co-snap",
+        "https://app.axiom-foundation.org/app?program=us-co/co-snap",
         "app.axiom-foundation.org",
         "https://app.axiom-foundation.org/axiom/graph?program=us-co/co-snap",
       ],
       [
-        "http://localhost:4944/graph?compose=us:statutes/7/2017/a",
+        "http://localhost:4944/app?compose=us:statutes/7/2017/a",
         "localhost:4944",
         "http://localhost:4944/axiom/graph?compose=us:statutes/7/2017/a",
       ],

@@ -11,7 +11,7 @@
 
 function viewerBase(): string {
   const override = process.env.NEXT_PUBLIC_GRAPH_VIEWER_URL;
-  return override ? override.replace(/\/$/, "") : "/graph";
+  return override ? override.replace(/\/$/, "") : "/app";
 }
 
 const CITATION_TO_REPO_BUCKET: Readonly<Record<string, string>> =

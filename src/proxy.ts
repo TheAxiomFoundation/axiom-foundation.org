@@ -31,6 +31,7 @@ function appPagePath(pathname: string): string {
   // returns later as the corpus app; its routes stay reachable for
   // the in-graph law popup.
   if (pathname === "/") return "/axiom/graph";
+  if (pathname === "/app") return "/axiom/graph";
   if (!APP_ROOT_PREFIX_RE.test(pathname)) return `/axiom${pathname}`;
   const slug = pathname.split("/")[1];
   return V1_ONLY_JURISDICTIONS.has(slug)
@@ -137,14 +138,18 @@ export function proxy(request: NextRequest) {
   // /start links land on the graph.
   if (pathname === "/start") {
     const target = request.nextUrl.clone();
-    target.pathname = "/graph";
+    target.pathname = "/app";
     return NextResponse.redirect(target, 308);
   }
 
-  // The in-app graph viewer resolves on every host, like
-  // jurisdiction paths: reader pages link to /graph?focus=… and
-  // those links must work on localhost and previews too.
+  // /app is the Plane's canonical path on every host; /graph was its
+  // old name and redirects.
   if (pathname === "/graph") {
+    const target = request.nextUrl.clone();
+    target.pathname = "/app";
+    return NextResponse.redirect(target, 308);
+  }
+  if (pathname === "/app") {
     const target = request.nextUrl.clone();
     target.pathname = "/axiom/graph";
     return NextResponse.rewrite(target);

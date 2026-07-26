@@ -191,7 +191,7 @@ export default function PortalPage() {
 
       <div className="relative grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
         <Link
-          href="/graph"
+          href="/app"
           className={DOOR_CLASS}
           style={{
             backgroundImage:

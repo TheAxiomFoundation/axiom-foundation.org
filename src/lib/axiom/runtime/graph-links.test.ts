@@ -25,7 +25,7 @@ describe("composeGraphViewerUrl", () => {
       composeGraphViewerUrl("us:regulations/47-cfr/54/403"),
       "http://app.test"
     );
-    expect(url.pathname).toBe("/graph");
+    expect(url.pathname).toBe("/app");
     expect(url.searchParams.get("compose")).toBe(
       "us:regulations/47-cfr/54/403"
     );
@@ -92,7 +92,7 @@ describe("graphViewerUrl", () => {
       ),
       "http://app.test"
     );
-    expect(url.pathname).toBe("/graph");
+    expect(url.pathname).toBe("/app");
     expect(url.searchParams.get("program")).toBe("us-co/co-snap");
     expect(url.searchParams.get("focus")).toBe("us:statutes/7/2017");
     expect(url.searchParams.get("country")).toBeNull();

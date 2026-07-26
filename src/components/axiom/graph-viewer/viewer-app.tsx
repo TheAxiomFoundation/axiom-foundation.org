@@ -1746,8 +1746,26 @@ export function GraphViewerApp() {
             {running ? "Running…" : "▶ Run"}
           </button>
           {runPanelOpen && (
-            <div className="run-panel" aria-label="Run this law">
-              {scenarioFlowUI}
+            <div
+              className="run-panel"
+              role="dialog"
+              aria-label="Run this law"
+              onClick={() => setRunPanelOpen(false)}
+            >
+              <div onClick={(event) => event.stopPropagation()}>
+                <div className="run-panel-head">
+                  <h2>Run {effectiveProgram?.displayName ?? "this law"}</h2>
+                  <button
+                    type="button"
+                    className="results-close"
+                    onClick={() => setRunPanelOpen(false)}
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                {scenarioFlowUI}
+              </div>
             </div>
           )}
         {lensFocusId && (

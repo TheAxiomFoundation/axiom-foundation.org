@@ -220,6 +220,7 @@ export function GraphViewerApp() {
   const [outputsOpen, setOutputsOpen] = useState(false);
   const [indexSearch, setIndexSearch] = useState("");
   const [indexHover, setIndexHover] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [extraLevers, setExtraLevers] = useState<
     Array<{ name: string; sample: number | boolean }>
   >([]);
@@ -954,11 +955,13 @@ export function GraphViewerApp() {
   }, [selectedOutputs, structureTraces]);
   const indexMatches = useMemo(() => {
     const query = indexSearch.trim().toLowerCase();
-    if (!query || !graph) return [];
-    // Every word must appear, any order — "monthly income" finds
-    // Monthly Household Income.
-    const tokens = query.split(/\s+/);
+    if (!graph) return [];
+    // Empty query browses the whole program; every query word must
+    // appear, any order — "monthly income" finds Monthly Household
+    // Income.
+    const tokens = query ? query.split(/\s+/) : [];
     const hits = (label: string) => {
+      if (tokens.length === 0) return true;
       const hay = label.toLowerCase();
       return tokens.every((token) => hay.includes(token));
     };
@@ -987,7 +990,7 @@ export function GraphViewerApp() {
       }));
     return [...rules, ...inputs]
       .sort((a, b) => a.label.localeCompare(b.label))
-      .slice(0, 60);
+      .slice(0, 100);
   }, [indexSearch, graph, inScopeIds]);
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the walk and re-root on the
@@ -1836,20 +1839,28 @@ export function GraphViewerApp() {
                 value={indexSearch}
                 onChange={(event) => setIndexSearch(event.target.value)}
                 onFocus={() => {
+                  setSearchOpen(true);
                   // Searching is a navigation intent — the launcher
                   // steps aside so results are reachable.
                   if (launcher !== "closed") dismissLauncher();
                 }}
+                onBlur={() =>
+                  // Delay so a result click lands before the list closes.
+                  window.setTimeout(() => setSearchOpen(false), 180)
+                }
                 placeholder="Search the law..."
                 aria-label="Search rules"
               />
-              {indexSearch.trim() && (
+              {searchOpen && (
                 <div className="top-search-results" aria-label="Search results">
                   {indexMatches.map((match) => (
                     <button
                       type="button"
                       key={match.legalId}
-                      onClick={() => goToSearchResult(match)}
+                      onClick={() => {
+                        setSearchOpen(false);
+                        goToSearchResult(match);
+                      }}
                       onMouseEnter={() => setIndexHover(match.legalId)}
                       onMouseLeave={() => setIndexHover(null)}
                       title="Fly to this on the canvas"

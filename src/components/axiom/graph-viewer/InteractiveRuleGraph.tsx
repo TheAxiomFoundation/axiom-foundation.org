@@ -1246,6 +1246,11 @@ function InlineAnswer({ legalId }: { legalId: string }) {
   const fragment = legalId.split("#").pop() ?? "";
   if (!onChange || !fragment.startsWith("input.")) return null;
   const name = fragment.slice("input.".length);
+  if (!(name in values)) {
+    // The runtime cannot ingest this question yet — no field is
+    // better than a field the engine silently ignores.
+    return null;
+  }
   const value = values[name];
   const stop = (event: { stopPropagation: () => void }) =>
     event.stopPropagation();

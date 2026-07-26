@@ -64,13 +64,18 @@ export async function loadTreeNodes({
     // us-ms, …) may have zero corpus rows before ingestion lands. The
     // rulespec fallback still surfaces any checked-in encodings; if both
     // are empty the UI renders an empty state instead of a 404.
-    const docTypes = await getNavigationDocTypes(dbJurisdictionId, encodedOnly)
-      .then((result) => result.docTypes)
-      .catch((error) => {
-        if (error instanceof NavigationIndexMissingError) return [] as string[];
-        throw error;
-      });
-    const encodedDocTypes = await getEncodedDocTypes(dbJurisdictionId);
+    // The index scan and the repo listing are independent — run them
+    // together instead of paying the two round trips in sequence.
+    const [docTypes, encodedDocTypes] = await Promise.all([
+      getNavigationDocTypes(dbJurisdictionId, encodedOnly)
+        .then((result) => result.docTypes)
+        .catch((error) => {
+          if (error instanceof NavigationIndexMissingError)
+            return [] as string[];
+          throw error;
+        }),
+      getEncodedDocTypes(dbJurisdictionId),
+    ]);
     const provisionDocTypes =
       encodedOnly || docTypes.length === 0
         ? new Set<string>()
@@ -89,6 +94,42 @@ export async function loadTreeNodes({
 
   const [docType] = segs;
   const scopePath = navigationPath(dbJurisdictionId, [docType]);
+  // Nearly every downstream path of a first page wants the repo
+  // listing (navigability fallback, rulespec-only merge, leaf
+  // synthesis), and levels below the doc type always need their own
+  // node — start both round trips alongside the scope-root lookup
+  // instead of paying them in sequence. Later pagination pages keep
+  // the lazy fetch: an empty page must not spend a GitHub request.
+  // listEncodedFiles never rejects; the current-node promise gets a
+  // suppressing catch so an early throw below cannot become an
+  // unhandled rejection (awaiting it still propagates).
+  let encodedFilesPromise: Promise<EncodedFile[]> | null =
+    page === 0 ? listEncodedFiles(dbJurisdictionId) : null;
+  const getEncodedFiles = async () => {
+    encodedFilesPromise ??= listEncodedFiles(dbJurisdictionId);
+    return encodedFilesPromise;
+  };
+  const currentNodePromise =
+    segs.length > 1
+      ? getNavigationIndexNode(navigationPath(dbJurisdictionId, segs))
+      : null;
+  currentNodePromise?.catch(() => {});
+  // Doc-type levels almost always have children under their own path
+  // with the requested doc type — fire that query concurrently with
+  // the scope-root lookup and fall back to a corrected query in the
+  // rare shapes (aliased doc type, childless scope) where the guess
+  // was wrong.
+  const optimisticChildrenPromise =
+    segs.length === 1
+      ? getNavigationIndexChildren({
+          jurisdiction: dbJurisdictionId,
+          docType,
+          parentPath: scopePath,
+          encodedOnly,
+          page,
+        })
+      : null;
+  optimisticChildrenPromise?.catch(() => {});
   const scopeRoot = await getNavigationIndexNode(scopePath);
   const queryDocType = scopeRoot?.doc_type ?? docType;
   const parentPath =
@@ -97,19 +138,18 @@ export async function loadTreeNodes({
         ? scopePath
         : null
       : navigationPath(dbJurisdictionId, segs);
-  const childResult = await getNavigationIndexChildren({
-    jurisdiction: dbJurisdictionId,
-    docType: queryDocType,
-    parentPath,
-    encodedOnly,
-    page,
-  });
-  let encodedFilesPromise: Promise<EncodedFile[]> | null =
-    childResult.rows.length > 0 ? listEncodedFiles(dbJurisdictionId) : null;
-  const getEncodedFiles = async () => {
-    encodedFilesPromise ??= listEncodedFiles(dbJurisdictionId);
-    return encodedFilesPromise;
-  };
+  const childResult =
+    optimisticChildrenPromise &&
+    queryDocType === docType &&
+    parentPath === scopePath
+      ? await optimisticChildrenPromise
+      : await getNavigationIndexChildren({
+          jurisdiction: dbJurisdictionId,
+          docType: queryDocType,
+          parentPath,
+          encodedOnly,
+          page,
+        });
   const encodedFiles =
     childResult.rows.length > 0 ? await getEncodedFiles() : [];
   const navigationRows = encodedOnly
@@ -160,7 +200,7 @@ export async function loadTreeNodes({
   }
 
   const currentPath = navigationPath(dbJurisdictionId, segs);
-  const currentNode = await getNavigationIndexNode(currentPath);
+  const currentNode = currentNodePromise ? await currentNodePromise : null;
 
   if (indexRows.length === 0) {
     if (!currentNode) {

@@ -25,7 +25,7 @@ import {
   type AstNode,
   type EvalValue,
 } from "./formula";
-import { axiomAppUrl, fileLegalIdOf, humanizeCitation } from "./citations";
+import { axiomAppUrl, fileLegalIdOf, humanizeCitation, humanizeSource } from "./citations";
 
 interface Props {
   spec: DashboardSpec;
@@ -1273,6 +1273,7 @@ const OutputNode = ({ data }: NodeProps) => {
   const d = data as Extract<IrgNodeData, { kind: "output" }>;
   const pop = useHoverPopover();
   const ref = useRef<HTMLDivElement>(null);
+  const answerPopulated = useAnswerBoxPopulated(d.legalId);
   return (
     <div
       ref={ref}
@@ -1282,7 +1283,9 @@ const OutputNode = ({ data }: NodeProps) => {
       <div className="irg-eyebrow">Result</div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
-      {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
+      {!answerPopulated && d.showValues && d.value && (
+        <div className="irg-value">{d.value}</div>
+      )}
       {d.canExpand && (
         <div
           className="irg-action irg-action-secondary irg-action-clickable"
@@ -1357,6 +1360,20 @@ function InlineAnswer({ legalId }: { legalId: string }) {
   );
 }
 
+/** True when this node renders an answer box that already holds a
+ *  value — the card's own value line would just repeat it (and get
+ *  clipped), so callers hide it. */
+function useAnswerBoxPopulated(legalId: string): boolean {
+  const { values, onChange } = useContext(InputEditContext);
+  const fragment = legalId.split("#").pop() ?? "";
+  if (!onChange || !fragment.startsWith("input.")) return false;
+  const name = fragment.slice("input.".length);
+  if (!(name in values)) return false;
+  const value = values[name];
+  // A checkbox always displays its state; a number box counts once typed.
+  return typeof value === "boolean" || !Number.isNaN(value as number);
+}
+
 /** Inline value editing on Question cards — provided by the app so
  *  the canvas itself is a form: type a number, flip a toggle, run. */
 export const InputEditContext = createContext<{
@@ -1370,6 +1387,7 @@ const InputNode = ({ data }: NodeProps) => {
   const status = d.source === "user" ? "selected" : "not selected";
   const pop = useHoverPopover();
   const ref = useRef<HTMLDivElement>(null);
+  const answerPopulated = useAnswerBoxPopulated(d.legalId);
   // Affordance shows when the parent wired up onExposeInput (Step III).
   // Action label flips with the current state — same hook toggles both
   // ways via App.tsx's handleExposeInput.
@@ -1385,7 +1403,9 @@ const InputNode = ({ data }: NodeProps) => {
       </div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
-      {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
+      {!answerPopulated && d.showValues && d.value && (
+        <div className="irg-value">{d.value}</div>
+      )}
       {showAction && (
         <div className="irg-action irg-action-clickable">
           {d.source === "user" ? "− remove" : "+ ask the user"}
@@ -2654,7 +2674,9 @@ function measureLabelHeight(text: string, widthPx: number): number {
  */
 /** Hover popover metadata for a parameter rule — citation, value, link. */
 function buildParameterMeta(p: ParameterRule): NodeMeta {
-  const citation = p.source ?? humanizeCitation(p.fileLegalId);
+  const citation = p.source
+    ? humanizeSource(p.source)
+    : humanizeCitation(p.fileLegalId);
   const appUrl = p.fileLegalId ? axiomAppUrl(p.fileLegalId) : null;
   const dtypeText = p.dtype ? ` · ${p.dtype}` : "";
   // For simple parameters the formula is the constant value (e.g. "35").
@@ -2674,7 +2696,11 @@ function buildParameterMeta(p: ParameterRule): NodeMeta {
 
 function buildMeta(t: TraceNode, kind: "Output" | "Input" | "Rule" | "Parameter"): NodeMeta {
   const fileLegalId = t.homeFile ?? fileLegalIdOf(t.legalId);
-  const citation = t.source ?? (fileLegalId ? humanizeCitation(fileLegalId) : undefined);
+  const citation = t.source
+    ? humanizeSource(t.source)
+    : fileLegalId
+      ? humanizeCitation(fileLegalId)
+      : undefined;
   const appUrl = fileLegalId ? axiomAppUrl(fileLegalId) : null;
   const dtypeText = t.dtype && t.dtype !== "input" ? ` · ${t.dtype}` : "";
   // Translate engine vocab into the user's vocab — Input → Question,

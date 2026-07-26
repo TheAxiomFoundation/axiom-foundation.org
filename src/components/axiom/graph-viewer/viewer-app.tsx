@@ -8,7 +8,7 @@ import {
   type IrgNodeData,
 } from "./InteractiveRuleGraph";
 
-import { axiomAppUrl, fileLegalIdOf, humanizeCitation } from "./citations";
+import { axiomAppUrl, fileLegalIdOf, humanizeCitation, humanizeSource } from "./citations";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -101,27 +101,34 @@ export function GraphViewerApp() {
   // target sits inside a folded branch: unfold its ancestry first,
   // then fly — the camera chases the relayout to where it settles.
   const flyFromIndex = (legalId: string) => {
-    setFolded((current) => {
-      const next = new Set(current);
-      // The trace tree is a DAG unrolled — the target can sit on
-      // several paths, and the renderer may materialize any of them.
-      // Unfold every ancestor on every path (the target itself keeps
-      // its own fold state).
-      const unfold = (node: TraceNode): boolean => {
-        let viaChild = false;
-        for (const child of node.children ?? []) {
-          if (unfold(child)) viaChild = true;
-        }
-        if (viaChild) next.delete(node.legalId);
-        return viaChild || node.legalId === legalId;
-      };
-      for (const id of selectedOutputs) {
-        const root = structureTraces[id];
-        if (root) unfold(root);
+    // The trace tree is a DAG unrolled — the target can sit on
+    // several paths, and the renderer may materialize any of them.
+    // Unfold every ancestor on every path (the target itself keeps
+    // its own fold state). Worked out up front: when every ancestor
+    // is already open there is no fold update, no relayout — and the
+    // flight goes immediately instead of waiting out the relayout
+    // grace period.
+    const toUnfold = new Set<string>();
+    const unfold = (node: TraceNode): boolean => {
+      let viaChild = false;
+      for (const child of node.children ?? []) {
+        if (unfold(child)) viaChild = true;
       }
-      return next;
-    });
-    flyTo(legalId);
+      if (viaChild && folded.has(node.legalId)) toUnfold.add(node.legalId);
+      return viaChild || node.legalId === legalId;
+    };
+    for (const id of selectedOutputs) {
+      const root = structureTraces[id];
+      if (root) unfold(root);
+    }
+    if (toUnfold.size > 0) {
+      setFolded((current) => {
+        const next = new Set(current);
+        for (const id of toUnfold) next.delete(id);
+        return next;
+      });
+    }
+    flyTo(legalId, toUnfold.size === 0);
     // An Index click is a card click: open the info sheet, which also
     // pins the path highlight until it closes.
     inspectRule(legalId);
@@ -303,7 +310,11 @@ export function GraphViewerApp() {
     pendingOpeningRef.current = null;
     surveyRef.current = true;
 
-    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+    setSelectedOutputs(
+      outputRules
+        .filter((rule) => !mainlandIds || mainlandIds.has(rule.legalId))
+        .map((rule) => rule.legalId),
+    );
     setFolded((current) => (current.size === 0 ? current : new Set()));
     const summit = summitOutput ?? relevantOutputRules[0]?.legalId ?? null;
     setFlyTarget((current) => ({
@@ -711,6 +722,30 @@ export function GraphViewerApp() {
     syncCountryToUrl(country);
   }, [country]);
 
+  // Deep links: the address bar always reproduces the current view —
+  // ?program= is the selected law, ?focus= the lens-focused rule.
+  // Copying the URL is sharing; no share button needed. An inbound
+  // ?focus= (which scopes the outputs on load) is left in place until
+  // the user opens and closes a lens — the scoped view it created
+  // outlives the load, so the link should too.
+  const lensSyncedToUrl = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (program) url.searchParams.set("program", programKey(program));
+    else if (!composeFocus) url.searchParams.delete("program");
+    if (lensFocusId) {
+      url.searchParams.set("focus", lensFocusId);
+      lensSyncedToUrl.current = true;
+    } else if (lensSyncedToUrl.current) {
+      url.searchParams.delete("focus");
+      lensSyncedToUrl.current = false;
+    }
+    if (url.toString() !== window.location.href) {
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [program, lensFocusId, composeFocus]);
+
   // Keep the country/program selection valid as the registry loads or the
   // country changes: snap to an existing country, then default to its first
   // program when none is selected.
@@ -775,12 +810,14 @@ export function GraphViewerApp() {
           for (const rule of nextGraph.rules) {
             for (const dep of rule.ruleDeps) consumed.add(dep);
           }
+          const mainland = connectedToOwnOutputs(nextGraph);
           setSelectedOutputs(
             rankOutputRules(nextGraph, { includeLeaves: false })
               .filter(
                 (rule) =>
                   rule.kind !== "parameter" || consumed.has(rule.legalId),
               )
+              .filter((rule) => !mainland || mainland.has(rule.legalId))
               .map((rule) => rule.legalId),
           );
           return;
@@ -863,6 +900,12 @@ export function GraphViewerApp() {
   const outputRules = useMemo(
     () => rankOutputRules(graph, { includeLeaves: composeFocus != null }),
     [graph, composeFocus],
+  );
+  // Standalone pieces stay off the whole-law survey (see
+  // connectedToOwnOutputs); null means "no filter".
+  const mainlandIds = useMemo(
+    () => (graph ? connectedToOwnOutputs(graph) : null),
+    [graph],
   );
   // A parameter nobody in this package consumes is table noise from
   // a bundled federal file (Alaska maximums inside New York) — it
@@ -1013,8 +1056,11 @@ export function GraphViewerApp() {
       return tokens.every((token) => hay.includes(token));
     };
     // Global: search the whole program, always — rules (results and
-    // every intermediate) and the questions that feed them.
+    // every intermediate) and the questions that feed them. Standalone
+    // pieces (see connectedToOwnOutputs) stay out of the results like
+    // they stay off the canvas; the outputs list is their doorway.
     const rules = graph.rules
+      .filter((rule) => !mainlandIds || mainlandIds.has(rule.legalId))
       .filter((rule) => hits(`${humanize(rule.name)} ${rule.name}`))
       .map((rule) => ({
         legalId: rule.legalId,
@@ -1027,6 +1073,7 @@ export function GraphViewerApp() {
       }));
     const seenNames = new Set<string>();
     const inputs = graph.inputs
+      .filter((input) => !mainlandIds || mainlandIds.has(input.legalId))
       .filter((input) => {
         if (seenNames.has(input.name)) return false;
         seenNames.add(input.name);
@@ -1041,7 +1088,7 @@ export function GraphViewerApp() {
     return [...rules, ...inputs]
       .sort((a, b) => a.label.localeCompare(b.label))
       .slice(0, 100);
-  }, [indexSearch, graph, inScopeIds]);
+  }, [indexSearch, graph, inScopeIds, mainlandIds]);
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the walk and re-root on the
   // rule itself.
@@ -1060,7 +1107,20 @@ export function GraphViewerApp() {
     // match with its path pinned alight.
     if (walk) endWalk();
     surveyRef.current = true;
-    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+    // A match on a standalone piece brings its whole island on stage —
+    // the user asked for it by name.
+    const stage =
+      mainlandIds && graph && !mainlandIds.has(match.legalId)
+        ? new Set([
+            ...mainlandIds,
+            ...(connectedComponent(graph, [match.legalId]) ?? []),
+          ])
+        : mainlandIds;
+    setSelectedOutputs(
+      outputRules
+        .filter((rule) => !stage || stage.has(rule.legalId))
+        .map((rule) => rule.legalId),
+    );
     setFolded((current) => (current.size === 0 ? current : new Set()));
     flyTo(match.legalId);
     if (match.kind === "input") inspectInput(match.legalId);
@@ -1613,13 +1673,6 @@ export function GraphViewerApp() {
                       onMouseLeave={() => setIndexHover(null)}
                       title="Fly to this on the canvas"
                     >
-                      <span className="top-search-kind">
-                        {match.kind === "input"
-                          ? "?"
-                          : match.kind === "parameter"
-                            ? "π"
-                            : "ƒ"}
-                      </span>
                       {match.label}
                     </button>
                   ))}
@@ -1641,15 +1694,6 @@ export function GraphViewerApp() {
                 : "Loading graph"}
           </span>
         </div>
-        {runResult && (
-          <div className="exec-pill" role="status">
-            <span className="exec-pill-dot" aria-hidden />
-            Execution layer · live
-            <button type="button" onClick={() => setRunResult(null)}>
-              exit
-            </button>
-          </div>
-        )}
         <div
           className={`graph-stage ${runResult ? "plane-live" : ""} ${
             planeFresh ? "plane-fresh" : ""
@@ -1667,16 +1711,28 @@ export function GraphViewerApp() {
           >
             <span>composing the map…</span>
           </div>
-          <button
-            type="button"
-            className="journey-toggle"
-            disabled={running}
-            onClick={() => setRunPanelOpen((open) => !open)}
-            aria-expanded={runPanelOpen}
-            title="Answer the household's questions and execute the law"
-          >
-            {running ? "Running…" : "▶ Run"}
-          </button>
+          {runResult && !running ? (
+            // A live run owns the top-right slot — the pill replaces
+            // the Run button until the execution layer is dismissed.
+            <div className="exec-pill" role="status">
+              <span className="exec-pill-dot" aria-hidden />
+              Execution layer · live
+              <button type="button" onClick={() => setRunResult(null)}>
+                exit
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="journey-toggle"
+              disabled={running}
+              onClick={() => setRunPanelOpen((open) => !open)}
+              aria-expanded={runPanelOpen}
+              title="Answer the household's questions and execute the law"
+            >
+              {running ? "Running…" : "▶ Run"}
+            </button>
+          )}
           {runPanelOpen && (
             <div
               className="run-panel"
@@ -2112,15 +2168,39 @@ export function GraphViewerApp() {
             const consumers = legalId ? consumersOf(legalId) : [];
             const meta = "meta" in inspected ? inspected.meta : undefined;
             const formula = meta?.formula ?? rule?.formula ?? null;
-            const citation =
+            const rawCitation =
               meta?.citation ??
               rule?.source ??
-              (legalId ? humanizeCitation(fileLegalIdOf(legalId)) : null);
+              (legalId ? fileLegalIdOf(legalId) : null);
+            const citation = rawCitation ? humanizeSource(rawCitation) : null;
             const parameterValue =
               meta?.parameterValue ??
               (rule?.kind === "parameter" && rule.formula
                 ? rule.formula.replace(/\s+/g, " ").trim().slice(0, 140)
                 : null);
+            // The provision to read: a rule's own home file. A question
+            // has no home in the law (it lives in the synthetic package
+            // file), so read the provision that asks it — the first
+            // consumer rule housed in a statutes/regulations file.
+            const lawFileLegalId = (() => {
+              if (!legalId) return null;
+              const own = fileLegalIdOf(legalId);
+              if (/:(statutes|regulations)\//.test(own)) return own;
+              // Synthesized package rules cite their statute in
+              // `source` as a raw legal id — that IS the law to read.
+              const source = rule?.source;
+              if (
+                source &&
+                /^[a-z]{2}(?:-[a-z]{2})?:(statutes|regulations)\//.test(source)
+              ) {
+                return source.split("#")[0] ?? null;
+              }
+              for (const consumer of consumers) {
+                const file = fileLegalIdOf(consumer.legalId);
+                if (/:(statutes|regulations)\//.test(file)) return file;
+              }
+              return null;
+            })();
             return (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
@@ -2182,58 +2262,6 @@ export function GraphViewerApp() {
                 <>
                   <dt>Unit</dt>
                   <dd>{rule.unit}</dd>
-                </>
-              ) : null}
-              {rule && (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
-                <>
-                  <dt>Built from</dt>
-                  <dd>
-                    <div className="node-inspector-consumers">
-                      {rule.ruleDeps.map((depId) => (
-                        <button
-                          type="button"
-                          key={depId}
-                          onClick={() => flyFromIndex(depId)}
-                          title="Fly to this rule on the canvas"
-                        >
-                          {humanize(
-                            walkRuleById.get(depId)?.name ??
-                              depId.split("#").pop() ??
-                              depId,
-                          )}
-                        </button>
-                      ))}
-                      {rule.inputDeps.map((depId) => (
-                        <span key={depId} className="node-inspector-dep-q">
-                          {humanize(
-                            walkInputById.get(depId)?.name ??
-                              (depId.split("#").pop() ?? depId).split(".").pop() ??
-                              depId,
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </dd>
-                </>
-              ) : null}
-              {consumers.length > 0 ? (
-                <>
-                  <dt>Used by</dt>
-                  <dd className="node-inspector-consumers">
-                    {consumers.slice(0, 4).map((consumer) => (
-                      <button
-                        type="button"
-                        key={consumer.legalId}
-                        onClick={() => flyFromIndex(consumer.legalId)}
-                        title="Fly to this rule on the canvas"
-                      >
-                        {humanize(consumer.name)}
-                      </button>
-                    ))}
-                    {consumers.length > 4 && (
-                      <span>+{consumers.length - 4} more</span>
-                    )}
-                  </dd>
                 </>
               ) : null}
               {"kind" in inspected && inspected.kind === "input" ? (
@@ -2307,6 +2335,65 @@ export function GraphViewerApp() {
                 </>
               ) : null}
                           </dl>
+            {/* Dependency sections live below the vitals — they can run
+                long (a work requirement builds from a dozen questions),
+                so each is a count-labelled collapsible with its own
+                scroll instead of rows stretching the meta grid. */}
+            {rule && (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
+              <details
+                className="node-inspector-deps"
+                open={rule.ruleDeps.length + rule.inputDeps.length <= 8}
+              >
+                <summary>
+                  Built from · {rule.ruleDeps.length + rule.inputDeps.length}
+                </summary>
+                <div className="node-inspector-consumers">
+                  {rule.ruleDeps.map((depId) => (
+                    <button
+                      type="button"
+                      key={depId}
+                      onClick={() => flyFromIndex(depId)}
+                      title="Fly to this rule on the canvas"
+                    >
+                      {humanize(
+                        walkRuleById.get(depId)?.name ??
+                          depId.split("#").pop() ??
+                          depId,
+                      )}
+                    </button>
+                  ))}
+                  {rule.inputDeps.map((depId) => (
+                    <span key={depId} className="node-inspector-dep-q">
+                      {humanize(
+                        walkInputById.get(depId)?.name ??
+                          (depId.split("#").pop() ?? depId).split(".").pop() ??
+                          depId,
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+            {consumers.length > 0 ? (
+              <details
+                className="node-inspector-deps"
+                open={consumers.length <= 8}
+              >
+                <summary>Used by · {consumers.length}</summary>
+                <div className="node-inspector-consumers">
+                  {consumers.map((consumer) => (
+                    <button
+                      type="button"
+                      key={consumer.legalId}
+                      onClick={() => flyFromIndex(consumer.legalId)}
+                      title="Fly to this rule on the canvas"
+                    >
+                      {humanize(consumer.name)}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            ) : null}
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
@@ -2339,19 +2426,12 @@ export function GraphViewerApp() {
                 {running ? "Running…" : "▶ Run with these values · guided tour"}
               </button>
             ) : null}
-            {"legalId" in inspected &&
-            inspected.legalId &&
-            /:(statutes|regulations)\//.test(
-              fileLegalIdOf(inspected.legalId),
-            ) &&
-            axiomAppUrl(fileLegalIdOf(inspected.legalId)) ? (
+            {lawFileLegalId && axiomAppUrl(lawFileLegalId) ? (
               <button
                 type="button"
                 className="node-inspector-link"
                 onClick={() =>
-                  setLawPopup(
-                    `${axiomAppUrl(fileLegalIdOf(inspected.legalId)) ?? ""}?embed=1`,
-                  )
+                  setLawPopup(`${axiomAppUrl(lawFileLegalId) ?? ""}?embed=1`)
                 }
               >
                 § Read the law →
@@ -2533,6 +2613,15 @@ export function GraphViewerApp() {
                 onClick={() => void runScenario("all")}
               >
                 {running ? "Running…" : "▶ Run again"}
+              </button>
+              <button
+                type="button"
+                className="results-edit-inputs"
+                disabled={running}
+                onClick={() => setRunPanelOpen(true)}
+                title="Reopen the full input list to add or change answers"
+              >
+                ✎ Edit inputs
               </button>
             </div>
             <p className="results-note">
@@ -2744,6 +2833,51 @@ function humanize(value: string): string {
     .replace(/^universal_credit_/, "UC ")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+/**
+ * Rules weakly connected to the law's own outputs. Everything else is
+ * a standalone piece — other-territory tables bundled by a shared
+ * federal file, or chains not yet wired into the law — and stays off
+ * the whole-law survey. The outputs list still offers every rule, so
+ * an island can be brought on stage deliberately.
+ */
+function connectedToOwnOutputs(graph: ProgramGraph): Set<string> | null {
+  return connectedComponent(graph, defaultOutputsForProgram(graph));
+}
+
+/** Every node weakly connected to any of the seeds. */
+function connectedComponent(
+  graph: ProgramGraph,
+  seeds: string[],
+): Set<string> | null {
+  if (seeds.length === 0) return null;
+  const adjacency = new Map<string, string[]>();
+  const link = (a: string, b: string) => {
+    const forward = adjacency.get(a);
+    if (forward) forward.push(b);
+    else adjacency.set(a, [b]);
+    const backward = adjacency.get(b);
+    if (backward) backward.push(a);
+    else adjacency.set(b, [a]);
+  };
+  for (const rule of graph.rules) {
+    for (const dep of rule.ruleDeps) link(rule.legalId, dep);
+    for (const dep of rule.inputDeps) link(rule.legalId, dep);
+    for (const dep of rule.relationDeps) link(rule.legalId, dep);
+  }
+  const connected = new Set<string>(seeds);
+  const stack = [...seeds];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    for (const next of adjacency.get(id) ?? []) {
+      if (!connected.has(next)) {
+        connected.add(next);
+        stack.push(next);
+      }
+    }
+  }
+  return connected;
 }
 
 function initialCountry(): Country {

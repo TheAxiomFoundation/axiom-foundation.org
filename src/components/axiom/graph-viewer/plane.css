@@ -481,10 +481,12 @@
 
 /* ── Execution pill ── */
 .graph-viewer-root .exec-pill {
+  /* Replaces the Run button while a run is live — same top-right
+     band, flush with the graph box edge. */
   position: absolute;
-  top: 58px;
-  right: 24px;
-  z-index: 14;
+  top: -30px;
+  right: 0;
+  z-index: 16;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -538,6 +540,11 @@
     0 22px 50px -18px rgba(28, 25, 23, 0.4);
   padding: 14px 16px 16px;
   animation: inspector-in 0.3s var(--ease-out, ease) both;
+  /* Long content (a rule built from a dozen questions) scrolls inside
+     the card — the canvas never clips it. */
+  max-height: calc(100% - 128px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @keyframes inspector-in {
   from { opacity: 0; transform: translateX(10px); }
@@ -2192,10 +2199,31 @@
   color: var(--color-ink-muted);
 }
 
+.graph-viewer-root .node-inspector-deps {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-rule);
+}
 .graph-viewer-root .node-inspector-deps summary {
   cursor: pointer;
   user-select: none;
   list-style: none;
+  font-family: var(--f-mono, monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .node-inspector-deps summary::-webkit-details-marker {
+  display: none;
+}
+.graph-viewer-root .node-inspector-deps[open] summary {
+  color: var(--color-accent);
+}
+.graph-viewer-root .node-inspector-deps .node-inspector-consumers {
+  max-height: 150px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .graph-viewer-root .node-inspector-deps summary::after {
   content: " ▾";
@@ -3046,20 +3074,6 @@
   visibility: hidden;
 }
 
-.graph-viewer-root .top-search-kind {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  margin-right: 8px;
-  border: 1px solid var(--color-rule);
-  border-radius: 5px;
-  font-family: var(--f-mono, monospace);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-  flex-shrink: 0;
-}
 .graph-viewer-root .top-search-results button {
   display: flex;
   align-items: center;
@@ -3346,6 +3360,25 @@
   background: var(--color-accent-hover, #b45309);
 }
 .graph-viewer-root .results-rerun:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.graph-viewer-root .results-edit-inputs {
+  padding: 7px 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.graph-viewer-root .results-edit-inputs:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .results-edit-inputs:disabled {
   opacity: 0.6;
   cursor: default;
 }

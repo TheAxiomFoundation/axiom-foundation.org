@@ -46,6 +46,17 @@ export function humanizeCitation(fileLegalId: string): string {
   return `${JURISDICTION_LABELS[jurisdiction] ?? jurisdiction} · ${body}`;
 }
 
+/**
+ * Some rules carry a raw legal id in their `source` field (synthesized
+ * package rules cite their statute as "us:statutes/7/2014"). Render ids
+ * as citations; pass genuine citation text through untouched.
+ */
+export function humanizeSource(source: string): string {
+  return /^[a-z]{2}(?:-[a-z]{2})?:/.test(source)
+    ? humanizeCitation(source.split("#")[0] ?? source)
+    : source;
+}
+
 export function axiomAppUrl(fileLegalId: string): string | null {
   if (!fileLegalId || !fileLegalId.includes(":")) return null;
   const [jurisdiction, body] = fileLegalId.split(":") as [string, string];

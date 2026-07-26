@@ -66,27 +66,27 @@ const DEFAULT_LINKS: NavLink[] = [
       {
         label: "Build government systems on the law",
         items: [
-          { href: "/demos?d=workflow", label: "SNAP workflow checker" },
-          { href: "/demos?d=guidance", label: "Guidance impact visualizer" },
+          { href: "/demos?d=workflow", label: "Check a workflow" },
+          { href: "/demos?d=guidance", label: "Reconcile primary sources" },
         ],
       },
       {
         label: "Ground AI models in citable law",
         items: [
-          { href: "/demos?d=finbot", label: "Grounded benefits assistant" },
+          { href: "/demos?d=finbot", label: "Get accurate answers" },
         ],
       },
       {
         label: "Power products on rules you don't rebuild",
         items: [
-          { href: "/demos?d=builder", label: "Form Builder" },
+          { href: "/demos?d=builder", label: "Build a form" },
         ],
       },
       {
         label: "Simulate policy on real rules",
         items: [
-          { href: "/demos?d=snap", label: "Colorado SNAP cliffs" },
-          { href: "/demos?d=microsim", label: "Microsimulation" },
+          { href: "/demos?d=snap", label: "Explore benefits cliffs" },
+          { href: "/demos?d=microsim", label: "Simulate household impacts" },
         ],
       },
       {
@@ -293,17 +293,11 @@ export function Nav({
     );
   }
 
+  // Mobile drawer: grouped entries collapse to their top-level link
+  // (the demos sub-menu made the drawer taller than the screen) —
+  // the destination page carries the full gallery.
   function renderMobileEntry(link: NavLink) {
-    if (!link.items?.length && !link.groups?.length)
-      return renderNavLink(link, true);
-    return (
-      <div key={link.href}>
-        {renderNavLink(link, true)}
-        <div className="ml-4 border-l border-[var(--color-rule-subtle)] pl-4">
-          {dropdownEntries(link, true)}
-        </div>
-      </div>
-    );
+    return renderNavLink(link, true);
   }
 
   const homeHref = baseUrl || "/";
@@ -380,7 +374,7 @@ export function Nav({
 
       {/* Mobile drawer */}
       {open && (
-        <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
+        <nav className="md:hidden max-h-[calc(100vh-64px)] overflow-y-auto border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderMobileEntry(link))}
           <a
             href={appUrl}

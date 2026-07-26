@@ -16,7 +16,10 @@ export function CoverageHeader() {
       </h1>
       <p className="max-w-[680px] font-body text-[1.15rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
         A running census of everything Axiom holds — from source law to
-        the machine-executable rules built on it.
+        the machine-executable rules built on it.{" "}
+        <span className="serif-italic text-[var(--color-ink)]">
+          Every figure is live, and counting.
+        </span>
       </p>
     </>
   );

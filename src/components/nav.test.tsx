@@ -75,9 +75,9 @@ describe('Nav', () => {
   it('renders demos dropdown items by segment', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
-    expect(screen.getAllByText('Form Builder').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Grounded benefits assistant').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Colorado SNAP cliffs').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Build a form').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Get accurate answers').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Explore benefits cliffs').length).toBeGreaterThan(0)
     expect(screen.getAllByText('All demos').length).toBeGreaterThan(0)
   })
 

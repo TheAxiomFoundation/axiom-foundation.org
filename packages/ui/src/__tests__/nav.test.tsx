@@ -39,16 +39,17 @@ describe("Nav", () => {
     expect(
       screen.getAllByText("Simulate policy on real rules").length,
     ).toBeGreaterThan(0);
+    // Labels are active phrases, shared with the shell gallery tiles.
     expect(
-      screen.getAllByText("Form Builder")[0].closest("a"),
+      screen.getAllByText("Build a form")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=builder");
     // The small company checker was pulled from the gallery.
     expect(screen.queryByText("Small company checker")).not.toBeInTheDocument();
     expect(
-      screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
+      screen.getAllByText("Get accurate answers")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=finbot");
     expect(
-      screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
+      screen.getAllByText("Explore benefits cliffs")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=snap");
     expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
       "href",

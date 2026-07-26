@@ -385,12 +385,12 @@
 }
 .jw-name {
   font-family: var(--f-serif);
-  font-size: 20px;
+  font-size: 24px;
   fill: var(--color-ink);
 }
 .jw-sub {
   font-family: var(--f-mono);
-  font-size: 9.5px;
+  font-size: 13px;
   letter-spacing: 0.05em;
   fill: var(--color-ink-muted);
 }

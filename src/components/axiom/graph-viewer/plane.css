@@ -2939,3 +2939,34 @@
   outline: none;
   border-color: var(--color-accent);
 }
+
+/* The veil: the whole-law layout composes off-stage; the map is
+   revealed once, already whole, right as the camera takes off. */
+.graph-viewer-root .graph-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-paper);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.graph-viewer-root .graph-veil.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+.graph-viewer-root .graph-veil span {
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  animation: veil-pulse 1.4s ease-in-out infinite;
+}
+@keyframes veil-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}

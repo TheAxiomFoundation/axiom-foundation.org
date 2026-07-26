@@ -239,6 +239,15 @@ export function GraphViewerApp() {
   const graphJustLoaded = useRef(false);
   const surveyPendingRef = useRef(false);
   const pendingOpeningRef = useRef<string | null>(null);
+  // While a big selection lays out, the canvas hides behind a paper
+  // veil — the map is composed off-stage and revealed once, whole.
+  const [veiled, setVeiled] = useState(false);
+  const veilTimer = useRef<number | null>(null);
+  const veilFor = (ms: number) => {
+    setVeiled(true);
+    if (veilTimer.current) window.clearTimeout(veilTimer.current);
+    veilTimer.current = window.setTimeout(() => setVeiled(false), ms);
+  };
   const launcherRef = useRef<"open" | "leaving" | "closed">("open");
   const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
@@ -303,9 +312,11 @@ export function GraphViewerApp() {
     // so its one-time layout stall hits a still screen.
     if (outputRules.length === 0) {
       surveyPendingRef.current = true;
+      veilFor(2400);
       return;
     }
-    window.setTimeout(applySurvey, 460);
+    veilFor(1500);
+    applySurvey();
   };
   const beginScenario = () => {
     dismissLauncher();
@@ -1775,6 +1786,12 @@ export function GraphViewerApp() {
           </div>
         )}
         <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
+          <div
+            className={`graph-veil ${veiled ? "is-on" : ""}`}
+            aria-hidden={!veiled}
+          >
+            <span>composing the map…</span>
+          </div>
           <button
             type="button"
             className="journey-toggle"

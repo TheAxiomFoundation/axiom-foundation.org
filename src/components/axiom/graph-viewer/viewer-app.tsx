@@ -297,7 +297,7 @@ export function GraphViewerApp() {
 
     setSelectedOutputs(outputRules.map((rule) => rule.legalId));
     setFolded((current) => (current.size === 0 ? current : new Set()));
-    const summit = summitOutput ?? outputRules[0]?.legalId ?? null;
+    const summit = summitOutput ?? relevantOutputRules[0]?.legalId ?? null;
     setFlyTarget((current) => ({
       legalId: summit ?? "*",
       nonce: (current?.nonce ?? 0) + 1,
@@ -751,10 +751,17 @@ export function GraphViewerApp() {
           surveyPendingRef.current = false;
           surveyRef.current = true;
           setFolded((current) => (current.size === 0 ? current : new Set()));
+          const consumed = new Set<string>();
+          for (const rule of nextGraph.rules) {
+            for (const dep of rule.ruleDeps) consumed.add(dep);
+          }
           setSelectedOutputs(
-            rankOutputRules(nextGraph, { includeLeaves: false }).map(
-              (rule) => rule.legalId,
-            ),
+            rankOutputRules(nextGraph, { includeLeaves: false })
+              .filter(
+                (rule) =>
+                  rule.kind !== "parameter" || consumed.has(rule.legalId),
+              )
+              .map((rule) => rule.legalId),
           );
           return;
         }
@@ -837,6 +844,18 @@ export function GraphViewerApp() {
     () => rankOutputRules(graph, { includeLeaves: composeFocus != null }),
     [graph, composeFocus],
   );
+  // A parameter nobody in this package consumes is table noise from
+  // a bundled federal file (Alaska maximums inside New York) — it
+  // earns no card of its own.
+  const relevantOutputRules = useMemo(() => {
+    const consumed = new Set<string>();
+    for (const rule of graph?.rules ?? []) {
+      for (const dep of rule.ruleDeps) consumed.add(dep);
+    }
+    return outputRules.filter(
+      (rule) => rule.kind !== "parameter" || consumed.has(rule.legalId),
+    );
+  }, [outputRules, graph]);
   const filteredOutputRules = useMemo(() => {
     const query = outputSearch.trim().toLowerCase();
     if (!query) return outputRules;
@@ -1899,13 +1918,6 @@ export function GraphViewerApp() {
               </ol>
 
               <div className="walk-card">
-                <span className="walk-kind">
-                  {input
-                    ? "Question"
-                    : rule?.kind === "parameter"
-                      ? "Parameter · a constant of the law"
-                      : "Rule"}
-                </span>
                 <h2>{name}</h2>
                 {rule?.kind === "parameter" && rule.formula ? (
                   <p className="parameter-value">
@@ -1970,64 +1982,37 @@ export function GraphViewerApp() {
                   {rule &&
                   (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
                     <>
-                      <dt>Depends on</dt>
+                      <dt>Built from</dt>
                       <dd>
-                        <details className="node-inspector-deps">
-                          <summary>
-                            {[
-                              rule.ruleDeps.length > 0
-                                ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "rule" : "rules"}`
-                                : null,
-                              rule.inputDeps.length > 0
-                                ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </summary>
-                          <div className="node-inspector-consumers">
-                            {rule.ruleDeps.map((depId) => (
-                              <button
-                                type="button"
-                                key={depId}
-                                onClick={() => flyFromIndex(depId)}
-                                title="Fly to this rule on the canvas"
-                              >
-                                {humanize(
-                                  walkRuleById.get(depId)?.name ??
-                                    depId.split("#").pop() ??
-                                    depId,
-                                )}
-                              </button>
-                            ))}
-                            {rule.inputDeps.map((depId) => (
-                              <span
-                                key={depId}
-                                className="node-inspector-dep-q"
-                              >
-                                {humanize(
-                                  walkInputById.get(depId)?.name ??
-                                    (depId.split("#").pop() ?? depId)
-                                      .split(".")
-                                      .pop() ??
-                                    depId,
-                                )}
-                              </span>
-                            ))}
-                          </div>
-                        </details>
+                        <div className="node-inspector-consumers">
+                          {rule.ruleDeps.map((depId) => (
+                            <button
+                              type="button"
+                              key={depId}
+                              onClick={() => flyFromIndex(depId)}
+                              title="Fly to this rule on the canvas"
+                            >
+                              {humanize(
+                                walkRuleById.get(depId)?.name ??
+                                  depId.split("#").pop() ??
+                                  depId,
+                              )}
+                            </button>
+                          ))}
+                          {rule.inputDeps.map((depId) => (
+                            <span key={depId} className="node-inspector-dep-q">
+                              {humanize(
+                                walkInputById.get(depId)?.name ??
+                                  (depId.split("#").pop() ?? depId).split(".").pop() ??
+                                  depId,
+                              )}
+                            </span>
+                          ))}
+                        </div>
                       </dd>
                     </>
                   ) : null}
-                  {currentId ? (
-                    <>
-                      <dt>Legal ID</dt>
-                      <dd className="node-inspector-mono" title={currentId}>
-                        {currentId}
-                      </dd>
-                    </>
-                  ) : null}
-                  {input && input.sample !== undefined && input.sample !== null ? (
+                                    {input && input.sample !== undefined && input.sample !== null ? (
                     <>
                       <dt>Default</dt>
                       <dd className="node-inspector-mono">
@@ -2226,12 +2211,6 @@ export function GraphViewerApp() {
             return (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
-              <span className="node-inspector-kind">
-                {meta?.kindLine ||
-                  (rule
-                    ? `${rule.kind ?? "rule"}${rule.dtype ? ` · ${rule.dtype}` : ""}`
-                    : inspected.kind)}
-              </span>
               <button
                 type="button"
                 className="results-close"
@@ -2294,49 +2273,33 @@ export function GraphViewerApp() {
               ) : null}
               {rule && (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
                 <>
-                  <dt>Depends on</dt>
+                  <dt>Built from</dt>
                   <dd>
-                    <details className="node-inspector-deps">
-                      <summary>
-                        {[
-                          rule.ruleDeps.length > 0
-                            ? `${rule.ruleDeps.length} ${rule.ruleDeps.length === 1 ? "rule" : "rules"}`
-                            : null,
-                          rule.inputDeps.length > 0
-                            ? `${rule.inputDeps.length} ${rule.inputDeps.length === 1 ? "question" : "questions"}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </summary>
-                      <div className="node-inspector-consumers">
-                        {rule.ruleDeps.map((depId) => (
-                          <button
-                            type="button"
-                            key={depId}
-                            onClick={() => flyFromIndex(depId)}
-                            title="Fly to this rule on the canvas"
-                          >
-                            {humanize(
-                              walkRuleById.get(depId)?.name ??
-                                depId.split("#").pop() ??
-                                depId,
-                            )}
-                          </button>
-                        ))}
-                        {rule.inputDeps.map((depId) => (
-                          <span key={depId} className="node-inspector-dep-q">
-                            {humanize(
-                              walkInputById.get(depId)?.name ??
-                                (depId.split("#").pop() ?? depId)
-                                  .split(".")
-                                  .pop() ??
-                                depId,
-                            )}
-                          </span>
-                        ))}
-                      </div>
-                    </details>
+                    <div className="node-inspector-consumers">
+                      {rule.ruleDeps.map((depId) => (
+                        <button
+                          type="button"
+                          key={depId}
+                          onClick={() => flyFromIndex(depId)}
+                          title="Fly to this rule on the canvas"
+                        >
+                          {humanize(
+                            walkRuleById.get(depId)?.name ??
+                              depId.split("#").pop() ??
+                              depId,
+                          )}
+                        </button>
+                      ))}
+                      {rule.inputDeps.map((depId) => (
+                        <span key={depId} className="node-inspector-dep-q">
+                          {humanize(
+                            walkInputById.get(depId)?.name ??
+                              (depId.split("#").pop() ?? depId).split(".").pop() ??
+                              depId,
+                          )}
+                        </span>
+                      ))}
+                    </div>
                   </dd>
                 </>
               ) : null}
@@ -2424,18 +2387,7 @@ export function GraphViewerApp() {
                   <dd>{inspected.hiddenCount} rules</dd>
                 </>
               ) : null}
-              {"legalId" in inspected && inspected.legalId ? (
-                <>
-                  <dt>Legal ID</dt>
-                  <dd
-                    className="node-inspector-mono"
-                    title={inspected.legalId}
-                  >
-                    {inspected.legalId}
-                  </dd>
-                </>
-              ) : null}
-            </dl>
+                          </dl>
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>

@@ -3102,3 +3102,8 @@
   white-space: pre;
   line-height: 1.75;
 }
+
+/* The kind pill is gone — the close button holds the right corner. */
+.graph-viewer-root .node-inspector-head {
+  justify-content: flex-end;
+}

@@ -158,7 +158,7 @@ export function JourneyScrolly() {
       ref={trackRef}
       style={scrolly ? { height: `${trackVh}vh` } : undefined}
     >
-      <div className={scrolly ? "sticky top-[96px]" : undefined}>
+      <div className={scrolly ? "journey-sticky" : undefined}>
         {!mounted ? (
           <div aria-hidden className="w-full aspect-[1420/620] min-h-[320px]" />
         ) : scrolly ? (

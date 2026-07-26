@@ -498,6 +498,23 @@
     font-size: 19px;
   }
 }
+
+/* The scrolly's pinned stage: below the header on desktop; on phones
+   the film is only ~a third of the screen tall, so the stage takes
+   the full viewport and centers the film in it. */
+.journey-sticky {
+  position: sticky;
+  top: 96px;
+}
+@media (max-width: 900px) {
+  .journey-sticky {
+    top: 0;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
 .clib-cap {
   font-family: var(--f-mono);
   font-size: 10px;

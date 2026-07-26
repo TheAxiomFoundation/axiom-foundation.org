@@ -14,7 +14,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { SmoothStepEdge, useReactFlow, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, SmoothStepEdge, useReactFlow, type EdgeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import type { DashboardSpec, ParameterRule, TraceNode } from "./types";
@@ -1419,12 +1419,50 @@ const UnknownNode = ({ data }: NodeProps) => {
   );
 };
 
-/** The stock smoothstep takes hard 5px elbows; every wire in the
- *  plane turns on a soft uniform radius with a consistent exit stub,
- *  so parallel runs read as aligned rails instead of jittery jogs. */
-const RoundedSmoothStep = (props: EdgeProps) => (
-  <SmoothStepEdge {...props} pathOptions={{ borderRadius: 14, offset: 22 }} />
-);
+/** Wires as rails: the stock smoothstep bends at the midpoint
+ *  between each pair, so edges leaving one column comb into hooks at
+ *  slightly different x. Here every forward edge exits its card,
+ *  joins a fixed rail just right of the source column (shared by all
+ *  its siblings), and runs straight to the target on soft corners.
+ *  Backward or near-level edges fall back to smoothstep. */
+const RAIL_OFFSET = 28;
+const RAIL_RADIUS = 12;
+const RoundedSmoothStep = (props: EdgeProps) => {
+  const { sourceX, sourceY, targetX, targetY, markerEnd, style } = props;
+  const dy = targetY - sourceY;
+  if (
+    targetX - sourceX > RAIL_OFFSET + RAIL_RADIUS + 6 &&
+    Math.abs(dy) >= RAIL_RADIUS * 2
+  ) {
+    const rail = sourceX + RAIL_OFFSET;
+    const dir = dy > 0 ? 1 : -1;
+    const path =
+      `M ${sourceX},${sourceY} ` +
+      `L ${rail - RAIL_RADIUS},${sourceY} ` +
+      `Q ${rail},${sourceY} ${rail},${sourceY + dir * RAIL_RADIUS} ` +
+      `L ${rail},${targetY - dir * RAIL_RADIUS} ` +
+      `Q ${rail},${targetY} ${rail + RAIL_RADIUS},${targetY} ` +
+      `L ${targetX},${targetY}`;
+    return (
+      <BaseEdge id={props.id} path={path} markerEnd={markerEnd} style={style} />
+    );
+  }
+  if (targetX - sourceX > RAIL_OFFSET && Math.abs(dy) < RAIL_RADIUS * 2) {
+    // Near-level: one gentle S instead of a micro-staircase.
+    const midX = (sourceX + targetX) / 2;
+    const path =
+      `M ${sourceX},${sourceY} C ${midX},${sourceY} ${midX},${targetY} ${targetX},${targetY}`;
+    return (
+      <BaseEdge id={props.id} path={path} markerEnd={markerEnd} style={style} />
+    );
+  }
+  return (
+    <SmoothStepEdge
+      {...props}
+      pathOptions={{ borderRadius: RAIL_RADIUS, offset: RAIL_OFFSET }}
+    />
+  );
+};
 const EDGE_TYPES = { smoothstep: RoundedSmoothStep };
 
 const NODE_TYPES = {

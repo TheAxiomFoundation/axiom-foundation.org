@@ -227,9 +227,6 @@ export function GraphViewerApp() {
   const [householdAliases, setHouseholdAliases] = useState<
     Record<string, string>
   >({});
-  const [scenarioStep, setScenarioStep] = useState<
-    "inputs" | "outputs" | "run"
-  >("inputs");
   const [replay, setReplay] = useState<{
     stages: string[][];
     cursor: number;
@@ -324,7 +321,6 @@ export function GraphViewerApp() {
   const beginScenario = () => {
     dismissLauncher();
     setScenarioMode(true);
-    setScenarioStep("inputs");
     setReplay(null);
     setScenarioGlow(true);
     window.setTimeout(() => setScenarioGlow(false), 2600);
@@ -627,16 +623,12 @@ export function GraphViewerApp() {
         if (rule.kind === "derived" && !personLevel) reachable.add(id);
         for (const dep of rule.ruleDeps) walk(dep);
       };
-      // A survey selects every ranked result; tracing from that soup
-      // includes variables the engine rejects and starves the whole
-      // trace. Big selections trace from the true computation — the
-      // terminal results — instead.
-      const traceRoots =
-        selectedOutputs.length > 24
-          ? (graph?.terminalOutputs ?? []).filter((id) =>
-              walkRuleById.has(id),
-            )
-          : selectedOutputs;
+      // Every run computes the outermost layer and everything in
+      // between: trace from the terminal results regardless of what
+      // the canvas currently selects.
+      const traceRoots = (graph?.terminalOutputs ?? []).filter((id) =>
+        walkRuleById.has(id),
+      );
       for (const id of traceRoots) walk(id);
       const attempt = (variables: string[]) =>
         fetch("/api/axiom/runtime/calculate", {
@@ -1308,28 +1300,6 @@ export function GraphViewerApp() {
   // the sidebar panel render the same staged UI.
   const scenarioFlowUI = (
     <>
-            <div className="scenario-steps" role="tablist" aria-label="Scenario stages">
-              {(
-                [
-                  ["inputs", "1 · Inputs"],
-                  ["outputs", "2 · Outputs"],
-                  ["run", "3 · Run"],
-                ] as const
-              ).map(([step, label]) => (
-                <button
-                  key={step}
-                  type="button"
-                  role="tab"
-                  aria-selected={scenarioStep === step}
-                  className={`scenario-step-tab ${scenarioStep === step ? "is-active" : ""}`}
-                  onClick={() => setScenarioStep(step)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {scenarioStep === "inputs" && (
-            <>
             <div className="scenario-fields">
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="scenario-field">
@@ -1374,112 +1344,20 @@ export function GraphViewerApp() {
             <button
               type="button"
               className="run-button scenario-next"
-              onClick={() => setScenarioStep("outputs")}
+              disabled={running}
+              onClick={() => launchRun("all")}
             >
-              Next · pick outputs →
+              {running ? "Running…" : "▶ Run it all"}
             </button>
-            </>
-            )}
-            {scenarioStep === "outputs" && (
-              <>
-                {selectedOutputRules.length > 12 ? (
-                  <div className="selected-output-summary">
-                    <span>{selectedOutputRules.length} results selected</span>
-                    <button type="button" onClick={() => setSelectedOutputs([])}>
-                      Clear all
-                    </button>
-                  </div>
-                ) : selectedOutputRules.length > 0 ? (
-                  <div className="selected-output-list" aria-label="Selected outputs">
-                    {selectedOutputRules.map((output) => (
-                      <button
-                        type="button"
-                        key={output.legalId}
-                        onClick={() => toggleOutput(output.legalId)}
-                        title="Remove output"
-                      >
-                        {output.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <label className="output-search">
-                  <span>Search outputs</span>
-                  <input
-                    type="search"
-                    value={outputSearch}
-                    onChange={(event) => setOutputSearch(event.target.value)}
-                    placeholder="Eligibility, allotment, income..."
-                  />
-                </label>
-                <div className="output-row output-row-head" aria-hidden>
-                  <span className="output-row-name">Result</span>
-                  <span className="output-row-cell">Type</span>
-                  <span className="output-row-cell">Entity</span>
-                  <span className="output-row-cell">Period</span>
-                </div>
-                <div className="output-list scenario-output-list">
-                  {filteredOutputRules.map((rule) => (
-                    <button
-                      type="button"
-                      key={rule.legalId}
-                      className={`output-option output-row ${selectedSet.has(rule.legalId) ? "is-selected" : ""}`}
-                      onClick={() => toggleOutput(rule.legalId)}
-                    >
-                      <span className="output-row-name">
-                        {humanize(rule.name)}
-                      </span>
-                      <span className="output-row-cell">
-                        {[rule.dtype, rule.unit].filter(Boolean).join(" · ") ||
-                          "—"}
-                      </span>
-                      <span className="output-row-cell">
-                        {rule.entity ? humanize(rule.entity) : "—"}
-                      </span>
-                      <span className="output-row-cell">
-                        {rule.period ?? "—"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="run-button scenario-next"
-                  disabled={selectedOutputs.length === 0}
-                  onClick={() => setScenarioStep("run")}
-                >
-                  Next · run →
-                </button>
-              </>
-            )}
-            {scenarioStep === "run" && (
-              <>
-                <p className="scenario-run-summary">
-                  {allScenarioFields.length}{" "}
-                  {allScenarioFields.length === 1 ? "input" : "inputs"} ·{" "}
-                  {selectedOutputs.length}{" "}
-                  {selectedOutputs.length === 1 ? "output" : "outputs"}{" "}
-                  selected.
-                </p>
-                <button
-                  type="button"
-                  className="run-button"
-                  disabled={running || selectedOutputs.length === 0}
-                  onClick={() => launchRun("all")}
-                >
-                  {running ? "Running…" : "▶ Run it all"}
-                </button>
-                <button
-                  type="button"
-                  className="run-button run-button-secondary"
-                  disabled={running || selectedOutputs.length === 0}
-                  onClick={() => launchRun("steps")}
-                >
-                  ⧉ Run step by step
-                </button>
-                {runError && <p className="run-error">{runError}</p>}
-              </>
-            )}
+            <button
+              type="button"
+              className="run-button run-button-secondary"
+              disabled={running}
+              onClick={() => launchRun("steps")}
+            >
+              ⧉ Run step by step
+            </button>
+            {runError && <p className="run-error">{runError}</p>}
     </>
   );
 

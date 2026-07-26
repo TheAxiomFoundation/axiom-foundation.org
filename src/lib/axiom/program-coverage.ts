@@ -52,3 +52,29 @@ export async function getProgramCoverage(): Promise<ProgramCoverage[]> {
   if (value.length > 0) cached = { at: Date.now(), value };
   return value;
 }
+
+/**
+ * The signed side of the registry: packages compiled from certified
+ * encodings (mode "compiled"), as opposed to fixture-backed previews.
+ * Null when the runtime API is unconfigured/unavailable or nothing
+ * compiled is live — callers hide the line rather than show zeros.
+ */
+export interface RegistryStats {
+  compiledPrograms: number;
+  certifiedRules: number;
+}
+
+export async function getRegistryStats(): Promise<RegistryStats | null> {
+  const packages = await listRuntimePackages();
+  const compiled = packages.filter(
+    (pkg) => pkg.mode === "compiled" && pkg.status === "ready"
+  );
+  if (compiled.length === 0) return null;
+  return {
+    compiledPrograms: compiled.length,
+    certifiedRules: compiled.reduce(
+      (sum, pkg) => sum + (pkg.output_count ?? 0),
+      0
+    ),
+  };
+}

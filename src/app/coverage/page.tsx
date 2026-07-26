@@ -3,7 +3,12 @@ import { Reveal } from "@/components/landing/reveal";
 import { CoverageHeader } from "@/components/coverage/header";
 import { StackHero } from "@/components/coverage/stack-hero";
 import { CoverageViews } from "@/components/coverage/coverage-views";
-import { getProgramCoverage, type ProgramCoverage } from "@/lib/axiom/program-coverage";
+import {
+  getProgramCoverage,
+  getRegistryStats,
+  type ProgramCoverage,
+  type RegistryStats,
+} from "@/lib/axiom/program-coverage";
 import {
   getCoverageData,
   type CoverageData,
@@ -20,9 +25,10 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 export default async function CoveragePage() {
-  const [data, programs] = await Promise.all([
+  const [data, programs, registry] = await Promise.all([
     getCoverageData(),
     getProgramCoverage(),
+    getRegistryStats(),
   ]);
 
   return (
@@ -39,19 +45,23 @@ export default async function CoveragePage() {
             Live counts are temporarily unavailable. Reload to try again.
           </Reveal>
         ) : (
-          <CoverageBody data={data} programs={programs} />
+          <CoverageBody data={data} programs={programs} registry={registry} />
         )}
       </div>
     </div>
   );
 }
 
+const numberFormat = new Intl.NumberFormat("en-US");
+
 function CoverageBody({
   data,
   programs,
+  registry,
 }: {
   data: CoverageData;
   programs: ProgramCoverage[];
+  registry: RegistryStats | null;
 }) {
   return (
     <>
@@ -60,6 +70,28 @@ function CoverageBody({
       <div className="mb-20">
         <StackHero data={data} />
       </div>
+
+      {/* The certified layer: only compiled packages carry the
+          signature — fixture previews don't count here. */}
+      {registry && (
+        <Reveal className="-mt-6 mb-20 text-center">
+          <p className="m-0 mx-auto max-w-[640px] font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
+            Of these,{" "}
+            <span className="font-mono text-[var(--color-accent)]">
+              {numberFormat.format(registry.compiledPrograms)}
+            </span>{" "}
+            programs are compiled into the signed runtime registry &mdash;{" "}
+            <span className="font-mono text-[var(--color-accent)]">
+              {numberFormat.format(registry.certifiedRules)}
+            </span>{" "}
+            certified rules,{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              executable today
+            </span>
+            .
+          </p>
+        </Reveal>
+      )}
 
       <Reveal as="section" className="mb-16">
         <CoverageViews

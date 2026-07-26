@@ -1,10 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetCoverageData, mockGetProgramCoverage } = vi.hoisted(() => ({
-  mockGetCoverageData: vi.fn(),
-  mockGetProgramCoverage: vi.fn(),
-}));
+const { mockGetCoverageData, mockGetProgramCoverage, mockGetRegistryStats } =
+  vi.hoisted(() => ({
+    mockGetCoverageData: vi.fn(),
+    mockGetProgramCoverage: vi.fn(),
+    mockGetRegistryStats: vi.fn(),
+  }));
 
 vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -13,6 +15,7 @@ vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
 
 vi.mock("@/lib/axiom/program-coverage", () => ({
   getProgramCoverage: mockGetProgramCoverage,
+  getRegistryStats: mockGetRegistryStats,
 }));
 
 import CoveragePage from "./page";
@@ -69,6 +72,11 @@ describe("CoveragePage", () => {
     mockGetCoverageData.mockReset();
     mockGetProgramCoverage.mockReset();
     mockGetProgramCoverage.mockResolvedValue(PROGRAMS);
+    mockGetRegistryStats.mockReset();
+    mockGetRegistryStats.mockResolvedValue({
+      compiledPrograms: 16,
+      certifiedRules: 3323,
+    });
   });
 
   it("renders an explicit unavailable state when data cannot load", async () => {

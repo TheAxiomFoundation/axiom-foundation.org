@@ -25,7 +25,8 @@ const BUILD = [
     n: "03",
     title: "The Encoder",
     desc: "An AI-assisted pipeline that reads source law, drafts encodings subsection by subsection, and logs every decision with its provenance.",
-    href: "/encoder",
+    // Held back for now — the /encoder page link returns later.
+    href: null,
   },
   {
     n: "04",
@@ -116,12 +117,14 @@ export default function AboutPage() {
                 <p className="m-0 font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed">
                   {card.desc}
                 </p>
-                <Link
-                  href={card.href}
-                  className="mt-auto pt-4 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-                >
-                  Explore &rarr;
-                </Link>
+                {card.href && (
+                  <Link
+                    href={card.href}
+                    className="mt-auto pt-4 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+                  >
+                    Explore &rarr;
+                  </Link>
+                )}
               </RevealItem>
             ))}
           </RevealGroup>

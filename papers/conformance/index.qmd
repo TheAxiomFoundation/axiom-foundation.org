@@ -293,6 +293,24 @@ but it is ours to make, and a reader should treat the `upstream_engine_gap`
 column as a claim to audit rather than a fact to accept. The evidence
 requirements exist to make auditing cheap, not to make the judgement unnecessary.
 
+**Neither conjunct states what a suite varied.** Coverage counts policies and
+conformance counts unexplained mismatches; neither says which input dimensions
+the comparison actually exercised. A covered, conformant policy may have been
+compared across a narrow slice of its input space, and a suite that pins a
+dimension is indistinguishable, on the scoreboard, from one that varies it
+widely. Worse, a comparison harness may deliberately feed one engine's computed
+value into the other's input — a legitimate way to bound what is under test,
+but one that satisfies the receiving rule by construction. We therefore treat
+*exercise* as its own reportable dimension: for each suite, the distinct-value
+count of every committed evidence field, with each field classified as varied,
+constant, or bridged-through. In our Colorado SNAP suite this census shows
+1,072 households varying gross income across 1,051 distinct values and the
+shelter deduction across 90, while the dependent-care, child-support, and
+medical deductions are bridged through from the reference model — their
+downstream effect tested, their own derivation deliberately left to unit tests
+and the administrative-sample comparison. Publishing that census alongside the
+match verdict is the difference between claiming breadth and stating it.
+
 ## Related work
 
 Comparison against an independent implementation is long-standing practice in

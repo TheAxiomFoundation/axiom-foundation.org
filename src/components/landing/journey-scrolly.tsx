@@ -16,11 +16,13 @@ import { CYCLE, JourneyFilm } from "./journey-film";
  * `setCurrentTime` from scroll progress. The film crossfades in over
  * the landed page, same as the demo's auto mode.
  *
- * Scrolly engages on wide viewports with motion allowed; elsewhere
- * the two acts run themselves (library → film → library), a compact
- * version of the demo's autopilot.
+ * Scrolly engages wherever motion is allowed — phones included, with
+ * a shorter track sized for thumb-scrolling. Reduced-motion visitors
+ * get the acts running themselves (library → film → library), a
+ * compact version of the demo's autopilot.
  */
 const TRACK_VH = 820;
+const TRACK_VH_NARROW = 520;
 
 // Damping for the scrub: scroll sets a target, and each frame the
 // clock eases toward it by this fraction. ~0.08 at 60fps ≈ a 200ms
@@ -66,6 +68,7 @@ export function JourneyScrolly() {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [scrolly, setScrolly] = useState(false);
+  const [trackVh, setTrackVh] = useState(TRACK_VH);
   const [filmOn, setFilmOn] = useState(false);
 
   useEffect(() => {
@@ -74,7 +77,8 @@ export function JourneyScrolly() {
     const wide = mm && window.matchMedia("(min-width: 901px)").matches;
     const noMotion =
       mm && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setScrolly(wide && !noMotion);
+    setScrolly(!noMotion);
+    setTrackVh(wide ? TRACK_VH : TRACK_VH_NARROW);
     setMounted(true);
   }, []);
 
@@ -152,7 +156,7 @@ export function JourneyScrolly() {
   return (
     <div
       ref={trackRef}
-      style={scrolly ? { height: `${TRACK_VH}vh` } : undefined}
+      style={scrolly ? { height: `${trackVh}vh` } : undefined}
     >
       <div className={scrolly ? "sticky top-[96px]" : undefined}>
         {!mounted ? (

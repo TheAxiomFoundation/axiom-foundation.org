@@ -31,8 +31,6 @@
 .graph-viewer-root .scenario-fields {
   display: grid;
   gap: 8px;
-  max-height: 260px;
-  overflow-y: auto;
   padding-right: 4px;
 }
 .graph-viewer-root .scenario-field {
@@ -141,9 +139,8 @@
 }
 .graph-viewer-root .results-sheet {
   position: absolute;
-  left: 50%;
+  left: 60px;
   bottom: 22px;
-  transform: translateX(-50%);
   width: min(560px, calc(100% - 32px));
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
   border: 1px solid var(--color-rule);
@@ -401,9 +398,6 @@
 .graph-viewer-root .outputs-control {
   overflow: hidden;
   min-height: 0;
-}
-.graph-viewer-root .scenario-fields {
-  max-height: 120px;
 }
 .graph-viewer-root .brand p {
   display: none;
@@ -1391,6 +1385,11 @@
 }
 .graph-viewer-root .irg-wrap .react-flow__node:hover .irg-node {
   transform: translateY(-2px);
+}
+.graph-viewer-root .irg-wrap[data-lod="far"] .react-flow__node:hover .irg-node {
+  /* at far zoom the lift moves the card out from under the cursor —
+     enter/leave loop reads as flicker */
+  transform: none;
 }
 .graph-viewer-root
   .irg-wrap[data-lod="near"]
@@ -2573,6 +2572,22 @@
 
 /* Center-anchored sheets need their translateX preserved through the
    entrance — panel-in ends at transform:none and un-centers them. */
+@keyframes corner-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.graph-viewer-root .results-sheet {
+  animation: corner-in 0.3s var(--ease-out, ease) both;
+}
+.graph-viewer-root .replay-bar {
+  animation: sheet-in 0.3s var(--ease-out, ease) both;
+}
 @keyframes sheet-in {
   from {
     opacity: 0;
@@ -2583,12 +2598,10 @@
     transform: translateX(-50%) translateY(0);
   }
 }
-.graph-viewer-root .results-sheet,
-.graph-viewer-root .replay-bar {
-  animation: sheet-in 0.3s var(--ease-out, ease) both;
-}
 @media (prefers-reduced-motion: reduce) {
-  .graph-viewer-root .results-sheet,
+  .graph-viewer-root .results-sheet {
+    animation: none;
+  }
   .graph-viewer-root .replay-bar {
     animation: none;
     transform: translateX(-50%);
@@ -3315,4 +3328,19 @@
 .graph-viewer-root .results-rerun:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.graph-viewer-root .results-adjust-field span button,
+.graph-viewer-root .results-adjust-jump {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.graph-viewer-root .results-adjust-jump:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
 }

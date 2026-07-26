@@ -2439,7 +2439,42 @@ export function GraphViewerApp() {
             <div className="results-adjust" aria-label="Adjust and run again">
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="results-adjust-field">
-                  <span>{humanize(field.label)}</span>
+                  <span>
+                    <button
+                      type="button"
+                      className="results-adjust-jump"
+                      title="Find this on the canvas"
+                      onClick={() => {
+                        const input = (graph?.inputs ?? []).find(
+                          (candidate) =>
+                            candidate.name === field.name ||
+                            candidate.name === field.label,
+                        );
+                        if (input) {
+                          goToSearchResult({
+                            legalId: input.legalId,
+                            kind: "input",
+                            inScope: inScopeIds.has(input.legalId),
+                          });
+                          return;
+                        }
+                        const rule = (graph?.rules ?? []).find(
+                          (candidate) =>
+                            candidate.name === field.name ||
+                            candidate.name === field.label,
+                        );
+                        if (rule) {
+                          goToSearchResult({
+                            legalId: rule.legalId,
+                            kind: "rule",
+                            inScope: inScopeIds.has(rule.legalId),
+                          });
+                        }
+                      }}
+                    >
+                      {humanize(field.label)}
+                    </button>
+                  </span>
                   <input
                     type="number"
                     value={

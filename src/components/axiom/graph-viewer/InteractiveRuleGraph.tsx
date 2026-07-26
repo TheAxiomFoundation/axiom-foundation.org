@@ -14,7 +14,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { useReactFlow } from "@xyflow/react";
+import { SmoothStepEdge, useReactFlow, type EdgeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
 import type { DashboardSpec, ParameterRule, TraceNode } from "./types";
@@ -548,6 +548,7 @@ export function InteractiveRuleGraph({
           nodes={displayNodes}
           edges={displayEdges}
           nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
           elevateEdgesOnSelect={false}
           fitView
           fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.4 }}
@@ -1417,6 +1418,14 @@ const UnknownNode = ({ data }: NodeProps) => {
     </div>
   );
 };
+
+/** The stock smoothstep takes hard 5px elbows; every wire in the
+ *  plane turns on a soft uniform radius with a consistent exit stub,
+ *  so parallel runs read as aligned rails instead of jittery jogs. */
+const RoundedSmoothStep = (props: EdgeProps) => (
+  <SmoothStepEdge {...props} pathOptions={{ borderRadius: 14, offset: 22 }} />
+);
+const EDGE_TYPES = { smoothstep: RoundedSmoothStep };
 
 const NODE_TYPES = {
   output: OutputNode,

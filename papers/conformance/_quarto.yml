@@ -1,0 +1,47 @@
+project:
+  type: manuscript
+  output-dir: out
+
+manuscript:
+  article: index.qmd
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: none
+    css:
+      - ../theme/tokens.css
+      - ../theme/paper.css
+    # The render is copied into public/ and served as a standalone asset inside
+    # an iframe, so it must carry its own styles: the theme directory does not
+    # travel with it, and relative CSS links would 404 silently.
+    embed-resources: true
+    section-divs: true
+  pdf:
+    documentclass: article
+    papersize: letter
+    geometry:
+      - margin=1.1in
+    toc: false
+    number-sections: true
+    colorlinks: true
+    linkcolor: MidnightBlue
+    citecolor: MidnightBlue
+    urlcolor: MidnightBlue
+    header-includes:
+      - \usepackage{tgpagella}
+      - \usepackage[scaled=0.94]{helvet}
+      - \usepackage[scaled=0.9]{inconsolata}
+      - \usepackage{booktabs}
+      # Results tables are wide; let them shrink rather than overflow the margin.
+      - \AtBeginEnvironment{longtable}{\footnotesize}
+      - \usepackage{etoolbox}
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: false
+
+bibliography: references.bib

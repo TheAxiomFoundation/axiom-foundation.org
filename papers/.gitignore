@@ -1,0 +1,5 @@
+# Quarto build detritus. The committed artifacts are the published copies
+# under public/papers/<slug>/; everything here is regenerable scratch.
+*/out/
+*/.quarto/
+*/site_libs/

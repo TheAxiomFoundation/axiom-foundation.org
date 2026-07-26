@@ -1,0 +1,213 @@
+/* Axiom paper theme — Quarto HTML render.
+ *
+ * Reads the design-system tokens copied alongside this file by
+ * papers/render.py, so the manuscript and the site cannot drift apart. Never
+ * hardcode a colour here; add a token instead.
+ *
+ * The type contract mirrors the site: sans for structure and UI, serif for
+ * running prose (a paper is read, not scanned), mono for anything the reader
+ * could paste into a terminal.
+ */
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-serif, Newsreader, Georgia, serif);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+
+/* Quarto centres the article column itself; keep the measure readable rather
+   than letting it stretch to the viewport on wide screens. */
+main.content {
+  max-width: 46rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.title,
+.subtitle {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  color: var(--color-ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+h1.title {
+  font-size: 2.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--color-ink-secondary);
+  font-weight: 400;
+  font-size: 1.15rem;
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin-top: 2.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin-top: 2rem;
+}
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+/* Author block, date, abstract */
+.quarto-title-meta,
+.abstract {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  color: var(--color-ink-secondary);
+  font-size: 0.9rem;
+}
+
+.abstract {
+  border-left: 2px solid var(--color-accent);
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  margin: 2rem 0 2.5rem;
+  font-family: var(--font-serif, Newsreader, Georgia, serif);
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--color-ink);
+}
+
+.abstract .abstract-title {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 0.5rem;
+}
+
+/* Anything monospaced is something the reader can run or paste. */
+code,
+pre,
+kbd {
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+}
+
+code {
+  font-size: 0.86em;
+  background: var(--color-rule-subtle);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--color-code-bg);
+  color: var(--color-code-text);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  padding: 1rem 1.15rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Tables carry the results, so they get the most typographic care: numeric
+   columns align on the digit, headers read as labels not prose. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.86rem;
+  margin: 1.75rem 0;
+}
+
+thead th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-rule-strong);
+  padding: 0.5rem 0.75rem;
+}
+
+tbody td {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.55rem 0.75rem;
+  vertical-align: top;
+}
+
+/* Right-align and tabular-figure any cell Quarto marked numeric. */
+td[align="right"],
+th[align="right"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+blockquote {
+  border-left: 2px solid var(--color-rule-strong);
+  margin-left: 0;
+  padding-left: 1.25rem;
+  color: var(--color-ink-secondary);
+}
+
+figcaption,
+.figure-caption,
+caption {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  text-align: left;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  margin: 2.5rem 0;
+}
+
+/* Footnotes and references */
+#refs,
+.footnotes {
+  font-size: 0.9rem;
+  color: var(--color-ink-secondary);
+}
+
+#refs div.csl-entry {
+  margin-bottom: 0.75rem;
+}
+
+/* The page is embedded in an iframe on the site, so it should not paint its
+   own outer chrome or fight the host's scrollbar. */
+#quarto-margin-sidebar,
+.nav-page {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Tokens already carry a dark variant on the site; the manuscript inherits
+     whatever the copied tokens.css defines rather than redefining colours. */
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+}

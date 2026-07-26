@@ -3344,3 +3344,15 @@
   color: var(--color-accent);
   text-decoration: underline;
 }
+
+/* An answered question lights up — even when the answer is 0. */
+.graph-viewer-root .irg-input:has(.irg-answer.is-answered) {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.08));
+}
+.graph-viewer-root .irg-answer.is-answered input[type="number"] {
+  border-color: var(--color-accent);
+  font-weight: 600;
+  color: var(--color-accent-hover, #b45309);
+}

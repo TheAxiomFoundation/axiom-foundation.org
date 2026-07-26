@@ -1242,7 +1242,7 @@ const OutputNode = ({ data }: NodeProps) => {
 };
 
 function InlineAnswer({ legalId }: { legalId: string }) {
-  const { values, onChange } = useContext(InputEditContext);
+  const { values, answered, onChange } = useContext(InputEditContext);
   const fragment = legalId.split("#").pop() ?? "";
   if (!onChange || !fragment.startsWith("input.")) return null;
   const name = fragment.slice("input.".length);
@@ -1250,7 +1250,11 @@ function InlineAnswer({ legalId }: { legalId: string }) {
   const stop = (event: { stopPropagation: () => void }) =>
     event.stopPropagation();
   return (
-    <div className="irg-answer nodrag" onClick={stop} onDoubleClick={stop}>
+    <div
+      className={`irg-answer nodrag ${answered.has(name) ? "is-answered" : ""}`}
+      onClick={stop}
+      onDoubleClick={stop}
+    >
       {typeof value === "boolean" ? (
         <input
           type="checkbox"
@@ -1282,8 +1286,9 @@ function InlineAnswer({ legalId }: { legalId: string }) {
  *  the canvas itself is a form: type a number, flip a toggle, run. */
 export const InputEditContext = createContext<{
   values: Record<string, number | boolean>;
+  answered: Set<string>;
   onChange: ((name: string, value: number | boolean) => void) | null;
-}>({ values: {}, onChange: null });
+}>({ values: {}, answered: new Set(), onChange: null });
 
 const InputNode = ({ data }: NodeProps) => {
   const d = data as Extract<IrgNodeData, { kind: "input" }>;

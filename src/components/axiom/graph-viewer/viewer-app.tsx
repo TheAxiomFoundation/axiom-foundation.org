@@ -927,7 +927,11 @@ export function GraphViewerApp() {
   const inputEditValues = useMemo(() => {
     // Only knobs the runtime actually ingests get answer fields —
     // a field the engine would silently ignore is a lie.
-    const knobs = new Set(scenarioFields.map((field) => field.name));
+    const knobs = new Set(
+      scenarioFields
+        .filter((field) => field.name === field.label)
+        .map((field) => field.name),
+    );
     const values: Record<string, number | boolean> = {};
     for (const input of graph?.inputs ?? []) {
       if (!knobs.has(input.name)) continue;
@@ -947,6 +951,7 @@ export function GraphViewerApp() {
   }, [graph, scenario, scenarioFields]);
   const inputEditCtx = useMemo(
     () => ({
+      answered: new Set(Object.keys(scenario)),
       values: inputEditValues,
       onChange: (name: string, value: number | boolean) =>
         setScenario((current) => {
@@ -958,7 +963,7 @@ export function GraphViewerApp() {
           return { ...current, [name]: value };
         }),
     }),
-    [inputEditValues],
+    [inputEditValues, scenario],
   );
 
   const structureTraces = useMemo(
@@ -1146,6 +1151,13 @@ export function GraphViewerApp() {
     return stages;
   };
 
+  // Debounced, not deferred: a keystroke must not queue a full graph
+  // rebuild — typing coalesces into one value-graft after a pause.
+  const [debouncedScenario, setDebouncedScenario] = useState(scenario);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedScenario(scenario), 700);
+    return () => window.clearTimeout(timer);
+  }, [scenario]);
   const liveTraces = useMemo(() => {
     if (!runResult) return { traces: structureTraces, executed: new Set<string>() };
     const valueByFragment = new Map<string, unknown>();
@@ -1168,7 +1180,7 @@ export function GraphViewerApp() {
         valueByLegalId.get(node.legalId) ?? valueByFragment.get(fragment);
       const scenarioValue =
         node.dtype === "input"
-          ? scenario[fragment.replace(/^input\./, "")]
+          ? debouncedScenario[fragment.replace(/^input\./, "")]
           : undefined;
       if (ranValue !== undefined || scenarioValue !== undefined) {
         executed.add(node.legalId);
@@ -1197,7 +1209,7 @@ export function GraphViewerApp() {
       ),
       executed,
     };
-  }, [structureTraces, runResult, scenario]);
+  }, [structureTraces, runResult, debouncedScenario]);
 
   useEffect(() => {
     if (!runResult) return;
@@ -2440,40 +2452,33 @@ export function GraphViewerApp() {
               {allScenarioFields.map((field) => (
                 <label key={field.name} className="results-adjust-field">
                   <span>
-                    <button
-                      type="button"
-                      className="results-adjust-jump"
-                      title="Find this on the canvas"
-                      onClick={() => {
-                        const input = (graph?.inputs ?? []).find(
-                          (candidate) =>
-                            candidate.name === field.name ||
-                            candidate.name === field.label,
-                        );
-                        if (input) {
-                          goToSearchResult({
-                            legalId: input.legalId,
-                            kind: "input",
-                            inScope: inScopeIds.has(input.legalId),
-                          });
-                          return;
-                        }
-                        const rule = (graph?.rules ?? []).find(
-                          (candidate) =>
-                            candidate.name === field.name ||
-                            candidate.name === field.label,
-                        );
-                        if (rule) {
-                          goToSearchResult({
-                            legalId: rule.legalId,
-                            kind: "rule",
-                            inScope: inScopeIds.has(rule.legalId),
-                          });
-                        }
-                      }}
-                    >
-                      {humanize(field.label)}
-                    </button>
+                    {(() => {
+                      // Link ONLY when the graph has a question of this
+                      // exact name. An abstract knob (Monthly Earnings
+                      // Per Adult) is not a node in the law graph, and
+                      // it must never link to a rule that merely shares
+                      // an alias name.
+                      const input = (graph?.inputs ?? []).find(
+                        (candidate) => candidate.name === field.label,
+                      );
+                      if (!input) return humanize(field.label);
+                      return (
+                        <button
+                          type="button"
+                          className="results-adjust-jump"
+                          title="Find this question on the canvas"
+                          onClick={() =>
+                            goToSearchResult({
+                              legalId: input.legalId,
+                              kind: "input",
+                              inScope: inScopeIds.has(input.legalId),
+                            })
+                          }
+                        >
+                          {humanize(field.label)}
+                        </button>
+                      );
+                    })()}
                   </span>
                   <input
                     type="number"

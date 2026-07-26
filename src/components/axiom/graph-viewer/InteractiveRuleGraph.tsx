@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Background,
@@ -1203,6 +1203,7 @@ const OutputNode = ({ data }: NodeProps) => {
       <HandleBoth />
       <div className="irg-eyebrow">Result</div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
       {d.canExpand && (
         <div
@@ -1228,6 +1229,50 @@ const OutputNode = ({ data }: NodeProps) => {
   );
 };
 
+function InlineAnswer({ legalId }: { legalId: string }) {
+  const { values, onChange } = useContext(InputEditContext);
+  const fragment = legalId.split("#").pop() ?? "";
+  if (!onChange || !fragment.startsWith("input.")) return null;
+  const name = fragment.slice("input.".length);
+  const value = values[name];
+  const stop = (event: { stopPropagation: () => void }) =>
+    event.stopPropagation();
+  return (
+    <div className="irg-answer nodrag" onClick={stop} onDoubleClick={stop}>
+      {typeof value === "boolean" ? (
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(event) => onChange(name, event.target.checked)}
+          aria-label="Answer"
+        />
+      ) : (
+        <input
+          type="number"
+          value={value === undefined ? "" : String(value)}
+          placeholder="answer…"
+          onChange={(event) =>
+            onChange(
+              name,
+              event.target.value === ""
+                ? Number.NaN
+                : Number(event.target.value),
+            )
+          }
+          aria-label="Answer"
+        />
+      )}
+    </div>
+  );
+}
+
+/** Inline value editing on Question cards — provided by the app so
+ *  the canvas itself is a form: type a number, flip a toggle, run. */
+export const InputEditContext = createContext<{
+  values: Record<string, number | boolean>;
+  onChange: ((name: string, value: number | boolean) => void) | null;
+}>({ values: {}, onChange: null });
+
 const InputNode = ({ data }: NodeProps) => {
   const d = data as Extract<IrgNodeData, { kind: "input" }>;
   const status = d.source === "user" ? "selected" : "not selected";
@@ -1247,6 +1292,7 @@ const InputNode = ({ data }: NodeProps) => {
         Question · <span className={`irg-status irg-status-${d.source}`}>{d.source === "user" ? "asked" : "not asked"}</span>
       </div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
       {showAction && (
         <div className="irg-action irg-action-clickable">
@@ -1302,6 +1348,7 @@ const RuleRefNode = ({ data }: NodeProps) => {
         {d.isParameter ? "Parameter" : d.isOutput ? "Step · result" : "Step"}
       </div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
       {d.canExpand && (
         <div

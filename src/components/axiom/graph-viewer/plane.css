@@ -625,6 +625,7 @@
   .irg-exec-node
   .irg-value {
   display: block;
+  visibility: visible;
 }
 
 /* ═══ Dissection: source anatomy ═══ */
@@ -972,6 +973,7 @@
   .irg-exec-node
   .irg-value {
   display: block;
+  visibility: visible;
 }
 
 /* ═══ Dissection: source anatomy ═══ */
@@ -2975,4 +2977,27 @@
    cursor the map happens to sail under. */
 .graph-viewer-root .irg-wrap.is-moving .react-flow__node {
   pointer-events: none !important;
+}
+
+/* Inline answers on Question cards — the canvas is the form. */
+.graph-viewer-root .irg-answer {
+  margin-top: 6px;
+}
+.graph-viewer-root .irg-answer input[type="number"] {
+  width: 110px;
+  padding: 4px 9px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+.graph-viewer-root .irg-answer input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+/* At far zoom the field is unusable — hide with the other chrome. */
+.graph-viewer-root .irg-wrap[data-lod="far"] .irg-answer {
+  visibility: hidden;
 }

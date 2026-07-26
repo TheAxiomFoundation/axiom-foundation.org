@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  InputEditContext,
   InteractiveRuleGraph,
   initialCollapse,
   type IrgNodeData,
@@ -902,6 +903,37 @@ export function GraphViewerApp() {
       })),
     [graph, selectedOutputs],
   );
+  const inputEditValues = useMemo(() => {
+    const values: Record<string, number | boolean> = {};
+    for (const input of graph?.inputs ?? []) {
+      const fromScenario = scenario[input.name];
+      if (typeof fromScenario === "number" || typeof fromScenario === "boolean") {
+        values[input.name] = fromScenario;
+      } else if (
+        typeof input.sample === "number" ||
+        typeof input.sample === "boolean"
+      ) {
+        values[input.name] = input.sample;
+      }
+    }
+    return values;
+  }, [graph, scenario]);
+  const inputEditCtx = useMemo(
+    () => ({
+      values: inputEditValues,
+      onChange: (name: string, value: number | boolean) =>
+        setScenario((current) => {
+          if (typeof value === "number" && Number.isNaN(value)) {
+            // Cleared on the card — stop sending it.
+            const { [name]: _dropped, ...rest } = current;
+            return rest;
+          }
+          return { ...current, [name]: value };
+        }),
+    }),
+    [inputEditValues],
+  );
+
   const structureTraces = useMemo(
     () => buildStructureTraces(graph, selectedOutputs),
     [graph, selectedOutputs],
@@ -1854,6 +1886,7 @@ export function GraphViewerApp() {
               <span>Loading graph...</span>
             </div>
           ) : spec && Object.keys(structureTraces).length > 0 ? (
+            <InputEditContext.Provider value={inputEditCtx}>
             <InteractiveRuleGraph
               spec={spec}
               traces={liveTraces.traces}
@@ -1877,6 +1910,7 @@ export function GraphViewerApp() {
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}
             />
+            </InputEditContext.Provider>
           ) : (
             <div className="empty-state">Select at least one output to render its computation graph.</div>
           )}

@@ -1007,19 +1007,16 @@ export function GraphViewerApp() {
       if (match.kind === "input") inspectInput(match.legalId);
       return;
     }
+    // Out of the current scope (a walk narrowed the canvas, or a
+    // deep link scoped it): restore the whole tree, then land on the
+    // match with its path pinned alight.
     if (walk) endWalk();
-    if (match.kind === "input") {
-      // A question can't root the canvas — stand on its first
-      // consumer so the question renders, then land on it.
-      const consumer = consumersOf(match.legalId)[0];
-      if (consumer) setSelectedOutputs([consumer.legalId]);
-      flyTo(match.legalId);
-      inspectInput(match.legalId);
-      return;
-    }
-    setSelectedOutputs([match.legalId]);
+    surveyRef.current = true;
+    setSelectedOutputs(outputRules.map((rule) => rule.legalId));
+    setFolded((current) => (current.size === 0 ? current : new Set()));
     flyTo(match.legalId);
-    inspectRule(match.legalId);
+    if (match.kind === "input") inspectInput(match.legalId);
+    else inspectRule(match.legalId);
   };
   const inspectInput = (legalId: string) => {
     const input = walkInputById.get(legalId);

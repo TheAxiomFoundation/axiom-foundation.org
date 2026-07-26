@@ -481,6 +481,23 @@
   min-width: 960px;
   height: auto;
 }
+
+/* Mobile: the journey scales to fit the viewport instead of forcing
+   a 960px pan (viewBox SVGs scale cleanly). Captions get larger
+   viewBox-unit sizes to stay legible at phone scale. The docs
+   pipeline strip keeps its pan — its content is denser. */
+@media (max-width: 900px) {
+  .jdemo__stage .lsk,
+  .clib-svg {
+    min-width: 0;
+  }
+  .jw-name {
+    font-size: 36px;
+  }
+  .jw-sub {
+    font-size: 19px;
+  }
+}
 .clib-cap {
   font-family: var(--f-mono);
   font-size: 10px;

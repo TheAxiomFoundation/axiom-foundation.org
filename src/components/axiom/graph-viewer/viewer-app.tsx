@@ -2230,7 +2230,7 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
-              {input ? (
+              {input && input.name in inputEditValues ? (
                 <>
                   <dt>Your answer</dt>
                   <dd>
@@ -2294,7 +2294,10 @@ export function GraphViewerApp() {
                 ⊙ How does this rule work?
               </button>
             ) : null}
-            {"kind" in inspected && inspected.kind === "input" ? (
+            {"kind" in inspected &&
+            inspected.kind === "input" &&
+            input &&
+            input.name in inputEditValues ? (
               <button
                 type="button"
                 className="node-inspector-lens"

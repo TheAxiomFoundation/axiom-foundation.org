@@ -955,29 +955,80 @@ export function GraphViewerApp() {
   const indexMatches = useMemo(() => {
     const query = indexSearch.trim().toLowerCase();
     if (!query || !graph) return [];
-    // Global: search the whole program, always — a walk's narrowed
-    // canvas must not narrow the search.
-    return graph.rules
-      .filter((rule) => humanize(rule.name).toLowerCase().includes(query))
-      .slice(0, 60)
+    // Every word must appear, any order — "monthly income" finds
+    // Monthly Household Income.
+    const tokens = query.split(/\s+/);
+    const hits = (label: string) => {
+      const hay = label.toLowerCase();
+      return tokens.every((token) => hay.includes(token));
+    };
+    // Global: search the whole program, always — rules (results and
+    // every intermediate) and the questions that feed them.
+    const rules = graph.rules
+      .filter((rule) => hits(humanize(rule.name)))
       .map((rule) => ({
         legalId: rule.legalId,
         label: humanize(rule.name),
+        kind: "rule" as const,
         inScope: inScopeIds.has(rule.legalId),
       }));
+    const seenNames = new Set<string>();
+    const inputs = graph.inputs
+      .filter((input) => {
+        if (seenNames.has(input.name)) return false;
+        seenNames.add(input.name);
+        return hits(humanize(input.name));
+      })
+      .map((input) => ({
+        legalId: input.legalId,
+        label: humanize(input.name),
+        kind: "input" as const,
+        inScope: inScopeIds.has(input.legalId),
+      }));
+    return [...rules, ...inputs]
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .slice(0, 60);
   }, [indexSearch, graph, inScopeIds]);
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the walk and re-root on the
   // rule itself.
-  const goToSearchResult = (match: { legalId: string; inScope: boolean }) => {
+  const goToSearchResult = (match: {
+    legalId: string;
+    kind: "rule" | "input";
+    inScope: boolean;
+  }) => {
     if (match.inScope) {
       flyFromIndex(match.legalId);
+      if (match.kind === "input") inspectInput(match.legalId);
       return;
     }
     if (walk) endWalk();
+    if (match.kind === "input") {
+      // A question can't root the canvas — stand on its first
+      // consumer so the question renders, then land on it.
+      const consumer = consumersOf(match.legalId)[0];
+      if (consumer) setSelectedOutputs([consumer.legalId]);
+      flyTo(match.legalId);
+      inspectInput(match.legalId);
+      return;
+    }
     setSelectedOutputs([match.legalId]);
     flyTo(match.legalId);
     inspectRule(match.legalId);
+  };
+  const inspectInput = (legalId: string) => {
+    const input = walkInputById.get(legalId);
+    if (!input) return;
+    setInspected({
+      kind: "input",
+      label: input.name,
+      legalId,
+      source: "default",
+      canExpose: false,
+      value: "",
+      showValues: false,
+      meta: { kindLine: "Question", legalId },
+    });
   };
 
   // A fresh graph opens on the summit — the same box every other
@@ -1784,6 +1835,11 @@ export function GraphViewerApp() {
                 type="search"
                 value={indexSearch}
                 onChange={(event) => setIndexSearch(event.target.value)}
+                onFocus={() => {
+                  // Searching is a navigation intent — the launcher
+                  // steps aside so results are reachable.
+                  if (launcher !== "closed") dismissLauncher();
+                }}
                 placeholder="Search the law..."
                 aria-label="Search rules"
               />
@@ -1796,8 +1852,11 @@ export function GraphViewerApp() {
                       onClick={() => goToSearchResult(match)}
                       onMouseEnter={() => setIndexHover(match.legalId)}
                       onMouseLeave={() => setIndexHover(null)}
-                      title="Fly to this rule on the canvas"
+                      title="Fly to this on the canvas"
                     >
+                      <span className="top-search-kind">
+                        {match.kind === "input" ? "?" : "ƒ"}
+                      </span>
                       {match.label}
                     </button>
                   ))}

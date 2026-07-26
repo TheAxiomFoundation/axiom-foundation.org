@@ -544,34 +544,49 @@ export function GraphViewerApp() {
   // layer computes from — verified live); everything else falls back
   // to the graph's own scalar inputs.
   const scenarioFields = useMemo(() => {
-    const programId = effectiveProgram?.programId ?? "";
-    if (programId.includes("snap")) {
-      return [
-        { name: "household_size", label: "household_size", sample: 2 },
-        {
-          name: "snap_gross_monthly_income",
-          label: "snap_gross_monthly_income",
-          sample: 1200,
-        },
-        { name: "shelter_costs", label: "shelter_costs", sample: 900 },
-        { name: "age", label: "age", sample: 40 },
-      ] as Array<{ name: string; label: string; sample: number | boolean }>;
+    // Default levers come from the program's REAL questions, ranked
+    // by how many rules consume each — never from a hardcoded list
+    // that might name a computed rule as if it were an input.
+    if (!graph) return [];
+    const counts = new Map<string, number>();
+    for (const rule of graph.rules) {
+      for (const dep of rule.inputDeps) {
+        const name = (dep.split("#").pop() ?? dep).replace(/^input\./, "");
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
     }
+    const sampleByName = new Map<string, number | boolean>();
+    const seen = new Set<string>();
+    const CURATED_SAMPLES: Record<string, number> = {
+      household_size: 2,
+      snap_gross_monthly_income: 1200,
+      snap_gross_monthly_earned_income: 1200,
+      shelter_costs: 900,
+      age: 40,
+      member_age: 40,
+    };
     const fields: Array<{
       name: string;
       label: string;
       sample: number | boolean;
     }> = [];
-    const seen = new Set<string>();
-    for (const input of graph?.inputs ?? []) {
+    for (const input of graph.inputs) {
       if (seen.has(input.name)) continue;
-      const sample = input.sample;
-      if (typeof sample !== "number" && typeof sample !== "boolean") continue;
       seen.add(input.name);
-      fields.push({ name: input.name, label: input.name, sample });
+      const sample =
+        typeof input.sample === "number" || typeof input.sample === "boolean"
+          ? input.sample
+          : (CURATED_SAMPLES[input.name] ?? 0);
+      sampleByName.set(input.name, sample);
     }
-    return fields.slice(0, 16);
-  }, [graph, effectiveProgram]);
+    const ranked = [...sampleByName.keys()].sort(
+      (a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0),
+    );
+    for (const name of ranked.slice(0, 6)) {
+      fields.push({ name, label: name, sample: sampleByName.get(name) ?? 0 });
+    }
+    return fields;
+  }, [graph]);
 
   const allScenarioFields = useMemo(() => {
     const seen = new Set(scenarioFields.map((field) => field.name));

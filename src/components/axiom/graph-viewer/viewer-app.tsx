@@ -60,11 +60,15 @@ export function GraphViewerApp() {
   const [flyTarget, setFlyTarget] = useState<{
     legalId: string;
     nonce: number;
+    immediate?: boolean;
   } | null>(null);
-  const flyTo = (legalId: string) =>
+  // immediate: the canvas layout is at rest (a plain card click) — no
+  // relayout is coming, so the flight starts without the settle hold.
+  const flyTo = (legalId: string, immediate = false) =>
     setFlyTarget((current) => ({
       legalId,
       nonce: (current?.nonce ?? 0) + 1,
+      immediate,
     }));
   const savedSelection = useRef<{
     outputs: LegalId[];
@@ -167,7 +171,7 @@ export function GraphViewerApp() {
     const legalId = "legalId" in data && data.legalId ? data.legalId : null;
     if (!legalId || walk) return;
     if (data.kind !== "output" && data.kind !== "ruleRef") return;
-    flyTo(legalId);
+    flyTo(legalId, true);
   };
   const lensFocusId = lensTrail[lensTrail.length - 1] ?? null;
   // Downstream: who uses the focused rule — the direction the
@@ -936,10 +940,13 @@ export function GraphViewerApp() {
       })),
     [graph, selectedOutputs],
   );
+  const runModeActive = runPanelOpen || Boolean(runResult);
   const inputEditValues = useMemo(() => {
     // Every registry input is genuinely settable (grafted onto its
     // owning entity server-side) — so every one gets a live field.
+    // Only in run mode: while browsing the law, cards stay read-only.
     const values: Record<string, number | boolean> = {};
+    if (!runModeActive) return values;
     for (const input of inputCatalog) {
       const fromScenario = scenario[input.name];
       if (
@@ -954,7 +961,7 @@ export function GraphViewerApp() {
       }
     }
     return values;
-  }, [inputCatalog, scenario]);
+  }, [inputCatalog, scenario, runModeActive]);
   const inputEditCtx = useMemo(
     () => ({
       answered: new Set(Object.keys(scenario)),

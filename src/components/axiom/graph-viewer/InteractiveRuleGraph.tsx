@@ -899,7 +899,7 @@ function FlyToController({
   target,
   layoutSig,
 }: {
-  target: { legalId: string; nonce: number } | null;
+  target: { legalId: string; nonce: number; immediate?: boolean } | null;
   layoutSig: string;
 }) {
   const flow = useReactFlow();
@@ -907,6 +907,7 @@ function FlyToController({
   const chaseUntil = useRef(0);
   const chaseId = useRef<string | null>(null);
   const sawLayout = useRef(false);
+  const immediate = useRef(false);
   const [armed, setArmed] = useState(0);
   // ONE flight per destination — and never against a stale layout.
   // A walk step usually re-roots the canvas, so the flight waits for
@@ -916,6 +917,7 @@ function FlyToController({
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
     chaseId.current = target.legalId;
+    immediate.current = Boolean(target.immediate);
     sawLayout.current = false;
     chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
     setArmed((tick) => tick + 1);
@@ -930,8 +932,9 @@ function FlyToController({
   useEffect(() => {
     if (armed === 0 || Date.now() > chaseUntil.current) return;
     // After a relayout: short settle. Before one: hold longer — if a
-    // re-root is coming, fly only once it has landed.
-    const delay = sawLayout.current ? 480 : 1000;
+    // re-root is coming, fly only once it has landed. An immediate
+    // flight (plain card click, layout at rest) skips the hold.
+    const delay = immediate.current ? 0 : sawLayout.current ? 480 : 1000;
     const timer = window.setTimeout(() => {
       if (chaseId.current === "*") {
         void flow.fitView({

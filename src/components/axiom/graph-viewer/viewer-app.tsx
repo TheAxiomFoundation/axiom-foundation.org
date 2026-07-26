@@ -906,32 +906,47 @@ export function GraphViewerApp() {
     () => buildStructureTraces(graph, selectedOutputs),
     [graph, selectedOutputs],
   );
-  const indexMatches = useMemo(() => {
-    const query = indexSearch.trim().toLowerCase();
-    if (!query) return [];
-    const seen = new Set<string>();
-    const matches: { legalId: string; label: string }[] = [];
-    const walk = (node: TraceNode) => {
-      if (matches.length >= 60) return;
-      const label = humanize(node.label ?? node.legalId.split("#").pop() ?? "");
-      // Same population as the tree: rules only — bare inputs render
-      // no standalone card to fly to.
-      if (
-        node.dtype !== "input" &&
-        !seen.has(node.legalId) &&
-        label.toLowerCase().includes(query)
-      ) {
-        seen.add(node.legalId);
-        matches.push({ legalId: node.legalId, label });
-      }
-      for (const child of node.children ?? []) walk(child);
+  // What the canvas currently shows — search results inside it fly
+  // in place; results outside re-scope to their rule.
+  const inScopeIds = useMemo(() => {
+    const scope = new Set<string>();
+    const collect = (node: TraceNode) => {
+      scope.add(node.legalId);
+      for (const child of node.children ?? []) collect(child);
     };
     for (const id of selectedOutputs) {
       const root = structureTraces[id];
-      if (root) walk(root);
+      if (root) collect(root);
     }
-    return matches;
-  }, [indexSearch, selectedOutputs, structureTraces]);
+    return scope;
+  }, [selectedOutputs, structureTraces]);
+  const indexMatches = useMemo(() => {
+    const query = indexSearch.trim().toLowerCase();
+    if (!query || !graph) return [];
+    // Global: search the whole program, always — a walk's narrowed
+    // canvas must not narrow the search.
+    return graph.rules
+      .filter((rule) => humanize(rule.name).toLowerCase().includes(query))
+      .slice(0, 60)
+      .map((rule) => ({
+        legalId: rule.legalId,
+        label: humanize(rule.name),
+        inScope: inScopeIds.has(rule.legalId),
+      }));
+  }, [indexSearch, graph, inScopeIds]);
+  // Take me there — wherever "there" is: in-scope results fly in
+  // place; out-of-scope results leave the walk and re-root on the
+  // rule itself.
+  const goToSearchResult = (match: { legalId: string; inScope: boolean }) => {
+    if (match.inScope) {
+      flyFromIndex(match.legalId);
+      return;
+    }
+    if (walk) endWalk();
+    setSelectedOutputs([match.legalId]);
+    flyTo(match.legalId);
+    inspectRule(match.legalId);
+  };
 
   // A fresh graph opens on the summit — the same box every other
   // entry lands on, so no flight ever retargets mid-air.
@@ -1746,7 +1761,7 @@ export function GraphViewerApp() {
                     <button
                       type="button"
                       key={match.legalId}
-                      onClick={() => flyFromIndex(match.legalId)}
+                      onClick={() => goToSearchResult(match)}
                       onMouseEnter={() => setIndexHover(match.legalId)}
                       onMouseLeave={() => setIndexHover(null)}
                       title="Fly to this rule on the canvas"

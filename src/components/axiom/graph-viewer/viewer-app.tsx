@@ -1214,8 +1214,17 @@ export function GraphViewerApp() {
   useEffect(() => {
     if (!runResult) return;
     setPlaneFresh(true);
+    // Land the way the graph opens: on the top computed node.
+    if (summitOutput) {
+      setFlyTarget((current) => ({
+        legalId: summitOutput,
+        nonce: (current?.nonce ?? 0) + 1,
+      }));
+      inspectRule(summitOutput);
+    }
     const timer = window.setTimeout(() => setPlaneFresh(false), 2600);
     return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runResult]);
 
   useEffect(() => {
@@ -1326,6 +1335,7 @@ export function GraphViewerApp() {
     // Start empty: pick levers on the left, they pop up on the right
     // ready for values; unpicked ones fall to the law's defaults.
     const active = selectedLevers ?? [];
+    const query = runBrowseSearch.trim().toLowerCase();
     const activeFields = allScenarioFields.filter((field) =>
       active.includes(field.name),
     );
@@ -1339,7 +1349,6 @@ export function GraphViewerApp() {
       seen.add(input.name);
       return true;
     });
-    const query = runBrowseSearch.trim().toLowerCase();
     const shown = others
       .filter(
         (input) =>
@@ -1350,42 +1359,42 @@ export function GraphViewerApp() {
       <>
         <div className="run-columns">
           <div className="run-col">
-            <p className="run-section-label">Pick a lever</p>
-            {availableFields.length > 0 ? (
-              <div className="run-available">
-                {availableFields.map((field) => (
-                  <button
-                    type="button"
-                    key={field.name}
-                    className="run-available-row"
-                    onClick={() =>
-                      setSelectedLevers([...active, field.name])
-                    }
-                  >
-                    ＋ {humanize(field.label)}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="run-hint">All levers selected.</p>
-            )}
-            <p className="run-section-label run-others-label">
-              Other questions · defaults apply
-            </p>
+            <p className="run-section-label">Inputs</p>
             <input
               type="search"
               className="run-overview-search"
               value={runBrowseSearch}
               onChange={(event) => setRunBrowseSearch(event.target.value)}
-              placeholder={`Browse ${others.length} questions...`}
+              placeholder={`Search ${allScenarioFields.length + others.length} inputs...`}
             />
-            <div className="run-overview-list">
+            <div className="run-picker-list">
+              {availableFields
+                .filter(
+                  (field) =>
+                    !query ||
+                    humanize(field.label).toLowerCase().includes(query),
+                )
+                .map((field) => (
+                  <button
+                    type="button"
+                    key={field.name}
+                    className="run-picker-row is-lever"
+                    title="Add to your answers"
+                    onClick={() => setSelectedLevers([...active, field.name])}
+                  >
+                    <span className="run-picker-icon">＋</span>
+                    <span className="run-picker-name">
+                      {humanize(field.label)}
+                    </span>
+                    <span className="run-picker-tag">settable</span>
+                  </button>
+                ))}
               {shown.map((input) => (
                 <button
                   type="button"
                   key={input.legalId}
-                  className="lever-row run-overview-row"
-                  title="See this question on the canvas"
+                  className="run-picker-row"
+                  title="See this question on the canvas — the law's default answers it"
                   onClick={() => {
                     setRunPanelOpen(false);
                     goToSearchResult({
@@ -1395,16 +1404,17 @@ export function GraphViewerApp() {
                     });
                   }}
                 >
-                  <span className="lever-row-name">
+                  <span className="run-picker-icon">→</span>
+                  <span className="run-picker-name">
                     {humanize(input.name)}
                   </span>
-                  <span className="lever-row-cell">
-                    {input.entity ? humanize(input.entity) : "—"}
+                  <span className="run-picker-tag run-picker-tag-muted">
+                    {input.entity ? humanize(input.entity) : "default"}
                   </span>
                 </button>
               ))}
-              {shown.length === 0 && (
-                <div className="output-empty">No questions match.</div>
+              {availableFields.length === 0 && shown.length === 0 && (
+                <div className="output-empty">No inputs match.</div>
               )}
             </div>
           </div>
@@ -1647,6 +1657,12 @@ export function GraphViewerApp() {
             planeFresh ? "plane-fresh" : ""
           }`}
         >
+          {running && (
+            <div className="run-spinner" role="status" aria-label="Computing">
+              <span className="run-spinner-ring" />
+              <span className="run-spinner-text">computing…</span>
+            </div>
+          )}
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
             aria-hidden={!veiled}

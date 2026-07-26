@@ -567,18 +567,28 @@ export function InteractiveRuleGraph({
               moveBusy.current = false;
               wrapRef.current?.classList.remove("is-moving");
             }, 180);
-            const next =
-              viewport.zoom < 0.42
-                ? "far"
-                : viewport.zoom < 0.75
-                  ? "mid"
-                  : "near";
-            // Defer LOD swaps until the camera rests — a style recalc
-            // of 400+ cards mid-flight is a visible hitch.
+            const zoom = viewport.zoom;
+            // Defer LOD swaps until the camera rests, and switch with
+            // hysteresis — resting exactly on a boundary must not
+            // thrash the chrome on/off (reads as heavy flicker).
             if (lodTimer.current) window.clearTimeout(lodTimer.current);
             lodTimer.current = window.setTimeout(() => {
-              setLod((current) => (current === next ? current : next));
-            }, 140);
+              setLod((current) => {
+                if (current === "near") {
+                  if (zoom < 0.4) return "far";
+                  if (zoom < 0.7) return "mid";
+                  return "near";
+                }
+                if (current === "mid") {
+                  if (zoom > 0.8) return "near";
+                  if (zoom < 0.38) return "far";
+                  return "mid";
+                }
+                if (zoom > 0.8) return "near";
+                if (zoom > 0.46) return "mid";
+                return "far";
+              });
+            }, 300);
           }}
           connectionLineType={ConnectionLineType.SmoothStep}
           nodesDraggable
@@ -628,11 +638,7 @@ export function InteractiveRuleGraph({
         >
           <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
           <FlyToController target={flyTo ?? null} layoutSig={layoutSig} />
-          <ExecutionCamera
-            active={executionActive}
-            executedIds={executedIds}
-            outputIds={outputNodeIds}
-          />
+
           <GraphMiniMap />
           <SmoothControls />
         </ReactFlow>

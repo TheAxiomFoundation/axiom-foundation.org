@@ -31,7 +31,8 @@ Dev needs `.env.local` (gitignored) with:
   `.env.production` (`next dev` does not load `.env.production`).
 - `AXIOM_RUNTIME_API_KEY` — hosted axiom-api key (server-side only; in Vercel
   env for deploys). Without it, runtime features render nothing and pages
-  otherwise behave identically.
+  otherwise behave identically. For local dev a 14-day trial key works:
+  `curl -X POST https://axiom-api-eta.vercel.app/v1/keys/trial` (30 req/min).
 - `AXIOM_RUNTIME_API_BASE` — optional; point at a local axiom-api
   (`http://localhost:8787/v1`) to develop against unreleased endpoints. A
   keyless base override counts as configured.

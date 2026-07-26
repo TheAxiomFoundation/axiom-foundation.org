@@ -12,6 +12,7 @@ import {
 } from "@/lib/tree-data";
 import { getProvisionByCitationPath } from "@/lib/axiom/navigation-index/read";
 import { UK_LEGISLATION_CLASSES } from "@/lib/axiom/uk-legal-names";
+import { ukGovukTaxonomyTwin } from "@/lib/axiom/citation-path-aliases";
 import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import {
@@ -678,6 +679,28 @@ export async function resolveSection(
           const navNode = await getNavigationNode(dashPath);
           root = synthesizeSectionRoot(dashPath, resolved, navNode?.label);
           citationPath = dashPath;
+          synthetic = true;
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
+  if (!root) {
+    // GOV.UK taxonomy fork: encodings and their browse links live at
+    // uk/policy/govuk/* while the corpus rows are at
+    // uk/guidance/govuk/*. Resolve the twin so encoded-index links
+    // reach the ingested text.
+    const twinPath = ukGovukTaxonomyTwin(requestedPath);
+    if (twinPath) {
+      root = await getProvisionByCitationPath(twinPath).catch(() => null);
+      if (root) {
+        citationPath = twinPath;
+      } else {
+        const probe = await getSubtreeProvisions(twinPath);
+        if (probe.provisions.length > 0) {
+          const navNode = await getNavigationNode(twinPath);
+          root = synthesizeSectionRoot(twinPath, resolved, navNode?.label);
+          citationPath = twinPath;
           synthetic = true;
           prefetchedSubtree = probe;
         }

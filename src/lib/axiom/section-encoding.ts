@@ -10,6 +10,7 @@ import {
   type EncodedFile,
 } from "@/lib/axiom/rulespec/repo-listing";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
+import { ukGovukTaxonomyTwin } from "@/lib/axiom/citation-path-aliases";
 
 /**
  * Section-level encoding assembly for the v2 reader.
@@ -253,6 +254,23 @@ export async function getSectionEncoding(
       (file) => file.citationPath !== citationPath
     );
     return assembleSection(citationPath, sectionFile, descendants, null);
+  }
+
+  // GOV.UK taxonomy fork: guidance pages' encodings mirror under the
+  // uk/policy/govuk/* twin (the engine's module roots have no
+  // guidance bucket). Look there before falling back to the legacy
+  // walk-up.
+  const twinPath = ukGovukTaxonomyTwin(citationPath);
+  if (twinPath) {
+    const twinMirror = await listMirrorFiles(twinPath);
+    if (twinMirror && twinMirror.length > 0) {
+      const sectionFile =
+        twinMirror.find((file) => file.citationPath === twinPath) ?? null;
+      const descendants = twinMirror.filter(
+        (file) => file.citationPath !== twinPath
+      );
+      return assembleSection(twinPath, sectionFile, descendants, null);
+    }
   }
 
   // Mirror miss (not yet synced, or query failure): legacy path —

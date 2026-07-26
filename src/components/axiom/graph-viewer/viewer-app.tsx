@@ -1323,8 +1323,9 @@ export function GraphViewerApp() {
   // One scenario flow, two homes: the launcher's middle screen and
   // the sidebar panel render the same staged UI.
   const scenarioFlowUI = (() => {
-    const active =
-      selectedLevers ?? allScenarioFields.map((field) => field.name);
+    // Start empty: pick levers on the left, they pop up on the right
+    // ready for values; unpicked ones fall to the law's defaults.
+    const active = selectedLevers ?? [];
     const activeFields = allScenarioFields.filter((field) =>
       active.includes(field.name),
     );

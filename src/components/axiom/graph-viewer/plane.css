@@ -3020,3 +3020,16 @@
   display: flex;
   align-items: center;
 }
+
+/* The parameter's constant is the headline. */
+.graph-viewer-root .parameter-value {
+  margin: 6px 0 2px;
+  font-family: var(--f-mono, monospace);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .walk-card .parameter-value {
+  font-size: 24px;
+}

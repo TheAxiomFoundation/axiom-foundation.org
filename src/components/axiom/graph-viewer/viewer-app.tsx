@@ -1873,6 +1873,14 @@ export function GraphViewerApp() {
                       : "Rule"}
                 </span>
                 <h2>{name}</h2>
+                {rule?.kind === "parameter" && rule.formula ? (
+                  <p className="parameter-value">
+                    {formatParameterValue(
+                      rule.formula.replace(/\s+/g, " ").trim(),
+                      rule.unit ?? null,
+                    )}
+                  </p>
+                ) : null}
                 {value !== null && <p className="walk-value">{value}</p>}
                 {(() => {
                   const cite =
@@ -1924,14 +1932,7 @@ export function GraphViewerApp() {
                       <dd>{rule.unit}</dd>
                     </>
                   ) : null}
-                  {rule?.kind === "parameter" && rule.formula ? (
-                    <>
-                      <dt>Value</dt>
-                      <dd className="node-inspector-mono">
-                        {rule.formula.replace(/\s+/g, " ").trim().slice(0, 140)}
-                      </dd>
-                    </>
-                  ) : null}
+                  {null}
                   {rule &&
                   (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
                     <>
@@ -2209,6 +2210,11 @@ export function GraphViewerApp() {
             <h2 className="node-inspector-title">
               {humanize("label" in inspected ? (inspected.label ?? "") : "")}
             </h2>
+            {parameterValue ? (
+              <p className="parameter-value">
+                {formatParameterValue(parameterValue, rule?.unit ?? null)}
+              </p>
+            ) : null}
             {"value" in inspected &&
             inspected.value &&
             "showValues" in inspected &&
@@ -2377,12 +2383,7 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
-              {parameterValue ? (
-                <>
-                  <dt>Value</dt>
-                  <dd className="node-inspector-mono">{parameterValue}</dd>
-                </>
-              ) : null}
+              {null}
               {"hiddenCount" in inspected && inspected.hiddenCount ? (
                 <>
                   <dt>Contains</dt>
@@ -2841,6 +2842,22 @@ const FORMULA_KEYWORDS = new Set([
   "count_where",
   "where",
 ]);
+/** A parameter's constant, dressed as the headline it is: plain
+ *  numbers pick up their unit ($218, 30 hours); expressions and
+ *  tables show as-is. */
+function formatParameterValue(raw: string, unit: string | null): string {
+  const trimmed = raw.trim();
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numeric = Number(trimmed);
+    const pretty = numeric.toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    });
+    if (unit === "USD") return `$${pretty}`;
+    return unit ? `${pretty} ${unit.toLowerCase()}` : pretty;
+  }
+  return trimmed.length > 90 ? `${trimmed.slice(0, 90)}…` : trimmed;
+}
+
 function FormulaPretty({ source }: { source: string }) {
   const tokens = source.match(FORMULA_TOKEN_RE) ?? [source];
   return (

@@ -81,6 +81,26 @@ export async function fetchProgramGraph(program: ProgramRef): Promise<ProgramGra
   return json.data.graph;
 }
 
+/** The runtime's supported scenario knobs for a package: aliases
+ *  mapping friendly lever names onto abstract household fields. */
+export async function fetchHouseholdAliases(
+  program: ProgramRef,
+): Promise<Record<string, string>> {
+  const url = `${trimSlash(API_BASE)}/runtime/packages/${encodeURIComponent(
+    program.jurisdiction,
+  )}/${encodeURIComponent(program.programId)}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return {};
+    const json = (await response.json()) as {
+      data?: { package?: { household_aliases?: Record<string, string> } };
+    };
+    return json.data?.package?.household_aliases ?? {};
+  } catch {
+    return {};
+  }
+}
+
 export interface ComposedGraph {
   graph: ProgramGraph;
   files: LegalId[];

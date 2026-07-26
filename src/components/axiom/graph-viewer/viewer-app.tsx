@@ -22,6 +22,7 @@ import {
   displayNameForProgram,
   fetchAllPrograms,
   fetchComposedGraph,
+  fetchHouseholdAliases,
   fetchProgramGraph,
   programKey,
   programRefFromSummary,
@@ -222,11 +223,10 @@ export function GraphViewerApp() {
   const [indexHover, setIndexHover] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [runPanelOpen, setRunPanelOpen] = useState(false);
-  const [extraLevers, setExtraLevers] = useState<
-    Array<{ name: string; sample: number | boolean }>
-  >([]);
-  const [leverSearch, setLeverSearch] = useState("");
-  const [leverPickerOpen, setLeverPickerOpen] = useState(false);
+  // The runtime's supported scenario knobs (alias → abstract field).
+  const [householdAliases, setHouseholdAliases] = useState<
+    Record<string, string>
+  >({});
   const [scenarioStep, setScenarioStep] = useState<
     "inputs" | "outputs" | "run"
   >("inputs");
@@ -544,66 +544,41 @@ export function GraphViewerApp() {
   // layer computes from — verified live); everything else falls back
   // to the graph's own scalar inputs.
   const scenarioFields = useMemo(() => {
-    // Default levers come from the program's REAL questions, ranked
-    // by how many rules consume each — never from a hardcoded list
-    // that might name a computed rule as if it were an input.
-    if (!graph) return [];
-    const counts = new Map<string, number>();
-    for (const rule of graph.rules) {
-      for (const dep of rule.inputDeps) {
-        const name = (dep.split("#").pop() ?? dep).replace(/^input\./, "");
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-    }
-    const sampleByName = new Map<string, number | boolean>();
-    const seen = new Set<string>();
+    // Levers are the runtime's supported knobs — the abstract
+    // household base plus this package's household_aliases. Raw
+    // graph input names are not accepted by the engine, so they are
+    // never offered as levers.
     const CURATED_SAMPLES: Record<string, number> = {
       household_size: 2,
-      snap_gross_monthly_income: 1200,
-      snap_gross_monthly_earned_income: 1200,
-      shelter_costs: 900,
       age: 40,
-      member_age: 40,
+      snap_gross_monthly_income: 1200,
+      gross_monthly_income: 1200,
+      shelter_costs: 900,
     };
     const fields: Array<{
       name: string;
       label: string;
       sample: number | boolean;
-    }> = [];
-    for (const input of graph.inputs) {
-      if (seen.has(input.name)) continue;
-      seen.add(input.name);
-      const sample =
-        typeof input.sample === "number" || typeof input.sample === "boolean"
-          ? input.sample
-          : (CURATED_SAMPLES[input.name] ?? 0);
-      sampleByName.set(input.name, sample);
-    }
-    const ranked = [...sampleByName.keys()].sort(
-      (a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0),
-    );
-    for (const name of ranked.slice(0, 6)) {
-      fields.push({ name, label: name, sample: sampleByName.get(name) ?? 0 });
+    }> = [
+      { name: "household_size", label: "household_size", sample: 2 },
+      { name: "age", label: "age", sample: 40 },
+    ];
+    const seenTargets = new Set<string>();
+    for (const [alias, target] of Object.entries(householdAliases)) {
+      if (seenTargets.has(target)) continue;
+      seenTargets.add(target);
+      fields.push({
+        name: alias,
+        label: alias,
+        sample: CURATED_SAMPLES[alias] ?? 0,
+      });
     }
     return fields;
-  }, [graph]);
+  }, [householdAliases]);
 
-  const allScenarioFields = useMemo(() => {
-    const seen = new Set(scenarioFields.map((field) => field.name));
-    const extras = extraLevers
-      .filter((lever) => !seen.has(lever.name))
-      .map((lever) => ({
-        name: lever.name,
-        label: lever.name,
-        sample: lever.sample,
-      }));
-    return [...scenarioFields, ...extras];
-  }, [scenarioFields, extraLevers]);
+  const allScenarioFields = scenarioFields;
 
   useEffect(() => {
-    setExtraLevers([]);
-    setLeverSearch("");
-    setLeverPickerOpen(false);
     setRunResult(null);
     setRunError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -670,12 +645,19 @@ export function GraphViewerApp() {
             variables,
           }),
         });
-      // One bad or excess trace variable fails the whole run, so walk
-      // a ladder — each rung keeps as many intermediates as the
-      // engine will accept before giving up on tracing entirely.
+      // The runtime resolves variables by bare rule name (legalId
+      // forms fail on some packages), so trace requests speak names.
+      // One bad or excess variable fails the whole run, so walk a
+      // ladder — each rung keeps as many intermediates as the engine
+      // will accept before giving up on tracing entirely.
+      const bareNames = [
+        ...new Set(
+          [...reachable].map((id) => id.split("#").pop() ?? id),
+        ),
+      ];
       let response: Response | null = null;
       for (const cap of [96, 48, 24, 0]) {
-        const variables = [...reachable].slice(0, cap);
+        const variables = bareNames.slice(0, cap);
         lastRunRequest.current = {
           jurisdiction: effectiveProgram.jurisdiction,
           program_id: effectiveProgram.programId,
@@ -755,6 +737,9 @@ export function GraphViewerApp() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    void fetchHouseholdAliases(program).then((aliases) => {
+      if (!cancelled) setHouseholdAliases(aliases);
+    });
     fetchProgramGraph(program)
       .then((nextGraph) => {
         if (cancelled) return;
@@ -939,8 +924,12 @@ export function GraphViewerApp() {
     [graph, selectedOutputs],
   );
   const inputEditValues = useMemo(() => {
+    // Only knobs the runtime actually ingests get answer fields —
+    // a field the engine would silently ignore is a lie.
+    const knobs = new Set(scenarioFields.map((field) => field.name));
     const values: Record<string, number | boolean> = {};
     for (const input of graph?.inputs ?? []) {
+      if (!knobs.has(input.name)) continue;
       const fromScenario = scenario[input.name];
       if (typeof fromScenario === "number" || typeof fromScenario === "boolean") {
         values[input.name] = fromScenario;
@@ -949,10 +938,12 @@ export function GraphViewerApp() {
         typeof input.sample === "boolean"
       ) {
         values[input.name] = input.sample;
+      } else {
+        values[input.name] = 0;
       }
     }
     return values;
-  }, [graph, scenario]);
+  }, [graph, scenario, scenarioFields]);
   const inputEditCtx = useMemo(
     () => ({
       values: inputEditValues,
@@ -1375,125 +1366,6 @@ export function GraphViewerApp() {
                   )}
                 </label>
               ))}
-            </div>
-            <div className="lever-picker">
-              <button
-                type="button"
-                className="lever-picker-toggle"
-                onClick={() => setLeverPickerOpen((open) => !open)}
-                aria-expanded={leverPickerOpen}
-              >
-                ＋ Add input
-              </button>
-              {leverPickerOpen && (
-                <div className="lever-picker-panel">
-                  <input
-                    type="search"
-                    value={leverSearch}
-                    onChange={(event) => setLeverSearch(event.target.value)}
-                    placeholder="Search inputs..."
-                    aria-label="Search inputs to add"
-                  />
-                  <div className="lever-row lever-row-head" aria-hidden>
-                    <span className="lever-row-name">Input</span>
-                    <span className="lever-row-cell">Entity</span>
-                    <span className="lever-row-cell">Type</span>
-                    <span className="lever-row-cell">Default</span>
-                    <span />
-                  </div>
-                  <div className="lever-picker-list">
-                    {(graph?.inputs ?? [])
-                      .filter((input, index, list) => {
-                        if (
-                          list.findIndex((i) => i.name === input.name) !==
-                          index
-                        )
-                          return false;
-                        const query = leverSearch.trim().toLowerCase();
-                        return (
-                          !query ||
-                          humanize(input.name)
-                            .toLowerCase()
-                            .includes(query)
-                        );
-                      })
-                      .slice(0, 30)
-                      .map((input) => {
-                        const isBase = scenarioFields.some(
-                          (field) => field.name === input.name,
-                        );
-                        const isExtra = extraLevers.some(
-                          (lever) => lever.name === input.name,
-                        );
-                        const selected = isBase || isExtra;
-                        return (
-                          <button
-                            type="button"
-                            key={input.legalId}
-                            className={`lever-row ${selected ? "is-selected" : ""}`}
-                            disabled={isBase}
-                            title={
-                              isBase
-                                ? "Always part of this scenario"
-                                : selected
-                                  ? "Remove from the scenario"
-                                  : "Add to the scenario"
-                            }
-                            onClick={() => {
-                              if (isBase) return;
-                              if (isExtra) {
-                                setExtraLevers((current) =>
-                                  current.filter(
-                                    (lever) => lever.name !== input.name,
-                                  ),
-                                );
-                                return;
-                              }
-                              const sample = input.sample;
-                              setExtraLevers((current) => [
-                                ...current,
-                                {
-                                  name: input.name,
-                                  sample:
-                                    typeof sample === "number" ||
-                                    typeof sample === "boolean"
-                                      ? sample
-                                      : 0,
-                                },
-                              ]);
-                            }}
-                          >
-                            <span className="lever-row-name">
-                              {humanize(input.name)}
-                            </span>
-                            <span className="lever-row-cell">
-                              {input.entity ? humanize(input.entity) : "—"}
-                            </span>
-                            <span className="lever-row-cell">
-                              {typeof input.sample === "boolean"
-                                ? "yes / no"
-                                : typeof input.sample === "number"
-                                  ? "number"
-                                  : "—"}
-                            </span>
-                            <span className="lever-row-cell">
-                              {input.sample !== undefined &&
-                              input.sample !== null
-                                ? String(input.sample)
-                                : "—"}
-                            </span>
-                            <span
-                              className={`lever-row-add ${selected ? "is-checked" : ""}`}
-                              aria-hidden
-                            >
-                              {selected ? "✓" : "＋"}
-                            </span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
             </div>
             <button
               type="button"

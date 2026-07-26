@@ -46,6 +46,15 @@ export default function CoverageLoading() {
                         </span>
                         <span className="pstack-callout-value">
                           <RollingNumber text={layer.loadingPattern} spin />
+                          {i === 0 && (
+                            <span
+                              className="pstack-counting cov-counting"
+                              aria-hidden
+                              data-on
+                            >
+                              counting the corpus
+                            </span>
+                          )}
                         </span>
                         <span className="pstack-callout-detail pstack-prose">
                           {layer.detail}
@@ -53,15 +62,12 @@ export default function CoverageLoading() {
                       </div>
                     </li>
                   ))}
-                  {/* Same in-column status as the loaded hero — the
-                      bottom line is below the fold on tall stages. */}
-                  <li className="pstack-counting" aria-hidden data-on>
-                    <span className="cov-counting">counting the corpus</span>
-                  </li>
                 </ol>
               </div>
-              <p className="pscroll-hint cov-counting" role="status">
-                counting the corpus
+              {/* Mirrors the loaded hero's hint slot exactly — the
+                  counting status lives in the callout column. */}
+              <p className="pscroll-hint pscroll-hint-scroll" aria-hidden>
+                scroll to assemble the stack ↓
               </p>
             </div>
           </section>

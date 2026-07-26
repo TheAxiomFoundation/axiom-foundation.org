@@ -125,6 +125,17 @@ export function StackHero({ data }: { data: CoverageData }) {
                       active={!live || step > i}
                       delayMs={140}
                     />
+                    {/* The pulsing status rides beside the first
+                        layer's digits while any reel still rolls. */}
+                    {i === 0 && (
+                      <span
+                        className="pstack-counting cov-counting"
+                        aria-hidden
+                        data-on={counting || undefined}
+                      >
+                        counting the corpus
+                      </span>
+                    )}
                   </span>
                   <span className="pstack-callout-detail pstack-prose">
                     {layer.detail}
@@ -132,31 +143,18 @@ export function StackHero({ data }: { data: CoverageData }) {
                 </div>
               </li>
             ))}
-            {/* The status lives WITH the numbers — the stage is nearly
-                viewport-tall, so the bottom hint is below the fold
-                exactly while the digits roll. */}
-            <li
-              className="pstack-counting"
-              aria-hidden
-              data-on={counting || undefined}
-            >
-              <span className="cov-counting">counting the corpus</span>
-            </li>
           </ol>
         </div>
         {/* Rendered in server HTML too (visibility is CSS-gated to
-            scrolly mode) so the loading state's "counting…" line
-            hands off to this without a blink. */}
+            scrolly mode) so the loading state's identical line hands
+            off to this without a blink. The counting status lives in
+            the callout column, next to the digits. */}
         <p
-          className={
-            counting
-              ? "pscroll-hint pscroll-hint-scroll cov-counting"
-              : "pscroll-hint pscroll-hint-scroll"
-          }
+          className="pscroll-hint pscroll-hint-scroll"
           aria-hidden
           data-done={(live && step >= 3) || undefined}
         >
-          {counting ? "counting the corpus" : <>scroll to assemble the stack ↓</>}
+          scroll to assemble the stack ↓
         </p>
       </div>
     </section>

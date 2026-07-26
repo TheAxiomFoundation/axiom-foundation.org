@@ -971,7 +971,10 @@ export function GraphViewerApp() {
       .map((rule) => ({
         legalId: rule.legalId,
         label: humanize(rule.name),
-        kind: "rule" as const,
+        kind:
+          rule.kind === "parameter"
+            ? ("parameter" as const)
+            : ("rule" as const),
         inScope: inScopeIds.has(rule.legalId),
       }));
     const seenNames = new Set<string>();
@@ -996,7 +999,7 @@ export function GraphViewerApp() {
   // rule itself.
   const goToSearchResult = (match: {
     legalId: string;
-    kind: "rule" | "input";
+    kind: "rule" | "parameter" | "input";
     inScope: boolean;
   }) => {
     if (match.inScope) {
@@ -1679,7 +1682,11 @@ export function GraphViewerApp() {
                       title="Fly to this on the canvas"
                     >
                       <span className="top-search-kind">
-                        {match.kind === "input" ? "?" : "ƒ"}
+                        {match.kind === "input"
+                          ? "?"
+                          : match.kind === "parameter"
+                            ? "π"
+                            : "ƒ"}
                       </span>
                       {match.label}
                     </button>
@@ -2049,11 +2056,11 @@ export function GraphViewerApp() {
                     <>
                       <strong>⚑ Bedrock.</strong>
                       <p>
-                        {name} rests directly on{" "}
-                        {depInputs.length > 0
-                          ? `${depInputs.length} household ${depInputs.length === 1 ? "question" : "questions"}`
-                          : "no further rules"}
-                        .
+                        {rule?.kind === "parameter"
+                          ? `${name} is a constant fixed by the law — nothing further to unfold.`
+                          : depInputs.length > 0
+                            ? `${name} rests directly on ${depInputs.length} household ${depInputs.length === 1 ? "question" : "questions"}.`
+                            : `${name} rests on no further rules.`}
                       </p>
                       {depInputs.length > 0 && (
                         <div className="walk-input-chips">
@@ -2394,7 +2401,7 @@ export function GraphViewerApp() {
                 </>
               ) : null}
             </dl>
-            {formula ? (
+            {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
                 <div className="node-inspector-code-body">

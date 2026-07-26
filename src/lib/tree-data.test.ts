@@ -281,7 +281,12 @@ describe("buildBreadcrumbs", () => {
       { label: "Legislation", href: "/uk/legislation" },
       { label: "UK Statutory Instruments", href: "/uk/legislation/uksi" },
       { label: "2013", href: "/uk/legislation/uksi/2013" },
-      { label: "376", href: "/uk/legislation/uksi/2013/376" },
+      // Named from the uk-legal-names registry rather than the bare
+      // instrument number.
+      {
+        label: "The Universal Credit Regulations 2013",
+        href: "/uk/legislation/uksi/2013/376",
+      },
     ]);
   });
 

@@ -6,6 +6,7 @@ import {
 } from "@/lib/axiom/jurisdictions-seed";
 import { chapterlessSectionAlias } from "@/lib/axiom/citation-path-aliases";
 import { browseRootLevels } from "@/lib/axiom/browse-root-levels";
+import { ukSegmentLabel } from "@/lib/axiom/uk-legal-names";
 
 export type NodeType =
   | "jurisdiction"
@@ -1280,6 +1281,15 @@ function formatRuleSegmentLabel(
   if (jurisdiction === "uk") {
     if (ruleIndex === 0) {
       return formatGenericSegmentLabel(segment);
+    }
+
+    // Registry names for legislation.gov.uk classes and instruments
+    // ("ukpga" → "Public General Acts", "ukpga/1992/4" → the act's
+    // title) — the UK corpus release has no labelled container rows
+    // to take these from.
+    if (Array.isArray(allSegments)) {
+      const registryLabel = ukSegmentLabel(allSegments, ruleIndex + 1);
+      if (registryLabel) return registryLabel;
     }
 
     if (

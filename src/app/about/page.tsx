@@ -153,7 +153,7 @@ export default function AboutPage() {
               </div>
               <span className="landing-demo-thumb" aria-hidden>
                 <iframe
-                  src="https://axiom-demo-shell.vercel.app/"
+                  src="https://axiom-demo-shell.vercel.app/demos/"
                   title="Demo gallery — preview"
                   loading="lazy"
                   tabIndex={-1}

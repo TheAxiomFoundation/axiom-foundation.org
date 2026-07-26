@@ -15,7 +15,10 @@ export const metadata: Metadata = {
  * demo in an in-page modal with prev/next navigation, and ?d=<id>
  * deep-links straight into a demo (the header dropdown uses this).
  */
-const DEMO_SHELL_URL = "https://axiom-demo-shell.vercel.app";
+// The /demos path, NOT the shell's root — the root 308s to
+// axiom.org/demos, which would recurse this very page inside its
+// own iframe.
+const DEMO_SHELL_URL = "https://axiom-demo-shell.vercel.app/demos";
 
 /** Modal ids the shell accepts via ?d= — mirrors its data.js. */
 const SHELL_DEMO_IDS = new Set([

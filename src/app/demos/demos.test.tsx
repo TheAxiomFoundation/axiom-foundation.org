@@ -13,7 +13,7 @@ describe('DemosPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
       'src',
-      'https://axiom-demo-shell.vercel.app/',
+      'https://axiom-demo-shell.vercel.app/demos/',
     )
     // Closing CTA still points into the app.
     expect(screen.getByText(/the axiom app/i).closest('a')).toHaveAttribute(
@@ -26,7 +26,7 @@ describe('DemosPage', () => {
     render(await DemosPage(props({ d: 'chatbot' })))
     expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
       'src',
-      'https://axiom-demo-shell.vercel.app/?d=chatbot',
+      'https://axiom-demo-shell.vercel.app/demos/?d=chatbot',
     )
   })
 
@@ -34,7 +34,7 @@ describe('DemosPage', () => {
     render(await DemosPage(props({ d: 'finbot' })))
     expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
       'src',
-      'https://axiom-demo-shell.vercel.app/?d=chatbot',
+      'https://axiom-demo-shell.vercel.app/demos/?d=chatbot',
     )
   })
 
@@ -42,7 +42,7 @@ describe('DemosPage', () => {
     render(await DemosPage(props({ d: 'not-a-demo"><script>' })))
     expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
       'src',
-      'https://axiom-demo-shell.vercel.app/',
+      'https://axiom-demo-shell.vercel.app/demos/',
     )
   })
 

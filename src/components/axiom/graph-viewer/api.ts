@@ -81,23 +81,40 @@ export async function fetchProgramGraph(program: ProgramRef): Promise<ProgramGra
   return json.data.graph;
 }
 
-/** The runtime's supported scenario knobs for a package: aliases
- *  mapping friendly lever names onto abstract household fields. */
-export async function fetchHouseholdAliases(
-  program: ProgramRef,
-): Promise<Record<string, string>> {
+/** The runtime's input registry for a package: every settable input
+ *  with its dtype and default, straight from the engine. */
+export interface InputMeta {
+  dtypes: Record<string, string>;
+  defaults: Record<string, unknown>;
+}
+export async function fetchInputMeta(program: ProgramRef): Promise<InputMeta> {
   const url = `${trimSlash(API_BASE)}/runtime/packages/${encodeURIComponent(
     program.jurisdiction,
   )}/${encodeURIComponent(program.programId)}`;
   try {
     const response = await fetch(url);
-    if (!response.ok) return {};
+    if (!response.ok) return { dtypes: {}, defaults: {} };
     const json = (await response.json()) as {
-      data?: { package?: { household_aliases?: Record<string, string> } };
+      data?: {
+        package?: {
+          entities?: Array<{
+            entity: string;
+            inputs?: Array<{ name: string; dtype?: string; default?: unknown }>;
+          }>;
+        };
+      };
     };
-    return json.data?.package?.household_aliases ?? {};
+    const dtypes: Record<string, string> = {};
+    const defaults: Record<string, unknown> = {};
+    for (const entity of json.data?.package?.entities ?? []) {
+      for (const input of entity.inputs ?? []) {
+        dtypes[input.name] = input.dtype ?? "number";
+        defaults[input.name] = input.default;
+      }
+    }
+    return { dtypes, defaults };
   } catch {
-    return {};
+    return { dtypes: {}, defaults: {} };
   }
 }
 

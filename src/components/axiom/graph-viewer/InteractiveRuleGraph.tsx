@@ -1276,7 +1276,11 @@ function InlineAnswer({ legalId }: { legalId: string }) {
       ) : (
         <input
           type="number"
-          value={value === undefined ? "" : String(value)}
+          value={
+            value === undefined || Number.isNaN(value as number)
+              ? ""
+              : String(value)
+          }
           placeholder="answer…"
           onChange={(event) =>
             onChange(

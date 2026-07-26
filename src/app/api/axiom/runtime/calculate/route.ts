@@ -9,19 +9,19 @@ import { clientKey, isRateLimited } from "../run/limiter";
 export const dynamic = "force-dynamic";
 
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
-const INPUT_NAME_RE = /^[a-z0-9_]{1,64}$/;
+const INPUT_NAME_RE = /^[a-z0-9_]{1,80}$/;
 const VARIABLE_RE = /^[\w.:#/–-]{1,140}$/;
-const MAX_VALUES = 48;
+const MAX_VALUES = 64;
 const MAX_VARIABLES = 96;
 
 /**
- * Scenario execution for the Plane: the caller names a program,
- * overrides input values by bare name, and asks for trace variables.
- * The server grafts the overrides onto the package's canonical
- * sample household — the household *shape* always comes from the
- * registry, never the browser — and executes. Values are grafted
- * onto every entity leaf carrying the key, which matches how the
- * graph's input nodes are named.
+ * Scenario execution for the Plane. The caller names a program,
+ * answers inputs by their REAL registry names, and asks for trace
+ * variables. Values are grafted onto the package's entity household
+ * exactly where the registry says each input lives — every input
+ * the law asks is settable, verified end to end (grafting
+ * employee_wages_received moves gross income; household_size moves
+ * the allotment table).
  */
 export async function POST(request: Request) {
   if (!isRuntimeApiConfigured()) {
@@ -82,37 +82,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "package_not_found" }, { status: 404 });
   }
 
-  const sample = structuredClone(detail.sample_request) as Record<
-    string,
-    unknown
-  >;
-  const matched = graftValues(sample.household, values);
+  const sample = structuredClone(detail.sample_request) as {
+    household?: { entities?: Record<string, Record<string, Record<string, unknown>>> };
+    variables?: unknown;
+  } & Record<string, unknown>;
   const baseVariables = Array.isArray(sample.variables)
     ? (sample.variables as string[])
     : (detail.default_outputs ?? []);
   sample.variables = [...new Set([...baseVariables, ...variables])];
 
-  // Compiled samples ship as full entity dumps whose inputs the
-  // engine does not rebind (verified 2026-07-22: editing any leaf
-  // leaves outputs unchanged, while the API's abstract household
-  // shape computes). When the graft finds no purchase, speak the
-  // abstract shape instead: person + unit, scenario values as unit
-  // fields — the mapping layer resolves them.
-  let request_: Record<string, unknown> = sample;
-  if (Object.keys(values).length > 0) {
-    const { age, ...unitValues } = values;
-    request_ = {
-      program_id: programId,
-      jurisdiction,
-      household: {
-        people: { person_1: { age: typeof age === "number" ? age : 40 } },
-        spm_units: { unit_1: unitValues },
-      },
-      variables: sample.variables,
-    };
+  // Graft each value onto the entity that owns the input per the
+  // package registry — adding the key when the sample omits it.
+  const applied: string[] = [];
+  const entities = sample.household?.entities ?? {};
+  for (const entity of detail.entities ?? []) {
+    const container = entities[entity.entity];
+    if (!container) continue;
+    for (const input of entity.inputs ?? []) {
+      if (!(input.name in values)) continue;
+      for (const instance of Object.values(container)) {
+        instance[input.name] = values[input.name];
+      }
+      applied.push(input.name);
+    }
   }
 
-  const result = await runCalculate(request_);
+  const result = await runCalculate(sample);
   if (!result) {
     return NextResponse.json({ error: "calculate_failed" }, { status: 502 });
   }
@@ -121,31 +116,9 @@ export async function POST(request: Request) {
       outputs: result.outputs,
       trace: result.trace ?? [],
       period: detail.default_period ?? null,
-      applied: Object.keys(values),
-      grafted: Object.keys(values).length > 0 ? "abstract" : "sample",
+      applied,
+      dropped: Object.keys(values).filter((name) => !applied.includes(name)),
     },
     { headers: { "cache-control": "no-store" } }
   );
-}
-
-/** Replace every leaf whose key matches an override, at any depth of
- *  the household structure. Returns how many leaves matched. */
-function graftValues(
-  node: unknown,
-  values: Record<string, number | boolean>
-): number {
-  if (!node || typeof node !== "object") return 0;
-  let matched = 0;
-  for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
-    if (
-      key in values &&
-      (typeof child === "number" || typeof child === "boolean")
-    ) {
-      (node as Record<string, unknown>)[key] = values[key];
-      matched++;
-    } else {
-      matched += graftValues(child, values);
-    }
-  }
-  return matched;
 }

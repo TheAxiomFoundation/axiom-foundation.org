@@ -408,6 +408,12 @@
 .graph-viewer-root .irg-wrap {
   height: 100%;
   min-height: 0;
+  /* Cap React Flow's internal z-indexes (selected nodes go to 1000)
+     inside the canvas so overlays like the results sheet always
+     paint above the graph. */
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Run mode: execution as a depth layer ── */

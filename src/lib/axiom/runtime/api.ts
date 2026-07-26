@@ -155,6 +155,11 @@ export interface RuntimePackageDetail extends RuntimePackageSummary {
   default_period?: string;
   sample_request?: unknown;
   outputs?: Array<{ name: string; legal_id: string; alias_for?: string }>;
+  entities?: Array<{
+    entity: string;
+    inputs?: Array<{ name: string; dtype?: string; default?: unknown }>;
+  }>;
+  household_aliases?: Record<string, string>;
 }
 
 export async function getRuntimePackage(

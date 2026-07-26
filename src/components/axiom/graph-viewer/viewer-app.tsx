@@ -22,7 +22,7 @@ import {
   displayNameForProgram,
   fetchAllPrograms,
   fetchComposedGraph,
-  fetchHouseholdAliases,
+  fetchInputMeta,
   fetchProgramGraph,
   programKey,
   programRefFromSummary,
@@ -228,10 +228,12 @@ export function GraphViewerApp() {
   // flow sweep, after which the execution layer holds still.
   const [planeFresh, setPlaneFresh] = useState(false);
   const [selectedLevers, setSelectedLevers] = useState<string[] | null>(null);
-  // The runtime's supported scenario knobs (alias → abstract field).
-  const [householdAliases, setHouseholdAliases] = useState<
-    Record<string, string>
-  >({});
+  // The runtime's input registry: every settable input, its dtype
+  // and default — the single source of truth for answer controls.
+  const [inputMeta, setInputMeta] = useState<{
+    dtypes: Record<string, string>;
+    defaults: Record<string, unknown>;
+  }>({ dtypes: {}, defaults: {} });
   const [replay, setReplay] = useState<{
     stages: string[][];
     cursor: number;
@@ -540,46 +542,56 @@ export function GraphViewerApp() {
   }, [composeFocus]);
   const effectiveProgram = program ?? composedProgram;
 
-  // Editable scenario fields. Programs with a known lever vocabulary
-  // get a curated set (the abstract household keys the API's mapping
-  // layer computes from — verified live); everything else falls back
-  // to the graph's own scalar inputs.
-  const scenarioFields = useMemo(() => {
-    // Levers are the runtime's supported knobs — the abstract
-    // household base plus this package's household_aliases. Raw
-    // graph input names are not accepted by the engine, so they are
-    // never offered as levers.
-    const CURATED_SAMPLES: Record<string, number> = {
-      household_size: 2,
-      age: 40,
-      snap_gross_monthly_income: 1200,
-      gross_monthly_income: 1200,
-      shelter_costs: 900,
-    };
-    const fields: Array<{
+  // Placeholder samples for a few common inputs; anything else uses
+  // the registry default. Samples are placeholders, never answers.
+  const CURATED_SAMPLES: Record<string, number> = {
+    household_size: 2,
+    member_age: 40,
+    employee_wages_received: 1200,
+    snap_gross_monthly_earned_income: 1200,
+    household_shelter_costs_incurred: 900,
+  };
+  // Every input the runtime can ingest, with its control type — the
+  // registry is the truth; the graph supplies canvas identity.
+  const inputCatalog = useMemo(() => {
+    const seen = new Set<string>();
+    const catalog: Array<{
       name: string;
-      label: string;
+      legalId: string;
+      entity: string | null;
+      isBool: boolean;
       sample: number | boolean;
-    }> = [
-      { name: "household_size", label: "household_size", sample: 2 },
-      { name: "age", label: "age", sample: 40 },
-    ];
-    const seenTargets = new Set<string>();
-    for (const [alias, target] of Object.entries(householdAliases)) {
-      if (seenTargets.has(target)) continue;
-      seenTargets.add(target);
-      fields.push({
-        name: alias,
-        // Label by what the knob actually sets (the alias target),
-        // never by an alias that collides with a computed rule's
-        // name — "Gross Monthly Income" is a formula in NY; this
-        // lever sets Monthly Earnings Per Adult.
-        label: target,
-        sample: CURATED_SAMPLES[alias] ?? 0,
+    }> = [];
+    for (const input of graph?.inputs ?? []) {
+      if (seen.has(input.name)) continue;
+      if (!(input.name in inputMeta.dtypes)) continue;
+      seen.add(input.name);
+      const isBool = inputMeta.dtypes[input.name] === "bool";
+      catalog.push({
+        name: input.name,
+        legalId: input.legalId,
+        entity: input.entity ?? null,
+        isBool,
+        sample: isBool
+          ? Boolean(inputMeta.defaults[input.name])
+          : (CURATED_SAMPLES[input.name] ??
+            (typeof inputMeta.defaults[input.name] === "number"
+              ? (inputMeta.defaults[input.name] as number)
+              : 0)),
       });
     }
-    return fields;
-  }, [householdAliases]);
+    return catalog;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, inputMeta]);
+  const scenarioFields = useMemo(
+    () =>
+      inputCatalog.map((input) => ({
+        name: input.name,
+        label: input.name,
+        sample: input.sample,
+      })),
+    [inputCatalog],
+  );
 
   const allScenarioFields = scenarioFields;
 
@@ -738,8 +750,8 @@ export function GraphViewerApp() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void fetchHouseholdAliases(program).then((aliases) => {
-      if (!cancelled) setHouseholdAliases(aliases);
+    void fetchInputMeta(program).then((meta) => {
+      if (!cancelled) setInputMeta(meta);
     });
     fetchProgramGraph(program)
       .then((nextGraph) => {
@@ -925,30 +937,24 @@ export function GraphViewerApp() {
     [graph, selectedOutputs],
   );
   const inputEditValues = useMemo(() => {
-    // Only knobs the runtime actually ingests get answer fields —
-    // a field the engine would silently ignore is a lie.
-    const knobs = new Set(
-      scenarioFields
-        .filter((field) => field.name === field.label)
-        .map((field) => field.name),
-    );
+    // Every registry input is genuinely settable (grafted onto its
+    // owning entity server-side) — so every one gets a live field.
     const values: Record<string, number | boolean> = {};
-    for (const input of graph?.inputs ?? []) {
-      if (!knobs.has(input.name)) continue;
+    for (const input of inputCatalog) {
       const fromScenario = scenario[input.name];
-      if (typeof fromScenario === "number" || typeof fromScenario === "boolean") {
-        values[input.name] = fromScenario;
-      } else if (
-        typeof input.sample === "number" ||
-        typeof input.sample === "boolean"
+      if (
+        typeof fromScenario === "number" ||
+        typeof fromScenario === "boolean"
       ) {
-        values[input.name] = input.sample;
+        values[input.name] = fromScenario;
+      } else if (input.isBool) {
+        values[input.name] = Boolean(scenario[input.name] ?? false);
       } else {
-        values[input.name] = 0;
+        values[input.name] = Number.NaN;
       }
     }
     return values;
-  }, [graph, scenario, scenarioFields]);
+  }, [inputCatalog, scenario]);
   const inputEditCtx = useMemo(
     () => ({
       answered: new Set(Object.keys(scenario)),
@@ -1339,22 +1345,6 @@ export function GraphViewerApp() {
     const activeFields = allScenarioFields.filter((field) =>
       active.includes(field.name),
     );
-    const availableFields = allScenarioFields.filter(
-      (field) => !active.includes(field.name),
-    );
-    const knobNames = new Set(allScenarioFields.map((f) => f.name));
-    const seen = new Set<string>();
-    const others = (graph?.inputs ?? []).filter((input) => {
-      if (knobNames.has(input.name) || seen.has(input.name)) return false;
-      seen.add(input.name);
-      return true;
-    });
-    const shown = others
-      .filter(
-        (input) =>
-          !query || humanize(input.name).toLowerCase().includes(query),
-      )
-      .slice(0, 40);
     return (
       <>
         <div className="run-columns">
@@ -1365,55 +1355,40 @@ export function GraphViewerApp() {
               className="run-overview-search"
               value={runBrowseSearch}
               onChange={(event) => setRunBrowseSearch(event.target.value)}
-              placeholder={`Search ${allScenarioFields.length + others.length} inputs...`}
+              placeholder={`Search ${inputCatalog.length} inputs...`}
             />
             <div className="run-picker-list">
-              {availableFields
+              {inputCatalog
                 .filter(
-                  (field) =>
-                    !query ||
-                    humanize(field.label).toLowerCase().includes(query),
+                  (input) =>
+                    !active.includes(input.name) &&
+                    (!query ||
+                      humanize(input.name).toLowerCase().includes(query)),
                 )
-                .map((field) => (
+                .slice(0, 60)
+                .map((input) => (
                   <button
                     type="button"
-                    key={field.name}
+                    key={input.legalId}
                     className="run-picker-row is-lever"
                     title="Add to your answers"
-                    onClick={() => setSelectedLevers([...active, field.name])}
+                    onClick={() => setSelectedLevers([...active, input.name])}
                   >
                     <span className="run-picker-icon">＋</span>
                     <span className="run-picker-name">
-                      {humanize(field.label)}
+                      {humanize(input.name)}
                     </span>
-                    <span className="run-picker-tag">settable</span>
+                    <span className="run-picker-tag run-picker-tag-muted">
+                      {input.entity ? humanize(input.entity) : "—"}
+                    </span>
                   </button>
                 ))}
-              {shown.map((input) => (
-                <button
-                  type="button"
-                  key={input.legalId}
-                  className="run-picker-row"
-                  title="See this question on the canvas — the law's default answers it"
-                  onClick={() => {
-                    setRunPanelOpen(false);
-                    goToSearchResult({
-                      legalId: input.legalId,
-                      kind: "input",
-                      inScope: inScopeIds.has(input.legalId),
-                    });
-                  }}
-                >
-                  <span className="run-picker-icon">→</span>
-                  <span className="run-picker-name">
-                    {humanize(input.name)}
-                  </span>
-                  <span className="run-picker-tag run-picker-tag-muted">
-                    {input.entity ? humanize(input.entity) : "default"}
-                  </span>
-                </button>
-              ))}
-              {availableFields.length === 0 && shown.length === 0 && (
+              {inputCatalog.filter(
+                (input) =>
+                  !active.includes(input.name) &&
+                  (!query ||
+                    humanize(input.name).toLowerCase().includes(query)),
+              ).length === 0 && (
                 <div className="output-empty">No inputs match.</div>
               )}
             </div>
@@ -1425,6 +1400,18 @@ export function GraphViewerApp() {
                 <label key={field.name} className="scenario-field">
                   <span>{humanize(field.label)}</span>
                   <span className="scenario-field-controls">
+                    {typeof field.sample === "boolean" ? (
+                      <input
+                        type="checkbox"
+                        checked={Boolean(scenario[field.name])}
+                        onChange={(event) =>
+                          setScenario((current) => ({
+                            ...current,
+                            [field.name]: event.target.checked,
+                          }))
+                        }
+                      />
+                    ) : (
                     <input
                       type="number"
                       value={
@@ -1446,6 +1433,7 @@ export function GraphViewerApp() {
                         })
                       }
                     />
+                    )}
                     <button
                       type="button"
                       className="scenario-field-remove"
@@ -1467,7 +1455,7 @@ export function GraphViewerApp() {
               ))}
               {activeFields.length === 0 && (
                 <p className="run-hint">
-                  Pick levers on the left — unanswered ones fall to the
+                  Pick inputs on the left — unanswered ones fall to the
                   law's defaults.
                 </p>
               )}
@@ -2262,11 +2250,10 @@ export function GraphViewerApp() {
                 <>
                   <dt>Your answer</dt>
                   <dd>
-                    {typeof (scenario[input.name] ?? input.sample) ===
-                    "boolean" ? (
+                    {inputMeta.dtypes[input.name] === "bool" ? (
                       <input
                         type="checkbox"
-                        checked={Boolean(scenario[input.name] ?? input.sample)}
+                        checked={Boolean(scenario[input.name])}
                         onChange={(event) =>
                           setScenario((current) => ({
                             ...current,
@@ -2278,17 +2265,24 @@ export function GraphViewerApp() {
                       <input
                         className="node-inspector-answer"
                         type="number"
-                        value={String(
-                          scenario[input.name] ??
-                            (typeof input.sample === "number"
-                              ? input.sample
-                              : 0),
-                        )}
+                        placeholder="answer…"
+                        value={
+                          typeof scenario[input.name] === "number"
+                            ? String(scenario[input.name])
+                            : ""
+                        }
                         onChange={(event) =>
-                          setScenario((current) => ({
-                            ...current,
-                            [input.name]: Number(event.target.value),
-                          }))
+                          setScenario((current) => {
+                            if (event.target.value === "") {
+                              const next = { ...current };
+                              delete next[input.name];
+                              return next;
+                            }
+                            return {
+                              ...current,
+                              [input.name]: Number(event.target.value),
+                            };
+                          })
                         }
                       />
                     )}
@@ -2466,7 +2460,9 @@ export function GraphViewerApp() {
                 ))}
             </div>
             <div className="results-adjust" aria-label="Adjust and run again">
-              {allScenarioFields.map((field) => (
+              {allScenarioFields
+                .filter((field) => field.name in scenario)
+                .map((field) => (
                 <label key={field.name} className="results-adjust-field">
                   <span>
                     {(() => {

@@ -178,6 +178,10 @@ export function InteractiveRuleGraph({
   // hides secondary chrome, near shows full cards.
   const [lod, setLod] = useState<"near" | "mid" | "far">("near");
   const lodTimer = useRef<number | null>(null);
+  // While the camera moves, hover is inert: a cursor incidentally
+  // crossing cards mid-flight must not flicker highlights.
+  const moveBusy = useRef(false);
+  const moveEndTimer = useRef<number | null>(null);
   // When the user hovers any node, dim everything that isn't part of its
   // lineage (ancestors that feed into it + descendants it feeds). For a
   // mathematical operator that means "the boxes it pertains to"; for an
@@ -551,6 +555,17 @@ export function InteractiveRuleGraph({
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
           onMove={(_event, viewport) => {
+            if (!moveBusy.current) {
+              moveBusy.current = true;
+              setHighlightNodeId(null);
+              wrapRef.current?.classList.add("is-moving");
+            }
+            if (moveEndTimer.current)
+              window.clearTimeout(moveEndTimer.current);
+            moveEndTimer.current = window.setTimeout(() => {
+              moveBusy.current = false;
+              wrapRef.current?.classList.remove("is-moving");
+            }, 180);
             const next =
               viewport.zoom < 0.42
                 ? "far"
@@ -569,6 +584,7 @@ export function InteractiveRuleGraph({
           nodesConnectable={false}
           elementsSelectable
           onNodeMouseEnter={(_e, node) => {
+            if (moveBusy.current) return;
             const kind = (node.data as IrgNodeData).kind;
             // Literals (raw numbers) aren't useful to highlight from — they
             // appear in many unrelated places and would light up half the

@@ -2970,3 +2970,9 @@
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
 }
+
+/* Cards are hover-inert while the camera moves — no flicker from a
+   cursor the map happens to sail under. */
+.graph-viewer-root .irg-wrap.is-moving .react-flow__node {
+  pointer-events: none !important;
+}

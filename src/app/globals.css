@@ -699,7 +699,7 @@ a.cov-mini:focus-visible {
    there is nothing to count. */
 .pstack-counting {
   display: none;
-  margin-left: 0.9em;
+  margin-left: 1.4em;
   font-family: var(--f-mono);
   font-size: 0.62rem;
   letter-spacing: 0.14em;

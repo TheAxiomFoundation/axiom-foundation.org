@@ -25,8 +25,14 @@ const n = (value: number) => numberFormat.format(value);
 /** How far through the tall section each layer joins the stack. */
 const STEP_THRESHOLDS = [0.28, 0.6];
 
-/** Longest odometer settle: delay + per-digit stagger + strip transition. */
-const SETTLE_MS = 1900;
+/** Ceiling for the counting tag when no reel transition ever fires
+ * (e.g. digits mounted pre-settled): delay (140) + last-digit stagger
+ * (8×70) + strip transition (950). */
+const SETTLE_FALLBACK_MS = 1650;
+
+/** Reel ends arrive ~70ms apart (the stagger); once none has arrived
+ * for this long, the roll is over. */
+const SETTLE_QUIET_MS = 250;
 
 export function StackHero({ data }: { data: CoverageData }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -36,13 +42,39 @@ export function StackHero({ data }: { data: CoverageData }) {
 
   // While any odometer is still rolling toward its figure, the hint
   // line reads "counting the corpus…" — the same line the loading
-  // state shows, so the handoff is seamless — and only becomes the
-  // scroll cue once the digits settle. Each step change starts a new
-  // roll, so the window restarts with it.
+  // state shows, so the handoff is seamless. The tag tracks the ACTUAL
+  // roll: each reel's transitionend bubbles up here, and once ends stop
+  // arriving the count is over — however fast or slow the reels ran.
+  // Each step change starts a new roll, so the window restarts with it.
   useEffect(() => {
     setCounting(true);
-    const t = setTimeout(() => setCounting(false), SETTLE_MS);
-    return () => clearTimeout(t);
+    const el = sectionRef.current;
+    const done = () => setCounting(false);
+    let quiet: ReturnType<typeof setTimeout> | undefined;
+    let fallback: ReturnType<typeof setTimeout> | undefined = setTimeout(
+      done,
+      SETTLE_FALLBACK_MS
+    );
+    const onEnd = (e: TransitionEvent) => {
+      if (
+        e.propertyName !== "transform" ||
+        !(e.target instanceof HTMLElement) ||
+        !e.target.classList.contains("roll-strip")
+      )
+        return;
+      if (fallback) {
+        clearTimeout(fallback);
+        fallback = undefined;
+      }
+      clearTimeout(quiet);
+      quiet = setTimeout(done, SETTLE_QUIET_MS);
+    };
+    el?.addEventListener("transitionend", onEnd);
+    return () => {
+      clearTimeout(fallback);
+      clearTimeout(quiet);
+      el?.removeEventListener("transitionend", onEnd);
+    };
   }, [live, step]);
 
   useEffect(() => {

@@ -1434,11 +1434,12 @@ const RoundedSmoothStep = (props: EdgeProps) => {
     targetX - sourceX > RAIL_OFFSET + RAIL_RADIUS + 6 &&
     Math.abs(dy) >= RAIL_RADIUS * 2
   ) {
-    const route =
-      (props.data as { route?: "target" | "source" } | undefined)?.route ??
-      "target";
-    const rail =
-      route === "source" ? sourceX + RAIL_OFFSET : targetX - RAIL_OFFSET;
+    const data = props.data as
+      | { route?: "target" | "source"; railOffset?: number }
+      | undefined;
+    const route = data?.route ?? "target";
+    const offset = data?.railOffset ?? RAIL_OFFSET;
+    const rail = route === "source" ? sourceX + offset : targetX - offset;
     const dir = dy > 0 ? 1 : -1;
     const path =
       `M ${sourceX},${sourceY} ` +
@@ -2217,8 +2218,8 @@ function layout(nodes: Node[], edges: Edge[]) {
   const dense = nodes.length > 250;
   g.setGraph({
     rankdir: "LR",
-    nodesep: dense ? 10 : 24,
-    ranksep: dense ? 42 : 80,
+    nodesep: dense ? 14 : 24,
+    ranksep: dense ? 68 : 92,
     marginx: 24,
     marginy: 24,
   });
@@ -2288,6 +2289,57 @@ function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
     }
     return count;
   };
+  // Lane assignment by interval coloring: each trunk's vertical span
+  // is known (its node's y to its farthest partner's y), so within a
+  // column, overlapping trunks take different rail offsets and can
+  // never run collinear. Sources get the same for source-routed
+  // exits.
+  const laneOf = (forTargets: boolean) => {
+    const spans = new Map<string, { lo: number; hi: number }>();
+    for (const e of edges) {
+      const self = rects.get(forTargets ? e.target : e.source);
+      const other = rects.get(forTargets ? e.source : e.target);
+      if (!self || !other) continue;
+      const selfY = self.y + self.h / 2;
+      const otherY = other.y + other.h / 2;
+      const id = forTargets ? e.target : e.source;
+      const span = spans.get(id) ?? { lo: selfY, hi: selfY };
+      span.lo = Math.min(span.lo, otherY);
+      span.hi = Math.max(span.hi, otherY);
+      spans.set(id, span);
+    }
+    const byColumn = new Map<number, { id: string; lo: number; hi: number }[]>();
+    for (const [id, span] of spans) {
+      const r = rects.get(id)!;
+      const columnX = Math.round((forTargets ? r.x : r.x + r.w) / 10);
+      const bucket = byColumn.get(columnX) ?? [];
+      bucket.push({ id, ...span });
+      byColumn.set(columnX, bucket);
+    }
+    const lanes = new Map<string, number>();
+    for (const members of byColumn.values()) {
+      members.sort((a, b) => a.lo - b.lo);
+      const laneEnds: number[] = [];
+      for (const m of members) {
+        let lane = laneEnds.findIndex((end) => end + 10 < m.lo);
+        if (lane === -1) {
+          if (laneEnds.length < 5) {
+            lane = laneEnds.length;
+            laneEnds.push(m.hi);
+          } else {
+            lane = laneEnds.indexOf(Math.min(...laneEnds));
+            laneEnds[lane] = Math.max(laneEnds[lane], m.hi);
+          }
+        } else {
+          laneEnds[lane] = m.hi;
+        }
+        lanes.set(m.id, 20 + lane * 9);
+      }
+    }
+    return lanes;
+  };
+  const targetLanes = laneOf(true);
+  const sourceLanes = laneOf(false);
   for (const e of edges) {
     const source = rects.get(e.source);
     const target = rects.get(e.target);
@@ -2297,8 +2349,10 @@ function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
     const tx = target.x;
     const ty = target.y + target.h / 2;
     if (tx - sx <= 46 || Math.abs(ty - sy) < 24) continue;
-    const crossTarget = crossings(sy, sx, tx - 28, e.source, e.target);
-    const crossSource = crossings(ty, sx + 28, tx, e.source, e.target);
+    const targetOffset = targetLanes.get(e.target) ?? 28;
+    const sourceOffset = sourceLanes.get(e.source) ?? 28;
+    const crossTarget = crossings(sy, sx, tx - targetOffset, e.source, e.target);
+    const crossSource = crossings(ty, sx + sourceOffset, tx, e.source, e.target);
     const route =
       crossTarget === 0
         ? "target"
@@ -2307,7 +2361,11 @@ function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
           : crossTarget <= crossSource
             ? "target"
             : "source";
-    e.data = { ...(e.data ?? {}), route };
+    e.data = {
+      ...(e.data ?? {}),
+      route,
+      railOffset: route === "target" ? targetOffset : sourceOffset,
+    };
   }
 }
 

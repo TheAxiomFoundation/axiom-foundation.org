@@ -332,8 +332,14 @@
 }
 .jw-edge {
   fill: none;
-  stroke: rgba(87, 83, 78, 0.55);
-  stroke-width: 1.2;
+  stroke: rgba(87, 83, 78, 0.45);
+  /* thinner than the inter-bundle wires (0.9): these lines sit densely
+     packed inside clusters that shrink to a few dozen px, so at equal
+     width they'd read far heavier */
+  stroke-width: 0.8;
+  /* hold line weight through the pull-back — scaled edges go sub-pixel
+     and the far graph dissolves */
+  vector-effect: non-scaling-stroke;
 }
 .jw-progtitle {
   font-family: var(--f-serif);
@@ -422,7 +428,10 @@
 .jdemo__over {
   position: absolute;
   inset: 0;
-  background: var(--color-paper);
+  /* no background here: the film svg paints its own paper backdrop over
+     the 620-unit stage only, so the caption band below keeps the
+     section's tint in both acts (a full-bleed paper box used to snap in
+     with the film) */
   animation: jdemo-in 1200ms var(--ease-out) both;
 }
 .jdemo__over .lsk__wrap {

@@ -160,7 +160,7 @@ export function JourneyScrolly() {
     >
       <div className={scrolly ? "journey-sticky" : undefined}>
         {!mounted ? (
-          <div aria-hidden className="w-full aspect-[1420/620] min-h-[320px]" />
+          <div aria-hidden className="w-full aspect-[1420/700] min-h-[320px]" />
         ) : scrolly ? (
           <div className="jdemo__stage">
             <div className="jdemo__layer">

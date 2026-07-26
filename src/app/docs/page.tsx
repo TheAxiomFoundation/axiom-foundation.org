@@ -58,18 +58,6 @@ export default function DocsPage() {
           </p>
         </Reveal>
 
-        {/* The invariant, as a full-width strip instead of a squeezed sidebar */}
-        <Reveal className="mb-16 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-7 py-5">
-          <p className="m-0 font-body text-[0.95rem] leading-relaxed text-[var(--color-ink-secondary)]">
-            <span className="font-mono text-[0.62rem] tracking-[0.18em] uppercase text-[var(--color-accent)] mr-3">
-              The invariant
-            </span>
-            Corpus is source text. Claims are reviewed source meaning. RuleSpec
-            is computation. The encoder validates the evidence path between
-            them.
-          </p>
-        </Reveal>
-
         {/* The pipeline strip — rendered natively, not an embed */}
         <Reveal as="section" className="mb-20">
           <h2 className="heading-section m-0 mb-6">The architecture</h2>

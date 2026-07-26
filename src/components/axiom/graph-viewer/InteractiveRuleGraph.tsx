@@ -637,7 +637,11 @@ export function InteractiveRuleGraph({
           }}
         >
           <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
-          <FlyToController target={flyTo ?? null} layoutSig={layoutSig} />
+          <FlyToController
+            target={flyTo ?? null}
+            layoutSig={layoutSig}
+            nodes={displayNodes}
+          />
 
           <GraphMiniMap />
           <SmoothControls />
@@ -898,44 +902,104 @@ function flightDuration(
 function FlyToController({
   target,
   layoutSig,
+  nodes,
 }: {
   target: { legalId: string; nonce: number; immediate?: boolean } | null;
   layoutSig: string;
+  nodes: Node[];
 }) {
   const flow = useReactFlow();
   const last = useRef(0);
   const chaseUntil = useRef(0);
   const chaseId = useRef<string | null>(null);
-  const sawLayout = useRef(false);
+  const cutMode = useRef(false);
+  const faded = useRef(false);
   const immediate = useRef(false);
   const [armed, setArmed] = useState(0);
-  // ONE flight per destination — and never against a stale layout.
-  // A walk step usually re-roots the canvas, so the flight waits for
-  // that relayout (long fallback if none comes) and fires once the
-  // geometry rests: wait a beat, then move straight to the target.
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  // ONE destination per target. Two ways to arrive:
+  //  - the layout stays put (immediate flights, in-scope jumps):
+  //    a smooth glide;
+  //  - a relayout lands while the chase is armed (walk steps refold
+  //    the canvas every time): animating from the stale viewport
+  //    reads as two movements — the layout jump, then the pan — so
+  //    the camera CUTS to the destination inside the relayout's own
+  //    commit and the scene fades in as one change. The second
+  //    layout pass re-cuts under the fade, invisibly.
   useEffect(() => {
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
     chaseId.current = target.legalId;
     immediate.current = Boolean(target.immediate);
-    sawLayout.current = false;
+    cutMode.current = false;
+    faded.current = false;
     chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
+    // A walk step commits its refolded layout and this chase in the
+    // SAME render — the sig effect above has already run and found no
+    // armed chase. If the layout just moved, this arrival IS the
+    // relayout: cut now instead of waiting out the fallback glide.
+    if (Date.now() - lastSigChangeAt.current < 250) cutTo();
     setArmed((tick) => tick + 1);
   }, [target]);
-  const layoutSigSeen = useRef(layoutSig);
-  useEffect(() => {
-    if (layoutSig !== layoutSigSeen.current) {
-      layoutSigSeen.current = layoutSig;
-      sawLayout.current = true;
+  const lastSigChangeAt = useRef(0);
+  const centerOf = (id: string) => {
+    const match = nodesRef.current.find(
+      (node) =>
+        (node.data as IrgNodeData & { legalId?: string }).legalId === id,
+    );
+    if (!match) return null;
+    return {
+      x: match.position.x + (match.measured?.width ?? 220) / 2,
+      y: match.position.y + (match.measured?.height ?? 90) / 2,
+    };
+  };
+  const cutTo = () => {
+    if (!chaseId.current || Date.now() > chaseUntil.current) return;
+    if (chaseId.current === "*") {
+      void flow.fitView({ duration: 0, padding: 0.1, minZoom: 0.01 });
+    } else {
+      const center = centerOf(chaseId.current);
+      if (!center) return;
+      void flow.setCenter(center.x, center.y, {
+        duration: 0,
+        zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+      });
     }
-  }, [layoutSig]);
+    cutMode.current = true;
+    // Keep the chase briefly alive so a second measured layout pass
+    // re-cuts to the final geometry, then let it die.
+    chaseUntil.current = Date.now() + 700;
+    if (!faded.current) {
+      faded.current = true;
+      const wrap = document.querySelector<HTMLElement>(
+        ".graph-viewer-root .irg-wrap",
+      );
+      if (wrap) {
+        wrap.classList.remove("irg-scene-cut");
+        void wrap.offsetWidth;
+        wrap.classList.add("irg-scene-cut");
+      }
+    }
+  };
+  const layoutSigSeen = useRef(layoutSig);
+  useLayoutEffect(() => {
+    if (layoutSig === layoutSigSeen.current) return;
+    layoutSigSeen.current = layoutSig;
+    lastSigChangeAt.current = Date.now();
+    if (armed === 0) return;
+    cutTo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutSig, armed, flow]);
   useEffect(() => {
-    if (armed === 0 || Date.now() > chaseUntil.current) return;
-    // After a relayout: short settle. Before one: hold longer — if a
-    // re-root is coming, fly only once it has landed. An immediate
-    // flight (plain card click, layout at rest) skips the hold.
-    const delay = immediate.current ? 0 : sawLayout.current ? 480 : 1000;
+    if (armed === 0 || !chaseId.current || Date.now() > chaseUntil.current)
+      return;
+    // The glide only serves the layout-at-rest case; once a relayout
+    // has cut, later timers must stay quiet.
+    if (cutMode.current) return;
+    const delay = immediate.current ? 0 : 1000;
     const timer = window.setTimeout(() => {
+      if (cutMode.current || !chaseId.current) return;
       if (chaseId.current === "*") {
         void flow.fitView({
           duration: 900,
@@ -945,18 +1009,10 @@ function FlyToController({
         });
         return;
       }
-      const match = flow
-        .getNodes()
-        .find(
-          (node) =>
-            (node.data as IrgNodeData & { legalId?: string }).legalId ===
-            chaseId.current,
-        );
-      if (match) {
-        const targetX = match.position.x + (match.measured?.width ?? 220) / 2;
-        const targetY = match.position.y + (match.measured?.height ?? 90) / 2;
-        void flow.setCenter(targetX, targetY, {
-          duration: flightDuration(flow, targetX, targetY),
+      const center = centerOf(chaseId.current);
+      if (center) {
+        void flow.setCenter(center.x, center.y, {
+          duration: flightDuration(flow, center.x, center.y),
           interpolate: "smooth",
           zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
         });
@@ -966,6 +1022,7 @@ function FlyToController({
       }
     }, delay);
     return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutSig, armed, flow]);
   return null;
 }

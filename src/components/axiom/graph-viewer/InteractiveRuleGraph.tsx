@@ -1419,12 +1419,12 @@ const UnknownNode = ({ data }: NodeProps) => {
   );
 };
 
-/** Wires as rails: the stock smoothstep bends at the midpoint
- *  between each pair, so edges leaving one column comb into hooks at
- *  slightly different x. Here every forward edge exits its card,
- *  joins a fixed rail just right of the source column (shared by all
- *  its siblings), and runs straight to the target on soft corners.
- *  Backward or near-level edges fall back to smoothstep. */
+/** Wires merge like a tree: every forward edge runs level from its
+ *  source, joins a rail fixed just left of its TARGET, and turns
+ *  once into it. Edges bound for the same target overlap on that
+ *  rail — many sources become one trunk entering the card, instead
+ *  of a stack of separate brackets. Near-level edges take a single
+ *  gentle curve; backward edges fall back to smoothstep. */
 const RAIL_OFFSET = 28;
 const RAIL_RADIUS = 12;
 const RoundedSmoothStep = (props: EdgeProps) => {
@@ -1434,7 +1434,11 @@ const RoundedSmoothStep = (props: EdgeProps) => {
     targetX - sourceX > RAIL_OFFSET + RAIL_RADIUS + 6 &&
     Math.abs(dy) >= RAIL_RADIUS * 2
   ) {
-    const rail = sourceX + RAIL_OFFSET;
+    const route =
+      (props.data as { route?: "target" | "source" } | undefined)?.route ??
+      "target";
+    const rail =
+      route === "source" ? sourceX + RAIL_OFFSET : targetX - RAIL_OFFSET;
     const dir = dy > 0 ? 1 : -1;
     const path =
       `M ${sourceX},${sourceY} ` +
@@ -2241,6 +2245,70 @@ function layout(nodes: Node[], edges: Edge[]) {
   }
 
   packComponents(nodes, edges);
+  chooseEdgeRoutes(nodes, edges);
+}
+
+/**
+ * Decide each forward edge's orientation against the real card
+ * rectangles: prefer merging at the target (tree trunks), but when
+ * that level run would slice through an unrelated card, exit at the
+ * source instead — and if both cross, keep the lesser evil. The
+ * edge component reads data.route.
+ */
+function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
+  const rects = new Map(
+    nodes.map((n) => [
+      n.id,
+      {
+        x: n.position.x,
+        y: n.position.y,
+        w: n.width ?? 220,
+        h: n.height ?? 80,
+      },
+    ]),
+  );
+  const crossings = (
+    y: number,
+    x1: number,
+    x2: number,
+    skip1: string,
+    skip2: string,
+  ) => {
+    if (x2 <= x1) return 0;
+    let count = 0;
+    for (const [id, r] of rects) {
+      if (id === skip1 || id === skip2) continue;
+      if (
+        y > r.y &&
+        y < r.y + r.h &&
+        Math.max(x1, r.x) < Math.min(x2, r.x + r.w)
+      ) {
+        count++;
+      }
+    }
+    return count;
+  };
+  for (const e of edges) {
+    const source = rects.get(e.source);
+    const target = rects.get(e.target);
+    if (!source || !target) continue;
+    const sx = source.x + source.w;
+    const sy = source.y + source.h / 2;
+    const tx = target.x;
+    const ty = target.y + target.h / 2;
+    if (tx - sx <= 46 || Math.abs(ty - sy) < 24) continue;
+    const crossTarget = crossings(sy, sx, tx - 28, e.source, e.target);
+    const crossSource = crossings(ty, sx + 28, tx, e.source, e.target);
+    const route =
+      crossTarget === 0
+        ? "target"
+        : crossSource === 0
+          ? "source"
+          : crossTarget <= crossSource
+            ? "target"
+            : "source";
+    e.data = { ...(e.data ?? {}), route };
+  }
 }
 
 /**

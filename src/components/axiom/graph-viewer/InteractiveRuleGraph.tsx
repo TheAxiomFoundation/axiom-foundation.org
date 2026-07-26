@@ -899,21 +899,32 @@ function FlyToController({
   const last = useRef(0);
   const chaseUntil = useRef(0);
   const chaseId = useRef<string | null>(null);
+  const sawLayout = useRef(false);
   const [armed, setArmed] = useState(0);
-  // ONE flight per destination: never fly at click time (the target
-  // usually triggers a re-dissect whose relayout lands later — an
-  // eager flight plus a correction reads as a stutter). A settle
-  // timer re-arms on every geometry change and fires once things
-  // stop moving.
+  // ONE flight per destination — and never against a stale layout.
+  // A walk step usually re-roots the canvas, so the flight waits for
+  // that relayout (long fallback if none comes) and fires once the
+  // geometry rests: wait a beat, then move straight to the target.
   useEffect(() => {
     if (!target || target.nonce === last.current) return;
     last.current = target.nonce;
     chaseId.current = target.legalId;
+    sawLayout.current = false;
     chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
     setArmed((tick) => tick + 1);
   }, [target]);
+  const layoutSigSeen = useRef(layoutSig);
+  useEffect(() => {
+    if (layoutSig !== layoutSigSeen.current) {
+      layoutSigSeen.current = layoutSig;
+      sawLayout.current = true;
+    }
+  }, [layoutSig]);
   useEffect(() => {
     if (armed === 0 || Date.now() > chaseUntil.current) return;
+    // After a relayout: short settle. Before one: hold longer — if a
+    // re-root is coming, fly only once it has landed.
+    const delay = sawLayout.current ? 480 : 1000;
     const timer = window.setTimeout(() => {
       if (chaseId.current === "*") {
         void flow.fitView({
@@ -941,9 +952,9 @@ function FlyToController({
         });
         // The destination is reached — later unrelated relayouts must
         // not yank the camera back.
-        chaseUntil.current = Date.now() + 1_200;
+        chaseUntil.current = Date.now() + 900;
       }
-    }, 640);
+    }, delay);
     return () => window.clearTimeout(timer);
   }, [layoutSig, armed, flow]);
   return null;

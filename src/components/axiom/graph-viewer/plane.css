@@ -1554,10 +1554,12 @@
 
 /* Journey re-entry pill beside the Index toggle. */
 .graph-viewer-root .journey-toggle {
+  /* Top right, flush with the graph box edge — the primary action
+     sits in the same band as the program selectors. */
   position: absolute;
-  bottom: 14px;
-  left: 60px;
-  z-index: 13;
+  top: -30px;
+  right: 0;
+  z-index: 16;
   border: 1px solid var(--color-accent-line);
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
   border-radius: 999px;
@@ -3089,4 +3091,14 @@
   font-size: 20px;
   font-weight: 650;
   color: var(--color-ink);
+}
+
+/* Formula as a real code block: one construct per line, indented. */
+.graph-viewer-root .formula-block {
+  display: block;
+}
+.graph-viewer-root .formula-block .fp-line {
+  display: block;
+  white-space: pre;
+  line-height: 1.75;
 }

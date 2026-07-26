@@ -36,7 +36,6 @@ const repoMap = [
 const RELATED = [
   { href: "/stack", label: "Technical stack", internal: true },
   { href: "/encoder", label: "Encoder system map", internal: true },
-  { href: "/validation", label: "How we validate", internal: true },
 ];
 
 export default function DocsPage() {

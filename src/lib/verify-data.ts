@@ -41,16 +41,16 @@ export interface Surface {
 export const surfaces: Surface[] = [
   {
     id: "engine",
-    name: "Rules engine v0.1.0",
+    name: "Rules engine v0.1.1",
     tier: "verified",
     claim:
-      "The binary you download is the one our release workflow built, from the commit it says.",
+      "The binary you download is the one our release workflow built, from the commit it says — and it executes the published program artifacts.",
     check:
-      "gh attestation verify axiom-rules-engine-aarch64-apple-darwin.tar.xz \\\n  --repo TheAxiomFoundation/axiom-rules-engine",
+      "gh attestation verify axiom-rules-engine-aarch64-apple-darwin.tar.xz \\\n  --repo TheAxiomFoundation/axiom-rules-engine\n./axiom-rules-engine run-compiled --artifact us-co-snap.compiled.json < request.json",
     expect:
-      "SLSA provenance resolving to release.yml@refs/tags/v0.1.0, build sha d59969b5. Four platform targets, each with a published sha256.",
+      "Checksum and SLSA provenance verify on anonymous download; the engine loads the current artifact release and returns a determination with its citation trace.",
     limit:
-      "Version 0.1.0 predates the current artifact format — see open issues.",
+      "v0.1.1 restores execution after v0.1.0 could not load any published artifact. Capability introspection (a capabilities subcommand and check-artifact) is merged but not yet in a release, so contract-vs-binary checks still need a run attempt.",
   },
   {
     id: "artifacts",
@@ -270,32 +270,25 @@ export interface OpenIssue {
  */
 export const openIssues: OpenIssue[] = [
   {
-    id: "rung3",
-    title: "The released engine cannot execute the published artifacts",
-    status: "Open — checked 2026-07-25",
+    id: "golden-values",
+    title:
+      "The engine runs the published artifact, but our committed fixture no longer reproduces the certified answer",
+    status: "Open — checked 2026-07-26",
     detail:
-      "The engine moved to artifact format 2 after v0.1.0 was tagged, and no release has been cut since. Every current program-artifacts release is format 2; the only released binary requires format 1. So the local-execution path does not run for anyone today, including us.",
+      "v0.1.1 (released 2026-07-26) closed the load barrier: the 2026-07-25 finding that no released engine could execute any published artifact is resolved, verified by running one on the other. But the golden-household fixture predates an input-naming cutover, so eligibility conjuncts the fixture no longer reaches stay unresolved: the benefit node computes $478 while the eligibility-gated output returns $0, and net income lands at $226 against the certified $226.50. An exit code of zero with silently wrong values is exactly the failure class our gates exist for, so the release gate now asserts the certified figures, and fails today.",
     evidence:
-      "compiled artefact `us-co-snap.compiled.json` has artifact_format_version 2,\nbut this engine requires exact version 1; recompile the program with this engine",
-    fix: "Cut an engine release from a format-2 commit. The release machinery itself is verified working — checksums, attestations, and provenance all check out on the current release.",
+      "$ ./axiom-rules-engine run-compiled --artifact us-co-snap.compiled.json < fixture.json\nrc=0   snap_monthly_allotment = 478\n       snap_eligible = unresolved → gated snap_allotment = 0\n       snap_net_income = 226   (certified: 226.50)",
+    fix: "Regenerate the fixture from the current API translator so every eligibility conjunct is supplied, and resolve the output binding that points at the eligibility-gated id while the benefit lives on the 7 CFR 273.10 node.",
   },
   {
     id: "compat",
-    title: "The compatibility contract reports a match that does not hold",
-    status: "Open — checked 2026-07-25",
+    title: "The published compatibility contract still lacks its gating dimension",
+    status: "Narrowed — checked 2026-07-26",
     detail:
-      "Each program in the manifest declares requires_engine.min_version: \"0.1.0\". The released engine reports version 0.1.0. A reader comparing those two concludes the pair is compatible, and the engine then rejects the artifact on a format field the version floor does not express.",
+      "requires_engine.min_version says \"0.1.0\", which cannot express the artifact-format boundary that actually decides loadability — a reader comparing version strings reaches the wrong verdict. The build tool now emits an artifact_format_version floor and the release gate now computes the third-party verdict from the published contract and fails when it disagrees with what the engine does. The current artifacts release predates that emission, so the manifest a stranger downloads today still carries the misleading floor.",
     evidence:
-      '"compat": {\n  "artifact_schema": 2,\n  "built_by_engine": {"version": "0.1.0", "git_sha": "ffd8213…"},\n  "requires_engine": {"min_version": "0.1.0", "capabilities": []}\n}',
-    fix: "requires_engine must carry the artifact-schema floor, and the release gate must assert execution rather than agreement between stamps.",
-  },
-  {
-    id: "fixture",
-    title: "The published artifacts use different input names than our own test fixture",
-    status: "Open — checked 2026-07-25",
-    detail:
-      "Our golden-household fixture addresses inputs in a composed-program namespace; the published per-program artifact exposes durable legal ids. None of the fixture's 353 input names resolve against the published artifact, and no composed artifact ships in the release.",
-    fix: "Publish the composed artifact, or restate the documented request in legal-id form — then run it end to end and publish the result.",
+      '"requires_engine": {"min_version": "0.1.0", "capabilities": []}\n// loadability is decided by artifact_format_version, absent above',
+    fix: "The next program-artifacts release carries the floor; the contract-versus-reality gate stays in place so the two can never diverge silently again.",
   },
 ];
 

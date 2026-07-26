@@ -80,7 +80,7 @@ export const layerTrust: Record<string, LayerTrust> = {
       "Encodings are compared against calculators built by other people, and every disagreement on a covered policy is classified with evidence that CI recomputes.",
     ],
     open: [
-      "The released engine cannot currently execute the published artifacts — a format-version gap, with the error and fix on the verify page.",
+      "The committed golden fixture predates an input-naming cutover, so the certified end-to-end number does not yet reproduce from committed inputs — details and error on the verify page.",
       "Coverage is the live limit: 34 of 127 in-scope US policies have a comparison suite today.",
       "Agreement shows two implementations agree; where both misread a provision the same way, it shows nothing.",
     ],

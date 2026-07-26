@@ -224,6 +224,7 @@ export function GraphViewerApp() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [runPanelOpen, setRunPanelOpen] = useState(false);
   const [runBrowseSearch, setRunBrowseSearch] = useState("");
+  const [selectedLevers, setSelectedLevers] = useState<string[] | null>(null);
   // The runtime's supported scenario knobs (alias → abstract field).
   const [householdAliases, setHouseholdAliases] = useState<
     Record<string, string>
@@ -1299,25 +1300,85 @@ export function GraphViewerApp() {
 
   // One scenario flow, two homes: the launcher's middle screen and
   // the sidebar panel render the same staged UI.
-  const scenarioFlowUI = (
-    <>
-            <p className="run-section-label">Your answers — the levers the engine accepts</p>
+  const scenarioFlowUI = (() => {
+    const active =
+      selectedLevers ?? allScenarioFields.map((field) => field.name);
+    const activeFields = allScenarioFields.filter((field) =>
+      active.includes(field.name),
+    );
+    const availableFields = allScenarioFields.filter(
+      (field) => !active.includes(field.name),
+    );
+    const knobNames = new Set(allScenarioFields.map((f) => f.name));
+    const seen = new Set<string>();
+    const others = (graph?.inputs ?? []).filter((input) => {
+      if (knobNames.has(input.name) || seen.has(input.name)) return false;
+      seen.add(input.name);
+      return true;
+    });
+    const query = runBrowseSearch.trim().toLowerCase();
+    const shown = others
+      .filter(
+        (input) =>
+          !query || humanize(input.name).toLowerCase().includes(query),
+      )
+      .slice(0, 40);
+    return (
+      <>
+        <div className="run-columns">
+          <div className="run-col">
+            <p className="run-section-label">Pick a lever</p>
+            {availableFields.length > 0 ? (
+              <div className="run-available">
+                {availableFields.map((field) => (
+                  <button
+                    type="button"
+                    key={field.name}
+                    className="run-available-row"
+                    onClick={() =>
+                      setSelectedLevers([...active, field.name])
+                    }
+                  >
+                    ＋ {humanize(field.label)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="run-hint">All levers selected.</p>
+            )}
+            <p className="run-section-label run-others-label">
+              Other questions · defaults apply
+            </p>
+            <input
+              type="search"
+              className="run-overview-search"
+              value={runBrowseSearch}
+              onChange={(event) => setRunBrowseSearch(event.target.value)}
+              placeholder={`Browse ${others.length} questions...`}
+            />
+            <div className="run-overview-list">
+              {shown.map((input) => (
+                <div key={input.legalId} className="lever-row run-overview-row">
+                  <span className="lever-row-name">
+                    {humanize(input.name)}
+                  </span>
+                  <span className="lever-row-cell">
+                    {input.entity ? humanize(input.entity) : "—"}
+                  </span>
+                </div>
+              ))}
+              {shown.length === 0 && (
+                <div className="output-empty">No questions match.</div>
+              )}
+            </div>
+          </div>
+          <div className="run-col">
+            <p className="run-section-label">Your answers</p>
             <div className="scenario-fields">
-              {allScenarioFields.map((field) => (
+              {activeFields.map((field) => (
                 <label key={field.name} className="scenario-field">
                   <span>{humanize(field.label)}</span>
-                  {typeof field.sample === "boolean" ? (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(scenario[field.name])}
-                      onChange={(event) =>
-                        setScenario((current) => ({
-                          ...current,
-                          [field.name]: event.target.checked,
-                        }))
-                      }
-                    />
-                  ) : (
+                  <span className="scenario-field-controls">
                     <input
                       type="number"
                       value={
@@ -1339,87 +1400,56 @@ export function GraphViewerApp() {
                         })
                       }
                     />
-                  )}
+                    <button
+                      type="button"
+                      className="scenario-field-remove"
+                      aria-label={`Remove ${humanize(field.label)}`}
+                      onClick={() => {
+                        setSelectedLevers(
+                          active.filter((name) => name !== field.name),
+                        );
+                        setScenario((current) => {
+                          const { [field.name]: _gone, ...rest } = current;
+                          return rest;
+                        });
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
                 </label>
               ))}
+              {activeFields.length === 0 && (
+                <p className="run-hint">
+                  Pick levers on the left — unanswered ones fall to the
+                  law's defaults.
+                </p>
+              )}
             </div>
-            <button
-              type="button"
-              className="run-button scenario-next"
-              disabled={running}
-              onClick={() => launchRun("all")}
-            >
-              {running ? "Running…" : "▶ Run it all"}
-            </button>
-            <button
-              type="button"
-              className="run-button run-button-secondary"
-              disabled={running}
-              onClick={() => launchRun("steps")}
-            >
-              ⧉ Run step by step
-            </button>
-            {runError && <p className="run-error">{runError}</p>}
-            {(() => {
-              const knobNames = new Set(allScenarioFields.map((f) => f.name));
-              const seen = new Set<string>();
-              const others = (graph?.inputs ?? []).filter((input) => {
-                if (knobNames.has(input.name) || seen.has(input.name)) {
-                  return false;
-                }
-                seen.add(input.name);
-                return true;
-              });
-              const query = runBrowseSearch.trim().toLowerCase();
-              const shown = others
-                .filter(
-                  (input) =>
-                    !query || humanize(input.name).toLowerCase().includes(query),
-                )
-                .slice(0, 40);
-              return (
-                <div className="run-overview">
-                  <p className="run-section-label">
-                    The law's other {others.length} questions — answered by
-                    its defaults (per-question answers need runtime support)
-                  </p>
-                  <input
-                    type="search"
-                    className="run-overview-search"
-                    value={runBrowseSearch}
-                    onChange={(event) => setRunBrowseSearch(event.target.value)}
-                    placeholder="Browse the questions..."
-                  />
-                  <div className="run-overview-list">
-                    <div className="lever-row lever-row-head" aria-hidden>
-                      <span className="lever-row-name">Question</span>
-                      <span className="lever-row-cell">Entity</span>
-                      <span className="lever-row-cell">Default</span>
-                    </div>
-                    {shown.map((input) => (
-                      <div key={input.legalId} className="lever-row run-overview-row">
-                        <span className="lever-row-name">
-                          {humanize(input.name)}
-                        </span>
-                        <span className="lever-row-cell">
-                          {input.entity ? humanize(input.entity) : "—"}
-                        </span>
-                        <span className="lever-row-cell">
-                          {input.sample !== undefined && input.sample !== null
-                            ? String(input.sample)
-                            : "—"}
-                        </span>
-                      </div>
-                    ))}
-                    {shown.length === 0 && (
-                      <div className="output-empty">No questions match.</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-    </>
-  );
+          </div>
+        </div>
+        <div className="run-actions">
+          <button
+            type="button"
+            className="run-button"
+            disabled={running}
+            onClick={() => launchRun("all")}
+          >
+            {running ? "Running…" : "▶ Run it all"}
+          </button>
+          <button
+            type="button"
+            className="run-button run-button-secondary"
+            disabled={running}
+            onClick={() => launchRun("steps")}
+          >
+            ⧉ Run step by step
+          </button>
+        </div>
+        {runError && <p className="run-error">{runError}</p>}
+      </>
+    );
+  })();
 
   return (
     <div className="graph-viewer-root">

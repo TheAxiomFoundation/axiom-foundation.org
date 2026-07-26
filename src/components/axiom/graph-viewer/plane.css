@@ -3149,3 +3149,82 @@
 .graph-viewer-root .run-overview .lever-row-head {
   grid-template-columns: minmax(0, 1fr) 80px 64px;
 }
+
+/* Run sheet: pick left, answer right, run at the bottom. */
+.graph-viewer-root .run-panel > * {
+  width: min(940px, calc(100vw - 48px));
+}
+.graph-viewer-root .run-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.graph-viewer-root .run-col {
+  min-width: 0;
+}
+.graph-viewer-root .run-available {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.graph-viewer-root .run-available-row {
+  text-align: left;
+  padding: 8px 12px;
+  border: 1px dashed var(--color-rule);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.graph-viewer-root .run-available-row:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .run-others-label {
+  margin-top: 14px;
+}
+.graph-viewer-root .run-hint {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .scenario-field-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-viewer-root .scenario-field-remove {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.graph-viewer-root .scenario-field-remove:hover {
+  color: var(--color-accent);
+  background: var(--color-paper);
+}
+.graph-viewer-root .run-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-rule);
+}
+.graph-viewer-root .run-actions .run-button {
+  flex: 1;
+  margin-top: 0;
+}
+.graph-viewer-root .run-actions .run-button-secondary {
+  margin-top: 0;
+}
+.graph-viewer-root .lever-row.run-overview-row {
+  grid-template-columns: minmax(0, 1fr) 80px;
+}

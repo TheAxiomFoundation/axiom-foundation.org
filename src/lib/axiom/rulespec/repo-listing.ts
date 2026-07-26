@@ -57,12 +57,15 @@ const RULESPEC_BUCKETS: ReadonlySet<string> = new Set([
  * Top-level segments that are repo plumbing rather than encoding
  * buckets: dot-dirs (``.axiom/`` manifests, ``.github/``) and
  * ``sources/`` (corpus source slices that mirror the encodings as
- * plain YAML). Root-layout repos keep these beside the buckets, so a
- * whole-repo listing must skip them; a denylist (rather than a bucket
- * allowlist) keeps open-ended buckets like UK ``legislation/`` working.
+ * plain YAML). ``programs/`` holds runtime program packages (the
+ * Plane's execution surface), not citation-addressed encodings, so it
+ * must not become a browse collection. Root-layout repos keep these
+ * beside the buckets, so a whole-repo listing must skip them; a
+ * denylist (rather than a bucket allowlist) keeps open-ended buckets
+ * like UK ``legislation/`` working.
  */
 function isRepoPlumbingSegment(segment: string): boolean {
-  return segment.startsWith(".") || segment === "sources";
+  return segment.startsWith(".") || segment === "sources" || segment === "programs";
 }
 
 interface GitHubTreeEntry {
@@ -215,6 +218,15 @@ function isEncodingFile(path: string): boolean {
   if (!path.endsWith(".yaml")) return false;
   if (path.endsWith(".test.yaml")) return false;
   if (path.endsWith(".meta.yaml")) return false;
+  // Oracle-validation compositions (``uk/statutes/income_tax/individual/
+  // pilot_worker_oracle_pipeline.yaml``, ``us-co/policies/income_tax/
+  // pilot_liability_pipeline.yaml``, …) are parity-harness working
+  // files, not encodings of a provision. Some sit at invented paths, so
+  // listing them fabricates statute titles ("income_tax") beside real
+  // citation segments.
+  const filename = path.slice(path.lastIndexOf("/") + 1);
+  if (filename.endsWith("_pipeline.yaml")) return false;
+  if (filename.endsWith("_reconciliation.yaml")) return false;
   // Encodings always sit inside a bucket directory (statutes/…,
   // policies/…). A YAML at the listing root is repo config — e.g.
   // rulespec-ca's proof-obligation ratchet — and treating its filename

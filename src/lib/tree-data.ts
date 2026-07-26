@@ -27,6 +27,10 @@ export interface TreeNode {
   nodeType: NodeType;
   /** Whether this node has RuleSpec coverage in corpus metadata or a rulespec-* repo. */
   hasRuleSpec?: boolean;
+  /** True when the node is synthesised from a rulespec-* repo listing
+   *  alone — no corpus provision behind it, so a section page for its
+   *  citation path cannot resolve. */
+  rulespecOnly?: boolean;
 }
 
 export interface TreeResult {

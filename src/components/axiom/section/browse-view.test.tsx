@@ -62,4 +62,27 @@ describe("BrowseView", () => {
       screen.getByText("Nothing has been ingested at this level yet.")
     ).toBeInTheDocument();
   });
+
+  it("renders rulespec-only leaves unlinked — their section page cannot resolve", () => {
+    render(
+      <BrowseView
+        data={makeData({
+          segments: ["uk", "statute", "ukpga", "1992", "4"],
+          nodes: [
+            {
+              segment: "141",
+              label: "§ 141",
+              hasChildren: false,
+              nodeType: "section",
+              hasRuleSpec: true,
+              rulespecOnly: true,
+              rule: { citation_path: "uk/statute/ukpga/1992/4/141" } as never,
+            },
+          ],
+        })}
+      />
+    );
+    expect(screen.getByText("§ 141").closest("a")).toBeNull();
+    expect(screen.getByText("not yet ingested")).toBeInTheDocument();
+  });
 });

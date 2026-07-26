@@ -85,6 +85,33 @@ describe("parseTreeEntries", () => {
     ]);
   });
 
+  it("skips oracle-validation pipeline artefacts and the programs bucket", () => {
+    // rulespec-uk keeps UKMOD parity compositions at invented statute
+    // paths (statutes/income_tax/…), and program packages under
+    // programs/ — neither encodes a provision, and listing them
+    // fabricated statute titles like "income_tax" beside ukpga.
+    const out = parseTreeEntries(
+      {
+        tree: [
+          { path: "statutes/ukpga/1992/4/141.yaml", type: "blob" },
+          {
+            path: "statutes/income_tax/individual/pilot_worker_oracle_pipeline.yaml",
+            type: "blob",
+          },
+          {
+            path: "policies/universal_credit_award_reconciliation.yaml",
+            type: "blob",
+          },
+          { path: "programs/universal-credit/fy-2026-27.yaml", type: "blob" },
+        ],
+      },
+      "uk"
+    );
+    expect(out.map((f) => f.citationPath)).toEqual([
+      "uk/statute/ukpga/1992/4/141",
+    ]);
+  });
+
   it("leaves the bucket alone for unknown top-level dirs (e.g. UK legislation/)", () => {
     const out = parseTreeEntries(
       {

@@ -10,7 +10,10 @@ import {
   buildBreadcrumbs,
   type BreadcrumbItem,
 } from "@/lib/tree-data";
-import { getProvisionByCitationPath } from "@/lib/axiom/navigation-index/read";
+import {
+  getProvisionByCitationPath,
+  getProvisionsByCitationPaths,
+} from "@/lib/axiom/navigation-index/read";
 import type { NavigationNodeRow } from "@/lib/axiom/navigation-index/types";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import {
@@ -615,6 +618,13 @@ export async function resolveSection(
   // Resolve the deepest ingested row at or above the requested path.
   // The corpus is mostly section-granular, so subsection URLs
   // (…/26/32/a) resolve to their section with a focus anchor.
+  //
+  // The subtree range-scan is needed on every outcome — as the
+  // synthetic-root probe when the exact row is missing, and as the
+  // reader's prefetched subtree when it exists — so it runs
+  // concurrently with the exact-row lookup rather than after it.
+  // getSubtreeProvisions never rejects (errors become an empty list).
+  const requestedSubtreePromise = getSubtreeProvisions(requestedPath);
   let root = await getProvisionByCitationPath(requestedPath).catch(() => null);
   let citationPath = requestedPath;
   let focusAnchor: string | null = null;
@@ -622,12 +632,15 @@ export async function resolveSection(
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
+  if (root) {
+    prefetchedSubtree = await requestedSubtreePromise;
+  }
   if (!root) {
     // Some sections are ingested subsection-granular with no section
     // row at all (42 USC 1396a: …/1396a/e/15 exists, …/1396a does
     // not). Climbing up would skip past them — probe the subtree
     // first and synthesize a root over it.
-    const probe = await getSubtreeProvisions(requestedPath);
+    const probe = await requestedSubtreePromise;
     if (probe.provisions.length > 0) {
       const navNode = await getNavigationNode(requestedPath);
       root = synthesizeSectionRoot(requestedPath, resolved, navNode?.label);
@@ -647,11 +660,13 @@ export async function resolveSection(
       ),
     ].join("/");
     if (dashPath !== requestedPath) {
+      const dashSubtreePromise = getSubtreeProvisions(dashPath);
       root = await getProvisionByCitationPath(dashPath).catch(() => null);
       if (root) {
         citationPath = dashPath;
+        prefetchedSubtree = await dashSubtreePromise;
       } else {
-        const probe = await getSubtreeProvisions(dashPath);
+        const probe = await dashSubtreePromise;
         if (probe.provisions.length > 0) {
           const navNode = await getNavigationNode(dashPath);
           root = synthesizeSectionRoot(dashPath, resolved, navNode?.label);
@@ -663,11 +678,19 @@ export async function resolveSection(
     }
   }
   if (!root) {
+    // Ancestor climb: one batched lookup covers every candidate level
+    // (previously one sequential query per level); the deepest hit
+    // then decides, exactly as the per-level loop did.
+    const candidates: string[] = [];
+    for (let end = ruleSegments.length - 1; end >= 2; end--) {
+      candidates.push([slug, ...ruleSegments.slice(0, end)].join("/"));
+    }
+    const byPath = await getProvisionsByCitationPaths(candidates).catch(
+      () => new Map<string, Rule>()
+    );
     for (let end = ruleSegments.length - 1; end >= 2; end--) {
       const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
-      const rule = await getProvisionByCitationPath(candidate).catch(
-        () => null
-      );
+      const rule = byPath.get(candidate);
       if (rule) {
         // Only accept the ancestor if the requested anchor really
         // exists under it — otherwise …/7/2011 (missing) would render

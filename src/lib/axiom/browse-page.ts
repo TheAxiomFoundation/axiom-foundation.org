@@ -38,15 +38,11 @@ const ENCODED_COUNT_SCAN_LIMIT = 3000;
 const ENCODED_COUNT_TIMEOUT_MS = 3000;
 
 /**
- * One mirror range-scan for the browsed prefix, aggregated per child
- * segment. Uses each node's canonical citation path where known so
- * deep containers with flattened children still count correctly.
+ * One mirror range-scan for the browsed prefix. Fired before the tree
+ * nodes load so the scan overlaps the navigation-index round trips —
+ * only the aggregation needs the nodes.
  */
-async function getEncodedCounts(
-  segments: string[],
-  nodes: TreeNode[]
-): Promise<Record<string, number>> {
-  const prefix = segments.join("/");
+async function scanEncodedPaths(prefix: string): Promise<string[]> {
   try {
     const result = await Promise.race([
       supabaseEncodings
@@ -58,24 +54,36 @@ async function getEncodedCounts(
         setTimeout(() => resolve(null), ENCODED_COUNT_TIMEOUT_MS)
       ),
     ]);
-    if (!result || result.error) return {};
-    const paths = ((result.data ?? []) as Array<{ citation_path: string }>)
+    if (!result || result.error) return [];
+    return ((result.data ?? []) as Array<{ citation_path: string }>)
       .map((row) => row.citation_path)
       .filter(Boolean);
-    const counts: Record<string, number> = {};
-    for (const node of nodes) {
-      const childPrefix =
-        node.rule?.citation_path ?? `${prefix}/${node.segment}`;
-      const count = paths.filter(
-        (path) =>
-          path === childPrefix || path.startsWith(`${childPrefix}/`)
-      ).length;
-      if (count > 0) counts[node.segment] = count;
-    }
-    return counts;
   } catch {
-    return {};
+    return [];
   }
+}
+
+/**
+ * Aggregate the scanned mirror paths per child segment. Uses each
+ * node's canonical citation path where known so deep containers with
+ * flattened children still count correctly.
+ */
+function aggregateEncodedCounts(
+  prefix: string,
+  paths: string[],
+  nodes: TreeNode[]
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const node of nodes) {
+    const childPrefix =
+      node.rule?.citation_path ?? `${prefix}/${node.segment}`;
+    const count = paths.filter(
+      (path) =>
+        path === childPrefix || path.startsWith(`${childPrefix}/`)
+    ).length;
+    if (count > 0) counts[node.segment] = count;
+  }
+  return counts;
 }
 
 /** Repo plumbing files (release scopes, bulk manifests) that the
@@ -116,6 +124,10 @@ export async function getBrowsePageData(
   }
   const resolved = resolveAxiomPath(segments);
   if (!resolved.jurisdiction) return null;
+
+  // The mirror scan only needs the prefix — start it now so it runs
+  // concurrently with the navigation-index round trips below.
+  const encodedPathsPromise = scanEncodedPaths(segments.join("/"));
 
   // A backend failure must not become a 404: transient
   // navigation-index outages are common enough that v1 had an error
@@ -205,8 +217,10 @@ export async function getBrowsePageData(
     });
 
   const nodes = dedupeBySegment(positioned.filter((n) => !isPlumbingNode(n)));
-  const encodedCounts = await getEncodedCounts(segments, nodes).catch(
-    () => ({}) as Record<string, number>
+  const encodedCounts = aggregateEncodedCounts(
+    segments.join("/"),
+    await encodedPathsPromise,
+    nodes
   );
 
   return {

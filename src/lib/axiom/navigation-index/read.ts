@@ -337,6 +337,34 @@ export async function getProvisionByCitationPath(
   return (result.data as Rule | null) ?? null;
 }
 
+/**
+ * Fetch several exact citation paths in one round trip. Used by the
+ * section resolver's ancestor climb, which otherwise pays one
+ * sequential query per ancestor level. The corpus has shipped
+ * duplicate rows per path; the first row returned per path wins,
+ * matching getProvisionByCitationPath's single-row tolerance.
+ */
+export async function getProvisionsByCitationPaths(
+  citationPaths: string[]
+): Promise<Map<string, Rule>> {
+  const byPath = new Map<string, Rule>();
+  if (citationPaths.length === 0) return byPath;
+  const result = await withTimeout(
+    supabaseCorpus
+      .from("current_provisions")
+      .select("*")
+      .in("citation_path", citationPaths),
+    NAVIGATION_QUERY_TIMEOUT_MS
+  );
+  if (!result) throw new NavigationIndexUnavailableError();
+  if (result.error) throw new NavigationIndexUnavailableError();
+  for (const row of (result.data ?? []) as Rule[]) {
+    const path = row.citation_path as string | null;
+    if (path && !byPath.has(path)) byPath.set(path, row);
+  }
+  return byPath;
+}
+
 export async function getResolvableNavigationNodeIds(
   rows: NavigationNodeRow[]
 ): Promise<Set<string>> {
@@ -359,23 +387,34 @@ export async function getResolvableNavigationNodeIds(
   const matchedProvisionIds = new Set<string>();
   const matchedCitationPaths = new Set<string>();
 
-  if (provisionIds.length > 0) {
-    // Chunked: a single 200-value IN over long paths can blow the
-    // statement timeout (observed on us/policy).
-    for (let i = 0; i < provisionIds.length; i += 100) {
-      const result = await withTimeout(
-        supabaseCorpus
-          .from("current_provisions")
-          .select("id")
-          .in("id", provisionIds.slice(i, i + 100)),
-        NAVIGATION_QUERY_TIMEOUT_MS
-      );
-      if (!result) throw new NavigationIndexUnavailableError();
-      if (result.error) throw new NavigationIndexUnavailableError();
-      for (const row of (result.data ?? []) as Array<{ id: string | null }>) {
-        if (row.id) matchedProvisionIds.add(row.id);
-      }
-    }
+  // Chunked: a single 200-value IN over long paths can blow the
+  // statement timeout (observed on us/policy). The chunks are
+  // independent, so they run concurrently — chunking bounds each
+  // statement's cost, not the number in flight.
+  const chunkQueries: Promise<void>[] = [];
+
+  for (let i = 0; i < provisionIds.length; i += 100) {
+    const chunk = provisionIds.slice(i, i + 100);
+    // async thunk: query-construction errors must become this chunk's
+    // rejection, not a synchronous throw past the other chunks.
+    chunkQueries.push(
+      (async () => {
+        const result = await withTimeout(
+          supabaseCorpus
+            .from("current_provisions")
+            .select("id")
+            .in("id", chunk),
+          NAVIGATION_QUERY_TIMEOUT_MS
+        );
+        if (!result) throw new NavigationIndexUnavailableError();
+        if (result.error) throw new NavigationIndexUnavailableError();
+        for (const row of (result.data ?? []) as Array<{
+          id: string | null;
+        }>) {
+          if (row.id) matchedProvisionIds.add(row.id);
+        }
+      })()
+    );
   }
 
   if (citationPaths.length > 0) {
@@ -389,21 +428,41 @@ export async function getResolvableNavigationNodeIds(
         }),
     ];
     for (let i = 0; i < filters.length; i += 40) {
-      const result = await withTimeout(
-        supabaseCorpus
-          .from("current_provisions")
-          .select("citation_path")
-          .or(filters.slice(i, i + 40).join(",")),
-        NAVIGATION_QUERY_TIMEOUT_MS
+      const chunk = filters.slice(i, i + 40);
+      chunkQueries.push(
+        (async () => {
+          const result = await withTimeout(
+            supabaseCorpus
+              .from("current_provisions")
+              .select("citation_path")
+              .or(chunk.join(",")),
+            NAVIGATION_QUERY_TIMEOUT_MS
+          );
+          if (!result) throw new NavigationIndexUnavailableError();
+          if (result.error) throw new NavigationIndexUnavailableError();
+          for (const row of (result.data ?? []) as Array<{
+            citation_path: string | null;
+          }>) {
+            if (row.citation_path) matchedCitationPaths.add(row.citation_path);
+          }
+        })()
       );
-      if (!result) throw new NavigationIndexUnavailableError();
-      if (result.error) throw new NavigationIndexUnavailableError();
-      for (const row of (result.data ?? []) as Array<{
-        citation_path: string | null;
-      }>) {
-        if (row.citation_path) matchedCitationPaths.add(row.citation_path);
-      }
     }
+  }
+
+  // allSettled, not all: a rejecting chunk must not leave its
+  // siblings as unhandled rejections, and the index-unavailable
+  // signal should win over any secondary failure mode.
+  const settled = await Promise.allSettled(chunkQueries);
+  const failures = settled.filter(
+    (outcome): outcome is PromiseRejectedResult =>
+      outcome.status === "rejected"
+  );
+  if (failures.length > 0) {
+    const unavailable = failures.find(
+      (failure) => failure.reason instanceof NavigationIndexUnavailableError
+    );
+    throw unavailable?.reason ?? failures[0].reason;
   }
 
   const resolvable = new Set<string>();

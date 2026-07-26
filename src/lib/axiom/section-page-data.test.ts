@@ -27,6 +27,16 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/axiom/navigation-index/read", () => ({
   getProvisionByCitationPath: getProvisionByCitationPathMock,
+  // The batched ancestor lookup answers from the same per-path mock so
+  // tests keep configuring a single function.
+  getProvisionsByCitationPaths: async (paths: string[]) => {
+    const byPath = new Map<string, unknown>();
+    for (const path of paths) {
+      const rule = await getProvisionByCitationPathMock(path);
+      if (rule) byPath.set(path, rule);
+    }
+    return byPath;
+  },
 }));
 
 // The descendant-file aggregation has its own tests

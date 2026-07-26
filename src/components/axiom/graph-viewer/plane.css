@@ -128,7 +128,6 @@
 }
 .graph-viewer-root .plane-live .react-flow__edge path {
   stroke-dasharray: 6 4;
-  animation: plane-flow 0.9s linear infinite;
 }
 @keyframes plane-flow {
   to {
@@ -446,8 +445,12 @@
   stroke: var(--color-accent);
   stroke-width: 2;
   stroke-dasharray: 7 5;
-  animation: plane-flow 0.8s linear infinite;
   filter: drop-shadow(0 0 4px rgba(217, 119, 6, 0.55));
+}
+/* The current flows briefly when a run lands, then holds still —
+   hundreds of forever-running dash animations shimmer the world. */
+.graph-viewer-root .plane-fresh .react-flow__edge.irg-exec-edge path {
+  animation: plane-flow 0.8s linear 3;
 }
 .graph-viewer-root .plane-live .react-flow__edge.irg-exec-dim path {
   stroke-dasharray: none;
@@ -461,7 +464,6 @@
 }
 .graph-viewer-root .plane-live .react-flow__edge.irg-exec-edge path {
   stroke-dasharray: 7 5;
-  animation: plane-flow 0.8s linear infinite;
 }
 
 /* ── Execution pill ── */
@@ -2968,6 +2970,8 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
+}
+.graph-viewer-root .graph-veil.is-on span {
   animation: veil-pulse 1.4s ease-in-out infinite;
 }
 @keyframes veil-pulse {
@@ -3072,7 +3076,7 @@
 }
 .graph-viewer-root .plane-live .irg-node .irg-value {
   animation: value-in 0.45s ease both;
-  animation-delay: calc(var(--exec-order, 0) * 60ms);
+  animation-delay: min(calc(var(--exec-order, 0) * 45ms), 1300ms);
 }
 @media (prefers-reduced-motion: reduce) {
   .graph-viewer-root .plane-live .irg-node .irg-value {
@@ -3153,6 +3157,33 @@
 /* Run sheet: pick left, answer right, run at the bottom. */
 .graph-viewer-root .run-panel > * {
   width: min(940px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+}
+/* Columns scroll independently; the run bar stays pinned. */
+.graph-viewer-root .run-columns {
+  flex: 1;
+  min-height: 0;
+}
+.graph-viewer-root .run-col {
+  overflow-y: auto;
+  max-height: 100%;
+  padding-right: 4px;
+}
+.graph-viewer-root .run-overview-list {
+  max-height: none;
+}
+.graph-viewer-root button.run-overview-row {
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.graph-viewer-root button.run-overview-row:hover {
+  background: var(--color-paper);
+  color: var(--color-accent);
 }
 .graph-viewer-root .run-columns {
   display: grid;

@@ -224,6 +224,9 @@ export function GraphViewerApp() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [runPanelOpen, setRunPanelOpen] = useState(false);
   const [runBrowseSearch, setRunBrowseSearch] = useState("");
+  // True for a beat after a run lands — drives the one-shot edge
+  // flow sweep, after which the execution layer holds still.
+  const [planeFresh, setPlaneFresh] = useState(false);
   const [selectedLevers, setSelectedLevers] = useState<string[] | null>(null);
   // The runtime's supported scenario knobs (alias → abstract field).
   const [householdAliases, setHouseholdAliases] = useState<
@@ -1197,6 +1200,13 @@ export function GraphViewerApp() {
   }, [structureTraces, runResult, scenario]);
 
   useEffect(() => {
+    if (!runResult) return;
+    setPlaneFresh(true);
+    const timer = window.setTimeout(() => setPlaneFresh(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [runResult]);
+
+  useEffect(() => {
     if (!runResult || !pendingReplay.current) return;
     pendingReplay.current = false;
     const stages = buildExecStages(liveTraces.executed);
@@ -1358,14 +1368,27 @@ export function GraphViewerApp() {
             />
             <div className="run-overview-list">
               {shown.map((input) => (
-                <div key={input.legalId} className="lever-row run-overview-row">
+                <button
+                  type="button"
+                  key={input.legalId}
+                  className="lever-row run-overview-row"
+                  title="See this question on the canvas"
+                  onClick={() => {
+                    setRunPanelOpen(false);
+                    goToSearchResult({
+                      legalId: input.legalId,
+                      kind: "input",
+                      inScope: inScopeIds.has(input.legalId),
+                    });
+                  }}
+                >
                   <span className="lever-row-name">
                     {humanize(input.name)}
                   </span>
                   <span className="lever-row-cell">
                     {input.entity ? humanize(input.entity) : "—"}
                   </span>
-                </div>
+                </button>
               ))}
               {shown.length === 0 && (
                 <div className="output-empty">No questions match.</div>
@@ -1606,7 +1629,11 @@ export function GraphViewerApp() {
             </button>
           </div>
         )}
-        <div className={`graph-stage ${runResult ? "plane-live" : ""}`}>
+        <div
+          className={`graph-stage ${runResult ? "plane-live" : ""} ${
+            planeFresh ? "plane-fresh" : ""
+          }`}
+        >
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
             aria-hidden={!veiled}

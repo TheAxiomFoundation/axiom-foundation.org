@@ -71,6 +71,20 @@ describe('Landing sections', () => {
     }
   })
 
+  // The encoding pipeline has no human review gate. Its gates are
+  // deterministic checks, independent oracle cross-checks, and AI judges.
+  // Claiming a human approver is comfort language for a step that does not
+  // exist, and it has reached copy twice now — so it fails the build.
+  it('claims no human review gate in the encoder section', () => {
+    const { container } = render(<EncoderSection />)
+    const text = container.textContent ?? ''
+
+    expect(text).not.toMatch(/signs? off/i)
+    expect(text).not.toMatch(/human (sign|review|oversight|approv)/i)
+    expect(text).not.toMatch(/human-in-the-loop/i)
+    expect(text).not.toMatch(/experts? (verify|review|check)/i)
+  })
+
   it('renders the applications section with four use cases', () => {
     render(<ApplicationsSection />)
     expect(

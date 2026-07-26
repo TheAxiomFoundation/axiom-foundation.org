@@ -84,13 +84,13 @@ export const surfaces: Surface[] = [
     name: "Validation against independent calculators",
     tier: "verified",
     claim:
-      "Where a policy is covered, every disagreement with the reference calculator is accounted for — reconciled arithmetically, or traced to a bug in the other engine and filed there.",
+      "Where a policy is covered, every disagreement with the reference calculator is classified with evidence: reconciled arithmetically, traced to a bug in the other engine, or attributed to the comparison harness itself (bridge artifacts) — a bounded class we disclose rather than blend in.",
     check:
       "git clone https://github.com/TheAxiomFoundation/axiom-oracles\ncat conformance/scoreboard.json\nuv run scripts/apply_dispositions.py --check",
     expect:
       "The scoreboard's own predicate: covered == in_scope, unexplained == 0, Axiom-attributed == 0. The dispositions check recomputes every classification's arithmetic from the committed evidence.",
     limit:
-      "Coverage, not accuracy, is the live limit — 34 of 127 in-scope US policies have a comparison suite. And agreement only shows two implementations agree; where both misread a provision the same way, it shows nothing.",
+      "Coverage is the live limit — 33 of 127 in-scope US policies have a comparison suite, and the covered set carries 441 unexplained residuals under active classification. Agreement only shows two implementations agree; where both misread a provision the same way, it shows nothing.",
   },
   {
     id: "api",
@@ -134,14 +134,17 @@ export const surfaces: Surface[] = [
  *             && axiom_attributed_open == 0
  *
  * Source: axiom-oracles `scripts/conformance_scoreboard.py`, values read from
- * the committed `conformance/scoreboard.json` on main (2026-07-25).
+ * the committed `conformance/scoreboard.json` at commit 27968c8 (2026-07-26).
+ * The scoreboard regenerates with every report refresh — update the pin when
+ * refreshing these rows; never let them float.
  *
  * A raw match rate is the wrong number to publish, because it counts a residual
  * we have chased to a documented bug in the other engine the same as one we
  * cannot account for. Every mismatch is classified, with evidence, into one of
  * five kinds — and `axiom_encoding_gap` and `unexplained` never count as
  * explained. So the number that matters is how many mismatches remain
- * unaccounted for, and it is zero.
+ * unaccounted for — currently zero for Belgium and both UK oracles, and 441
+ * (243 ours) for the US, carried openly below.
  */
 export interface ConformanceRow {
   jurisdiction: string;
@@ -187,16 +190,20 @@ export const conformanceRows: ConformanceRow[] = [
   },
   {
     jurisdiction: "United States",
-    oracle: "policyengine-us 1.767.3",
+    // Each suite pins the PolicyEngine release its population was built
+    // against, so the aggregate oracle is not one version; the universe is
+    // enumerated at 1.767.3.
+    oracle: "PolicyEngine-US (mixed suite-pinned versions)",
     inScope: 127,
-    covered: 34,
-    unexplained: 0,
-    axiomOpen: 0,
+    covered: 33,
+    unexplained: 441,
+    axiomOpen: 243,
     conformant: false,
-    // Not the sum of per-policy comparison counts: twelve federal policies are
-    // scored from the one fiit-ecps run, so summing across policy rows counts
-    // that suite twelve times. This is the distinct-suite total.
-    note: "Not conformant, and the reason is coverage rather than disagreement: 93 in-scope policies have no live comparison suite yet. The 34 that do are scored from 23 suites totalling 3,997,891 comparisons, with nothing unexplained.",
+    // Not the sum of per-policy comparison counts: federal policies scored
+    // from the one fiit run would count that suite twelve times. This is the
+    // distinct-suite total, recomputed from conformance/detail at the pinned
+    // snapshot.
+    note: "Not conformant twice over: 94 in-scope policies have no live suite, and the covered 33 (22 suites, 3,997,401 comparisons) carry 441 unexplained residuals under classification, 243 attributed to our own encoding and open. This row got worse the day before launch — an Alabama pilot suite was retired for promoting a narrow schedule comparison as final-liability coverage — and that is the predicate working, not failing.",
   },
 ];
 
@@ -225,7 +232,7 @@ export const workedExample = {
       concept: "tax_before_credits",
       count: "2,118",
       kind: "Reconciled",
-      detail: "Bracket-boundary rounding. Every row within $5.83, on values up to $2.79M.",
+      detail: "Bracket-boundary rounding. Maximum difference $5.83, at a $2.79M value; mismatch-row values extend to $13.11M.",
     },
     {
       concept: "capital_gain",
@@ -275,7 +282,7 @@ export const openIssues: OpenIssue[] = [
       "The engine runs the published artifact, but our committed fixture no longer reproduces the certified answer",
     status: "Open — checked 2026-07-26",
     detail:
-      "v0.1.1 (released 2026-07-26) closed the load barrier: the 2026-07-25 finding that no released engine could execute any published artifact is resolved, verified by running one on the other. But the golden-household fixture predates an input-naming cutover, so eligibility conjuncts the fixture no longer reaches stay unresolved: the benefit node computes $478 while the eligibility-gated output returns $0, and net income lands at $226 against the certified $226.50. An exit code of zero with silently wrong values is exactly the failure class our gates exist for, so the release gate now asserts the certified figures, and fails today.",
+      "v0.1.1 (released 2026-07-26) closed the load barrier: the 2026-07-25 finding that no released engine could execute any published artifact is resolved, verified by running one on the other. But the golden-household fixture predates an input-naming cutover: SSN-provision inputs default to false, eligibility evaluates to not-eligible, and the correctly-gated output returns $0 while the ungated benefit node computes $478 and net income lands at $226 against the certified $226.50. The gate asserting certified figures fails today — rightly. The fix is regenerating the fixture; the eligibility-gated binding is the intended contract and stays.",
     evidence:
       "$ ./axiom-rules-engine run-compiled --artifact us-co-snap.compiled.json < fixture.json\nrc=0   snap_monthly_allotment = 478\n       snap_eligible = unresolved → gated snap_allotment = 0\n       snap_net_income = 226   (certified: 226.50)",
     fix: "Regenerate the fixture from the current API translator so every eligibility conjunct is supplied, and resolve the output binding that points at the eligibility-gated id while the benefit lives on the 7 CFR 273.10 node.",
@@ -285,10 +292,10 @@ export const openIssues: OpenIssue[] = [
     title: "The published compatibility contract still lacks its gating dimension",
     status: "Narrowed — checked 2026-07-26",
     detail:
-      "requires_engine.min_version says \"0.1.0\", which cannot express the artifact-format boundary that actually decides loadability — a reader comparing version strings reaches the wrong verdict. The build tool now emits an artifact_format_version floor and the release gate now computes the third-party verdict from the published contract and fails when it disagrees with what the engine does. The current artifacts release predates that emission, so the manifest a stranger downloads today still carries the misleading floor.",
+      "requires_engine.min_version says \"0.1.0\", which cannot express the artifact-format boundary that actually decides loadability — a reader comparing version strings reaches the wrong verdict. An artifact_format_version floor exists as a prototyped, unmerged change to the build tool, and the release gate computes the third-party verdict from the published contract and fails when it disagrees with reality. Every manifest a stranger downloads today still carries the misleading floor; this entry closes when the emission merges, ships in a release, and the gate goes green on it.",
     evidence:
       '"requires_engine": {"min_version": "0.1.0", "capabilities": []}\n// loadability is decided by artifact_format_version, absent above',
-    fix: "The next program-artifacts release carries the floor; the contract-versus-reality gate stays in place so the two can never diverge silently again.",
+    fix: "Merge the floor emission, republish artifacts with it, and keep the contract-versus-reality gate so the two can never diverge silently again.",
   },
 ];
 

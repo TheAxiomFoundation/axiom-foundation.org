@@ -140,10 +140,19 @@ export function VerifyPage() {
             traced to a bug in the other engine the same as one we cannot
             account for, and those are not the same thing.
           </p>
-          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[820px] leading-relaxed mb-8">
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[820px] leading-relaxed mb-4">
             Instead, every disagreement is classified, with evidence, and the
             number we report is how many remain unaccounted for. A difference
-            attributed to our own encoding never counts as explained.
+            attributed to our own encoding never counts as explained, and
+            differences caused by the comparison harness itself — bridge
+            artifacts — are disclosed as their own bounded class, 3,340 in the
+            current US reports, rather than blended into agreement.
+          </p>
+          <p className="font-body text-[0.9rem] text-[var(--color-ink-muted)] max-w-[820px] leading-relaxed mb-8">
+            Values below are read from the committed scoreboard at commit
+            27968c8 (July 26, 2026); the live scoreboard regenerates with every
+            report refresh, and the predicate is recomputable from the repo at
+            any commit.
           </p>
 
           <pre className="font-mono text-[0.8rem] leading-6 text-[var(--color-code-text)] bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md p-4 overflow-x-auto mb-10">

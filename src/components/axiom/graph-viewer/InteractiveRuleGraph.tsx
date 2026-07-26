@@ -2212,37 +2212,39 @@ function edgeColorVar(cls: string): string {
 // ─────────────────────────────────────────────────────────────────────────
 
 function layout(nodes: Node[], edges: Edge[]) {
-  const g = new dagre.graphlib.Graph();
-  // Whole-law renders read at atlas zoom where whitespace is dead
-  // pixels — tighten the weave once the graph outgrows card reading.
   const dense = nodes.length > 250;
-  g.setGraph({
-    rankdir: "LR",
-    nodesep: dense ? 14 : 24,
-    ranksep: dense ? 68 : 92,
-    marginx: 24,
-    marginy: 24,
-  });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  for (const n of nodes) {
-    const size = nodeSize(n);
-    g.setNode(n.id, size);
-  }
-  for (const e of edges) {
-    g.setEdge(e.source, e.target);
-  }
-  dagre.layout(g);
-
-  for (const n of nodes) {
-    const layoutInfo = g.node(n.id);
-    if (!layoutInfo) continue;
-    n.position = {
-      x: layoutInfo.x - layoutInfo.width / 2,
-      y: layoutInfo.y - layoutInfo.height / 2,
-    };
-    (n as Node).width = layoutInfo.width;
-    (n as Node).height = layoutInfo.height;
+  const run = (ranksep: number, nodesep: number) => {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "LR", nodesep, ranksep, marginx: 24, marginy: 24 });
+    g.setDefaultEdgeLabel(() => ({}));
+    for (const n of nodes) g.setNode(n.id, nodeSize(n));
+    for (const e of edges) g.setEdge(e.source, e.target);
+    dagre.layout(g);
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const n of nodes) {
+      const info = g.node(n.id);
+      if (!info) continue;
+      n.position = {
+        x: info.x - info.width / 2,
+        y: info.y - info.height / 2,
+      };
+      (n as Node).width = info.width;
+      (n as Node).height = info.height;
+      minY = Math.min(minY, n.position.y);
+      maxY = Math.max(maxY, n.position.y + info.height);
+    }
+    return maxY - minY;
+  };
+  // Tall towers need wider aisles: when the layout runs long top to
+  // bottom, pull the columns further apart so the rails and lanes
+  // have room — gently, scaled to the height.
+  const baseRank = dense ? 68 : 92;
+  const baseNode = dense ? 14 : 24;
+  const height = run(baseRank, baseNode);
+  const stretch = Math.min(1.7, Math.max(1, height / 4200));
+  if (stretch > 1.08) {
+    run(Math.round(baseRank * stretch), baseNode + 2);
   }
 
   packComponents(nodes, edges);
@@ -2316,6 +2318,16 @@ function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
       bucket.push({ id, ...span });
       byColumn.set(columnX, bucket);
     }
+    // Median horizontal gap between columns decides how far lanes
+    // can spread.
+    const columnXs = [...byColumn.keys()].sort((a, b) => a - b);
+    let gap = 68;
+    if (columnXs.length > 1) {
+      const gaps = columnXs.slice(1).map((x, i) => (x - columnXs[i]) * 10);
+      gaps.sort((a, b) => a - b);
+      gap = gaps[Math.floor(gaps.length / 2)] ?? 68;
+    }
+    const laneStep = Math.max(9, Math.min(16, Math.floor((gap - 40) / 5)));
     const lanes = new Map<string, number>();
     for (const members of byColumn.values()) {
       members.sort((a, b) => a.lo - b.lo);
@@ -2333,7 +2345,7 @@ function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
         } else {
           laneEnds[lane] = m.hi;
         }
-        lanes.set(m.id, 20 + lane * 9);
+        lanes.set(m.id, 20 + lane * laneStep);
       }
     }
     return lanes;

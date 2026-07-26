@@ -19,16 +19,17 @@ const DEMO_SHELL_URL = "https://axiom-demo-shell.vercel.app";
 
 /** Modal ids the shell accepts via ?d= — mirrors its data.js. */
 const SHELL_DEMO_IDS = new Set([
-  "finbot",
+  "chatbot",
   "builder",
   "workflow",
   "snap",
   "microsim",
   "guidance",
   "architecture",
-  "law",
-  "graph",
 ]);
+
+/** Renamed ids — old links keep landing on the right demo. */
+const LEGACY_DEMO_IDS: Record<string, string> = { finbot: "chatbot" };
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -37,7 +38,8 @@ interface PageProps {
 export default async function DemosPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const rawDemo = typeof params?.d === "string" ? params.d : "";
-  const demo = SHELL_DEMO_IDS.has(rawDemo) ? rawDemo : null;
+  const requested = LEGACY_DEMO_IDS[rawDemo] ?? rawDemo;
+  const demo = SHELL_DEMO_IDS.has(requested) ? requested : null;
   const gallerySrc = demo
     ? `${DEMO_SHELL_URL}/?d=${demo}`
     : `${DEMO_SHELL_URL}/`;

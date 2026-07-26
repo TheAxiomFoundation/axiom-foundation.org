@@ -23,10 +23,18 @@ describe('DemosPage', () => {
   })
 
   it('passes valid ?d= deep links through to the shell', async () => {
+    render(await DemosPage(props({ d: 'chatbot' })))
+    expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
+      'src',
+      'https://axiom-demo-shell.vercel.app/?d=chatbot',
+    )
+  })
+
+  it('maps legacy renamed ids onto their new demo', async () => {
     render(await DemosPage(props({ d: 'finbot' })))
     expect(screen.getByTitle('Axiom demo gallery')).toHaveAttribute(
       'src',
-      'https://axiom-demo-shell.vercel.app/?d=finbot',
+      'https://axiom-demo-shell.vercel.app/?d=chatbot',
     )
   })
 

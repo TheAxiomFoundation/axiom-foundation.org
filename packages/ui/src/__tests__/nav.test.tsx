@@ -47,7 +47,7 @@ describe("Nav", () => {
     expect(screen.queryByText("Small company checker")).not.toBeInTheDocument();
     expect(
       screen.getAllByText("Get accurate answers")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos?d=finbot");
+    ).toHaveAttribute("href", "/demos?d=chatbot");
     expect(
       screen.getAllByText("Explore benefits cliffs")[0].closest("a"),
     ).toHaveAttribute("href", "/demos?d=snap");

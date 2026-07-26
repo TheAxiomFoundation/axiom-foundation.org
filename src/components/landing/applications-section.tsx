@@ -29,8 +29,8 @@ const APPLICATIONS = [
     actor: "for AI labs",
     demo: {
       label: "A grounded assistant",
-      href: "/demos?d=finbot",
-      src: "https://finbot-snap-demo.vercel.app/",
+      href: "/demos?d=chatbot",
+      src: "https://axiom.org/chatbot",
     },
   },
   {

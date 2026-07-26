@@ -25,12 +25,12 @@
       "destination": "https://finbot-snap-demo.vercel.app/chatbot/:path(.*)"
     },
     {
-      "source": "/reg-demo",
-      "destination": "https://axiom-reg-demo.vercel.app/reg-demo"
+      "source": "/gallery/reg-demo",
+      "destination": "https://axiom-reg-demo.vercel.app/gallery/reg-demo"
     },
     {
-      "source": "/reg-demo/:path(.*)",
-      "destination": "https://axiom-reg-demo.vercel.app/reg-demo/:path(.*)"
+      "source": "/gallery/reg-demo/:path(.*)",
+      "destination": "https://axiom-reg-demo.vercel.app/gallery/reg-demo/:path(.*)"
     },
     {
       "source": "/gallery/builder",
@@ -132,6 +132,16 @@
     {
       "source": "/workflow/:path(.*)",
       "destination": "/gallery/workflow/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/reg-demo",
+      "destination": "/gallery/reg-demo",
+      "permanent": false
+    },
+    {
+      "source": "/reg-demo/:path(.*)",
+      "destination": "/gallery/reg-demo/:path(.*)",
       "permanent": false
     },
     {

@@ -46,7 +46,6 @@ describe("vercel redirects", () => {
 const DEMO_ZONES: Record<string, string> = {
   demos: "axiom-demo-shell",
   chatbot: "finbot-snap-demo",
-  "reg-demo": "axiom-reg-demo",
   architecture: "axiom-architecture-one",
   "graph-viewer": "rulespec-graph-viewer",
   oracles: "axiom-oracles",
@@ -57,6 +56,7 @@ const DEMO_ZONES: Record<string, string> = {
 // rewrites to the app, and the bare /<slug> redirects into the
 // gallery path (the apps' old bare basePaths are gone).
 const GALLERY_ZONES: Record<string, string> = {
+  "reg-demo": "axiom-reg-demo",
   builder: "dashboard-builder-flax",
   workflow: "co-snap-workflow-checker",
   snap: "axiom-co-snap",

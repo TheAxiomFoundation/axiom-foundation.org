@@ -2313,7 +2313,7 @@ function labelledNodeSize(
   if (small) {
     chrome = 50;
   } else if (data.kind === "input") {
-    chrome = 78; // padding + eyebrow + + EXPOSE divider row
+    chrome = 110; // padding + eyebrow + inline answer + divider row
   } else if (data.kind === "output") {
     const outputRows = data.canExpand ? 1 : 0;
     chrome = 50 + outputRows * 22;

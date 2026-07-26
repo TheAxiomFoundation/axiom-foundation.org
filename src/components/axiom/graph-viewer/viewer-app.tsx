@@ -221,6 +221,7 @@ export function GraphViewerApp() {
   const [indexSearch, setIndexSearch] = useState("");
   const [indexHover, setIndexHover] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [runPanelOpen, setRunPanelOpen] = useState(false);
   const [extraLevers, setExtraLevers] = useState<
     Array<{ name: string; sample: number | boolean }>
   >([]);
@@ -594,13 +595,13 @@ export function GraphViewerApp() {
   }, [effectiveProgram?.programId]);
 
   useEffect(() => {
-    // Adding a lever must not wipe values the user already edited.
+    // No presets: only values the user actually typed survive a
+    // field-list change; samples are placeholders, never answers.
     setScenario((current) =>
       Object.fromEntries(
-        allScenarioFields.map((field) => [
-          field.name,
-          current[field.name] ?? field.sample,
-        ]),
+        allScenarioFields
+          .map((field) => [field.name, current[field.name]] as const)
+          .filter(([, value]) => value !== undefined),
       ),
     );
   }, [allScenarioFields]);
@@ -1268,6 +1269,7 @@ export function GraphViewerApp() {
   }
 
   const launchRun = (mode: "all" | "steps") => {
+    setRunPanelOpen(false);
     setScenarioMode(true);
     if (launcher !== "closed") dismissLauncher();
     void runScenario(mode);
@@ -1317,12 +1319,23 @@ export function GraphViewerApp() {
                   ) : (
                     <input
                       type="number"
-                      value={String(scenario[field.name] ?? field.sample)}
+                      value={
+                        scenario[field.name] === undefined
+                          ? ""
+                          : String(scenario[field.name])
+                      }
+                      placeholder={`e.g. ${field.sample}`}
                       onChange={(event) =>
-                        setScenario((current) => ({
-                          ...current,
-                          [field.name]: Number(event.target.value),
-                        }))
+                        setScenario((current) => {
+                          if (event.target.value === "") {
+                            const { [field.name]: _gone, ...rest } = current;
+                            return rest;
+                          }
+                          return {
+                            ...current,
+                            [field.name]: Number(event.target.value),
+                          };
+                        })
                       }
                     />
                   )}
@@ -1726,11 +1739,17 @@ export function GraphViewerApp() {
             type="button"
             className="journey-toggle"
             disabled={running}
-            onClick={() => launchRun("all")}
-            title="Execute the law with the answers currently on the canvas"
+            onClick={() => setRunPanelOpen((open) => !open)}
+            aria-expanded={runPanelOpen}
+            title="Answer the household's questions and execute the law"
           >
             {running ? "Running…" : "▶ Run"}
           </button>
+          {runPanelOpen && (
+            <div className="run-panel" aria-label="Run this law">
+              {scenarioFlowUI}
+            </div>
+          )}
         {lensFocusId && (
           <div className="lens-bar" role="navigation" aria-label="Rule lens trail">
             <button type="button" className="lens-crumb lens-crumb-root" onClick={closeLens}>

@@ -64,27 +64,33 @@ export async function GET() {
   }
 
   const list = await runtimeProxyGet("/runtime/packages");
-  const packages =
-    (
-      list.body as {
-        data?: {
-          packages?: Array<{
-            jurisdiction: string;
-            program_id: string;
-            status: string;
-            default_outputs?: string[];
-            certified_node_count?: number;
-          }>;
-        };
-      }
-    ).data?.packages ?? [];
+  const envelope = list.body as {
+    data?: {
+      packages?: Array<{
+        jurisdiction: string;
+        program_id: string;
+        status: string;
+        default_outputs?: string[];
+        certified_node_count?: number;
+      }>;
+    };
+    meta?: { certified?: { enforcement?: string } };
+  };
+  const packages = envelope.data?.packages ?? [];
+  // certified_node_count audits against the real ledger in EVERY mode, so
+  // under the permissive launch posture it reads 0 fleet-wide while the
+  // API still serves full graphs. Only pre-skip on it when the API is
+  // actually enforcing; in permissive mode a program proves itself by
+  // the graph it serves.
+  const enforcing = envelope.meta?.certified?.enforcement === "enforced";
 
   const programs: ConstellationProgram[] = [];
   for (const pkg of packages) {
     if (pkg.status !== "ready") continue;
-    // Zero-certified programs are absent from the overview — and the
-    // registry says so up front, sparing the (multi-MB) graph fetch.
-    if (pkg.certified_node_count === 0) continue;
+    // Zero-certified programs are absent from the overview under
+    // enforcement — and the registry says so up front, sparing the
+    // (multi-MB) graph fetch.
+    if (enforcing && pkg.certified_node_count === 0) continue;
     const graphResponse = await runtimeProxyGet(
       `/runtime/packages/${encodeURIComponent(pkg.jurisdiction)}/${encodeURIComponent(pkg.program_id)}/graph`,
     );

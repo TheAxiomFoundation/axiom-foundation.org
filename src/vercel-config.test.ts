@@ -59,7 +59,7 @@ const GALLERY_ZONES: Record<string, string> = {
   "reg-demo": "axiom-reg-demo",
   builder: "dashboard-builder-flax",
   workflow: "co-snap-workflow-checker",
-  snap: "axiom-co-snap",
+  cliffs: "axiom-co-snap",
   microsim: "axiom-microsim",
 };
 

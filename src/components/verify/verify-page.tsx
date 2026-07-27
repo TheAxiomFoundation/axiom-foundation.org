@@ -1,13 +1,18 @@
 import Link from "next/link";
 import {
-  conformanceRows,
+  closureMeaning,
+  closurePredicate,
+  closureRoots,
+  conformancePredicate,
   enforcement,
+  goldenHousehold,
   ladder,
+  launchScopeNote,
   openIssues,
   surfaces,
   tierLabel,
   tierNote,
-  workedExample,
+  usEvidenceRows,
   type Tier,
 } from "@/lib/verify-data";
 
@@ -48,12 +53,17 @@ export function VerifyPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-accent)] mb-4">
             Verification
           </p>
-          <h1 className="heading-page mb-6">Don&rsquo;t trust it. Check it.</h1>
-          <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed mb-6">
+          <h1 className="heading-page normal-case mb-6">
+            Don&rsquo;t trust it. Check it.
+          </h1>
+          <p className="font-body text-xl text-[var(--color-ink-secondary)] leading-relaxed mb-4">
             Every claim on this site carries a label, and the label is a
             statement about evidence rather than about confidence. This page
             lists what each label means, the command that tests it, and what
             the test does not cover.
+          </p>
+          <p className="font-body text-[1rem] text-[var(--color-ink-muted)] leading-relaxed mb-6">
+            {launchScopeNote}
           </p>
           <p className="font-serif italic text-lg text-[var(--color-ink)] leading-relaxed">
             A claim we cannot check is a claim we do not make.
@@ -61,7 +71,9 @@ export function VerifyPage() {
         </header>
 
         <section className="mb-24">
-          <h2 className="heading-section mb-3">What the labels mean</h2>
+          <h2 className="heading-section normal-case mb-3">
+            What the labels mean
+          </h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed mb-8">
             The same standard we apply to encoded law, applied to our own
             surfaces. A label is not a measure of how much work went into
@@ -85,7 +97,9 @@ export function VerifyPage() {
         </section>
 
         <section className="mb-24" id="check">
-          <h2 className="heading-section mb-3">Check it yourself</h2>
+          <h2 className="heading-section normal-case mb-3">
+            Check it yourself
+          </h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed mb-10">
             None of these require an account, an API key, or anything from us
             beyond a public download.
@@ -134,7 +148,9 @@ export function VerifyPage() {
         </section>
 
         <section className="mb-24">
-          <h2 className="heading-section mb-3">Checked against other calculators</h2>
+          <h2 className="heading-section normal-case mb-3">
+            US checks against independent evidence
+          </h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[820px] leading-relaxed mb-4">
             We do not publish a match rate. A rate counts a difference we have
             traced to a bug in the other engine the same as one we cannot
@@ -143,35 +159,28 @@ export function VerifyPage() {
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[820px] leading-relaxed mb-4">
             Instead, every disagreement is classified, with evidence, and the
             number we report is how many remain unaccounted for. A difference
-            attributed to our own encoding never counts as explained, and
-            differences caused by the comparison harness itself — bridge
-            artifacts — are disclosed as their own bounded class, 3,340 in the
-            current US reports, rather than blended into agreement.
+            attributed to our own encoding never counts as explained.
           </p>
           <p className="font-body text-[0.9rem] text-[var(--color-ink-muted)] max-w-[820px] leading-relaxed mb-8">
-            Values below are read from the committed scoreboard at commit
-            27968c8 (July 26, 2026); the live scoreboard regenerates with every
-            report refresh, and the predicate is recomputable from the repo at
-            any commit.
+            The conformance predicate applies to calculator comparisons. The
+            administrative replay is a separate reality check against reviewed,
+            real cases.
           </p>
 
           <pre className="font-mono text-[0.8rem] leading-6 text-[var(--color-code-text)] bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md p-4 overflow-x-auto mb-10">
-            {`conformant = covered == in_scope
-          && unexplained == 0
-          && axiom_attributed_open == 0`}
+            {conformancePredicate}
           </pre>
 
           <div className="overflow-x-auto rounded-md border border-[var(--color-rule)] mb-6">
-            <table className="w-full border-collapse min-w-[820px]">
+            <table className="w-full border-collapse min-w-[920px]">
               <thead>
                 <tr className="bg-[var(--color-paper-elevated)]">
                   {[
-                    "Jurisdiction",
-                    "Reference calculator",
-                    "Covered",
-                    "Unexplained",
-                    "Ours, open",
-                    "",
+                    "Evidence",
+                    "Reference",
+                    "Scale",
+                    "What it shows",
+                    "Source",
                   ].map((h, i) => (
                     <th
                       key={h || `blank-${i}`}
@@ -183,41 +192,39 @@ export function VerifyPage() {
                 </tr>
               </thead>
               <tbody>
-                {conformanceRows.map((r, i) => (
+                {usEvidenceRows.map((row, i) => (
                   <tr
-                    key={`${r.jurisdiction}-${r.oracle}`}
+                    key={row.id}
                     className={
-                      i < conformanceRows.length - 1
+                      i < usEvidenceRows.length - 1
                         ? "border-b border-[var(--color-rule-subtle)]"
                         : undefined
                     }
                   >
-                    <td className="px-5 py-4 font-body text-[0.9rem] text-[var(--color-ink)] align-top whitespace-nowrap">
-                      {r.jurisdiction}
+                    <td className="px-5 py-4 font-body text-[0.9rem] text-[var(--color-ink)] align-top">
+                      {row.check}
                     </td>
                     <td className="px-5 py-4 font-mono text-[0.8rem] text-[var(--color-ink-secondary)] align-top">
-                      {r.oracle}
-                    </td>
-                    <td className="px-5 py-4 font-mono text-[0.9rem] text-[var(--color-ink)] align-top whitespace-nowrap">
-                      {r.covered} / {r.inScope}
+                      {row.reference}
                     </td>
                     <td className="px-5 py-4 font-mono text-[0.9rem] text-[var(--color-ink)] align-top">
-                      {r.unexplained}
+                      {row.scale}
                     </td>
-                    <td className="px-5 py-4 font-mono text-[0.9rem] text-[var(--color-ink)] align-top">
-                      {r.axiomOpen}
+                    <td className="px-5 py-4 font-body text-[0.88rem] text-[var(--color-ink-secondary)] leading-relaxed align-top">
+                      {row.result}
                     </td>
-                    <td className="px-5 py-4 align-top">
-                      <span
-                        className={[
-                          "font-mono text-[0.68rem] uppercase tracking-[0.14em] whitespace-nowrap",
-                          r.conformant
-                            ? "text-[var(--color-ink-muted)]"
-                            : "text-[var(--color-accent)]",
-                        ].join(" ")}
-                      >
-                        {r.conformant ? "Conformant" : "Not conformant"}
-                      </span>
+                    <td className="px-5 py-4 font-body text-[0.82rem] align-top">
+                      {row.href.startsWith("http") ? (
+                        <a
+                          href={row.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {row.linkLabel}
+                        </a>
+                      ) : (
+                        <Link href={row.href}>{row.linkLabel}</Link>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -225,78 +232,35 @@ export function VerifyPage() {
             </table>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 mb-12">
-            {conformanceRows
-              .filter((r) => r.note)
-              .map((r) => (
-                <p
-                  key={`${r.jurisdiction}-${r.oracle}-note`}
-                  className="font-body text-[0.85rem] text-[var(--color-ink-secondary)] leading-relaxed"
-                >
-                  <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                    {r.oracle}
-                  </span>
-                  <br />
-                  {r.note}
-                </p>
-              ))}
-          </div>
-
-          <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8 mb-8">
+          <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8 my-8">
             <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
-              One suite, all the way down
+              Released golden household
             </p>
             <h3 className="font-body text-2xl text-[var(--color-ink)] mb-3">
-              {workedExample.suite}
+              {goldenHousehold.releasedPair}
             </h3>
             <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
-              {workedExample.basis}
+              {goldenHousehold.reproducibility}
             </p>
 
-            <div className="flex flex-wrap gap-8 mb-8">
-              {[
-                ["Comparisons", workedExample.comparisons],
-                ["Matches", workedExample.matches],
-                ["Mismatches", workedExample.mismatches],
-                ["Raw rate", workedExample.rawRate],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <div className="font-mono text-2xl text-[var(--color-ink)]">
-                    {value}
-                  </div>
-                  <div className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                    {label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-5">
-              {workedExample.rows.map((row) => (
+            <div className="grid gap-4 md:grid-cols-3">
+              {goldenHousehold.tuple.map(([name, value]) => (
                 <div
-                  key={row.concept}
+                  key={name}
                   className="border-t border-[var(--color-rule-subtle)] pt-4"
                 >
-                  <div className="flex flex-wrap items-baseline gap-3 mb-2">
-                    <span className="font-mono text-[0.9rem] text-[var(--color-ink)]">
-                      {row.count}
-                    </span>
-                    <span className="font-mono text-[0.8rem] text-[var(--color-ink-secondary)]">
-                      {row.concept}
-                    </span>
-                    <span className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-accent)]">
-                      {row.kind}
-                    </span>
+                  <div className="font-mono text-[0.72rem] text-[var(--color-ink-muted)] mb-2">
+                    {name}
                   </div>
-                  <p className="font-body text-[0.88rem] text-[var(--color-ink-secondary)] leading-relaxed">
-                    {row.detail}
-                  </p>
+                  <div className="font-mono text-xl text-[var(--color-ink)]">
+                    {value}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <p className="font-body text-[0.95rem] text-[var(--color-ink)] leading-relaxed mt-8 pt-6 border-t border-[var(--color-rule)]">
-              {workedExample.closes}
+            <p className="font-mono text-[0.8rem] text-[var(--color-ink-secondary)] leading-relaxed mt-8 pt-6 border-t border-[var(--color-rule)]">
+              Certificate — {goldenHousehold.certificate}
             </p>
           </div>
 
@@ -316,7 +280,91 @@ export function VerifyPage() {
         </section>
 
         <section className="mb-24">
-          <h2 className="heading-section mb-3">What is broken right now</h2>
+          <h2 className="heading-section normal-case mb-3">
+            Closure: what the repository encodes
+          </h2>
+          <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[820px] leading-relaxed mb-4">
+            {closureMeaning.repo}
+          </p>
+          <p className="font-body text-[0.9rem] text-[var(--color-ink-muted)] max-w-[820px] leading-relaxed mb-8">
+            Colorado SNAP declares three legal roots. Each root keeps its own
+            ledger so encoded law, justified exclusions, and published debt
+            remain distinguishable.
+          </p>
+
+          <pre className="font-mono text-[0.8rem] leading-6 text-[var(--color-code-text)] bg-[var(--color-code-bg)] border border-[var(--color-rule)] rounded-md p-4 overflow-x-auto mb-10">
+            {closurePredicate}
+          </pre>
+
+          <div className="grid gap-4 mb-8">
+            {closureRoots.map((root) => (
+              <article
+                key={root.root}
+                className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-8"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4">
+                  <h3 className="font-body text-2xl text-[var(--color-ink)]">
+                    {root.root}
+                  </h3>
+                  <span className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-ink-secondary)] whitespace-nowrap">
+                    {root.status}
+                  </span>
+                </div>
+
+                <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed">
+                  {root.detail}
+                </p>
+
+                {root.metrics ? (
+                  <dl className="grid grid-cols-2 gap-4 mt-6 md:grid-cols-4">
+                    {root.metrics.map((metric) => (
+                      <div
+                        key={metric.label}
+                        className="border-t border-[var(--color-rule-subtle)] pt-4"
+                      >
+                        <dt className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)] mb-2">
+                          {metric.label}
+                        </dt>
+                        <dd className="font-mono text-xl text-[var(--color-ink)]">
+                          {metric.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
+
+                {root.placeholder ? (
+                  <p className="font-mono text-[0.8rem] text-[var(--color-accent)] leading-relaxed border border-[var(--color-accent)] rounded-md p-4 mt-6">
+                    {root.placeholder}
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+
+          <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-6">
+            <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed mb-4">
+              {closureMeaning.program}{" "}
+              <code className="font-mono text-[0.85rem] text-[var(--color-ink)]">
+                {closureMeaning.declaration}
+              </code>
+              .
+            </p>
+            <a
+              href={closureMeaning.ledgerHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-outline inline-block"
+            >
+              Open the public closure ledger
+            </a>
+          </div>
+        </section>
+
+        <section className="mb-24">
+          <h2 className="heading-section normal-case mb-3">
+            What is broken right now
+          </h2>
           <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] max-w-[780px] leading-relaxed mb-10">
             Findings from our own checks, with the errors they produce. These
             leave the page when the check passes, not when the wording
@@ -358,7 +406,9 @@ export function VerifyPage() {
         </section>
 
         <section>
-          <h2 className="heading-section mb-3">How far you want to go</h2>
+          <h2 className="heading-section normal-case mb-3">
+            How far you want to go
+          </h2>
           <div className="grid gap-4 md:grid-cols-3 mt-8">
             {ladder.map((rung) => (
               <div

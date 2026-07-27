@@ -78,10 +78,11 @@ export const layerTrust: Record<string, LayerTrust> = {
       "Engine releases publish a sha256 per platform target and a build attestation resolving to the release workflow and commit.",
       "Program artifacts are content-addressed; the manifest declares each artifact's sha256 before you download it.",
       "Encodings are compared against calculators built by other people, and every disagreement on a covered policy is classified with evidence that CI recomputes.",
+      "The released golden household is stranger-path reproducible on engine v0.1.1 x program-artifacts-59a10dab866e: snap_eligible = holds, snap_allotment = 478, and snap_net_income = 226.",
     ],
     open: [
-      "The committed golden fixture predates an input-naming cutover, so the certified end-to-end number does not yet reproduce from committed inputs — details and error on the verify page.",
-      "Coverage is the live limit: 34 of 127 in-scope US policies have a comparison suite today.",
+      "The hosted API still returns snap_net_income = 226.5 for the golden household while the released engine returns 226; axiom-api#115 tracks the divergence.",
+      "Coverage is evidence-set specific; the verify page carries the current US comparison and administrative evidence.",
       "Agreement shows two implementations agree; where both misread a provision the same way, it shows nothing.",
     ],
   },

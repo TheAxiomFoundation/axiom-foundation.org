@@ -36,7 +36,15 @@ export function humanizeCitation(fileLegalId: string): string {
 
   if (kind === "regulations" && rest.length >= 2) {
     const slug = rest[0]!;
-    const path = rest.slice(1).join(".");
+    // Legal convention: part.section, then parenthetical subsections —
+    // "387.12(f)(3)(v)(a)", never "387.12.f.3.v.a".
+    const segments = rest.slice(1);
+    const path =
+      segments.slice(0, 2).join(".") +
+      segments
+        .slice(2)
+        .map((segment) => `(${segment})`)
+        .join("");
     if (slug.toLowerCase() === "7-cfr") return `7 CFR § ${path}`;
     const readable = slug.replace(/-/g, " ").toUpperCase();
     const suffix = jurisdiction === "us-co" ? " (Colorado)" : "";

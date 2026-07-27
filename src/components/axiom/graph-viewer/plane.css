@@ -91,6 +91,37 @@
   opacity: 0.55;
   cursor: default;
 }
+.graph-viewer-root .status-retry {
+  margin-left: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+}
+.graph-viewer-root .status-retry:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.graph-viewer-root .run-error-floating {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 18;
+  max-width: min(520px, calc(100% - 48px));
+  padding: 8px 14px;
+  border: 1px solid rgba(153, 27, 27, 0.35);
+  border-radius: 10px;
+  background: color-mix(in srgb, #fff 92%, #991b1b);
+  box-shadow: 0 10px 30px -12px rgba(28, 25, 23, 0.35);
+  cursor: pointer;
+}
+
 .graph-viewer-root .run-error {
   margin: 8px 0 0;
   font-size: 12px;
@@ -226,7 +257,14 @@
     animation: none;
   }
   .graph-viewer-root .results-sheet,
-  .graph-viewer-root .results-value {
+  .graph-viewer-root .results-value,
+  .graph-viewer-root .node-inspector,
+  .graph-viewer-root .outputs-panel,
+  .graph-viewer-root .run-panel > *,
+  .graph-viewer-root .exec-pill,
+  .graph-viewer-root .plane-launcher,
+  .graph-viewer-root .plane-fresh .irg-scene-cut .react-flow__viewport,
+  .graph-viewer-root .irg-scene-cut .react-flow__viewport {
     animation: none;
   }
 }
@@ -510,7 +548,7 @@
   position: absolute;
   top: -30px;
   right: 0;
-  z-index: 16;
+  z-index: 17;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1574,7 +1612,7 @@
 }
 
 /* Journey re-entry pill beside the Index toggle. */
-.graph-viewer-root .journey-toggle {
+.graph-viewer-root .run-toggle {
   /* Top right, flush with the graph box edge — the primary action
      sits in the same band as the program selectors. */
   position: absolute;
@@ -1592,7 +1630,7 @@
   cursor: pointer;
   box-shadow: 0 6px 16px -8px rgba(217, 119, 6, 0.45);
 }
-.graph-viewer-root .journey-toggle:hover {
+.graph-viewer-root .run-toggle:hover {
   border-color: var(--color-accent);
 }
 .graph-viewer-root .nav-toggle {
@@ -2222,7 +2260,9 @@
   bottom: 22px;
   transform: translateX(-50%);
   width: min(640px, calc(100% - 48px));
-  z-index: 15;
+  /* Below the inspector (13→ inspector must stay dismissible during
+     a replay). */
+  z-index: 12;
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
   border: 1px solid var(--color-rule);
   border-radius: 14px;

@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
     limit: Number.isFinite(limit) ? limit : undefined,
   });
 
-  return NextResponse.json(results);
+  return NextResponse.json(results, {
+    headers: { "cache-control": "public, max-age=60" },
+  });
 }
 
 function cleanParam(value: string | null): string | undefined {

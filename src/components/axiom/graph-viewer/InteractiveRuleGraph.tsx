@@ -1027,56 +1027,6 @@ function FlyToController({
   return null;
 }
 
-/**
- * The execution camera: when the run layer activates, glide out to
- * frame the whole executed path, then ease in toward the results.
- * Deactivation returns to the full graph.
- */
-function ExecutionCamera({
-  active,
-  executedIds,
-  outputIds,
-}: {
-  active: boolean;
-  executedIds: Set<string>;
-  outputIds: string[];
-}) {
-  const flow = useReactFlow();
-  const wasActive = useRef(false);
-  useEffect(() => {
-    // Fly only when the execution layer ACTIVATES — stage-by-stage
-    // replays change executedIds constantly and must not wrestle the
-    // camera away from the user.
-    if (active && executedIds.size > 0 && !wasActive.current) {
-      wasActive.current = true;
-      const executed = [...executedIds].map((id) => ({ id }));
-      void flow.fitView({
-        nodes: executed,
-        duration: 850,
-        padding: 0.25,
-        maxZoom: 1.1,
-      });
-      const outputs = outputIds.filter((id) => executedIds.has(id));
-      const timer = window.setTimeout(() => {
-        if (outputs.length > 0) {
-          void flow.fitView({
-            nodes: outputs.map((id) => ({ id })),
-            duration: 900,
-            padding: 0.45,
-            maxZoom: 1.25,
-          });
-        }
-      }, 1500);
-      return () => window.clearTimeout(timer);
-    }
-    if (!active && wasActive.current) {
-      wasActive.current = false;
-      void flow.fitView({ duration: 700, padding: 0.2 });
-    }
-  }, [active, executedIds, outputIds, flow]);
-  return null;
-}
-
 const HandleSource = () => (
   <Handle type="source" position={Position.Right} className="irg-handle" />
 );

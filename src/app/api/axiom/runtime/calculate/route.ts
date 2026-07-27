@@ -56,13 +56,21 @@ export async function POST(request: Request) {
   }
 
   const values: Record<string, number | boolean> = {};
+  // Values rejected for TYPE reasons (NaN/Infinity, wrong type) are
+  // reported in `dropped` — silent filtering hid client bugs.
+  const rejected: string[] = [];
   if (body.values && typeof body.values === "object") {
     for (const [key, value] of Object.entries(
       body.values as Record<string, unknown>
     )) {
       if (!INPUT_NAME_RE.test(key)) continue;
-      if (typeof value !== "number" && typeof value !== "boolean") continue;
-      if (typeof value === "number" && !Number.isFinite(value)) continue;
+      if (
+        (typeof value !== "number" && typeof value !== "boolean") ||
+        (typeof value === "number" && !Number.isFinite(value))
+      ) {
+        rejected.push(key);
+        continue;
+      }
       values[key] = value;
       if (Object.keys(values).length >= MAX_VALUES) break;
     }
@@ -117,7 +125,10 @@ export async function POST(request: Request) {
       trace: result.trace ?? [],
       period: detail.default_period ?? null,
       applied,
-      dropped: Object.keys(values).filter((name) => !applied.includes(name)),
+      dropped: [
+        ...Object.keys(values).filter((name) => !applied.includes(name)),
+        ...rejected,
+      ],
     },
     { headers: { "cache-control": "no-store" } }
   );

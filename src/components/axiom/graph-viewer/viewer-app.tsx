@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   InputEditContext,
   InteractiveRuleGraph,
@@ -96,12 +96,13 @@ export function GraphViewerApp() {
     setSelectedOutputs([legalId]);
   };
   const jumpLens = (index: number) => {
-    setLensTrail((trail) => {
-      const next = trail.slice(0, index + 1);
-      setSelectedOutputs([next[next.length - 1]]);
-      inspectRule(next[next.length - 1]);
-      return next;
-    });
+    // Side effects OUTSIDE the updater — React may invoke updaters
+    // twice (StrictMode), and nested setState there inverts ordering.
+    const next = lensTrail.slice(0, index + 1);
+    const target = next[next.length - 1];
+    setLensTrail(next);
+    setSelectedOutputs([target]);
+    inspectRule(target);
   };
   // Clicking an Index entry must land on the canvas even when the
   // target sits inside a folded branch: unfold its ancestry first,
@@ -237,6 +238,9 @@ export function GraphViewerApp() {
     dtypes: Record<string, string>;
     defaults: Record<string, unknown>;
   }>({ dtypes: {}, defaults: {} });
+  // Bumped by Retry buttons — re-fires the program load effect after
+  // a transient graph/registry failure.
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [replay, setReplay] = useState<{
     stages: string[][];
     cursor: number;
@@ -387,6 +391,17 @@ export function GraphViewerApp() {
       (rule) =>
         rule.ruleDeps.includes(legalId) || rule.inputDeps.includes(legalId),
     );
+  // The inspector re-renders often; scanning 1,700 rules for consumers
+  // on every paint is real money — memoize per inspected node.
+  const inspectedLegalId =
+    inspected && "legalId" in inspected && inspected.legalId
+      ? inspected.legalId
+      : null;
+  const inspectedConsumers = useMemo(
+    () => (inspectedLegalId ? consumersOf(inspectedLegalId) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inspectedLegalId, graph],
+  );
   // "Isolate" — the lens IS isolation: the canvas scopes to the rule,
   // dissected to its immediate structure; expand pills grow it down.
   const isolateAt = (legalId: string) => {
@@ -474,7 +489,12 @@ export function GraphViewerApp() {
     setProgramsLoading(true);
     fetchAllPrograms()
       .then((programs) => {
-        if (!cancelled) setAllPrograms(programs);
+        if (!cancelled)
+          setAllPrograms(
+            programs.filter(
+              (item) => !HIDDEN_COUNTRIES.has(countryOf(item.jurisdiction)),
+            ),
+          );
       })
       .catch((err) => {
         if (!cancelled) setError(String(err));
@@ -551,8 +571,20 @@ export function GraphViewerApp() {
   const allScenarioFields = scenarioFields;
 
   useEffect(() => {
+    // A program switch is a clean slate: every piece of state that
+    // names rules or inputs of the OLD program must go — a lingering
+    // replay steps through a foreign graph, lens crumbs point at dead
+    // rules, and "Edit inputs" would show another program's fields.
     setRunResult(null);
     setRunError(null);
+    setReplay(null);
+    setRunPanelOpen(false);
+    setSelectedLevers(null);
+    setScenario({});
+    setInputMeta({ dtypes: {}, defaults: {} });
+    setLensTrail([]);
+    savedSelection.current = null;
+    restoreFoldedRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveProgram?.programId]);
 
@@ -603,8 +635,8 @@ export function GraphViewerApp() {
         walkRuleById.has(id),
       );
       for (const id of traceRoots) walk(id);
-      const attempt = (variables: string[]) =>
-        fetch("/api/axiom/runtime/calculate", {
+      const attempt = async (variables: string[]) => {
+        const response = await fetch("/api/axiom/runtime/calculate", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -613,7 +645,18 @@ export function GraphViewerApp() {
             values: scenario,
             variables,
           }),
+          // A hung request must never strand the Run buttons disabled.
+          signal: AbortSignal.timeout(30_000),
         });
+        // Rate limited: more requests only dig deeper — stop the whole
+        // run (including chunk probing) with an honest message.
+        if (response.status === 429) {
+          throw new Error(
+            "Too many runs in the last minute — wait a moment and run again.",
+          );
+        }
+        return response;
+      };
       // The runtime resolves variables by bare rule name (legalId
       // forms fail on some packages), so trace requests speak names.
       const bareNames = [
@@ -681,7 +724,16 @@ export function GraphViewerApp() {
       };
       setRunResult(data);
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : "run failed");
+      const timedOut =
+        err instanceof DOMException &&
+        (err.name === "TimeoutError" || err.name === "AbortError");
+      setRunError(
+        timedOut
+          ? "The run timed out — the engine didn't answer. Try again."
+          : err instanceof Error
+            ? err.message
+            : "run failed",
+      );
     } finally {
       setRunning(false);
     }
@@ -697,6 +749,22 @@ export function GraphViewerApp() {
     syncCountryToUrl(country);
   }, [country]);
 
+  // Escape closes the topmost surface — keyboard users must never be
+  // trapped in a dialog.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (lawPopup) setLawPopup(null);
+      else if (runPanelOpen) setRunPanelOpen(false);
+      else if (searchOpen) setSearchOpen(false);
+      else if (inspected) setInspected(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lawPopup, runPanelOpen, searchOpen, inspected]);
+
+
   // Deep links: the address bar always reproduces the current view —
   // ?program= is the selected law, ?focus= the lens-focused rule.
   // Copying the URL is sharing; no share button needed. An inbound
@@ -708,7 +776,9 @@ export function GraphViewerApp() {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     if (program) url.searchParams.set("program", programKey(program));
-    else if (!composeFocus) url.searchParams.delete("program");
+    else if (!composeFocus && !requestedProgramKey)
+      // Never strip a deep link's ?program= before it resolves.
+      url.searchParams.delete("program");
     if (lensFocusId) {
       url.searchParams.set("focus", lensFocusId);
       lensSyncedToUrl.current = true;
@@ -719,7 +789,7 @@ export function GraphViewerApp() {
     if (url.toString() !== window.location.href) {
       window.history.replaceState({}, "", url.toString());
     }
-  }, [program, lensFocusId, composeFocus]);
+  }, [program, lensFocusId, composeFocus, requestedProgramKey]);
 
   // Keep the country/program selection valid as the registry loads or the
   // country changes: snap to an existing country, then default to its first
@@ -833,7 +903,8 @@ export function GraphViewerApp() {
     return () => {
       cancelled = true;
     };
-  }, [program]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [program, reloadNonce]);
 
   // Compose mode: fetch the on-demand graph for the focus legal id. The
   // server narrows ownOutputs to the focus rule when a #fragment is given.
@@ -1018,8 +1089,11 @@ export function GraphViewerApp() {
     }
     return scope;
   }, [selectedOutputs, structureTraces]);
+  // Typing stays responsive on 1,700-rule graphs: filtering runs on
+  // the deferred value, off the keystroke's critical path.
+  const deferredIndexSearch = useDeferredValue(indexSearch);
   const indexMatches = useMemo(() => {
-    const query = indexSearch.trim().toLowerCase();
+    const query = deferredIndexSearch.trim().toLowerCase();
     if (!graph) return [];
     // Empty query browses the whole program; every query word must
     // appear, any order — "monthly income" finds Monthly Household
@@ -1063,7 +1137,7 @@ export function GraphViewerApp() {
     return [...rules, ...inputs]
       .sort((a, b) => a.label.localeCompare(b.label))
       .slice(0, 100);
-  }, [indexSearch, graph, inScopeIds, mainlandIds]);
+  }, [deferredIndexSearch, graph, inScopeIds, mainlandIds]);
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the lens and re-root on the
   // rule itself.
@@ -1281,8 +1355,22 @@ export function GraphViewerApp() {
     pendingReplay.current = false;
     const stages = buildExecStages(liveTraces.executed);
     if (stages.length > 0) setReplay({ stages, cursor: 0 });
+    else
+      // "Step by step" was asked for but there is nothing to step
+      // through — say so instead of silently showing the summary.
+      setRunError(
+        "No traceable steps came back for this run — showing the full result instead.",
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runResult, liveTraces]);
+
+  // Editing answers changes what executed — stale stages would step
+  // through a computation that no longer exists. Drop the replay; the
+  // user can re-run step by step with the new values.
+  useEffect(() => {
+    setReplay((current) => (current ? null : current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedScenario]);
 
   // The canvas lights only up to the replay cursor while stepping.
   const effectiveExecuted = useMemo(() => {
@@ -1291,9 +1379,16 @@ export function GraphViewerApp() {
     for (let index = 0; index <= replay.cursor; index++) {
       for (const id of replay.stages[index] ?? []) subset.add(id);
     }
-    // Inputs feeding the lit rules stay lit too.
+    // Only the inputs FEEDING the lit rules stay lit — lighting every
+    // executed input at stage 0 floods the canvas before the story
+    // reaches them.
+    const wanted = new Set<string>();
+    for (const id of subset) {
+      const rule = walkRuleById.get(id);
+      for (const dep of rule?.inputDeps ?? []) wanted.add(dep);
+    }
     for (const id of liveTraces.executed) {
-      if (!walkRuleById.has(id)) subset.add(id);
+      if (!walkRuleById.has(id) && wanted.has(id)) subset.add(id);
     }
     return subset;
   }, [replay, liveTraces, walkRuleById]);
@@ -1426,14 +1521,34 @@ export function GraphViewerApp() {
                     </span>
                   </button>
                 ))}
-              {inputCatalog.filter(
-                (input) =>
-                  !active.includes(input.name) &&
-                  (!query ||
-                    humanize(input.name).toLowerCase().includes(query)),
-              ).length === 0 && (
-                <div className="output-empty">No inputs match.</div>
-              )}
+              {inputCatalog.length === 0 &&
+                (graph?.inputs.length ?? 0) > 0 && (
+                  <div className="output-empty">
+                    The input registry didn't load.{" "}
+                    <button
+                      type="button"
+                      className="status-retry"
+                      onClick={() => setReloadNonce((n) => n + 1)}
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+              {inputCatalog.length === 0 &&
+                (graph?.inputs.length ?? 0) === 0 && (
+                  <div className="output-empty">
+                    This program asks no questions — it runs on defaults.
+                  </div>
+                )}
+              {inputCatalog.length > 0 &&
+                inputCatalog.filter(
+                  (input) =>
+                    !active.includes(input.name) &&
+                    (!query ||
+                      humanize(input.name).toLowerCase().includes(query)),
+                ).length === 0 && (
+                  <div className="output-empty">No inputs match.</div>
+                )}
             </div>
           </div>
           <div className="run-col">
@@ -1499,8 +1614,8 @@ export function GraphViewerApp() {
               {activeFields.length === 0 && (
                 <>
                   <p className="run-hint">
-                    Pick inputs on the left — unanswered ones fall to the
-                    law's defaults.
+                    Pick inputs on the left — unanswered ones use this
+                    program's default values.
                   </p>
                   {inputCatalog.some(
                     (input) => input.name in CURATED_SAMPLES,
@@ -1661,7 +1776,7 @@ export function GraphViewerApp() {
                   window.setTimeout(() => setSearchOpen(false), 180)
                 }
                 placeholder="Search the law..."
-                aria-label="Search rules"
+                aria-label="Search the law"
               />
               {searchOpen && (
                 <div className="top-search-results" aria-label="Search results">
@@ -1709,11 +1824,23 @@ export function GraphViewerApp() {
               <span className="run-spinner-text">computing…</span>
             </div>
           )}
+          {/* A failed run must be visible even with the panel closed —
+              otherwise silence reads as success. */}
+          {runError && !runPanelOpen && !running && (
+            <div
+              className="run-error run-error-floating"
+              role="alert"
+              onClick={() => setRunError(null)}
+              title="Dismiss"
+            >
+              {runError}
+            </div>
+          )}
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
             aria-hidden={!veiled}
           >
-            <span>composing the map…</span>
+            <span>Laying out the graph…</span>
           </div>
           {runResult && !running ? (
             // A live run owns the top-right slot — the pill replaces
@@ -1728,7 +1855,7 @@ export function GraphViewerApp() {
           ) : (
             <button
               type="button"
-              className="journey-toggle"
+              className="run-toggle"
               disabled={running}
               onClick={() => setRunPanelOpen((open) => !open)}
               aria-expanded={runPanelOpen}
@@ -1741,6 +1868,7 @@ export function GraphViewerApp() {
             <div
               className="run-panel"
               role="dialog"
+              aria-modal="true"
               aria-label="Run this law"
               onClick={() => setRunPanelOpen(false)}
             >
@@ -1761,7 +1889,21 @@ export function GraphViewerApp() {
             </div>
           )}
 
-          {error && <div className="status error">{error}</div>}
+          {error && (
+            <div className="status error">
+              {error}
+              <button
+                type="button"
+                className="status-retry"
+                onClick={() => {
+                  setError(null);
+                  setReloadNonce((n) => n + 1);
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {loading ? (
             <div className="loading-state" role="status" aria-live="polite">
@@ -1806,7 +1948,7 @@ export function GraphViewerApp() {
                 : null;
             const rule = legalId ? (walkRuleById.get(legalId) ?? null) : null;
             const input = legalId ? (walkInputById.get(legalId) ?? null) : null;
-            const consumers = legalId ? consumersOf(legalId) : [];
+            const consumers = inspectedConsumers;
             const meta = "meta" in inspected ? inspected.meta : undefined;
             const formula = meta?.formula ?? rule?.formula ?? null;
             const rawCitation =
@@ -2133,7 +2275,7 @@ export function GraphViewerApp() {
                 disabled={running}
                 onClick={() => void runScenario("steps")}
               >
-                {running ? "Running…" : "▶ Run with these values · guided tour"}
+                {running ? "Running…" : "▶ Run with these values · step by step"}
               </button>
             ) : null}
             {lawFileLegalId && axiomAppUrl(lawFileLegalId) ? (
@@ -2206,7 +2348,7 @@ export function GraphViewerApp() {
                       type="button"
                       key={id}
                       className="replay-item"
-                      onClick={() => flyTo(id)}
+                      onClick={() => flyFromIndex(id)}
                       title="Fly to this step"
                     >
                       <span>{humanize(walkRuleById.get(id)?.name ?? id)}</span>
@@ -2336,7 +2478,10 @@ export function GraphViewerApp() {
             </div>
             <p className="results-note">
               Computed by the Axiom engine from your scenario — the graph
-              above shows every intermediate value.
+              above shows every intermediate value. You answered{" "}
+              {Object.keys(scenario).length} of {inputCatalog.length}{" "}
+              questions; the rest used this program's default values, so
+              a "No" can mean "not asked", not "disqualified".
             </p>
             <button
               type="button"
@@ -2362,6 +2507,7 @@ export function GraphViewerApp() {
       <div
         className="law-popup-backdrop"
         role="dialog"
+        aria-modal="true"
         aria-label="The law at this node"
         onClick={() => setLawPopup(null)}
       >
@@ -2589,6 +2735,10 @@ function connectedComponent(
   }
   return connected;
 }
+
+/** Jurisdictions hidden from the viewer for now (registry still
+ *  serves them; this is presentation only). */
+const HIDDEN_COUNTRIES = new Set<Country>(["uk"]);
 
 function initialCountry(): Country {
   if (typeof window === "undefined") return "us";

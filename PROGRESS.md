@@ -50,6 +50,7 @@ this branch yet.
   `Could not resolve host: github.com`.
 - Attempted the connected GitHub app fallback; both tree and branch creation
   were canceled before changing GitHub.
+- Wrote the complete handoff to `FINAL_REPORT.md`.
 
 ## Next
 

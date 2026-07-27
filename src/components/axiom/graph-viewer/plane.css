@@ -3230,16 +3230,6 @@
   pointer-events: none;
   z-index: 1;
 }
-.graph-viewer-root .constellation-node {
-  position: absolute;
-  width: 176px;
-  margin: 0;
-  z-index: 2;
-  animation: constellation-float 7s ease-in-out infinite alternate;
-  transition: transform 0.38s var(--ease-out, ease), opacity 0.3s ease,
-    box-shadow 0.2s ease;
-  transform: translate(-50%, -50%);
-}
 @keyframes constellation-float {
   from {
     transform: translate(-50%, -50%) translateY(-2.5px);
@@ -3248,54 +3238,9 @@
     transform: translate(-50%, -50%) translateY(2.5px);
   }
 }
-.graph-viewer-root .constellation-node:hover,
-.graph-viewer-root .constellation-node:focus-visible {
-  z-index: 4;
-  box-shadow: 0 14px 34px -14px rgba(28, 25, 23, 0.4);
-}
-.graph-viewer-root .constellation-node.is-picked {
-  animation: none;
-  transform: translate(-50%, -50%) scale(1.45);
-  z-index: 6;
-}
-.graph-viewer-root .is-launching .constellation-node:not(.is-picked) {
-  opacity: 0.18;
-}
-.graph-viewer-root .constellation-headline {
-  display: block;
-  margin-top: 4px;
-  font-family: var(--f-mono, monospace);
-  font-size: 10.5px;
-  color: var(--color-ink-muted);
-}
 @media (prefers-reduced-motion: reduce) {
-  .graph-viewer-root .constellation-wire,
-  .graph-viewer-root .constellation-node {
-    animation: none;
-  }
 }
 
-/* The card IS its graph: a deterministic miniature of the program's
-   real rules, shared federal rules in accent — the touching points. */
-.graph-viewer-root .constellation-node {
-  position: absolute;
-  overflow: hidden;
-}
-.graph-viewer-root .constellation-node > * {
-  position: relative;
-}
-.graph-viewer-root .constellation-touch {
-  display: none;
-  margin-top: 5px;
-  font-family: var(--f-mono, monospace);
-  font-size: 9.5px;
-  line-height: 1.5;
-  color: var(--color-accent);
-}
-.graph-viewer-root .constellation-node:hover .constellation-touch,
-.graph-viewer-root .constellation-node:focus-visible .constellation-touch {
-  display: block;
-}
 
 .graph-viewer-root .node-inspector-value-note {
   display: block;
@@ -3304,4 +3249,72 @@
   font-weight: 400;
   letter-spacing: 0.04em;
   color: var(--color-ink-muted);
+}
+
+/* One huge graph: every program is a cloud of its REAL rules; the
+   summit label is the door. */
+.graph-viewer-root .constellation-dot {
+  fill: var(--color-ink-muted);
+  opacity: 0.3;
+  transition: opacity 0.2s ease, fill 0.2s ease;
+}
+.graph-viewer-root .constellation-dot.is-shared {
+  fill: var(--color-accent);
+  opacity: 0.4;
+}
+.graph-viewer-root .constellation-dot.is-hot {
+  opacity: 0.9;
+}
+.graph-viewer-root .is-launching .constellation-dot {
+  opacity: 0.08;
+}
+.graph-viewer-root .constellation-summit {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 6px;
+  background: var(--color-paper-elevated);
+  box-shadow: 0 1px 0 0 var(--color-ink) inset 0 0 0 0 transparent;
+  box-shadow: 0 8px 22px -12px rgba(28, 25, 23, 0.35);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  cursor: pointer;
+  animation: constellation-float 7s ease-in-out infinite alternate;
+  transition: transform 0.38s var(--ease-out, ease), opacity 0.3s ease,
+    box-shadow 0.2s ease;
+}
+.graph-viewer-root .constellation-summit strong {
+  font-weight: 650;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.graph-viewer-root .constellation-summit-chip {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.graph-viewer-root .constellation-summit:hover,
+.graph-viewer-root .constellation-summit:focus-visible {
+  z-index: 5;
+  box-shadow: 0 14px 34px -14px rgba(28, 25, 23, 0.45);
+}
+.graph-viewer-root .constellation-summit.is-picked {
+  animation: none;
+  transform: translate(-50%, -50%) scale(1.45);
+  z-index: 6;
+}
+.graph-viewer-root .is-launching .constellation-summit:not(.is-picked) {
+  opacity: 0.15;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .constellation-summit {
+    animation: none;
+  }
 }

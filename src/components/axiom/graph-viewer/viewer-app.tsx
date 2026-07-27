@@ -791,10 +791,14 @@ export function GraphViewerApp() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    if (program) url.searchParams.set("program", programKey(program));
-    else if (!composeFocus && !requestedProgramKey)
+    if (program && launcherRef.current === "closed") {
+      // Only a CHOSEN program earns the URL — the backdrop default
+      // behind the launcher must not become a deep link.
+      url.searchParams.set("program", programKey(program));
+    } else if (!program && !composeFocus && !requestedProgramKey) {
       // Never strip a deep link's ?program= before it resolves.
       url.searchParams.delete("program");
+    }
     if (lensFocusId) {
       url.searchParams.set("focus", lensFocusId);
       lensSyncedToUrl.current = true;
@@ -805,7 +809,7 @@ export function GraphViewerApp() {
     if (url.toString() !== window.location.href) {
       window.history.replaceState({}, "", url.toString());
     }
-  }, [program, lensFocusId, composeFocus, requestedProgramKey]);
+  }, [program, lensFocusId, composeFocus, requestedProgramKey, launcher]);
 
   // Keep the country/program selection valid as the registry loads or the
   // country changes: snap to an existing country, then default to its first
@@ -1448,7 +1452,7 @@ export function GraphViewerApp() {
       [];
     const hubSpots: Record<string, { x: number; y: number }> = {
       snap: { x: 33, y: 26 },
-      tanf: { x: 76, y: 30 },
+      tanf: { x: 81, y: 40 },
     };
     const hubLabels: Record<string, string> = {
       snap: "Federal SNAP law · 7 USC 2014 · 7 CFR 273",
@@ -1476,8 +1480,8 @@ export function GraphViewerApp() {
         label: hubLabels[family] ?? `Federal ${family} law`,
         ...spot,
       });
-      const rx = family === "snap" ? 26 : 17;
-      const ry = family === "snap" ? 20 : 14;
+      const rx = family === "snap" ? 26 : 13;
+      const ry = family === "snap" ? 20 : 12;
       members.forEach((item, index) => {
         const angle =
           -Math.PI / 2 + (index / members.length) * Math.PI * 2;
@@ -1496,9 +1500,9 @@ export function GraphViewerApp() {
       });
     }
     const soloSpots = [
-      { x: 54, y: 52 },
+      { x: 50, y: 55 },
       { x: 12, y: 50 },
-      { x: 90, y: 52 },
+      { x: 90, y: 8 },
       { x: 50, y: 5 },
     ];
     standalone.forEach((item, index) => {
@@ -1765,6 +1769,17 @@ export function GraphViewerApp() {
                 preserveAspectRatio="none"
                 aria-hidden
               >
+                {constellationLayout.nodes.map((node) =>
+                  node.outline.map((dot, dotIndex) => (
+                    <circle
+                      key={`${node.key}-${dotIndex}`}
+                      cx={node.x + (dot.x - 0.5) * 13}
+                      cy={node.y + (dot.y - 0.5) * 10}
+                      r={dot.shared ? 0.42 : 0.3}
+                      className={`constellation-dot ${dot.shared ? "is-shared" : ""} ${hotKey === node.key ? "is-hot" : ""}`}
+                    />
+                  )),
+                )}
                 {constellationLayout.nodes
                   .filter((node) => node.hub)
                   .map((node) => {
@@ -1801,7 +1816,7 @@ export function GraphViewerApp() {
                 <button
                   key={node.key}
                   type="button"
-                  className={`plane-launcher-card constellation-node ${launchingKey === node.key ? "is-picked" : ""}`}
+                  className={`constellation-summit ${launchingKey === node.key ? "is-picked" : ""}`}
                   style={{
                     left: `${node.x}%`,
                     top: `${(node.y / 60) * 100}%`,
@@ -1813,23 +1828,13 @@ export function GraphViewerApp() {
                   onBlur={() => setHotKey(null)}
                   onClick={() => launchProgram(node.key)}
                 >
-                  <span className="plane-launcher-chip">
+                  <span className="constellation-summit-chip">
                     {countryShortLabel(countryOf(node.item.jurisdiction))}
                     {node.item.jurisdiction.includes("-")
                       ? ` · ${node.item.jurisdiction.split("-")[1].toUpperCase()}`
                       : ""}
                   </span>
                   <strong>{displayNameForProgram(node.item)}</strong>
-                  {node.headline && (
-                    <span className="constellation-headline">
-                      → {humanize(node.headline)}
-                    </span>
-                  )}
-                  {node.touchpoints.length > 0 && (
-                    <span className="constellation-touch">
-                      touches {node.touchpoints.map(humanize).join(" · ")}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>

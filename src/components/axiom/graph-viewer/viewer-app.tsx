@@ -1613,10 +1613,6 @@ export function GraphViewerApp() {
               ))}
               {activeFields.length === 0 && (
                 <>
-                  <p className="run-hint">
-                    Pick inputs on the left — unanswered ones use this
-                    program's default values.
-                  </p>
                   {inputCatalog.some(
                     (input) => input.name in CURATED_SAMPLES,
                   ) && (
@@ -1646,6 +1642,10 @@ export function GraphViewerApp() {
                       Start from a sample household
                     </button>
                   )}
+                  <p className="run-hint">
+                    Or pick inputs on the left — unanswered ones use this
+                    program's default values.
+                  </p>
                 </>
               )}
             </div>
@@ -1658,7 +1658,7 @@ export function GraphViewerApp() {
             disabled={running}
             onClick={() => launchRun("all")}
           >
-            {running ? "Running…" : "▶ Run it all"}
+            {running ? "Running…" : "Run it all"}
           </button>
           <button
             type="button"
@@ -1666,7 +1666,7 @@ export function GraphViewerApp() {
             disabled={running}
             onClick={() => launchRun("steps")}
           >
-            ⧉ Run step by step
+            Run step by step
           </button>
         </div>
         {runError && <p className="run-error">{runError}</p>}
@@ -1676,6 +1676,15 @@ export function GraphViewerApp() {
 
   return (
     <div className="graph-viewer-root">
+    {/* Desktop-only for now — a phone gets an honest notice instead
+        of a broken layout. */}
+    <div className="small-screen-notice" role="note">
+      <strong>The Plane needs a bigger screen.</strong>
+      <p>
+        This is a full law-graph workbench — open it on a laptop or
+        desktop for now.
+      </p>
+    </div>
     {launcher !== "closed" && (
       <div
         className={`plane-launcher ${launcher === "leaving" ? "is-leaving" : ""}`}
@@ -1861,7 +1870,7 @@ export function GraphViewerApp() {
               aria-expanded={runPanelOpen}
               title="Answer the household's questions and execute the law"
             >
-              {running ? "Running…" : "▶ Run"}
+              {running ? "Running…" : "Run"}
             </button>
           )}
           {runPanelOpen && (
@@ -2275,7 +2284,7 @@ export function GraphViewerApp() {
                 disabled={running}
                 onClick={() => void runScenario("steps")}
               >
-                {running ? "Running…" : "▶ Run with these values · step by step"}
+                {running ? "Running…" : "Run with these values · step by step"}
               </button>
             ) : null}
             {lawFileLegalId && axiomAppUrl(lawFileLegalId) ? (
@@ -2286,7 +2295,7 @@ export function GraphViewerApp() {
                   setLawPopup(`${axiomAppUrl(lawFileLegalId) ?? ""}?embed=1`)
                 }
               >
-                § Read the law →
+                Read the law →
               </button>
             ) : null}
           </aside>
@@ -2314,7 +2323,7 @@ export function GraphViewerApp() {
                       )
                     }
                   >
-                    ◀
+                    Back
                   </button>
                   <button
                     type="button"
@@ -2333,7 +2342,7 @@ export function GraphViewerApp() {
                       )
                     }
                   >
-                    ▶
+                    Next
                   </button>
                   <button type="button" onClick={() => setReplay(null)}>
                     Show everything
@@ -2464,7 +2473,7 @@ export function GraphViewerApp() {
                 disabled={running}
                 onClick={() => void runScenario("all")}
               >
-                {running ? "Running…" : "▶ Run again"}
+                {running ? "Running…" : "Run again"}
               </button>
               <button
                 type="button"
@@ -2473,7 +2482,7 @@ export function GraphViewerApp() {
                 onClick={() => setRunPanelOpen(true)}
                 title="Reopen the full input list to add or change answers"
               >
-                ✎ Edit inputs
+                Edit inputs
               </button>
             </div>
             <p className="results-note">
@@ -2497,7 +2506,7 @@ export function GraphViewerApp() {
                 window.setTimeout(() => setCopiedRun(false), 2000);
               }}
             >
-              {copiedRun ? "✓ Copied" : "⧉ Copy run as code"}
+              {copiedRun ? "✓ Copied" : "Copy run as code"}
             </button>
           </aside>
         )}
@@ -2513,7 +2522,7 @@ export function GraphViewerApp() {
       >
         <div className="law-popup" onClick={(event) => event.stopPropagation()}>
           <div className="law-popup-head">
-            <span>§ The law at this node</span>
+            <span>The law at this node</span>
             <button
               type="button"
               className="results-close"

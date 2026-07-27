@@ -459,7 +459,18 @@ export function InteractiveRuleGraph({
       const legalId =
         "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
       const bucket = legalId?.split(":")[1]?.split("/")[0];
-      return bucket ? { ...n, className: `irg-src-${bucket}` } : n;
+      // Precomputed wrapper classes — the :has() selectors these
+      // replace forced style recalc across every node on the canvas.
+      const marks = [
+        bucket ? `irg-src-${bucket}` : "",
+        "value" in d && d.value && "showValues" in d && d.showValues
+          ? "irg-has-value"
+          : "",
+        "kind" in d && d.kind === "output" ? "irg-is-output" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return marks ? { ...n, className: marks } : n;
     });
     if (executionActive) {
       out = out.map((n) => ({
@@ -1338,6 +1349,13 @@ const InputNode = ({ data }: NodeProps) => {
   const pop = useHoverPopover();
   const ref = useRef<HTMLDivElement>(null);
   const answerPopulated = useAnswerBoxPopulated(d.legalId);
+  const { values, answered, onChange } = useContext(InputEditContext);
+  const inputFragment = d.legalId.split("#").pop() ?? "";
+  const inputName = inputFragment.startsWith("input.")
+    ? inputFragment.slice("input.".length)
+    : null;
+  const settable = Boolean(onChange && inputName && inputName in values);
+  const isAnswered = Boolean(inputName && answered.has(inputName));
   // Affordance shows when the parent wired up onExposeInput (Step III).
   // Action label flips with the current state — same hook toggles both
   // ways via App.tsx's handleExposeInput.
@@ -1345,7 +1363,7 @@ const InputNode = ({ data }: NodeProps) => {
   return (
     <div
       ref={ref}
-      className={`irg-node irg-input irg-input-${d.source} ${d.canExpose ? "irg-can-expose" : ""}`}
+      className={`irg-node irg-input irg-input-${d.source} ${d.canExpose ? "irg-can-expose" : ""} ${isAnswered ? "is-answered" : ""}`}
     >
       <HandleSource />
       <div className="irg-eyebrow">
@@ -1355,6 +1373,11 @@ const InputNode = ({ data }: NodeProps) => {
       <InlineAnswer legalId={d.legalId} />
       {!answerPopulated && d.showValues && d.value && (
         <div className="irg-value">{d.value}</div>
+      )}
+      {/* Honesty on the card: after a run, an unanswered question says
+          so — a downstream "No" can mean "not asked". */}
+      {d.showValues && settable && !isAnswered && (
+        <div className="irg-default-chip">using default</div>
       )}
       {showAction && (
         <div className="irg-action irg-action-clickable">

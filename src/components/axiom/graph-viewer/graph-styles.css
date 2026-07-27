@@ -2660,7 +2660,11 @@
   text-align: left;
   min-width: 100px;
   width: 100%;
-  height: 100%;
+  /* min-height, not height: value chips mount AFTER layout measured
+     the card — a fixed height flex-crushes them to nothing and the
+     resize observer never fires. Growing past the wrapper triggers
+     the re-measure → relayout that makes room. */
+  min-height: 100%;
   box-sizing: border-box;
   /* Allow content to be visible if dagre's height estimate is slightly
      off — better to grow a hair than to clip the top of the eyebrow. */
@@ -2888,6 +2892,7 @@
 }
 
 .graph-viewer-root .irg-value{
+  flex-shrink: 0;
   font-family: var(--f-display);
   font-size: 13px;
   font-weight: 500;

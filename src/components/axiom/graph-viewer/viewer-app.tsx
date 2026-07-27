@@ -1813,28 +1813,6 @@ export function GraphViewerApp() {
                   onBlur={() => setHotKey(null)}
                   onClick={() => launchProgram(node.key)}
                 >
-                  {node.outline.length > 0 && (
-                    <svg
-                      className="constellation-mini"
-                      viewBox="0 0 100 44"
-                      preserveAspectRatio="none"
-                      aria-hidden
-                    >
-                      {node.outline.map((dot, dotIndex) => (
-                        <circle
-                          key={dotIndex}
-                          cx={4 + dot.x * 92}
-                          cy={4 + dot.y * 36}
-                          r={dot.shared ? 1.6 : 1}
-                          className={
-                            dot.shared
-                              ? "constellation-dot is-shared"
-                              : "constellation-dot"
-                          }
-                        />
-                      ))}
-                    </svg>
-                  )}
                   <span className="plane-launcher-chip">
                     {countryShortLabel(countryOf(node.item.jurisdiction))}
                     {node.item.jurisdiction.includes("-")
@@ -2221,20 +2199,34 @@ export function GraphViewerApp() {
                 {formatParameterValue(parameterValue, rule?.unit ?? null)}
               </p>
             ) : null}
-            {("value" in inspected &&
-              inspected.value &&
-              "showValues" in inspected &&
-              inspected.showValues) ||
-            liveValue !== null ? (
-              <p className="node-inspector-value">
-                {"value" in inspected &&
+            {(() => {
+              const cardValue =
+                "value" in inspected &&
                 inspected.value &&
                 "showValues" in inspected &&
                 inspected.showValues
                   ? inspected.value
-                  : liveValue}
-              </p>
-            ) : null}
+                  : null;
+              const shown = cardValue ?? liveValue;
+              if (shown === null) return null;
+              // Member-level rules can't be traced against the
+              // household query yet — the dash is a capability gap,
+              // not a computed nothing. Say so.
+              const memberLevel =
+                shown === "—" &&
+                rule?.entity != null &&
+                /person|member/i.test(rule.entity);
+              return (
+                <p className="node-inspector-value">
+                  {shown}
+                  {memberLevel && (
+                    <span className="node-inspector-value-note">
+                      member-level — not traced per member yet
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
             <dl className="node-inspector-meta">
               {citation ? (
                 <>

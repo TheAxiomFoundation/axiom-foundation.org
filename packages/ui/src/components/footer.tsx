@@ -137,6 +137,7 @@ export function Footer({
           {renderColumn("Foundation", [
             { href: "/about", label: "About" },
             { href: "/team", label: "Team" },
+            { href: "/blog", label: "Blog" },
             { href: "/privacy", label: "Privacy" },
           ])}
 

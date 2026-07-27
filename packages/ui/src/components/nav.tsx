@@ -95,6 +95,7 @@ const DEFAULT_LINKS: NavLink[] = [
       },
     ],
   },
+  { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },
 ];

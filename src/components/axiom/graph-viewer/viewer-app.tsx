@@ -2360,6 +2360,25 @@ export function GraphViewerApp() {
                   </dd>
                 </>
               ) : null}
+              {rule?.certificationStatus ? (
+                <>
+                  {/* The four-status launch taxonomy: certification is a
+                      status, not a gate — the queue is public on every
+                      node. */}
+                  <dt>Status</dt>
+                  <dd>
+                    {rule.certificationStatus === "certified"
+                      ? "Certified"
+                      : rule.certificationStatus === "validated"
+                        ? "Validated, not certified"
+                        : rule.certificationStatus === "pending"
+                          ? "Pending — not yet encoded"
+                          : rule.incompleteByDeclaration
+                            ? "Encoded, incomplete by declaration"
+                            : "Encoded"}
+                  </dd>
+                </>
+              ) : null}
               {rule?.certificateId ? (
                 <>
                   {/* The verifier certificate is why this node is

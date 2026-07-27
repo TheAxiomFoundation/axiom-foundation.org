@@ -3175,3 +3175,110 @@
 .graph-viewer-root button.results-cell:disabled {
   cursor: default;
 }
+
+.graph-viewer-root .node-inspector-live-value {
+  font-family: var(--f-mono, monospace);
+  font-weight: 650;
+  color: var(--color-accent);
+}
+
+/* ═══ The constellation launcher ═══ */
+/* One corpus: programs float around the shared federal law they
+   compose, edge weight = how much of each program IS that law. */
+.graph-viewer-root .plane-launcher-inner.has-constellation {
+  width: min(1080px, calc(100% - 32px));
+}
+.graph-viewer-root .constellation {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 100 / 60;
+  margin-top: 10px;
+}
+.graph-viewer-root .constellation-wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.graph-viewer-root .constellation-wire {
+  fill: none;
+  stroke: var(--color-accent-line);
+  stroke-dasharray: 1.4 1.1;
+  opacity: 0.55;
+  animation: constellation-drift 30s linear infinite;
+  transition: opacity 0.2s ease, stroke 0.2s ease;
+}
+@keyframes constellation-drift {
+  to {
+    stroke-dashoffset: -50;
+  }
+}
+.graph-viewer-root .constellation-wire.is-hot {
+  opacity: 1;
+  stroke: var(--color-accent);
+}
+.graph-viewer-root .is-launching .constellation-wire {
+  opacity: 0.12;
+}
+.graph-viewer-root .constellation-hub {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 190px;
+  padding: 8px 14px;
+  border: 1.5px dashed var(--color-accent-line);
+  border-radius: 12px;
+  background: var(--color-paper);
+  font-family: var(--f-mono, monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+.graph-viewer-root .constellation-node {
+  position: absolute;
+  width: 176px;
+  margin: 0;
+  z-index: 2;
+  animation: constellation-float 7s ease-in-out infinite alternate;
+  transition: transform 0.38s var(--ease-out, ease), opacity 0.3s ease,
+    box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+}
+@keyframes constellation-float {
+  from {
+    transform: translate(-50%, -50%) translateY(-2.5px);
+  }
+  to {
+    transform: translate(-50%, -50%) translateY(2.5px);
+  }
+}
+.graph-viewer-root .constellation-node:hover,
+.graph-viewer-root .constellation-node:focus-visible {
+  z-index: 4;
+  box-shadow: 0 14px 34px -14px rgba(28, 25, 23, 0.4);
+}
+.graph-viewer-root .constellation-node.is-picked {
+  animation: none;
+  transform: translate(-50%, -50%) scale(1.45);
+  z-index: 6;
+}
+.graph-viewer-root .is-launching .constellation-node:not(.is-picked) {
+  opacity: 0.18;
+}
+.graph-viewer-root .constellation-headline {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--f-mono, monospace);
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-viewer-root .constellation-wire,
+  .graph-viewer-root .constellation-node {
+    animation: none;
+  }
+}

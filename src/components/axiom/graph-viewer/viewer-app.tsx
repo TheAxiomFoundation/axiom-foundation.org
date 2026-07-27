@@ -32,6 +32,20 @@ import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, Prog
 
 export function GraphViewerApp() {
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
+  // The constellation: real interconnection weights for the launcher —
+  // how much of each program is shared federal law.
+  const [constellation, setConstellation] = useState<{
+    programs: Array<{
+      jurisdiction: string;
+      program_id: string;
+      family: string | null;
+      federal_rules: number;
+      total_rules: number;
+      headline: string | null;
+    }>;
+  } | null>(null);
+  const [launchingKey, setLaunchingKey] = useState<string | null>(null);
+  const [hotKey, setHotKey] = useState<string | null>(null);
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -482,6 +496,12 @@ export function GraphViewerApp() {
   useEffect(() => {
     let cancelled = false;
     setProgramsLoading(true);
+    fetch("/api/axiom/runtime/constellation")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.programs) setConstellation(data);
+      })
+      .catch(() => {});
     fetchAllPrograms()
       .then((programs) => {
         if (!cancelled)
@@ -1244,21 +1264,29 @@ export function GraphViewerApp() {
     return () => window.clearTimeout(timer);
   }, [scenario]);
 
-  // Live recompute: while the execution layer is up, an edited answer
-  // re-runs the program automatically — every box downstream of the
-  // change updates without pressing Run again.
+  // Live recompute: answering IS running. In run mode (panel open or
+  // execution layer live), any edited answer computes the program —
+  // including the very first answer — so every box downstream of the
+  // change lights up without pressing Run.
   const liveRunKey = useRef<string | null>(null);
   useEffect(() => {
     const key = JSON.stringify(debouncedScenario);
-    if (!runResult) {
+    if (liveRunKey.current === null) {
+      // First observation is baseline, not an edit.
       liveRunKey.current = key;
       return;
     }
-    if (liveRunKey.current === key || running) return;
+    if (liveRunKey.current === key) return;
+    if (!runPanelOpen && !runResult) {
+      // Browsing mode: track silently, never surprise-run.
+      liveRunKey.current = key;
+      return;
+    }
+    if (running) return; // re-fires when running flips false
     liveRunKey.current = key;
     void runScenario();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedScenario, runResult]);
+  }, [debouncedScenario, runPanelOpen, runResult, running]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -1390,6 +1418,111 @@ export function GraphViewerApp() {
     setScenarioMode(true);
     if (launcher !== "closed") dismissLauncher();
     void runScenario();
+  };
+
+  // The constellation layout: hubs for each family of shared federal
+  // law, programs on orbits around them, standalone programs afloat.
+  // Percent coordinates in a 100×60 field.
+  const constellationLayout = useMemo(() => {
+    if (!constellation) return null;
+    const byKey = new Map(
+      constellation.programs.map((entry) => [
+        `${entry.jurisdiction}/${entry.program_id}`,
+        entry,
+      ]),
+    );
+    const visible = allPrograms.filter((item) =>
+      byKey.has(programKey(item)),
+    );
+    if (visible.length === 0) return null;
+    const families: Record<string, typeof visible> = {};
+    const standalone: typeof visible = [];
+    for (const item of visible) {
+      const family = byKey.get(programKey(item))!.family;
+      if (family) (families[family] ??= []).push(item);
+      else standalone.push(item);
+    }
+    const hubs: Array<{ id: string; label: string; x: number; y: number }> =
+      [];
+    const hubSpots: Record<string, { x: number; y: number }> = {
+      snap: { x: 33, y: 26 },
+      tanf: { x: 76, y: 30 },
+    };
+    const hubLabels: Record<string, string> = {
+      snap: "Federal SNAP law · 7 USC 2014 · 7 CFR 273",
+      tanf: "Federal TANF law",
+    };
+    const nodes: Array<{
+      key: string;
+      item: (typeof visible)[number];
+      x: number;
+      y: number;
+      hub: string | null;
+      weight: number;
+      headline: string | null;
+    }> = [];
+    const maxFederal = Math.max(
+      1,
+      ...constellation.programs.map((entry) => entry.federal_rules),
+    );
+    for (const [family, members] of Object.entries(families)) {
+      const spot = hubSpots[family] ?? { x: 50, y: 30 };
+      hubs.push({
+        id: family,
+        label: hubLabels[family] ?? `Federal ${family} law`,
+        ...spot,
+      });
+      const rx = family === "snap" ? 26 : 17;
+      const ry = family === "snap" ? 20 : 14;
+      members.forEach((item, index) => {
+        const angle =
+          -Math.PI / 2 + (index / members.length) * Math.PI * 2;
+        const entry = byKey.get(programKey(item))!;
+        nodes.push({
+          key: programKey(item),
+          item,
+          x: Math.min(93, Math.max(7, spot.x + Math.cos(angle) * rx)),
+          y: Math.min(54, Math.max(6, spot.y + Math.sin(angle) * ry)),
+          hub: family,
+          weight: entry.federal_rules / maxFederal,
+          headline: entry.headline,
+        });
+      });
+    }
+    const soloSpots = [
+      { x: 54, y: 52 },
+      { x: 12, y: 50 },
+      { x: 90, y: 52 },
+      { x: 50, y: 5 },
+    ];
+    standalone.forEach((item, index) => {
+      const spot = soloSpots[index % soloSpots.length]!;
+      const entry = byKey.get(programKey(item))!;
+      nodes.push({
+        key: programKey(item),
+        item,
+        x: spot.x,
+        y: spot.y,
+        hub: null,
+        weight: entry.federal_rules / maxFederal,
+        headline: entry.headline,
+      });
+    });
+    return { hubs, nodes };
+  }, [constellation, allPrograms]);
+  // Picking a node zooms it forward while the constellation recedes,
+  // then hands off to the canvas's summit landing — one motion from
+  // the system into the law.
+  const launchProgram = (key: string) => {
+    if (launchingKey) return;
+    setLaunchingKey(key);
+    window.setTimeout(() => {
+      surveyPendingRef.current = true;
+      veilFor(2600);
+      selectProgram(key);
+      dismissLauncher();
+      setLaunchingKey(null);
+    }, 380);
   };
 
   // One scenario flow, two homes: the launcher's middle screen and
@@ -1602,7 +1735,9 @@ export function GraphViewerApp() {
         role="dialog"
         aria-label="Choose a program to run"
       >
-        <div className="plane-launcher-inner">
+        <div
+          className={`plane-launcher-inner ${constellationLayout ? "has-constellation" : ""}`}
+        >
           <p className="plane-launcher-eyebrow">Axiom · Plane</p>
           <h1 className="plane-launcher-title">
             What law do you want to run?
@@ -1613,6 +1748,79 @@ export function GraphViewerApp() {
           </p>
           {programsLoading ? (
             <p className="plane-launcher-loading">Loading programs…</p>
+          ) : constellationLayout ? (
+            <div
+              className={`constellation ${launchingKey ? "is-launching" : ""}`}
+            >
+              <svg
+                className="constellation-wires"
+                viewBox="0 0 100 60"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                {constellationLayout.nodes
+                  .filter((node) => node.hub)
+                  .map((node) => {
+                    const hub = constellationLayout.hubs.find(
+                      (item) => item.id === node.hub,
+                    )!;
+                    const mx =
+                      (node.x + hub.x) / 2 + (hub.y - node.y) * 0.12;
+                    const my =
+                      (node.y + hub.y) / 2 + (node.x - hub.x) * 0.12;
+                    return (
+                      <path
+                        key={node.key}
+                        d={`M ${node.x} ${node.y} Q ${mx} ${my} ${hub.x} ${hub.y}`}
+                        className={`constellation-wire ${hotKey === node.key ? "is-hot" : ""}`}
+                        strokeWidth={0.22 + node.weight * 0.75}
+                      />
+                    );
+                  })}
+              </svg>
+              {constellationLayout.hubs.map((hub) => (
+                <div
+                  key={hub.id}
+                  className="constellation-hub"
+                  style={{
+                    left: `${hub.x}%`,
+                    top: `${(hub.y / 60) * 100}%`,
+                  }}
+                >
+                  {hub.label}
+                </div>
+              ))}
+              {constellationLayout.nodes.map((node, index) => (
+                <button
+                  key={node.key}
+                  type="button"
+                  className={`plane-launcher-card constellation-node ${launchingKey === node.key ? "is-picked" : ""}`}
+                  style={{
+                    left: `${node.x}%`,
+                    top: `${(node.y / 60) * 100}%`,
+                    animationDelay: `${(index % 7) * 0.9}s`,
+                  }}
+                  onMouseEnter={() => setHotKey(node.key)}
+                  onMouseLeave={() => setHotKey(null)}
+                  onFocus={() => setHotKey(node.key)}
+                  onBlur={() => setHotKey(null)}
+                  onClick={() => launchProgram(node.key)}
+                >
+                  <span className="plane-launcher-chip">
+                    {countryShortLabel(countryOf(node.item.jurisdiction))}
+                    {node.item.jurisdiction.includes("-")
+                      ? ` · ${node.item.jurisdiction.split("-")[1].toUpperCase()}`
+                      : ""}
+                  </span>
+                  <strong>{displayNameForProgram(node.item)}</strong>
+                  {node.headline && (
+                    <span className="constellation-headline">
+                      → {humanize(node.headline)}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           ) : (
             <div className="plane-launcher-grid">
               {allPrograms.map((item, index) => (
@@ -1887,6 +2095,25 @@ export function GraphViewerApp() {
               (rule?.kind === "parameter" && rule.formula
                 ? rule.formula.replace(/\s+/g, " ").trim().slice(0, 140)
                 : null);
+            // The card's computed value from the live run — the same
+            // number the canvas box shows, whichever door opened this
+            // inspector (canvas click or flow-panel row).
+            const liveFragment = legalId ? (legalId.split("#").pop() ?? "") : "";
+            const liveRaw = runResult
+              ? (runResult.trace.find(
+                  (entry) => entry.variable === liveFragment,
+                )?.value ?? runResult.outputs[liveFragment])
+              : undefined;
+            const liveValue =
+              liveRaw === undefined || liveRaw === null
+                ? null
+                : typeof liveRaw === "boolean"
+                  ? liveRaw
+                    ? "Yes"
+                    : "No"
+                  : typeof liveRaw === "number"
+                    ? liveRaw.toLocaleString("en-US")
+                    : String(liveRaw);
             // The provision to read: a rule's own home file. A question
             // has no home in the law (it lives in the synthetic package
             // file), so read the provision that asks it — the first
@@ -2001,6 +2228,12 @@ export function GraphViewerApp() {
                 <>
                   <dt>Unit</dt>
                   <dd>{rule.unit}</dd>
+                </>
+              ) : null}
+              {liveValue !== null ? (
+                <>
+                  <dt>Value</dt>
+                  <dd className="node-inspector-live-value">{liveValue}</dd>
                 </>
               ) : null}
               {"kind" in inspected && inspected.kind === "input" ? (

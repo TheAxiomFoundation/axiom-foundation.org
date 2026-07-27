@@ -1,0 +1,93 @@
+import { NextResponse } from "next/server";
+import { runtimeProxyGet } from "@/lib/axiom/runtime/api";
+
+/**
+ * The launcher's constellation data: every ready package with REAL
+ * interconnection weights — how many of its rules live in shared
+ * federal law versus its own jurisdiction. All state SNAPs draw on
+ * 7 USC 2014 / 7 CFR 273; the TANFs on their federal spine; the
+ * constellation renders that honestly, with edge weight = the count
+ * of federal rules the program actually composes.
+ *
+ * Fetching every package graph is expensive (~8 MB upstream), so the
+ * computed summary is cached in-instance for an hour and served with
+ * a long cache-control.
+ */
+
+interface ConstellationProgram {
+  jurisdiction: string;
+  program_id: string;
+  family: string | null;
+  federal_rules: number;
+  own_rules: number;
+  total_rules: number;
+  headline: string | null;
+}
+
+const TTL_MS = 60 * 60 * 1000;
+let cache: { at: number; body: { programs: ConstellationProgram[] } } | null =
+  null;
+
+function familyOf(programId: string): string | null {
+  if (programId.includes("snap")) return "snap";
+  if (programId.includes("tanf") || programId === "tca") return "tanf";
+  return null;
+}
+
+export async function GET() {
+  if (cache && Date.now() - cache.at < TTL_MS) {
+    return NextResponse.json(cache.body, {
+      headers: { "cache-control": "public, max-age=3600" },
+    });
+  }
+
+  const list = await runtimeProxyGet("/runtime/packages");
+  const packages =
+    (
+      list.body as {
+        data?: {
+          packages?: Array<{
+            jurisdiction: string;
+            program_id: string;
+            status: string;
+            default_outputs?: string[];
+          }>;
+        };
+      }
+    ).data?.packages ?? [];
+
+  const programs: ConstellationProgram[] = [];
+  for (const pkg of packages) {
+    if (pkg.status !== "ready") continue;
+    const graphResponse = await runtimeProxyGet(
+      `/runtime/packages/${encodeURIComponent(pkg.jurisdiction)}/${encodeURIComponent(pkg.program_id)}/graph`,
+    );
+    const graph = (
+      graphResponse.body as {
+        data?: { graph?: { rules?: Array<{ legalId: string }> } };
+      }
+    ).data?.graph;
+    const rules = graph?.rules ?? [];
+    let federal = 0;
+    let own = 0;
+    for (const rule of rules) {
+      if (rule.legalId.startsWith("us:")) federal += 1;
+      else if (rule.legalId.startsWith(`${pkg.jurisdiction}:`)) own += 1;
+    }
+    programs.push({
+      jurisdiction: pkg.jurisdiction,
+      program_id: pkg.program_id,
+      family: familyOf(pkg.program_id),
+      federal_rules: federal,
+      own_rules: own,
+      total_rules: rules.length,
+      headline: pkg.default_outputs?.[0] ?? null,
+    });
+  }
+
+  const body = { programs };
+  cache = { at: Date.now(), body };
+  return NextResponse.json(body, {
+    headers: { "cache-control": "public, max-age=3600" },
+  });
+}

@@ -2,11 +2,11 @@
 
 ## State
 
-In progress: implementation, local validation, and final diff review are
-complete. Reporting and GitHub publication remain.
-
-The local `gh` CLI token is invalid, but the connected GitHub app is available
-for opening the requested draft pull request after the branch is pushed.
+Blocked on external publication: implementation, local validation, final diff
+review, and reporting are complete. `git push` cannot resolve `github.com` from
+the sandbox, and the connected GitHub app canceled both attempted write calls
+before creating a remote branch. No pull request or Vercel preview exists for
+this branch yet.
 
 ## Done
 
@@ -44,8 +44,17 @@ for opening the requested draft pull request after the branch is pushed.
 - Completed a final manual compliance and blast-radius review.
 - Passed `tsc --noEmit` and `git diff --check` after the final launch metadata
   change.
+- Committed every coherent implementation and validation step on
+  `launch/verify-us-only`.
+- Attempted to push the branch; the sandbox returned
+  `Could not resolve host: github.com`.
+- Attempted the connected GitHub app fallback; both tree and branch creation
+  were canceled before changing GitHub.
 
 ## Next
 
-- Write the final report, push the branch, open the requested draft pull
-  request, and check Vercel status without initiating a deployment.
+- From a network-enabled session, push `launch/verify-us-only`.
+- Open a draft pull request to `master` titled
+  `Restructure /verify for US-only launch`.
+- Run `vercel ls 2>&1 | head -5` after the push and confirm the preview reaches
+  a successful state without initiating a manual deployment.

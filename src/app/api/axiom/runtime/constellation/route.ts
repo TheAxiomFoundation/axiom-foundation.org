@@ -73,6 +73,7 @@ export async function GET() {
             program_id: string;
             status: string;
             default_outputs?: string[];
+            certified_node_count?: number;
           }>;
         };
       }
@@ -81,6 +82,9 @@ export async function GET() {
   const programs: ConstellationProgram[] = [];
   for (const pkg of packages) {
     if (pkg.status !== "ready") continue;
+    // Zero-certified programs are absent from the overview — and the
+    // registry says so up front, sparing the (multi-MB) graph fetch.
+    if (pkg.certified_node_count === 0) continue;
     const graphResponse = await runtimeProxyGet(
       `/runtime/packages/${encodeURIComponent(pkg.jurisdiction)}/${encodeURIComponent(pkg.program_id)}/graph`,
     );
@@ -94,6 +98,9 @@ export async function GET() {
       name?: string;
       ruleDeps?: string[];
     }>;
+    // A gated graph can come back 200-but-empty (artifact exists,
+    // nothing certified) — same absence as a zero count.
+    if (rules.length === 0) continue;
     let federal = 0;
     let own = 0;
     for (const rule of rules) {

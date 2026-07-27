@@ -111,7 +111,9 @@ export function RunSample({
       )}
       {error && (
         <p className="mt-1 font-mono text-[10px] text-[var(--color-ink-muted)]">
-          run failed — engine unavailable
+          {error === "uncertified"
+            ? "Not yet certified for serving"
+            : "run failed — engine unavailable"}
         </p>
       )}
       {contextRun && (

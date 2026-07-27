@@ -116,6 +116,13 @@ export async function POST(request: Request) {
   }
 
   const result = await runCalculate(sample);
+  if (result && "uncertified" in result) {
+    // The engine refused because a requested variable isn't in the
+    // certification ledger — a state the client must present, not a
+    // transport failure. The client names what it asked for; the API
+    // (and this route) never echo node ids.
+    return NextResponse.json({ error: "uncertified_node" }, { status: 422 });
+  }
   if (!result) {
     return NextResponse.json({ error: "calculate_failed" }, { status: 502 });
   }
@@ -124,6 +131,7 @@ export async function POST(request: Request) {
       outputs: result.outputs,
       trace: result.trace ?? [],
       period: detail.default_period ?? null,
+      provenance: result.provenance ?? null,
       applied,
       dropped: [
         ...Object.keys(values).filter((name) => !applied.includes(name)),

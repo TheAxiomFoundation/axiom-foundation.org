@@ -3,6 +3,10 @@ import {
   isRuntimeApiConfigured,
   listRuntimePackages,
   getProgramGraph,
+  runCalculate,
+  getCertifiedNode,
+  getCertifiedSubgraph,
+  getCertifiedLedger,
   _resetRuntimeApiCache,
 } from "./api";
 
@@ -109,5 +113,139 @@ describe("runtime api client", () => {
       })
     );
     expect(await getProgramGraph("us", "eitc")).toBeNull();
+  });
+
+  it("maps a 422 uncertified_node calculate refusal to { uncertified: true }", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          status: "error",
+          error: { code: "uncertified_node" },
+        }),
+      })
+    );
+    expect(await runCalculate({ program_id: "co-snap" })).toEqual({
+      uncertified: true,
+    });
+  });
+
+  it("keeps other calculate failures as null, including non-refusal 422s", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
+    );
+    expect(await runCalculate({})).toBeNull();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({ status: "error", error: { code: "bad_request" } }),
+      })
+    );
+    expect(await runCalculate({})).toBeNull();
+  });
+
+  it("passes calculate provenance through on success", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    const provenance = {
+      ledger_id: "ledger-1",
+      certified_set_version: "v1",
+      vintage: {
+        encoding_release: "enc-1",
+        engine_release: "eng-1",
+        corpus_release: "cor-1",
+      },
+      certificates: [
+        {
+          variable: "snap_allotment",
+          legal_id: "us:statutes/7/2017/a#snap_allotment",
+          certificate_id: "cert-1",
+          claim: "computed",
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        okEnvelope({ outputs: { snap_allotment: 298 }, provenance })
+      )
+    );
+    const result = await runCalculate({ program_id: "co-snap" });
+    expect(result).toMatchObject({
+      outputs: { snap_allotment: 298 },
+      provenance,
+    });
+  });
+
+  it("fetches a certified node, encoding # per segment and keeping slashes", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    const detail = {
+      node: { legalId: "us:statutes/7/2017/a#snap_allotment" },
+      certificate: { certificate_id: "cert-1", claim: "computed" },
+      ledger_id: "ledger-1",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(okEnvelope(detail));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(
+      await getCertifiedNode("us:statutes/7/2017/a#snap_allotment")
+    ).toEqual(detail);
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "/nodes/us%3Astatutes/7/2017/a%23snap_allotment"
+    );
+  });
+
+  it("returns null for unknown-or-uncertified nodes (indistinguishable 404)", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 404 })
+    );
+    expect(await getCertifiedNode("us:statutes/7/2017/a#nope")).toBeNull();
+  });
+
+  it("fetches the certified subgraph for roots and the ledger", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    const subgraph = {
+      graph: { rules: [], ownOutputs: [], terminalOutputs: [] },
+      truncated: false,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(okEnvelope(subgraph));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await getCertifiedSubgraph(["a#x", "b#y"])).toEqual(subgraph);
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "/subgraph?roots=a%23x%2Cb%23y"
+    );
+    // No roots — nothing to close over, no request.
+    expect(await getCertifiedSubgraph([])).toBeNull();
+
+    _resetRuntimeApiCache();
+    const ledger = {
+      ledger_id: "ledger-1",
+      certified_set_version: "v1",
+      entries: [],
+    };
+    const ledgerFetch = vi.fn().mockResolvedValue(okEnvelope(ledger));
+    vi.stubGlobal("fetch", ledgerFetch);
+    expect(await getCertifiedLedger()).toEqual(ledger);
+    expect(ledgerFetch.mock.calls[0][0]).toContain("/certified");
+  });
+
+  it("resolves the certified fetchers to null on HTTP failure", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 503 })
+    );
+    expect(await getCertifiedSubgraph(["a#x"])).toBeNull();
+    expect(await getCertifiedLedger()).toBeNull();
   });
 });

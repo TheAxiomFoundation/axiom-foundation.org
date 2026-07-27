@@ -33,6 +33,8 @@ interface ApiPackage {
   output_count?: number;
   entity_count?: number;
   input_count?: number;
+  certified_node_count?: number;
+  certified_output_count?: number;
 }
 
 export function countryOf(jurisdiction: string): Country {
@@ -197,6 +199,8 @@ function toProgramSummary(pkg: ApiPackage): ProgramSummary {
     outputCount: pkg.output_count,
     entityCount: pkg.entity_count,
     inputCount: pkg.input_count,
+    certifiedNodeCount: pkg.certified_node_count,
+    certifiedOutputCount: pkg.certified_output_count,
   };
 }
 

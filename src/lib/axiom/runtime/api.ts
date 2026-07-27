@@ -26,6 +26,11 @@ export interface RuntimePackageSummary {
   output_count?: number;
   entity_count?: number;
   input_count?: number;
+  /** Certified-serving counts: how much of the package the ledger
+   *  actually lets the API serve. Zero means "nothing certified yet",
+   *  a real state distinct from a missing package. */
+  certified_node_count?: number;
+  certified_output_count?: number;
 }
 
 /** Subset of the API's GraphRuleNode the app consumes. */
@@ -181,15 +186,44 @@ export interface CalculateTraceEntry {
   sources: string[];
 }
 
+/** The verifier vintage a certified response was computed under. */
+export interface CertifiedVintage {
+  encoding_release: string;
+  engine_release: string;
+  corpus_release: string;
+}
+
+export interface CalculateProvenance {
+  ledger_id: string;
+  certified_set_version: string;
+  vintage: CertifiedVintage;
+  certificates: Array<{
+    variable: string;
+    legal_id: string;
+    certificate_id: string;
+    claim: string;
+  }>;
+}
+
 export interface CalculateResult {
   outputs: Record<string, number | string | boolean | null>;
   trace?: CalculateTraceEntry[];
+  /** Present on certified-serving successes: the ledger, vintage and
+   *  per-output certificates the computation ran under. */
+  provenance?: CalculateProvenance;
 }
 
-/** POST /v1/calculate. Uncached — every run executes. */
+/**
+ * POST /v1/calculate. Uncached — every run executes.
+ *
+ * Certified serving refuses requests naming uncertified nodes with a
+ * 422 `uncertified_node`; callers must distinguish that (a state to
+ * present) from a transport failure, so it surfaces as
+ * `{ uncertified: true }` instead of null.
+ */
 export async function runCalculate(
   request: unknown
-): Promise<CalculateResult | null> {
+): Promise<CalculateResult | { uncertified: true } | null> {
   if (!isRuntimeApiConfigured()) return null;
   const key = process.env.AXIOM_RUNTIME_API_KEY;
   try {
@@ -203,7 +237,21 @@ export async function runCalculate(
       signal: AbortSignal.timeout(CALCULATE_TIMEOUT_MS),
       cache: "no-store",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 422) {
+        try {
+          const failure = (await response.json()) as {
+            error?: { code?: string };
+          };
+          if (failure.error?.code === "uncertified_node") {
+            return { uncertified: true };
+          }
+        } catch {
+          // Unparseable 422 body — fall through to the generic null.
+        }
+      }
+      return null;
+    }
     const envelope = (await response.json()) as {
       status?: string;
       data?: CalculateResult;
@@ -264,4 +312,59 @@ export async function getProgramGraph(
     )}/graph`
   );
   return data?.graph ?? null;
+}
+
+export interface CertifiedNodeDetail {
+  node: unknown;
+  certificate: {
+    certificate_id: string;
+    claim: string;
+    evidence_sha256?: string;
+  } | null;
+  ledger_id?: string;
+  vintage?: CertifiedVintage;
+}
+
+/**
+ * Node-native certified read: GET /v1/nodes/{legal id}. The path
+ * keeps literal slashes but must carry `#` as `%23` — encode per
+ * segment, never the whole id. Unknown and uncertified ids are the
+ * same 404 upstream (no existence oracle), so both resolve to null.
+ */
+export async function getCertifiedNode(
+  legalId: string
+): Promise<CertifiedNodeDetail | null> {
+  const path = legalId
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return runtimeGet<CertifiedNodeDetail>(`/nodes/${path}`);
+}
+
+/** GET /v1/subgraph: the certified closure of the given roots, in
+ *  ProgramGraph shape (`truncated` marks the node ceiling). */
+export async function getCertifiedSubgraph(
+  roots: string[]
+): Promise<{ graph: ProgramGraph; truncated: boolean } | null> {
+  if (roots.length === 0) return null;
+  return runtimeGet<{ graph: ProgramGraph; truncated: boolean }>(
+    `/subgraph?roots=${encodeURIComponent(roots.join(","))}`
+  );
+}
+
+export interface CertifiedLedgerMeta {
+  ledger_id: string;
+  certified_set_version: string;
+  issued_at?: string;
+  vintage?: CertifiedVintage;
+  entries: Array<{
+    legal_id: string;
+    certificate_id: string;
+    claim: string;
+  }>;
+}
+
+/** GET /v1/certified: the serving ledger's identity and entries. */
+export async function getCertifiedLedger(): Promise<CertifiedLedgerMeta | null> {
+  return runtimeGet<CertifiedLedgerMeta>("/certified");
 }

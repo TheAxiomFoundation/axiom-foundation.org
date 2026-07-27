@@ -217,6 +217,12 @@ export function GraphViewerApp() {
       value: unknown;
       instances?: Array<{ entity_id: string; value: unknown }>;
     }>;
+    // Certified-serving provenance — the ledger and vintage the
+    // numbers were computed under, when the engine reports them.
+    provenance?: {
+      ledger_id: string;
+      vintage: { engine_release: string };
+    } | null;
   } | null>(null);
   // Deep-link params, consumed once: ?program=us-co/co-snap selects a
   // program as soon as the registry loads; ?focus=us:statutes/7/2017
@@ -673,6 +679,18 @@ export function GraphViewerApp() {
             "Too many runs in the last minute — wait a moment and run again.",
           );
         }
+        // Certified serving refused the run (422 uncertified_node).
+        // Probing chunks can't help — the ledger, not a bad name, is
+        // the gate. Name what WE asked for; the API never names ids.
+        if (response.status === 422) {
+          throw new Error(
+            `Some requested rules aren't certified for serving yet: ${
+              variables.length > 0
+                ? variables.join(", ")
+                : "the program's default outputs"
+            }`,
+          );
+        }
         return response;
       };
       // The runtime resolves variables by bare rule name (legalId
@@ -754,6 +772,10 @@ export function GraphViewerApp() {
       value: unknown;
       instances?: Array<{ entity_id: string; value: unknown }>;
     }>;
+        provenance?: {
+          ledger_id: string;
+          vintage: { engine_release: string };
+        } | null;
       };
       setRunResult(data);
     } catch (err) {
@@ -2118,6 +2140,30 @@ export function GraphViewerApp() {
               <span className="loading-spinner" aria-hidden="true" />
               <span>Loading graph...</span>
             </div>
+          ) : graph && graph.rules.length === 0 && !composeFocus ? (
+            // The certified-serving API answers 200 with no rules when
+            // a program's artifact exists but nothing in it is
+            // certified yet — a real state, not a failure. Say so
+            // instead of asking for an output selection that can't
+            // exist.
+            (() => {
+              const summary = program
+                ? allPrograms.find(
+                    (item) => programKey(item) === programKey(program),
+                  )
+                : null;
+              const awaiting = summary?.outputCount ?? summary?.inputCount;
+              return (
+                <div className="empty-state" role="status">
+                  Nothing certified yet for this program
+                  {awaiting != null && (
+                    <>
+                      <br />— {awaiting} nodes await the certification sweep
+                    </>
+                  )}
+                </div>
+              );
+            })()
           ) : spec && Object.keys(structureTraces).length > 0 ? (
             <InputEditContext.Provider value={inputEditCtx}>
             <InteractiveRuleGraph
@@ -2311,6 +2357,22 @@ export function GraphViewerApp() {
                     ) : (
                       citation
                     )}
+                  </dd>
+                </>
+              ) : null}
+              {rule?.certificateId ? (
+                <>
+                  {/* The verifier certificate is why this node is
+                      visible at all — show it, truncated, full id on
+                      hover. */}
+                  <dt>Certificate</dt>
+                  <dd
+                    className="node-inspector-mono"
+                    title={rule.certificateId}
+                  >
+                    {rule.certificateId.length > 28
+                      ? `${rule.certificateId.slice(0, 28)}…`
+                      : rule.certificateId}
                   </dd>
                 </>
               ) : null}
@@ -2744,6 +2806,14 @@ export function GraphViewerApp() {
               questions; the rest used this program's default values, so
               a "No" can mean "not asked", not "disqualified".
             </p>
+            {runResult.provenance && (
+              // The certification ledger is why these numbers may be
+              // served at all — name it under the results.
+              <p className="results-note">
+                Computed under ledger {runResult.provenance.ledger_id},
+                engine {runResult.provenance.vintage.engine_release}
+              </p>
+            )}
             <button
               type="button"
               className="results-copy"

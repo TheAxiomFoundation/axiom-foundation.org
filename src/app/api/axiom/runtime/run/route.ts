@@ -93,7 +93,17 @@ export async function POST(request: Request) {
           variables: [...new Set([...baseVariables, ...sectionRules])],
         }
       : detail.sample_request;
-  const result = await runCalculate(request_);
+  let result = await runCalculate(request_);
+  if (result && "uncertified" in result && sectionRules.length > 0) {
+    // Certified serving refuses the WHOLE request when any explicit
+    // variable is uncertified — the section's rules may lag the
+    // ledger while the sample itself still runs. Retry once without
+    // them so the reader keeps its outputs, just unlit.
+    result = await runCalculate(detail.sample_request);
+  }
+  if (result && "uncertified" in result) {
+    return NextResponse.json({ error: "uncertified_program" }, { status: 422 });
+  }
   if (!result) {
     return NextResponse.json({ error: "calculate_failed" }, { status: 502 });
   }
@@ -102,6 +112,7 @@ export async function POST(request: Request) {
     trace: result.trace ?? [],
     period: detail.default_period ?? null,
     sample: true,
+    provenance: result.provenance ?? null,
   };
   setCachedRun(cacheKey, payload);
   return NextResponse.json(payload, {

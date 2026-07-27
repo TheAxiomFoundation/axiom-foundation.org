@@ -42,15 +42,15 @@ const canvasValue = await page.evaluate(
 );
 console.log("VALUE after canvas click:", canvasValue);
 
-// 2) Navigate via the flow panel (Built from / Used by row)
+// 2) Navigate via the mini graph (Built from card)
 const rowLabel = await page.evaluate(() => {
-  const row = document.querySelector(".node-inspector-flow-list button");
+  const row = document.querySelector(".mini-graph-deps button.mini-graph-card");
   if (!row) return null;
   const label = row.textContent;
   row.click();
   return label;
 });
-console.log("flow row clicked:", rowLabel);
+console.log("mini-graph dep card clicked:", rowLabel);
 await new Promise((r) => setTimeout(r, 1200));
 const flowValue = await page.evaluate(
   () => document.querySelector(".node-inspector-value")?.textContent ?? null,
@@ -63,9 +63,9 @@ console.log("VALUE after flow-panel navigation:", flowValue);
 
 // 3) One more hop through Used by
 const usedByValue = await page.evaluate(() => {
-  const cols = [...document.querySelectorAll(".node-inspector-flow-col")];
-  const usedBy = cols.find((c) => /Used by/i.test(c.textContent ?? ""));
-  const row = usedBy?.querySelector("button");
+  const row = document.querySelector(
+    ".mini-graph-consumers button.mini-graph-card",
+  );
   if (!row) return "no-row";
   row.click();
   return "clicked";

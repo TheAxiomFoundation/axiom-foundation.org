@@ -593,7 +593,9 @@
   top: 104px;
   right: 24px;
   z-index: 13;
-  width: min(320px, calc(100% - 48px));
+  /* Wide enough for the mini graph's three columns to wrap names
+     instead of truncating them. */
+  width: min(400px, calc(100% - 48px));
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
   border: 1px solid var(--color-rule);
   border-radius: 14px;
@@ -1967,70 +1969,93 @@
 
 
 
-/* The flow panel: Built from | Used by, side by side. Rows are full-
-   width, text wraps — the inspector never scrolls sideways. */
-.graph-viewer-root .node-inspector-flow {
+/* The local lens: the selected rule mid-panel, dependencies on the
+   left, consumers on the right — the canvas's left-to-right flow at
+   one hop. Never scrolls: every card is always fully visible, names
+   wrap. */
+.graph-viewer-root .mini-graph {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
+  column-gap: 16px;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--color-rule);
 }
-.graph-viewer-root .node-inspector-flow-col {
+.graph-viewer-root .mini-graph-wires {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.graph-viewer-root .mini-graph-wires path {
+  fill: none;
+  /* Quiet but legible — every wire touches the center, so they carry
+     shape, not information. */
+  stroke: color-mix(in srgb, var(--color-ink-muted) 45%, transparent);
+  stroke-width: 1.2;
+}
+.graph-viewer-root .mini-graph-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
 }
-.graph-viewer-root .node-inspector-flow-label {
-  margin: 0 0 6px;
+.graph-viewer-root .mini-graph-mid {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.graph-viewer-root .mini-graph-label {
+  margin: 0 0 4px;
   font-family: var(--f-mono, monospace);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-ink-muted);
 }
-.graph-viewer-root .node-inspector-flow-list {
+.graph-viewer-root .mini-graph-card {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 230px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-}
-.graph-viewer-root .node-inspector-flow-list button,
-.graph-viewer-root .node-inspector-flow-q {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  gap: 2px;
   width: 100%;
   padding: 5px 8px;
   border: 1px solid var(--color-rule);
   border-radius: 8px;
   background: var(--color-paper);
   color: var(--color-ink-secondary);
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.35;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
 }
-.graph-viewer-root .node-inspector-flow-list button {
+.graph-viewer-root button.mini-graph-card {
   cursor: pointer;
 }
-.graph-viewer-root .node-inspector-flow-list button:hover {
+.graph-viewer-root button.mini-graph-card:hover {
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
-.graph-viewer-root .node-inspector-flow-q {
+.graph-viewer-root .mini-graph-card.is-question {
   border-style: dashed;
   color: var(--color-ink-muted);
-  cursor: pointer;
 }
-.graph-viewer-root .node-inspector-flow-q:hover {
-  color: var(--color-accent);
+.graph-viewer-root .mini-graph-card.is-center {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+  background: var(--color-paper-elevated);
+  color: var(--color-ink);
+  font-weight: 600;
 }
-.graph-viewer-root .node-inspector-flow-empty {
+.graph-viewer-root .mini-graph-chip {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+.graph-viewer-root .mini-graph-empty {
   font-size: 11px;
   color: var(--color-ink-muted);
   font-style: italic;

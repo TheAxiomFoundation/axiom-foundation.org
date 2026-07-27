@@ -9,6 +9,7 @@ import {
 } from "./InteractiveRuleGraph";
 
 import { axiomAppUrl, fileLegalIdOf, humanizeCitation, humanizeSource } from "./citations";
+import { InspectorMiniGraph } from "./inspector-mini-graph";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -1311,7 +1312,12 @@ export function GraphViewerApp() {
   // with the run's computed values (rules by durable id or bare
   // fragment) and the scenario's input values.
   const liveTraces = useMemo(() => {
-    if (!runResult) return { traces: structureTraces, executed: new Set<string>() };
+    if (!runResult)
+      return {
+        traces: structureTraces,
+        executed: new Set<string>(),
+        valueOf: () => undefined as unknown,
+      };
     const valueByFragment = new Map<string, unknown>();
     const valueByLegalId = new Map<string, unknown>();
     const record = (variable: string, value: unknown) => {
@@ -1374,6 +1380,19 @@ export function GraphViewerApp() {
       next.children = (node.children ?? []).map(light);
       return next;
     };
+    // Point lookup for anything that isn't a canvas card — the
+    // inspector's mini graph asks by legal id and gets the same value
+    // the canvas box would show, scenario answers included.
+    const valueOf = (legalId: string): unknown => {
+      const fragment = legalId.split("#").pop() ?? "";
+      const ran =
+        valueByLegalId.get(legalId) ?? valueByFragment.get(fragment);
+      if (ran !== undefined) return ran;
+      if (fragment.startsWith("input.")) {
+        return debouncedScenario[fragment.replace(/^input\./, "")];
+      }
+      return undefined;
+    };
     return {
       traces: Object.fromEntries(
         Object.entries(structureTraces).map(([key, node]) => [
@@ -1382,6 +1401,7 @@ export function GraphViewerApp() {
         ]),
       ),
       executed,
+      valueOf,
     };
   }, [structureTraces, runResult, debouncedScenario]);
 
@@ -2377,97 +2397,79 @@ export function GraphViewerApp() {
                 </>
               ) : null}
                           </dl>
-            {/* The flow panel: where this rule comes from and where it
-                goes, side by side. ↓ descends into a dependency, ↑
-                climbs to a consumer (expanding the canvas when the
-                consumer is upstream of the current view). Rows wrap —
-                the inspector never scrolls sideways. */}
+            {/* The local lens: this rule as a one-hop graph — built
+                from on the left, used by on the right, wires converging
+                into the center. Same left-to-right flow as the canvas,
+                without the canvas's crowd. When a run is live every
+                card carries its value. */}
             {(rule &&
               (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0)) ||
             consumers.length > 0 ? (
-              <div className="node-inspector-flow">
-                <div className="node-inspector-flow-col">
-                  <p className="node-inspector-flow-label">
-                    Built from
-                    {rule
-                      ? ` · ${rule.ruleDeps.length + rule.inputDeps.length}`
-                      : ""}
-                  </p>
-                  <div className="node-inspector-flow-list">
-                    {(rule?.ruleDeps ?? []).map((depId) => (
-                      <button
-                        type="button"
-                        key={depId}
-                        onClick={() => flyFromIndex(depId)}
-                        title="Descend to this rule on the canvas"
-                      >
-                        {humanize(
-                          walkRuleById.get(depId)?.name ??
-                            depId.split("#").pop() ??
-                            depId,
-                        )}
-                      </button>
-                    ))}
-                    {(rule?.inputDeps ?? []).map((depId) => (
-                      <button
-                        type="button"
-                        key={depId}
-                        className="node-inspector-flow-q"
-                        onClick={() => {
-                          flyFromIndex(depId);
-                          inspectInput(depId);
-                        }}
-                        title="Fly to this question on the canvas"
-                      >
-                        {humanize(
-                          walkInputById.get(depId)?.name ??
-                            (depId.split("#").pop() ?? depId)
-                              .split(".")
-                              .pop() ??
-                            depId,
-                        )}
-                      </button>
-                    ))}
-                    {!rule ||
-                    (rule.ruleDeps.length === 0 &&
-                      rule.inputDeps.length === 0) ? (
-                      <span className="node-inspector-flow-empty">
-                        nothing — a leaf
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="node-inspector-flow-col">
-                  <p className="node-inspector-flow-label">
-                    Used by · {consumers.length}
-                  </p>
-                  <div className="node-inspector-flow-list">
-                    {consumers.map((consumer) => (
-                      <button
-                        type="button"
-                        key={consumer.legalId}
-                        onClick={() =>
-                          inScopeIds.has(consumer.legalId)
-                            ? flyFromIndex(consumer.legalId)
-                            : expandLensTo(consumer.legalId)
-                        }
-                        title={
-                          inScopeIds.has(consumer.legalId)
-                            ? "Climb to this rule on the canvas"
-                            : "Expand the canvas up to this rule"
-                        }
-                      >
-                        {humanize(consumer.name)}
-                      </button>
-                    ))}
-                    {consumers.length === 0 && (
-                      <span className="node-inspector-flow-empty">
-                        nothing — a final result
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              (() => {
+                const miniValue = (id: string): string | null => {
+                  const raw = liveTraces.valueOf(id);
+                  if (raw === undefined || raw === null) return null;
+                  if (typeof raw === "boolean")
+                    return raw ? "✓ true" : "✗ false";
+                  if (typeof raw === "number")
+                    return raw.toLocaleString("en-US");
+                  return String(raw);
+                };
+                const deps = [
+                  ...(rule?.ruleDeps ?? []).map((depId) => ({
+                    id: depId,
+                    label: humanize(
+                      walkRuleById.get(depId)?.name ??
+                        depId.split("#").pop() ??
+                        depId,
+                    ),
+                    kind: "rule" as const,
+                    value: miniValue(depId),
+                    hint: "Descend to this rule on the canvas",
+                    onClick: () => flyFromIndex(depId),
+                  })),
+                  ...(rule?.inputDeps ?? []).map((depId) => ({
+                    id: depId,
+                    label: humanize(
+                      walkInputById.get(depId)?.name ??
+                        (depId.split("#").pop() ?? depId).split(".").pop() ??
+                        depId,
+                    ),
+                    kind: "question" as const,
+                    value: miniValue(depId),
+                    hint: "Fly to this question on the canvas",
+                    onClick: () => {
+                      flyFromIndex(depId);
+                      inspectInput(depId);
+                    },
+                  })),
+                ];
+                const uses = consumers.map((consumer) => ({
+                  id: consumer.legalId,
+                  label: humanize(consumer.name),
+                  kind: "rule" as const,
+                  value: miniValue(consumer.legalId),
+                  hint: inScopeIds.has(consumer.legalId)
+                    ? "Climb to this rule on the canvas"
+                    : "Expand the canvas up to this rule",
+                  onClick: () =>
+                    inScopeIds.has(consumer.legalId)
+                      ? flyFromIndex(consumer.legalId)
+                      : expandLensTo(consumer.legalId),
+                }));
+                return (
+                  <InspectorMiniGraph
+                    center={{
+                      label: humanize(
+                        "label" in inspected ? (inspected.label ?? "") : "",
+                      ),
+                      value: legalId ? miniValue(legalId) : null,
+                    }}
+                    deps={deps}
+                    consumers={uses}
+                  />
+                );
+              })()
             ) : null}
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">

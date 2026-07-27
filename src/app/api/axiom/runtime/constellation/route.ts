@@ -22,6 +22,28 @@ interface ConstellationProgram {
   own_rules: number;
   total_rules: number;
   headline: string | null;
+  /** A deterministic miniature of the program's actual graph — up to
+   *  44 rule-dots in unit space; shared=true marks federal rules (the
+   *  touching points with the rest of the corpus). */
+  outline: Array<{ x: number; y: number; shared: boolean }>;
+  /** The program's most-consumed shared federal rules — the named
+   *  touching points. */
+  touchpoints: string[];
+}
+
+/** Deterministic hash → two unit floats, so every reload draws the
+ *  same outline for the same rule. */
+function hashPoint(id: string): { x: number; y: number } {
+  let h1 = 5381;
+  let h2 = 52711;
+  for (let i = 0; i < id.length; i++) {
+    h1 = (h1 * 33) ^ id.charCodeAt(i);
+    h2 = (h2 * 31) ^ id.charCodeAt(i);
+  }
+  return {
+    x: ((h1 >>> 0) % 1000) / 1000,
+    y: ((h2 >>> 0) % 1000) / 1000,
+  };
 }
 
 const TTL_MS = 60 * 60 * 1000;
@@ -67,13 +89,41 @@ export async function GET() {
         data?: { graph?: { rules?: Array<{ legalId: string }> } };
       }
     ).data?.graph;
-    const rules = graph?.rules ?? [];
+    const rules = (graph?.rules ?? []) as Array<{
+      legalId: string;
+      name?: string;
+      ruleDeps?: string[];
+    }>;
     let federal = 0;
     let own = 0;
     for (const rule of rules) {
       if (rule.legalId.startsWith("us:")) federal += 1;
       else if (rule.legalId.startsWith(`${pkg.jurisdiction}:`)) own += 1;
     }
+    // Miniature outline: a deterministic sample of the real rules.
+    const sampled = rules.filter(
+      (_, index) => index % Math.max(1, Math.ceil(rules.length / 44)) === 0,
+    );
+    const outline = sampled.map((rule) => ({
+      ...hashPoint(rule.legalId),
+      shared: rule.legalId.startsWith("us:"),
+    }));
+    // Touching points: the shared federal rules this program leans on
+    // hardest (by in-package consumer count).
+    const consumerCount = new Map<string, number>();
+    for (const rule of rules) {
+      for (const dep of rule.ruleDeps ?? []) {
+        if (dep.startsWith("us:")) {
+          consumerCount.set(dep, (consumerCount.get(dep) ?? 0) + 1);
+        }
+      }
+    }
+    const nameById = new Map(rules.map((rule) => [rule.legalId, rule.name]));
+    const touchpoints = [...consumerCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => nameById.get(id) ?? id.split("#").pop() ?? id)
+      .filter((name): name is string => Boolean(name));
     programs.push({
       jurisdiction: pkg.jurisdiction,
       program_id: pkg.program_id,
@@ -82,6 +132,8 @@ export async function GET() {
       own_rules: own,
       total_rules: rules.length,
       headline: pkg.default_outputs?.[0] ?? null,
+      outline,
+      touchpoints,
     });
   }
 

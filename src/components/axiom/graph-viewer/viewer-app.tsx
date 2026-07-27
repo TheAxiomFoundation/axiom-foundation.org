@@ -42,6 +42,8 @@ export function GraphViewerApp() {
       federal_rules: number;
       total_rules: number;
       headline: string | null;
+      outline?: Array<{ x: number; y: number; shared: boolean }>;
+      touchpoints?: string[];
     }>;
   } | null>(null);
   const [launchingKey, setLaunchingKey] = useState<string | null>(null);
@@ -1460,6 +1462,8 @@ export function GraphViewerApp() {
       hub: string | null;
       weight: number;
       headline: string | null;
+      outline: Array<{ x: number; y: number; shared: boolean }>;
+      touchpoints: string[];
     }> = [];
     const maxFederal = Math.max(
       1,
@@ -1486,6 +1490,8 @@ export function GraphViewerApp() {
           hub: family,
           weight: entry.federal_rules / maxFederal,
           headline: entry.headline,
+          outline: entry.outline ?? [],
+          touchpoints: entry.touchpoints ?? [],
         });
       });
     }
@@ -1506,6 +1512,8 @@ export function GraphViewerApp() {
         hub: null,
         weight: entry.federal_rules / maxFederal,
         headline: entry.headline,
+        outline: entry.outline ?? [],
+        touchpoints: entry.touchpoints ?? [],
       });
     });
     return { hubs, nodes };
@@ -1738,7 +1746,6 @@ export function GraphViewerApp() {
         <div
           className={`plane-launcher-inner ${constellationLayout ? "has-constellation" : ""}`}
         >
-          <p className="plane-launcher-eyebrow">Axiom · Plane</p>
           <h1 className="plane-launcher-title">
             What law do you want to run?
           </h1>
@@ -1806,6 +1813,28 @@ export function GraphViewerApp() {
                   onBlur={() => setHotKey(null)}
                   onClick={() => launchProgram(node.key)}
                 >
+                  {node.outline.length > 0 && (
+                    <svg
+                      className="constellation-mini"
+                      viewBox="0 0 100 44"
+                      preserveAspectRatio="none"
+                      aria-hidden
+                    >
+                      {node.outline.map((dot, dotIndex) => (
+                        <circle
+                          key={dotIndex}
+                          cx={4 + dot.x * 92}
+                          cy={4 + dot.y * 36}
+                          r={dot.shared ? 1.6 : 1}
+                          className={
+                            dot.shared
+                              ? "constellation-dot is-shared"
+                              : "constellation-dot"
+                          }
+                        />
+                      ))}
+                    </svg>
+                  )}
                   <span className="plane-launcher-chip">
                     {countryShortLabel(countryOf(node.item.jurisdiction))}
                     {node.item.jurisdiction.includes("-")
@@ -1816,6 +1845,11 @@ export function GraphViewerApp() {
                   {node.headline && (
                     <span className="constellation-headline">
                       → {humanize(node.headline)}
+                    </span>
+                  )}
+                  {node.touchpoints.length > 0 && (
+                    <span className="constellation-touch">
+                      touches {node.touchpoints.map(humanize).join(" · ")}
                     </span>
                   )}
                 </button>
@@ -2187,11 +2221,19 @@ export function GraphViewerApp() {
                 {formatParameterValue(parameterValue, rule?.unit ?? null)}
               </p>
             ) : null}
-            {"value" in inspected &&
-            inspected.value &&
-            "showValues" in inspected &&
-            inspected.showValues ? (
-              <p className="node-inspector-value">{inspected.value}</p>
+            {("value" in inspected &&
+              inspected.value &&
+              "showValues" in inspected &&
+              inspected.showValues) ||
+            liveValue !== null ? (
+              <p className="node-inspector-value">
+                {"value" in inspected &&
+                inspected.value &&
+                "showValues" in inspected &&
+                inspected.showValues
+                  ? inspected.value
+                  : liveValue}
+              </p>
             ) : null}
             <dl className="node-inspector-meta">
               {citation ? (
@@ -2228,12 +2270,6 @@ export function GraphViewerApp() {
                 <>
                   <dt>Unit</dt>
                   <dd>{rule.unit}</dd>
-                </>
-              ) : null}
-              {liveValue !== null ? (
-                <>
-                  <dt>Value</dt>
-                  <dd className="node-inspector-live-value">{liveValue}</dd>
                 </>
               ) : null}
               {"kind" in inspected && inspected.kind === "input" ? (
@@ -2435,9 +2471,20 @@ export function GraphViewerApp() {
               <button
                 type="button"
                 className="node-inspector-link"
-                onClick={() =>
-                  setLawPopup(`${axiomAppUrl(lawFileLegalId) ?? ""}?embed=1`)
-                }
+                onClick={() => {
+                  // Encodings can be one level deeper than the corpus
+                  // provisions (…/2014/e/6/A vs …/e/6) — resolve to the
+                  // nearest existing page instead of opening a 404.
+                  const raw = axiomAppUrl(lawFileLegalId) ?? "";
+                  void fetch(`/api/axiom/resolve${raw}`)
+                    .then((response) =>
+                      response.ok ? response.json() : null,
+                    )
+                    .then((resolved: { href?: string | null } | null) => {
+                      setLawPopup(`${resolved?.href ?? raw}?embed=1`);
+                    })
+                    .catch(() => setLawPopup(`${raw}?embed=1`));
+                }}
               >
                 Read the law →
               </button>

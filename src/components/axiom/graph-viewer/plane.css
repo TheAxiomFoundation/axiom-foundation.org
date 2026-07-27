@@ -3282,3 +3282,42 @@
     animation: none;
   }
 }
+
+/* The card IS its graph: a deterministic miniature of the program's
+   real rules, shared federal rules in accent — the touching points. */
+.graph-viewer-root .constellation-node {
+  position: absolute;
+  overflow: hidden;
+}
+.graph-viewer-root .constellation-mini {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.graph-viewer-root .constellation-node:hover .constellation-mini {
+  opacity: 0.55;
+}
+.graph-viewer-root .constellation-dot {
+  fill: var(--color-ink-muted);
+}
+.graph-viewer-root .constellation-dot.is-shared {
+  fill: var(--color-accent);
+}
+.graph-viewer-root .constellation-node > * {
+  position: relative;
+}
+.graph-viewer-root .constellation-touch {
+  display: none;
+  margin-top: 5px;
+  font-family: var(--f-mono, monospace);
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--color-accent);
+}
+.graph-viewer-root .constellation-node:hover .constellation-touch,
+.graph-viewer-root .constellation-node:focus-visible .constellation-touch {
+  display: block;
+}

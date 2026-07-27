@@ -1,0 +1,83 @@
+import puppeteer from "puppeteer-core";
+
+const browser = await puppeteer.launch({
+  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  headless: true,
+});
+const page = await browser.newPage();
+await page.setViewport({ width: 1500, height: 950 });
+page.on("pageerror", (e) => console.log("PAGE ERROR:", e.message));
+await page.goto("http://localhost:3742/axiom/graph?program=us-ny%2Fsnap", { waitUntil: "networkidle2", timeout: 60000 });
+
+// Wait for the canvas + Run toggle
+await page.waitForSelector(".run-toggle", { timeout: 60000 });
+await new Promise((r) => setTimeout(r, 3000));
+
+// Open the run panel and load the sample household
+await page.click(".run-toggle");
+await page.waitForSelector(".run-sample", { timeout: 15000 });
+await page.click(".run-sample");
+console.log("sample loaded; waiting for auto-run…");
+
+// Auto-run (answering IS running) should produce the exec layer
+await page.waitForSelector(".results-sheet", { timeout: 30000 });
+console.log("results sheet up — run completed");
+
+// Close the run panel with Escape so the canvas is clickable
+await page.keyboard.press("Escape");
+await new Promise((r) => setTimeout(r, 600));
+
+// 1) Click a canvas RULE card and read the prominent value
+const canvasClicked = await page.evaluate(() => {
+  const nodes = [...document.querySelectorAll(".irg-node.irg-rule, .irg-node.irg-output")];
+  const target = nodes.find((n) => /Net Income/i.test(n.textContent ?? ""));
+  if (!target) return null;
+  target.click();
+  return target.textContent?.slice(0, 60);
+});
+console.log("canvas card clicked:", canvasClicked);
+await new Promise((r) => setTimeout(r, 800));
+const canvasValue = await page.evaluate(
+  () => document.querySelector(".node-inspector-value")?.textContent ?? null,
+);
+console.log("VALUE after canvas click:", canvasValue);
+
+// 2) Navigate via the flow panel (Built from / Used by row)
+const rowLabel = await page.evaluate(() => {
+  const row = document.querySelector(".node-inspector-flow-list button");
+  if (!row) return null;
+  const label = row.textContent;
+  row.click();
+  return label;
+});
+console.log("flow row clicked:", rowLabel);
+await new Promise((r) => setTimeout(r, 1200));
+const flowValue = await page.evaluate(
+  () => document.querySelector(".node-inspector-value")?.textContent ?? null,
+);
+const flowTitle = await page.evaluate(
+  () => document.querySelector(".node-inspector-title")?.textContent ?? null,
+);
+console.log("inspector title after flow nav:", flowTitle);
+console.log("VALUE after flow-panel navigation:", flowValue);
+
+// 3) One more hop through Used by
+const usedByValue = await page.evaluate(() => {
+  const cols = [...document.querySelectorAll(".node-inspector-flow-col")];
+  const usedBy = cols.find((c) => /Used by/i.test(c.textContent ?? ""));
+  const row = usedBy?.querySelector("button");
+  if (!row) return "no-row";
+  row.click();
+  return "clicked";
+});
+await new Promise((r) => setTimeout(r, 1200));
+const hop2 = await page.evaluate(() => ({
+  title: document.querySelector(".node-inspector-title")?.textContent ?? null,
+  value: document.querySelector(".node-inspector-value")?.textContent ?? null,
+}));
+console.log("after Used-by hop:", usedByValue, JSON.stringify(hop2));
+
+const pass = Boolean(canvasValue) && Boolean(flowValue) && Boolean(hop2.value);
+console.log(pass ? "PASS: value shows on every navigation path" : "FAIL");
+await browser.close();
+process.exit(pass ? 0 : 1);

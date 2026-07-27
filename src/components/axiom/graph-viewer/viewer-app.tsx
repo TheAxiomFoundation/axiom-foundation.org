@@ -211,7 +211,11 @@ export function GraphViewerApp() {
   }, [lensFocusId, inspected]);
   const [runResult, setRunResult] = useState<{
     outputs: Record<string, number | string | boolean | null>;
-    trace: Array<{ variable: string; value: unknown }>;
+    trace: Array<{
+      variable: string;
+      value: unknown;
+      instances?: Array<{ entity_id: string; value: unknown }>;
+    }>;
   } | null>(null);
   // Deep-link params, consumed once: ?program=us-co/co-snap selects a
   // program as soon as the registry loads; ?focus=us:statutes/7/2017
@@ -635,13 +639,7 @@ export function GraphViewerApp() {
         visited.add(id);
         const rule = byId.get(id);
         if (!rule) return;
-        // Rules on entities other than the household unit (Person,
-        // Asset, …) cannot be traced against the household query —
-        // any one of them fails the whole run. Traverse through
-        // them, but never request them as variables.
-        const offUnit =
-          rule.entity != null && !/household|unit/i.test(rule.entity);
-        if (rule.kind === "derived" && !offUnit) reachable.add(id);
+        if (rule.kind === "derived") reachable.add(id);
         for (const dep of rule.ruleDeps) walk(dep);
       };
       // Every run computes the outermost layer and everything in
@@ -675,8 +673,19 @@ export function GraphViewerApp() {
       };
       // The runtime resolves variables by bare rule name (legalId
       // forms fail on some packages), so trace requests speak names.
+      // Household-unit rules first: if the 96-variable cap bites, the
+      // money chain wins over member-level detail. Entity-scoped rules
+      // (Person, Asset) trace per instance on engines that support it;
+      // older engines fail them and the chunk recovery sheds them.
+      const isUnitScoped = (id: string) => {
+        const entity = byId.get(id)?.entity;
+        return entity == null || /household|unit/i.test(entity);
+      };
+      const ordered = [...reachable].sort(
+        (a, b) => Number(isUnitScoped(b)) - Number(isUnitScoped(a)),
+      );
       const bareNames = [
-        ...new Set([...reachable].map((id) => id.split("#").pop() ?? id)),
+        ...new Set(ordered.map((id) => id.split("#").pop() ?? id)),
       ].slice(0, 96);
       const tryVariables = async (variables: string[]) => {
         lastRunRequest.current = {
@@ -736,7 +745,11 @@ export function GraphViewerApp() {
       }
       const data = (await response.json()) as {
         outputs: Record<string, number | string | boolean | null>;
-        trace: Array<{ variable: string; value: unknown }>;
+        trace: Array<{
+      variable: string;
+      value: unknown;
+      instances?: Array<{ entity_id: string; value: unknown }>;
+    }>;
       };
       setRunResult(data);
     } catch (err) {
@@ -1305,7 +1318,29 @@ export function GraphViewerApp() {
       if (variable.includes("#")) valueByLegalId.set(variable, value);
       else valueByFragment.set(variable, value);
     };
-    for (const entry of runResult.trace) record(entry.variable, entry.value);
+    for (const entry of runResult.trace) {
+      // Entity-scoped rules arrive per instance: one member shows its
+      // exact value; several show each member's, joined.
+      const instanceValues = (entry.instances ?? []).map(
+        (item) => item.value,
+      );
+      const value =
+        entry.value ??
+        (instanceValues.length === 1
+          ? instanceValues[0]
+          : instanceValues.length > 1
+            ? instanceValues
+                .map((item) =>
+                  typeof item === "boolean"
+                    ? item
+                      ? "✓"
+                      : "✗"
+                    : String(item ?? "—"),
+                )
+                .join(" · ")
+            : entry.value);
+      record(entry.variable, value);
+    }
     for (const [name, value] of Object.entries(runResult.outputs)) {
       record(name, value);
     }

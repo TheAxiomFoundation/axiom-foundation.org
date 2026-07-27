@@ -2253,89 +2253,6 @@
   background: var(--color-accent-light, rgba(217, 119, 6, 0.1));
 }
 
-/* Replay bar: the execution, one stage at a time. */
-.graph-viewer-root .replay-bar {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  width: min(640px, calc(100% - 48px));
-  /* Below the inspector (13→ inspector must stay dismissible during
-     a replay). */
-  z-index: 12;
-  background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
-  border: 1px solid var(--color-rule);
-  border-radius: 14px;
-  padding: 12px 16px;
-  box-shadow:
-    0 1px 2px rgba(28, 25, 23, 0.08),
-    0 24px 60px -24px rgba(28, 25, 23, 0.4);
-  animation: panel-in 0.28s var(--ease-out, ease) both;
-}
-.graph-viewer-root .replay-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.graph-viewer-root .replay-head strong {
-  font-family: var(--f-mono, monospace);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-ink-secondary);
-}
-.graph-viewer-root .replay-nav {
-  display: flex;
-  gap: 6px;
-}
-.graph-viewer-root .replay-nav button {
-  padding: 4px 10px;
-  border: 1px solid var(--color-rule);
-  border-radius: 999px;
-  background: var(--color-paper);
-  color: var(--color-ink-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-.graph-viewer-root .replay-nav button:hover:not(:disabled) {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.graph-viewer-root .replay-nav button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.graph-viewer-root .replay-stage {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.graph-viewer-root .replay-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 5px 12px;
-  border: 1px solid var(--color-rule);
-  border-radius: 999px;
-  background: var(--color-paper);
-  font-size: 12px;
-  color: var(--color-ink-secondary);
-  cursor: pointer;
-}
-.graph-viewer-root .replay-item:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent-hover, #b45309);
-}
-.graph-viewer-root .replay-item strong {
-  font-family: var(--f-mono, monospace);
-  color: var(--color-accent-hover, #b45309);
-}
-.graph-viewer-root .replay-more {
-  font-size: 11px;
-  color: var(--color-ink-muted);
-}
 
 /* Center-anchored sheets need their translateX preserved through the
    entrance — panel-in ends at transform:none and un-centers them. */
@@ -2352,9 +2269,6 @@
 .graph-viewer-root .results-sheet {
   animation: corner-in 0.3s var(--ease-out, ease) both;
 }
-.graph-viewer-root .replay-bar {
-  animation: sheet-in 0.3s var(--ease-out, ease) both;
-}
 @keyframes sheet-in {
   from {
     opacity: 0;
@@ -2368,10 +2282,6 @@
 @media (prefers-reduced-motion: reduce) {
   .graph-viewer-root .results-sheet {
     animation: none;
-  }
-  .graph-viewer-root .replay-bar {
-    animation: none;
-    transform: translateX(-50%);
   }
 }
 
@@ -3244,4 +3154,24 @@
     max-width: 34ch;
     color: var(--color-ink-secondary);
   }
+}
+
+/* Result cells are doors to their nodes on the canvas. */
+.graph-viewer-root button.results-cell {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  padding: 6px 8px;
+  margin: -6px -8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.graph-viewer-root button.results-cell:hover:not(:disabled) {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.08));
+}
+.graph-viewer-root button.results-cell:disabled {
+  cursor: default;
 }

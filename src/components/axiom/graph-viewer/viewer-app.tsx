@@ -241,10 +241,7 @@ export function GraphViewerApp() {
   // Bumped by Retry buttons — re-fires the program load effect after
   // a transient graph/registry failure.
   const [reloadNonce, setReloadNonce] = useState(0);
-  const [replay, setReplay] = useState<{
-    stages: string[][];
-    cursor: number;
-  } | null>(null);
+
   const lastRunRequest = useRef<Record<string, unknown> | null>(null);
   const [copiedRun, setCopiedRun] = useState(false);
   // The law popup: the provision page at the node's level, embedded
@@ -262,7 +259,6 @@ export function GraphViewerApp() {
     if (veilTimer.current) window.clearTimeout(veilTimer.current);
     veilTimer.current = window.setTimeout(() => setVeiled(false), ms);
   };
-  const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -344,7 +340,6 @@ export function GraphViewerApp() {
   const beginScenario = () => {
     dismissLauncher();
     setScenarioMode(true);
-    setReplay(null);
     setScenarioGlow(true);
     window.setTimeout(() => setScenarioGlow(false), 2600);
   };
@@ -579,7 +574,6 @@ export function GraphViewerApp() {
     // rules, and "Edit inputs" would show another program's fields.
     setRunResult(null);
     setRunError(null);
-    setReplay(null);
     setRunPanelOpen(false);
     setSelectedLevers(null);
     setScenario({});
@@ -602,10 +596,8 @@ export function GraphViewerApp() {
     );
   }, [allScenarioFields]);
 
-  const runScenario = async (mode: "all" | "steps" = "all") => {
+  const runScenario = async () => {
     if (!effectiveProgram || running) return;
-    pendingReplay.current = mode === "steps";
-    setReplay(null);
     setRunning(true);
     setRunError(null);
     try {
@@ -1244,42 +1236,33 @@ export function GraphViewerApp() {
     }
   }, [structureTraces, lensTrail.length]);
 
-  // Execution overlay: clone the structural traces and light them
-  // with the run's computed values (rules by durable id or bare
-  // fragment) and the scenario's input values.
-  // Topological stages of the executed path — the step-by-step replay
-  // steps through these, values and all.
-  const buildExecStages = (executed: Set<string>): string[][] => {
-    const executedRules = [...executed].filter((id) => walkRuleById.has(id));
-    const done = new Set<string>();
-    const stages: string[][] = [];
-    let remaining = executedRules;
-    while (remaining.length > 0) {
-      const fireable = remaining.filter((id) => {
-        const rule = walkRuleById.get(id);
-        if (!rule) return true;
-        return rule.ruleDeps.every(
-          (dep) => !executed.has(dep) || done.has(dep),
-        );
-      });
-      if (fireable.length === 0) {
-        stages.push(remaining);
-        break;
-      }
-      stages.push(fireable);
-      for (const id of fireable) done.add(id);
-      remaining = remaining.filter((id) => !done.has(id));
-    }
-    return stages;
-  };
-
-  // Debounced, not deferred: a keystroke must not queue a full graph
-  // rebuild — typing coalesces into one value-graft after a pause.
+  // Scenario edits coalesce for 700ms before anything heavy
+  // rebuilds — typing collects into one update after a pause.
   const [debouncedScenario, setDebouncedScenario] = useState(scenario);
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedScenario(scenario), 700);
     return () => window.clearTimeout(timer);
   }, [scenario]);
+
+  // Live recompute: while the execution layer is up, an edited answer
+  // re-runs the program automatically — every box downstream of the
+  // change updates without pressing Run again.
+  const liveRunKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = JSON.stringify(debouncedScenario);
+    if (!runResult) {
+      liveRunKey.current = key;
+      return;
+    }
+    if (liveRunKey.current === key || running) return;
+    liveRunKey.current = key;
+    void runScenario();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedScenario, runResult]);
+
+  // Execution overlay: clone the structural traces and light them
+  // with the run's computed values (rules by durable id or bare
+  // fragment) and the scenario's input values.
   const liveTraces = useMemo(() => {
     if (!runResult) return { traces: structureTraces, executed: new Set<string>() };
     const valueByFragment = new Map<string, unknown>();
@@ -1352,48 +1335,7 @@ export function GraphViewerApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runResult]);
 
-  useEffect(() => {
-    if (!runResult || !pendingReplay.current) return;
-    pendingReplay.current = false;
-    const stages = buildExecStages(liveTraces.executed);
-    if (stages.length > 0) setReplay({ stages, cursor: 0 });
-    else
-      // "Step by step" was asked for but there is nothing to step
-      // through — say so instead of silently showing the summary.
-      setRunError(
-        "No traceable steps came back for this run — showing the full result instead.",
-      );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runResult, liveTraces]);
-
-  // Editing answers changes what executed — stale stages would step
-  // through a computation that no longer exists. Drop the replay; the
-  // user can re-run step by step with the new values.
-  useEffect(() => {
-    setReplay((current) => (current ? null : current));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedScenario]);
-
-  // The canvas lights only up to the replay cursor while stepping.
-  const effectiveExecuted = useMemo(() => {
-    if (!replay) return liveTraces.executed;
-    const subset = new Set<string>();
-    for (let index = 0; index <= replay.cursor; index++) {
-      for (const id of replay.stages[index] ?? []) subset.add(id);
-    }
-    // Only the inputs FEEDING the lit rules stay lit — lighting every
-    // executed input at stage 0 floods the canvas before the story
-    // reaches them.
-    const wanted = new Set<string>();
-    for (const id of subset) {
-      const rule = walkRuleById.get(id);
-      for (const dep of rule?.inputDeps ?? []) wanted.add(dep);
-    }
-    for (const id of liveTraces.executed) {
-      if (!walkRuleById.has(id) && wanted.has(id)) subset.add(id);
-    }
-    return subset;
-  }, [replay, liveTraces, walkRuleById]);
+  const effectiveExecuted = liveTraces.executed;
 
 
   useEffect(() => {
@@ -1408,31 +1350,6 @@ export function GraphViewerApp() {
     });
   }, [runResult, liveTraces.executed]);
 
-  // Computed values by durable legal id (from the live traces), for
-  // the step-by-step replay bar.
-  const valueByLegalId = useMemo(() => {
-    const map = new Map<string, string>();
-    const visit = (node: TraceNode, seen: Set<string>) => {
-      if (seen.has(node.legalId)) return;
-      seen.add(node.legalId);
-      if (node.value !== null && node.value !== undefined) {
-        map.set(
-          node.legalId,
-          typeof node.value === "number"
-            ? node.value.toLocaleString("en-US")
-            : typeof node.value === "boolean"
-              ? node.value
-                ? "Yes"
-                : "No"
-              : String(node.value),
-        );
-      }
-      for (const child of node.children ?? []) visit(child, seen);
-    };
-    const seen = new Set<string>();
-    for (const root of Object.values(liveTraces.traces)) visit(root, seen);
-    return map;
-  }, [liveTraces]);
 
 
   function toggleOutput(legalId: LegalId) {
@@ -1468,11 +1385,11 @@ export function GraphViewerApp() {
     setSelectedOutputs([]);
   }
 
-  const launchRun = (mode: "all" | "steps") => {
+  const launchRun = () => {
     setRunPanelOpen(false);
     setScenarioMode(true);
     if (launcher !== "closed") dismissLauncher();
-    void runScenario(mode);
+    void runScenario();
   };
 
   // One scenario flow, two homes: the launcher's middle screen and
@@ -1658,17 +1575,9 @@ export function GraphViewerApp() {
             type="button"
             className="run-button"
             disabled={running}
-            onClick={() => launchRun("all")}
+            onClick={() => launchRun()}
           >
             {running ? "Running…" : "Run it all"}
-          </button>
-          <button
-            type="button"
-            className="run-button run-button-secondary"
-            disabled={running}
-            onClick={() => launchRun("steps")}
-          >
-            Run step by step
           </button>
         </div>
         {runError && <p className="run-error">{runError}</p>}
@@ -2284,9 +2193,9 @@ export function GraphViewerApp() {
                 type="button"
                 className="node-inspector-lens"
                 disabled={running}
-                onClick={() => void runScenario("steps")}
+                onClick={() => void runScenario()}
               >
-                {running ? "Running…" : "Run with these values · step by step"}
+                {running ? "Running…" : "Run with these values"}
               </button>
             ) : null}
             {lawFileLegalId && axiomAppUrl(lawFileLegalId) ? (
@@ -2304,80 +2213,7 @@ export function GraphViewerApp() {
             );
           })()}
 
-        {replay && runResult && (() => {
-          const stage = replay.stages[replay.cursor] ?? [];
-          const atLast = replay.cursor >= replay.stages.length - 1;
-          return (
-            <aside className="replay-bar" role="status" aria-label="Step-by-step execution">
-              <div className="replay-head">
-                <strong>
-                  Stage {replay.cursor + 1} of {replay.stages.length}
-                </strong>
-                <div className="replay-nav">
-                  <button
-                    type="button"
-                    disabled={replay.cursor === 0}
-                    onClick={() =>
-                      setReplay((current) =>
-                        current
-                          ? { ...current, cursor: Math.max(0, current.cursor - 1) }
-                          : current,
-                      )
-                    }
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    disabled={atLast}
-                    onClick={() =>
-                      setReplay((current) =>
-                        current
-                          ? {
-                              ...current,
-                              cursor: Math.min(
-                                current.stages.length - 1,
-                                current.cursor + 1,
-                              ),
-                            }
-                          : current,
-                      )
-                    }
-                  >
-                    Next
-                  </button>
-                  <button type="button" onClick={() => setReplay(null)}>
-                    Show everything
-                  </button>
-                </div>
-              </div>
-              <div className="replay-stage">
-                {stage.slice(0, 4).map((id) => {
-                  const value = valueByLegalId.get(id);
-                  return (
-                    <button
-                      type="button"
-                      key={id}
-                      className="replay-item"
-                      onClick={() => flyFromIndex(id)}
-                      title="Fly to this step"
-                    >
-                      <span>{humanize(walkRuleById.get(id)?.name ?? id)}</span>
-                      {value !== undefined && value !== null && (
-                        <strong>{String(value)}</strong>
-                      )}
-                    </button>
-                  );
-                })}
-                {stage.length > 4 && (
-                  <span className="replay-more">+{stage.length - 4} more</span>
-                )}
-              </div>
-            </aside>
-          );
-        })()}
-
-        {!replay && runResult && (
+        {runResult && (
           <aside className="results-sheet" role="status">
             <div className="results-head">
               <div>
@@ -2394,23 +2230,63 @@ export function GraphViewerApp() {
               </button>
             </div>
             <div className="results-grid">
-              {Object.entries(runResult.outputs)
-                .filter(([name]) => !name.includes(":"))
-                .slice(0, 6)
-                .map(([name, value]) => (
-                  <div key={name} className="results-cell">
-                    <span className="results-label">{humanize(name)}</span>
-                    <span className="results-value">
-                      {typeof value === "boolean"
-                        ? value
-                          ? "Yes"
-                          : "No"
-                        : typeof value === "number"
-                          ? value.toLocaleString("en-US")
-                          : String(value ?? "—")}
-                    </span>
-                  </div>
-                ))}
+              {(() => {
+                // Headline: the program's own outputs, then the direct
+                // ingredients of the first one (the money chain — for
+                // SNAP that surfaces the monthly allotment). Every cell
+                // is a door to its node on the canvas.
+                const names: string[] = [];
+                const push = (fragment: string | undefined) => {
+                  if (!fragment) return;
+                  if (!(fragment in runResult.outputs)) return;
+                  if (!names.includes(fragment)) names.push(fragment);
+                };
+                for (const id of graph?.ownOutputs ?? []) {
+                  push(id.split("#").pop());
+                }
+                const first = (graph?.ownOutputs ?? [])[0];
+                const firstRule = first ? walkRuleById.get(first) : null;
+                for (const dep of firstRule?.ruleDeps ?? []) {
+                  push(dep.split("#").pop());
+                }
+                if (names.length === 0) {
+                  for (const name of Object.keys(runResult.outputs)) {
+                    if (!name.includes(":")) push(name);
+                  }
+                }
+                return names.slice(0, 8).map((name) => {
+                  const value = runResult.outputs[name];
+                  const rule = (graph?.rules ?? []).find(
+                    (item) => item.name === name,
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={name}
+                      className="results-cell"
+                      disabled={!rule}
+                      title={rule ? "See this on the canvas" : undefined}
+                      onClick={() => {
+                        if (!rule) return;
+                        if (inScopeIds.has(rule.legalId))
+                          flyFromIndex(rule.legalId);
+                        else expandLensTo(rule.legalId);
+                      }}
+                    >
+                      <span className="results-label">{humanize(name)}</span>
+                      <span className="results-value">
+                        {typeof value === "boolean"
+                          ? value
+                            ? "Yes"
+                            : "No"
+                          : typeof value === "number"
+                            ? value.toLocaleString("en-US")
+                            : String(value ?? "—")}
+                      </span>
+                    </button>
+                  );
+                });
+              })()}
             </div>
             <div className="results-adjust" aria-label="Adjust and run again">
               {allScenarioFields
@@ -2473,7 +2349,7 @@ export function GraphViewerApp() {
                 type="button"
                 className="results-rerun"
                 disabled={running}
-                onClick={() => void runScenario("all")}
+                onClick={() => void runScenario()}
               >
                 {running ? "Running…" : "Run again"}
               </button>

@@ -9,9 +9,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-import Page from "@/app/verify/page";
+import Page, { metadata } from "@/app/verify/page";
 
 describe("Verify page", () => {
+  it("is indexable for the US launch", () => {
+    expect(metadata.robots).toBeUndefined();
+    expect(metadata.description).toMatch(/^US launch verification evidence/);
+  });
+
   it("keeps the launch evidence US-only and uses the committed figures", () => {
     render(<Page />);
 
@@ -87,7 +92,7 @@ describe("Verify page", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Repo closure asks whether the law in a declared root is encoded. It is not program closure, and it does not claim that a composed program is complete.",
+        "Repo closure is the completeness predicate for the law in a declared root. It is not program closure, and it does not claim that a composed program is complete.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "10 CCR 2506-1" })).toBeInTheDocument();
@@ -111,7 +116,7 @@ describe("Verify page", () => {
       screen.getByRole("link", { name: "Open the public closure ledger" }),
     ).toHaveAttribute(
       "href",
-      "https://github.com/TheAxiomFoundation/axiom-oracles/blob/main/closure/summary.json",
+      "https://github.com/TheAxiomFoundation/axiom-oracles/tree/main/closure/universes/us-co-snap",
     );
   });
 });

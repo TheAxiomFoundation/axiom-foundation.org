@@ -173,6 +173,9 @@ export function VerifyPage() {
 
           <div className="overflow-x-auto rounded-md border border-[var(--color-rule)] mb-6">
             <table className="w-full border-collapse min-w-[920px]">
+              <caption className="sr-only">
+                US checks against independent evidence
+              </caption>
               <thead>
                 <tr className="bg-[var(--color-paper-elevated)]">
                   {[
@@ -184,6 +187,7 @@ export function VerifyPage() {
                   ].map((h, i) => (
                     <th
                       key={h || `blank-${i}`}
+                      scope="col"
                       className="text-left font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)] px-5 py-4 border-b border-[var(--color-rule)]"
                     >
                       {h}

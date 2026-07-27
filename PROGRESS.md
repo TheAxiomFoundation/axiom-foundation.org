@@ -2,12 +2,11 @@
 
 ## State
 
-In progress: implementation and local validation are complete. Final diff
-review, reporting, and GitHub publication remain.
+In progress: implementation, local validation, and final diff review are
+complete. Reporting and GitHub publication remain.
 
-Publishing is currently blocked because `gh auth status` reports an invalid
-GitHub token for the active account. Local implementation and validation can
-continue.
+The local `gh` CLI token is invalid, but the connected GitHub app is available
+for opening the requested draft pull request after the branch is pushed.
 
 ## Done
 
@@ -30,7 +29,9 @@ continue.
   the released golden-household result.
 - Added focused `/verify` tests for exact US evidence, closure placeholders and
   semantics, the released tuple and API status, and prohibited non-US content.
-- Passed the focused `/verify` test suite: 3 tests.
+- Made `/verify` indexable for launch and added a metadata regression test.
+- Added an accessible caption and column scopes to the evidence table.
+- Passed the focused `/verify` test suite: 4 tests.
 - Passed the full CI coverage gate: 84 files and 1,064 tests.
 - Ran `bun run build`; the sandbox blocked both Google Fonts network requests.
 - Passed the complete production build with Next's webpack backend and its
@@ -40,9 +41,11 @@ continue.
 - Confirmed the generated `/verify` HTML contains every required US figure and
   both federal placeholders, with no removed jurisdiction names or stale
   federal-income-tax figures.
+- Completed a final manual compliance and blast-radius review.
+- Passed `tsc --noEmit` and `git diff --check` after the final launch metadata
+  change.
 
 ## Next
 
-- Review the complete branch diff against `master`.
 - Write the final report, push the branch, open the requested draft pull
   request, and check Vercel status without initiating a deployment.

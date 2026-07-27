@@ -248,12 +248,12 @@ export const closureRoots: ClosureRoot[] = [
 
 export const closureMeaning = {
   repo:
-    "Repo closure asks whether the law in a declared root is encoded. It is not program closure, and it does not claim that a composed program is complete.",
+    "Repo closure is the completeness predicate for the law in a declared root. It is not program closure, and it does not claim that a composed program is complete.",
   program:
     "The composed Colorado SNAP program consults a subset of the declared roots and declares",
   declaration: "acknowledged_incomplete: snap_eligible",
   ledgerHref:
-    "https://github.com/TheAxiomFoundation/axiom-oracles/blob/main/closure/summary.json",
+    "https://github.com/TheAxiomFoundation/axiom-oracles/tree/main/closure/universes/us-co-snap",
 };
 
 /** What stops a classification from being an excuse. */

@@ -272,6 +272,62 @@ export function mapRulesToSubsections(
 }
 
 /**
+ * Deep-page variant of the rule↔provision join: the requested page
+ * sits BELOW the encoded module (e.g. 7 CFR 273.10(e)(2)(ii)(A) under
+ * the section-granular ``regulations/7-cfr/273/10`` file). File
+ * anchors can't help — there are no deeper files — so match each
+ * rule's full ``source`` parenthetical chain against the page's
+ * relative segments: keep rules citing this paragraph or below, and
+ * anchor them to the page's own next-level unit when the citation
+ * goes deeper still.
+ */
+export function mapRulesToDeepPath(
+  encodingRootPath: string,
+  relSegments: string[],
+  rulespecContent: string | null
+): EncodedRuleLink[] {
+  if (!rulespecContent || relSegments.length === 0) return [];
+  const doc = parseRuleSpec(rulespecContent);
+  if (!doc) return [];
+  const section = encodingRootPath.split("/").at(-1) ?? "";
+  if (!section) return [];
+  // "273.10(e)(2)(ii)(A)" → chains of parenthetical segments after
+  // the section number; a source may cite several chains.
+  const chainRe = new RegExp(
+    `(?:§+\\s*)?${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
+    "g"
+  );
+  const rel = relSegments.map((segment) => segment.toLowerCase());
+  const links: EncodedRuleLink[] = [];
+  for (const rule of doc.rules) {
+    const source = rule.source ?? "";
+    const anchors = new Set<string>();
+    let cited = false;
+    for (const match of source.matchAll(chainRe)) {
+      const segments = Array.from(
+        match[1].matchAll(/\(([A-Za-z0-9]{1,4})\)/g),
+        (seg) => seg[1]
+      );
+      const lower = segments.map((segment) => segment.toLowerCase());
+      const within =
+        lower.length >= rel.length &&
+        rel.every((segment, index) => lower[index] === segment);
+      if (!within) continue;
+      cited = true;
+      const next = segments[rel.length];
+      if (next) anchors.add(next);
+    }
+    if (!cited) continue;
+    links.push({
+      name: rule.name,
+      kind: rule.kind ?? null,
+      anchors: Array.from(anchors),
+    });
+  }
+  return links;
+}
+
+/**
  * Union file-path-derived anchors (subsection-granular repo files)
  * into the source-citation-derived links. File anchors are
  * authoritative — the repo path *is* the legal ID — so they fill in
@@ -590,9 +646,21 @@ function anchorExistsUnder(
   });
   if (found) return true;
   if (subtree.provisions.length === 0 && root.body) {
-    return splitBodyIntoSubsections(root.body).chunks.some(
-      (chunk) => chunk.anchor === anchor
-    );
+    if (
+      splitBodyIntoSubsections(root.body).chunks.some(
+        (chunk) => chunk.anchor === anchor
+      )
+    ) {
+      return true;
+    }
+    // Some single-row sections run their subsection markers inline
+    // ("(a) Month of application—(1) …", 7 CFR 273.10) where the
+    // chunker finds no line-anchored boundaries. A literal "(e)"
+    // marker in a body-bearing SECTION row is still real evidence the
+    // subsection exists — the Title-7 guard case (a body-less
+    // container satisfying …/2011) stays refused because it has no
+    // body to match against.
+    return new RegExp(`\\(${escapeRegExp(anchor)}\\)`).test(root.body);
   }
   return false;
 }
@@ -744,6 +812,7 @@ export async function getSectionPageDataFromResolution(
       getNavigationNode(citationPath),
       getSectionEncoding(root.id, citationPath).catch(() => ({
         encoding: null,
+        encodingRootPath: null,
         fileAnchors: {},
         ruleFiles: {},
       })),
@@ -787,10 +856,23 @@ export async function getSectionPageDataFromResolution(
           children: [],
         }));
 
-  const encodedRules = applyFileAnchors(
-    mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
-    sectionEncoding.fileAnchors
-  );
+  const encodingRoot = sectionEncoding.encodingRootPath ?? citationPath;
+  const encodedRules =
+    encodingRoot === citationPath
+      ? applyFileAnchors(
+          mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
+          sectionEncoding.fileAnchors
+        )
+      : // The request is DEEPER than the encoded module (paragraph page
+        // under a section-granular file): join by each rule's source
+        // citation instead of file anchors, keeping only rules that
+        // cite this paragraph or below and anchoring them to the
+        // page's own next-level units.
+        mapRulesToDeepPath(
+          encodingRoot,
+          citationPath.slice(encodingRoot.length + 1).split("/"),
+          encoding?.rulespec_content ?? null
+        );
 
   // Coverage: which top-level subsections carry rules, out of how
   // many the section has.

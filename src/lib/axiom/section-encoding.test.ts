@@ -63,7 +63,7 @@ const SECTION = "us/statute/26/32";
  *  chain is thenable with the given result. */
 function mirrorChain(result: { data: unknown; error: unknown }) {
   const self: Record<string, unknown> = {};
-  for (const method of ["select", "or", "order", "limit"]) {
+  for (const method of ["select", "or", "in", "order", "limit"]) {
     self[method] = () => self;
   }
   self.then = (
@@ -272,5 +272,50 @@ describe("getSectionEncoding", () => {
     findEncodedDescendantsMock.mockResolvedValue([]);
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.encoding).toBe(primary);
+  });
+});
+
+
+describe("ancestor walk-up (request deeper than the encoded file)", () => {
+  it("serves the nearest ancestor module and reports its root path", async () => {
+    // First query (at-or-below the deep path): nothing. Second query
+    // (ancestor chain): the section-level 273/10 module.
+    const sectionYaml = ruleYaml(
+      "snap_calculated_monthly_allotment_before_minimums",
+      "7 CFR 273.10(e)(2)(ii)(A)"
+    );
+    mirrorFromMock
+      .mockReturnValueOnce(mirrorChain({ data: [], error: null }))
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: "us/regulation/7/273/10",
+              file_path: "regulations/7-cfr/273/10.yaml",
+              raw_yaml: sectionYaml,
+            },
+          ],
+          error: null,
+        })
+      );
+
+    const result = await getSectionEncoding(
+      "rule-1",
+      "us/regulation/7/273/10/e/2/ii/A"
+    );
+    expect(result.encodingRootPath).toBe("us/regulation/7/273/10");
+    expect(result.encoding?.file_path).toBe("regulations/7-cfr/273/10.yaml");
+    expect(result.encoding?.rulespec_content).toContain(
+      "snap_calculated_monthly_allotment_before_minimums"
+    );
+  });
+
+  it("falls through to the legacy path when no ancestor file exists", async () => {
+    mirrorFromMock.mockReturnValue(mirrorChain({ data: [], error: null }));
+    getRuleEncodingMock.mockResolvedValue(null);
+    findEncodedDescendantsMock.mockResolvedValue([]);
+    const result = await getSectionEncoding("rule-1", "us/statute/26/32/a");
+    expect(result.encoding).toBeNull();
+    expect(result.encodingRootPath).toBeNull();
   });
 });

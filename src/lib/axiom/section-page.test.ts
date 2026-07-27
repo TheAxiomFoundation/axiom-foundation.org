@@ -12,6 +12,7 @@ import {
   splitBodyIntoSubsections,
   subtreeAnchor,
   type SectionProvision,
+  mapRulesToDeepPath,
 } from "./section-page";
 
 const ROOT = "us/statute/26/32";
@@ -378,5 +379,63 @@ describe("dedupeRootBody", () => {
   it("keeps the body when there are no descendants", () => {
     const root: Rule = { ...base, body: "(a) Text." };
     expect(dedupeRootBody(root, []).body).toBe("(a) Text.");
+  });
+});
+
+
+describe("mapRulesToDeepPath", () => {
+  const yaml = [
+    "format: rulespec/v1",
+    "rules:",
+    "  - name: snap_calculated_monthly_allotment_before_minimums",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(e)(2)(ii)(A)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'x'",
+    "  - name: snap_net_income_before_shelter",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(e)(1)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'y'",
+    "  - name: snap_total_gross_income",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(c)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'z'",
+  ].join("\n");
+
+  it("keeps only rules citing the deep paragraph or below", () => {
+    const links = mapRulesToDeepPath(
+      "us/regulation/7/273/10",
+      ["e", "2", "ii", "A"],
+      yaml
+    );
+    expect(links).toEqual([
+      {
+        name: "snap_calculated_monthly_allotment_before_minimums",
+        kind: "derived",
+        anchors: [],
+      },
+    ]);
+  });
+
+  it("anchors deeper citations to the page's next-level unit", () => {
+    const links = mapRulesToDeepPath("us/regulation/7/273/10", ["e"], yaml);
+    expect(links.map((link) => link.name).sort()).toEqual([
+      "snap_calculated_monthly_allotment_before_minimums",
+      "snap_net_income_before_shelter",
+    ]);
+    const allotment = links.find((link) =>
+      link.name.startsWith("snap_calculated")
+    );
+    expect(allotment?.anchors).toEqual(["2"]);
+  });
+
+  it("returns nothing without content or relative depth", () => {
+    expect(mapRulesToDeepPath("us/regulation/7/273/10", ["e"], null)).toEqual([]);
+    expect(mapRulesToDeepPath("us/regulation/7/273/10", [], yaml)).toEqual([]);
   });
 });

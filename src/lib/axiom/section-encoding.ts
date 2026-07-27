@@ -32,6 +32,15 @@ import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 export interface SectionEncoding {
   encoding: RuleEncodingData | null;
   /**
+   * Citation path the encoding is homed at. Usually the requested
+   * path; when the request was DEEPER than the encoded file (a
+   * paragraph page under a section-granular module like
+   * regulations/7-cfr/273/10), this is the nearest ancestor that has
+   * a rulespec file — the reader then matches rules to the deep page
+   * by their source citations instead of file anchors.
+   */
+  encodingRootPath: string | null;
+  /**
    * Top-level subsection anchors keyed by rule name, derived from
    * descendant file paths (``…/32/c/2.yaml`` → rules anchor to "c").
    * Authoritative where present — the file path supplies the legal
@@ -58,7 +67,10 @@ interface SectionFile {
   content: string;
 }
 
-function emptyResult(encoding: RuleEncodingData | null): SectionEncoding {
+function emptyResult(
+  encoding: RuleEncodingData | null,
+  encodingRootPath: string | null = null
+): SectionEncoding {
   // Even a lone primary file yields rule→file provenance so rule
   // cards can deep-link into the graph.
   const ruleFiles: Record<string, string> = {};
@@ -67,7 +79,12 @@ function emptyResult(encoding: RuleEncodingData | null): SectionEncoding {
       ruleFiles[rule.name] ??= encoding.file_path;
     }
   }
-  return { encoding, fileAnchors: {}, ruleFiles };
+  return {
+    encoding,
+    encodingRootPath: encoding ? encodingRootPath : null,
+    fileAnchors: {},
+    ruleFiles,
+  };
 }
 
 function baseEncoding(
@@ -155,6 +172,7 @@ function assembleSection(
   // directly so file_path (GitHub link, sibling tests) stays real.
   if (sectionFile && descendantRuleCount === 0) {
     return {
+      encodingRootPath: citationPath,
       encoding: {
         ...(primaryMeta ?? baseEncoding("", "", "", "")),
         encoding_run_id:
@@ -170,6 +188,7 @@ function assembleSection(
   if (!sectionFile && descendants.length === 1) {
     const only = descendants[0];
     return {
+      encodingRootPath: citationPath,
       encoding: baseEncoding(
         `github:${only.filePath}`,
         only.citationPath,
@@ -180,12 +199,13 @@ function assembleSection(
       ruleFiles,
     };
   }
-  if (ruleRaws.length === 0) return emptyResult(primaryMeta);
+  if (ruleRaws.length === 0) return emptyResult(primaryMeta, citationPath);
 
   const bucketDir = sectionFile
     ? sectionFile.filePath.replace(/\.yaml$/, "")
     : descendants[0].filePath.split("/").slice(0, -1).join("/");
   return {
+    encodingRootPath: citationPath,
     encoding: {
       ...(primaryMeta ?? baseEncoding("", "", "", "")),
       encoding_run_id: `github:merged:${citationPath}`,
@@ -241,6 +261,55 @@ async function listMirrorFiles(
   }
 }
 
+/**
+ * Nearest ANCESTOR rulespec file for a request deeper than the
+ * encoded granularity: one `in.()` probe over the ancestor chain
+ * (never above jurisdiction/bucket/title), deepest hit wins. This is
+ * how a paragraph page under a section-granular module (7 CFR
+ * 273.10(e)(2)(ii)(A) under regulations/7-cfr/273/10.yaml) still
+ * finds its encoding.
+ */
+async function findAncestorFile(
+  citationPath: string
+): Promise<SectionFile | null> {
+  const segments = citationPath.split("/");
+  const ancestors: string[] = [];
+  for (let depth = segments.length - 1; depth >= 3; depth--) {
+    ancestors.push(segments.slice(0, depth).join("/"));
+  }
+  if (ancestors.length === 0) return null;
+  try {
+    const result = await withTimeout(
+      supabaseEncodings
+        .from("rulespec_files")
+        .select("citation_path, file_path, raw_yaml")
+        .in("citation_path", ancestors)
+        .order("citation_path", { ascending: false })
+        .limit(ancestors.length),
+      QUERY_TIMEOUT_MS,
+      null
+    );
+    if (!result || result.error) return null;
+    const rows = (result.data ?? []) as Array<{
+      citation_path: string;
+      file_path: string;
+      raw_yaml: string | null;
+    }>;
+    const best = rows
+      .filter((row) => row.raw_yaml && row.raw_yaml.trim().length > 0)
+      .sort((a, b) => b.citation_path.length - a.citation_path.length)[0];
+    return best
+      ? {
+          citationPath: best.citation_path,
+          filePath: best.file_path,
+          content: best.raw_yaml as string,
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSectionEncoding(
   rootId: string,
   citationPath: string
@@ -254,6 +323,13 @@ export async function getSectionEncoding(
     );
     return assembleSection(citationPath, sectionFile, descendants, null);
   }
+  // Nothing at or below the request: the request may be DEEPER than
+  // the encoded file. Serve the nearest ancestor module; the page
+  // layer re-joins its rules by source citation.
+  const ancestor = await findAncestorFile(citationPath);
+  if (ancestor) {
+    return assembleSection(ancestor.citationPath, ancestor, [], null);
+  }
 
   // Mirror miss (not yet synced, or query failure): legacy path —
   // encoding_runs content / GitHub raw walk-up, plus descendant
@@ -263,7 +339,7 @@ export async function getSectionEncoding(
     findEncodedDescendants(citationPath).catch(() => [] as EncodedFile[]),
   ]);
   const limited = repoDescendants.slice(0, MAX_SECTION_FILES);
-  if (limited.length === 0) return emptyResult(primary);
+  if (limited.length === 0) return emptyResult(primary, citationPath);
 
   const fetched = (
     await Promise.all(
@@ -281,7 +357,7 @@ export async function getSectionEncoding(
       })
     )
   ).filter((item): item is SectionFile => Boolean(item));
-  if (fetched.length === 0) return emptyResult(primary);
+  if (fetched.length === 0) return emptyResult(primary, citationPath);
 
   const sectionFile = primary?.rulespec_content
     ? {

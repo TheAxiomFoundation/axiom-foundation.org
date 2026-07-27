@@ -169,8 +169,8 @@ export const usEvidenceRows: UsEvidenceRow[] = [
   {
     id: "co-snap-qc",
     check: "Colorado SNAP QC reality check",
-    reference: "FY 2024 administrative cases",
-    scale: "856 real cases",
+    reference: "USDA SNAP QC",
+    scale: "856 real FY 2024 administrative cases",
     result:
       "All cases reproduce the federal computation exactly, case by case and stage by stage.",
     href: "/reports/colorado-snap-qc-fy2024",

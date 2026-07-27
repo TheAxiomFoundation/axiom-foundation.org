@@ -26,7 +26,9 @@ describe("Verify page", () => {
         "100% of mismatches explained under the conformance predicate.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("856 real cases")).toBeInTheDocument();
+    expect(
+      screen.getByText("856 real FY 2024 administrative cases"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("3,997,401 distinct comparisons"),
     ).toBeInTheDocument();

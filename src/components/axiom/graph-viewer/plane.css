@@ -498,8 +498,10 @@
 }
 /* The results you asked for never recede — a Result card stays lit
    even when its value did not come back, so the selection reads
-   without needing a hover. */
-.graph-viewer-root .plane-live .react-flow__node.irg-is-output {
+   without needing a hover. Same for whichever card you clicked: the
+   node under inspection holds full presence even if it didn't run. */
+.graph-viewer-root .plane-live .react-flow__node.irg-is-output,
+.graph-viewer-root .plane-live .react-flow__node.irg-inspected {
   opacity: 1;
   filter: none;
 }
@@ -1432,6 +1434,25 @@
 .graph-viewer-root .irg-wrap[data-lod="near"] .plane-live .react-flow__renderer {
   transform: none;
 }
+/* At far zoom the tilt is a liability, not a scene: perspective plus
+   a preserve-3d context on every one of ~270 cards blows the GPU
+   compositing budget, and the misses flash the entire page — header
+   and footer included. Really far means flat. */
+.graph-viewer-root .plane-live .irg-wrap[data-lod="far"] .react-flow__renderer,
+.graph-viewer-root .irg-wrap[data-lod="far"] .plane-live .react-flow__renderer {
+  transform: none;
+}
+.graph-viewer-root .plane-live .irg-wrap[data-lod="far"] .react-flow__viewport,
+.graph-viewer-root .irg-wrap[data-lod="far"] .plane-live .react-flow__viewport,
+.graph-viewer-root .plane-live .irg-wrap[data-lod="far"] .react-flow__node,
+.graph-viewer-root .irg-wrap[data-lod="far"] .plane-live .react-flow__node {
+  transform-style: flat;
+}
+/* The saturate() on hundreds of receded cards is another per-node
+   compositing layer at far zoom — opacity alone recedes them fine. */
+.graph-viewer-root .plane-live .irg-wrap[data-lod="far"] .react-flow__node.irg-exec-off {
+  filter: none;
+}
 .graph-viewer-root .irg-wrap .react-flow__node:hover .irg-node {
   transform: translateY(-2px);
 }
@@ -1607,25 +1628,29 @@
 
 /* Journey re-entry pill beside the Index toggle. */
 .graph-viewer-root .run-toggle {
-  /* Top right, flush with the graph box edge — the primary action
-     sits in the same band as the program selectors. */
+  /* Top right, flush with the graph box edge — THE primary action on
+     the page, so it's the one filled button in the band. */
   position: absolute;
-  top: -30px;
+  top: -32px;
   right: 0;
   z-index: 16;
-  border: 1px solid var(--color-accent-line);
-  background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
+  border: none;
+  background: var(--color-accent);
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 7px 18px;
   font: inherit;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--color-accent-hover);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
   cursor: pointer;
-  box-shadow: 0 6px 16px -8px rgba(217, 119, 6, 0.45);
+  box-shadow: 0 8px 20px -8px rgba(217, 119, 6, 0.65);
 }
-.graph-viewer-root .run-toggle:hover {
-  border-color: var(--color-accent);
+.graph-viewer-root .run-toggle:hover:not(:disabled) {
+  background: var(--color-accent-hover, #b45309);
+}
+.graph-viewer-root .run-toggle:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 .graph-viewer-root .nav-toggle {
   left: 178px;
@@ -2054,6 +2079,11 @@
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   color: var(--color-ink);
+}
+.graph-viewer-root .mini-graph-chip.is-muted {
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-ink-muted);
 }
 .graph-viewer-root .mini-graph-empty {
   font-size: 11px;
@@ -2952,6 +2982,9 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* The column is exactly as wide as its input — long question names
+     wrap onto extra lines instead of stretching the sheet. */
+  width: 118px;
 }
 .graph-viewer-root .results-adjust-field span {
   font-family: var(--f-mono, monospace);
@@ -2959,9 +2992,12 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink-muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 .graph-viewer-root .results-adjust-field input {
-  width: 108px;
+  width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--color-rule);
   border-radius: 8px;
@@ -2971,6 +3007,35 @@
 .graph-viewer-root .results-adjust-field input:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+.graph-viewer-root .results-adjust-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  font-family: var(--f-mono, monospace);
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.graph-viewer-root .results-adjust-pager button {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.graph-viewer-root .results-adjust-pager button:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .results-adjust-pager button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 .graph-viewer-root .results-rerun {
   padding: 7px 16px;

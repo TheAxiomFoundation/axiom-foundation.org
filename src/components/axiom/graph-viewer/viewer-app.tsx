@@ -265,6 +265,9 @@ export function GraphViewerApp() {
 
   const lastRunRequest = useRef<Record<string, unknown> | null>(null);
   const [copiedRun, setCopiedRun] = useState(false);
+  // The results sheet's quick-adjust strip pages through answered
+  // inputs — a dozen answers must not balloon the sheet.
+  const [adjustPage, setAdjustPage] = useState(0);
   // The law popup: the provision page at the node's level, embedded
   // read-only — the Plane is the only surface that navigates.
   const [lawPopup, setLawPopup] = useState<string | null>(null);
@@ -1412,7 +1415,10 @@ export function GraphViewerApp() {
     // value chips resize every card, so a relayout is coming — the
     // camera cuts inside its commit and the crossfade (plane-fresh
     // scene rule) folds teleport + cut into one perceived change.
-    if (summitOutput) {
+    // But when a card is already open in the inspector the user is
+    // mid-thought there — answering a question from the graph must
+    // not yank the camera back to the summit.
+    if (summitOutput && !inspected) {
       setFlyTarget((current) => ({
         legalId: summitOutput,
         nonce: (current?.nonce ?? 0) + 1,
@@ -2063,7 +2069,7 @@ export function GraphViewerApp() {
               aria-expanded={runPanelOpen}
               title="Answer the household's questions and execute the law"
             >
-              {running ? "Running…" : "Run"}
+              {running ? "Running…" : "Run a scenario"}
             </button>
           )}
           {runPanelOpen && (
@@ -2428,7 +2434,9 @@ export function GraphViewerApp() {
                     hint: "Descend to this rule on the canvas",
                     onClick: () => flyFromIndex(depId),
                   })),
-                  ...(rule?.inputDeps ?? []).map((depId) => ({
+                  ...(rule?.inputDeps ?? []).map((depId) => {
+                    const answered = miniValue(depId);
+                    return {
                     id: depId,
                     label: humanize(
                       walkInputById.get(depId)?.name ??
@@ -2436,13 +2444,20 @@ export function GraphViewerApp() {
                         depId,
                     ),
                     kind: "question" as const,
-                    value: miniValue(depId),
+                    // A live run with no answer for this question is a
+                    // state worth naming, not a blank.
+                    value: answered ?? (runResult ? "not selected" : null),
+                    valueTone:
+                      answered === null && runResult
+                        ? ("muted" as const)
+                        : undefined,
                     hint: "Fly to this question on the canvas",
                     onClick: () => {
                       flyFromIndex(depId);
                       inspectInput(depId);
                     },
-                  })),
+                  };
+                  }),
                 ];
                 const uses = consumers.map((consumer) => ({
                   id: consumer.legalId,
@@ -2605,9 +2620,23 @@ export function GraphViewerApp() {
               })()}
             </div>
             <div className="results-adjust" aria-label="Adjust and run again">
-              {allScenarioFields
-                .filter((field) => field.name in scenario)
-                .map((field) => (
+              {(() => {
+                const answered = allScenarioFields.filter(
+                  (field) => field.name in scenario,
+                );
+                const perPage = 6;
+                const pageCount = Math.max(
+                  1,
+                  Math.ceil(answered.length / perPage),
+                );
+                const page = Math.min(adjustPage, pageCount - 1);
+                const fields = answered.slice(
+                  page * perPage,
+                  page * perPage + perPage,
+                );
+                return (
+                  <>
+              {fields.map((field) => (
                 <label key={field.name} className="results-adjust-field">
                   <span>
                     {(() => {
@@ -2661,6 +2690,35 @@ export function GraphViewerApp() {
                   />
                 </label>
               ))}
+              {pageCount > 1 && (
+                <div
+                  className="results-adjust-pager"
+                  aria-label="More answered inputs"
+                >
+                  <button
+                    type="button"
+                    disabled={page === 0}
+                    onClick={() => setAdjustPage(page - 1)}
+                    aria-label="Previous inputs"
+                  >
+                    ‹
+                  </button>
+                  <span>
+                    {page + 1}/{pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page === pageCount - 1}
+                    onClick={() => setAdjustPage(page + 1)}
+                    aria-label="More inputs"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+                  </>
+                );
+              })()}
               <button
                 type="button"
                 className="results-rerun"

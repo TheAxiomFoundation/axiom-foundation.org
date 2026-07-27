@@ -467,6 +467,9 @@ export function InteractiveRuleGraph({
           ? "irg-has-value"
           : "",
         "kind" in d && d.kind === "output" ? "irg-is-output" : "",
+        // The card whose info panel is open — run mode keeps it lit
+        // even when the execution layer would recede it.
+        n.id === pinnedNodeId ? "irg-inspected" : "",
       ]
         .filter(Boolean)
         .join(" ");
@@ -493,7 +496,7 @@ export function InteractiveRuleGraph({
         highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
       }`.trim(),
     }));
-  }, [nodes, highlightSet, executionActive, executedIds]);
+  }, [nodes, highlightSet, executionActive, executedIds, pinnedNodeId]);
 
   const displayEdges = useMemo(() => {
     let out = edges;

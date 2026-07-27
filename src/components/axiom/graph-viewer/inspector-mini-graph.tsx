@@ -8,6 +8,8 @@ export type MiniGraphNode = {
   kind: "rule" | "question";
   /** Formatted live value — null when nothing has run yet. */
   value: string | null;
+  /** "muted" renders the value quietly — e.g. "not selected". */
+  valueTone?: "muted";
   hint: string;
   onClick: () => void;
 };
@@ -94,7 +96,11 @@ export function InspectorMiniGraph({
     >
       <span className="mini-graph-name">{node.label}</span>
       {node.value !== null && (
-        <span className="mini-graph-chip">{node.value}</span>
+        <span
+          className={`mini-graph-chip ${node.valueTone === "muted" ? "is-muted" : ""}`}
+        >
+          {node.value}
+        </span>
       )}
     </button>
   );

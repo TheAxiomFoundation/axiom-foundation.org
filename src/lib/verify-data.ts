@@ -277,15 +277,15 @@ export interface OpenIssue {
  */
 export const openIssues: OpenIssue[] = [
   {
-    id: "golden-values",
+    id: "api-rounding",
     title:
-      "The engine runs the published artifact, but our committed fixture no longer reproduces the certified answer",
-    status: "Open — checked 2026-07-26",
+      "The hosted API returns un-rounded net income; the published artifact applies the statutory whole-dollar election",
+    status: "Open — found 2026-07-27",
     detail:
-      "v0.1.1 (released 2026-07-26) closed the load barrier: the 2026-07-25 finding that no released engine could execute any published artifact is resolved, verified by running one on the other. But the golden-household fixture predates an input-naming cutover: SSN-provision inputs default to false, eligibility evaluates to not-eligible, and the correctly-gated output returns $0 while the ungated benefit node computes $478 and net income lands at $226 against the certified $226.50. The gate asserting certified figures fails today — rightly. The fix is regenerating the fixture; the eligibility-gated binding is the intended contract and stays.",
+      "The local-execution story is now fully green: the certified household reproduces snap_eligible = holds, the gated $478, and net income $226 on the released engine and pinned artifact, exactly as a stranger would run it. Getting there corrected the benchmark itself — the previously certified $226.50 was the un-rounded figure, and 7 CFR 273.10(e)(1)(ii)(A)'s nearest-dollar election on the excess-shelter deduction makes $226 the statutory value; the engine had been right since v0.1.1. The same run then surfaced the next divergence: the hosted API still computes the un-rounded $226.50, so the cross-surface parity leg fails until the API applies the same election. The benefit is $478 on either reading.",
     evidence:
-      "$ ./axiom-rules-engine run-compiled --artifact us-co-snap.compiled.json < fixture.json\nrc=0   snap_monthly_allotment = 478\n       snap_eligible = unresolved → gated snap_allotment = 0\n       snap_net_income = 226   (certified: 226.50)",
-    fix: "Regenerate the fixture from the current API translator so every eligibility conjunct is supplied, and resolve the output binding that points at the eligibility-gated id while the benefit lives on the 7 CFR 273.10 node.",
+      "[PASS   ] local  outputs={'snap_benefit_amount': '478', 'snap_net_income': '226', 'snap_eligible': 'holds'}\n[FAIL   ] cross-surface: api.snap_net_income=226.5 != local.snap_net_income=226",
+    fix: "The API's serving path applies the same whole-dollar elections the artifact does (axiom-api#115); the parity gate's cross-surface leg is the acceptance test.",
   },
   {
     id: "compat",

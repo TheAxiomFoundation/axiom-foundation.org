@@ -2,8 +2,8 @@
 
 ## State
 
-In progress: the US-only `/verify` restructure is implemented and awaiting
-regression coverage plus full validation.
+In progress: the US-only `/verify` restructure and focused regression coverage
+are complete; full coverage and production-build validation remain.
 
 Publishing is currently blocked because `gh auth status` reports an invalid
 GitHub token for the active account. Local implementation and validation can
@@ -28,10 +28,12 @@ continue.
   divergence tracked by `axiom-api#115`.
 - Corrected the adjacent `/stack` trust overlay so it no longer contradicts
   the released golden-household result.
+- Added focused `/verify` tests for exact US evidence, closure placeholders and
+  semantics, the released tuple and API status, and prohibited non-US content.
+- Passed the focused `/verify` test suite: 3 tests.
 
 ## Next
 
-- Add focused `/verify` regression coverage.
 - Run the full coverage suite.
 - Run `bun run build` and resolve all warnings or errors.
 - Write the final report, push the branch, open the requested draft pull

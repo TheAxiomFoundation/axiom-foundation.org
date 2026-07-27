@@ -17,12 +17,12 @@
       "destination": "https://axiom-demo-shell.vercel.app/demos/:path(.*)"
     },
     {
-      "source": "/chatbot",
-      "destination": "https://finbot-snap-demo.vercel.app/chatbot"
+      "source": "/gallery/chatbot",
+      "destination": "https://finbot-snap-demo.vercel.app/gallery/chatbot"
     },
     {
-      "source": "/chatbot/:path(.*)",
-      "destination": "https://finbot-snap-demo.vercel.app/chatbot/:path(.*)"
+      "source": "/gallery/chatbot/:path(.*)",
+      "destination": "https://finbot-snap-demo.vercel.app/gallery/chatbot/:path(.*)"
     },
     {
       "source": "/gallery/reg-demo",
@@ -98,6 +98,16 @@
     }
   ],
   "redirects": [
+    {
+      "source": "/chatbot",
+      "destination": "/gallery/chatbot",
+      "permanent": false
+    },
+    {
+      "source": "/chatbot/:path(.*)",
+      "destination": "/gallery/chatbot/:path(.*)",
+      "permanent": false
+    },
     {
       "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],

@@ -48,13 +48,29 @@ export function humanizeCitation(fileLegalId: string): string {
 
 /**
  * Some rules carry a raw legal id in their `source` field (synthesized
- * package rules cite their statute as "us:statutes/7/2014"). Render ids
- * as citations; pass genuine citation text through untouched.
+ * package rules cite their statute as "us:statutes/7/2014"), others a
+ * slash-form citation path ("us-ny/regulation/18-nycrr/387/14/a/5(i)").
+ * Render both as citations; pass genuine citation text through
+ * untouched.
  */
 export function humanizeSource(source: string): string {
-  return /^[a-z]{2}(?:-[a-z]{2})?:/.test(source)
-    ? humanizeCitation(source.split("#")[0] ?? source)
-    : source;
+  if (/^[a-z]{2}(?:-[a-z]{2})?:/.test(source)) {
+    return humanizeCitation(source.split("#")[0] ?? source);
+  }
+  const pathish = source.match(
+    /^([a-z]{2}(?:-[a-z]{2})?)\/(statutes?|regulations?|polic(?:y|ies)|guidance)\/(.+)$/,
+  );
+  if (pathish) {
+    const bucket = pathish[2]!.startsWith("statute")
+      ? "statutes"
+      : pathish[2]!.startsWith("regulation")
+        ? "regulations"
+        : pathish[2]!.startsWith("polic")
+          ? "policies"
+          : "guidance";
+    return humanizeCitation(`${pathish[1]}:${bucket}/${pathish[3]}`);
+  }
+  return source;
 }
 
 export function axiomAppUrl(fileLegalId: string): string | null {

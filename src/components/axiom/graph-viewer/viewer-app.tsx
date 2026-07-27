@@ -64,11 +64,14 @@ export function GraphViewerApp() {
   } | null>(null);
   // immediate: the canvas layout is at rest (a plain card click) — no
   // relayout is coming, so the flight starts without the settle hold.
-  const flyTo = (legalId: string, immediate = false) =>
+  // soft: a relayout IS coming, but it's a small unfold — glide
+  // through its commit instead of hard-cutting.
+  const flyTo = (legalId: string, immediate = false, soft = false) =>
     setFlyTarget((current) => ({
       legalId,
       nonce: (current?.nonce ?? 0) + 1,
       immediate,
+      soft,
     }));
   const savedSelection = useRef<{
     outputs: LegalId[];
@@ -78,7 +81,9 @@ export function GraphViewerApp() {
   // effect consumes this instead of re-collapsing the restored graph.
   const restoreFoldedRef = useRef<Set<string> | null>(null);
   const openLens = (legalId: string) => {
-    setInspected(null);
+    // Isolation keeps the right sidebar: the inspector shows the
+    // isolated rule (and carries the trail + Used-by navigation).
+    inspectRule(legalId);
     setLensTrail((trail) => {
       if (trail.length === 0)
         savedSelection.current = {
@@ -94,6 +99,7 @@ export function GraphViewerApp() {
     setLensTrail((trail) => {
       const next = trail.slice(0, index + 1);
       setSelectedOutputs([next[next.length - 1]]);
+      inspectRule(next[next.length - 1]);
       return next;
     });
   };
@@ -128,7 +134,7 @@ export function GraphViewerApp() {
         return next;
       });
     }
-    flyTo(legalId, toUnfold.size === 0);
+    flyTo(legalId, toUnfold.size === 0, toUnfold.size > 0);
     // An Index click is a card click: open the info sheet, which also
     // pins the path highlight until it closes.
     inspectRule(legalId);
@@ -171,24 +177,21 @@ export function GraphViewerApp() {
   };
   // A click opens the card's info and glides the camera to it — the
   // graph itself stays exactly as drawn (no re-dissection; that's the
-  // double-click lens). During a walk the walk owns the camera, so a
-  // click only inspects.
+  // double-click lens).
   const focusNode = (data: IrgNodeData) => {
     setInspected(data);
     const legalId = "legalId" in data && data.legalId ? data.legalId : null;
-    if (!legalId || walk) return;
+    if (!legalId) return;
     if (data.kind !== "output" && data.kind !== "ruleRef") return;
     flyTo(legalId, true);
   };
   const lensFocusId = lensTrail[lensTrail.length - 1] ?? null;
-  // Downstream: who uses the focused rule — the direction the
-  // upstream tree cannot draw.
-  const lensConsumers = useMemo(() => {
-    if (!lensFocusId || !graph) return [];
-    return graph.rules
-      .filter((rule) => rule.ruleDeps.includes(lensFocusId))
-      .slice(0, 10);
-  }, [lensFocusId, graph]);
+  // The sidebar is isolation's home — a pane click may clear the
+  // card, but while isolated it comes straight back on the focus.
+  useEffect(() => {
+    if (lensFocusId && !inspected) inspectRule(lensFocusId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lensFocusId, inspected]);
   const [runResult, setRunResult] = useState<{
     outputs: Record<string, number | string | boolean | null>;
     trace: Array<{ variable: string; value: unknown }>;
@@ -216,17 +219,6 @@ export function GraphViewerApp() {
   const [intentInput, setIntentInput] = useState<{
     legalId: string;
     name: string;
-  } | null>(null);
-  // The guided walk: step through the tree one layer at a time.
-  // "up" walks an input toward the results it feeds; "down" walks a
-  // result toward the questions it rests on.
-  const [walk, setWalk] = useState<{
-    /** null at the origin — the first step picks the direction. */
-    direction: "up" | "down" | null;
-    trail: string[];
-    /** Which step of the trail is in focus — stepping back does not
-     *  drop the steps ahead. */
-    cursor: number;
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [outputsOpen, setOutputsOpen] = useState(false);
@@ -266,7 +258,6 @@ export function GraphViewerApp() {
     if (veilTimer.current) window.clearTimeout(veilTimer.current);
     veilTimer.current = window.setTimeout(() => setVeiled(false), ms);
   };
-  const launcherRef = useRef<"open" | "leaving" | "closed">("open");
   const pendingReplay = useRef(false);
   // The scenario runner belongs to the "Run a scenario" journey only —
   // survey and rule journeys keep a quieter sidebar.
@@ -281,6 +272,11 @@ export function GraphViewerApp() {
         ? "open"
         : "closed",
   );
+  // MUST mirror the state's initial value: a ?program= deep link
+  // starts with the launcher closed, and the summit flight checks
+  // this ref — a stale "open" here parks the opening flight behind a
+  // launcher that will never dismiss.
+  const launcherRef = useRef<"open" | "leaving" | "closed">(launcher);
   const dismissLauncher = () => {
     setLauncher("leaving");
     launcherRef.current = "leaving";
@@ -305,6 +301,7 @@ export function GraphViewerApp() {
     setIntentKind("input");
     setIntentInput(null);
     setLauncher("open");
+    launcherRef.current = "open";
   };
   const applySurvey = () => {
     pendingOpeningRef.current = null;
@@ -349,7 +346,7 @@ export function GraphViewerApp() {
   };
   const beginRuleLens = (legalId: string) => {
     dismissLauncher();
-    startWalkAt(legalId);
+    isolateAt(legalId);
   };
   const walkRuleById = useMemo(
     () => new Map((graph?.rules ?? []).map((rule) => [rule.legalId, rule])),
@@ -390,98 +387,38 @@ export function GraphViewerApp() {
       (rule) =>
         rule.ruleDeps.includes(legalId) || rule.inputDeps.includes(legalId),
     );
-  const savedWalkSelection = useRef<{
-    outputs: LegalId[];
-    folded: Set<string>;
-  } | null>(null);
-  // Resolve a trail entry to the rule that anchors it on the canvas
-  // (inputs stand on their first consumer).
-  const walkAnchorOf = (legalId: string): string | null => {
-    if (walkRuleById.has(legalId)) return legalId;
-    return consumersOf(legalId)[0]?.legalId ?? null;
+  // "Isolate" — the lens IS isolation: the canvas scopes to the rule,
+  // dissected to its immediate structure; expand pills grow it down.
+  const isolateAt = (legalId: string) => {
+    pendingOpeningRef.current = null;
+    setScenarioMode(false);
+    openLens(legalId);
+    flyTo(legalId);
   };
-  const focusWalkTrail = (
-    direction: "up" | "down" | null,
-    trail: string[],
-  ) => {
-    const current = trail[trail.length - 1];
-    if (direction === "up") {
-      // Climbing accumulates: every visited step stays on the canvas,
-      // so the graph grows with the journey.
-      const anchors = [
-        ...new Set(
-          trail
-            .map((id) => walkAnchorOf(id))
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ];
-      if (anchors.length > 0) setSelectedOutputs(anchors);
-    } else {
-      // Descending narrows: the canvas is the subtree still ahead.
-      const anchor = walkAnchorOf(current);
-      if (anchor) setSelectedOutputs([anchor]);
+  // Selecting a node further upstream while isolated EXPANDS the
+  // canvas: the new root's tree contains the current view, branches
+  // already open stay open, and only the new territory arrives
+  // folded. Navigation is selection — no modes, no arrows.
+  const expandLensTo = (legalId: string) => {
+    if (!graph) return;
+    const nextTraces = buildStructureTraces(graph, [legalId]);
+    const folds = new Set<string>();
+    for (const id of initialCollapse(nextTraces, "always")) {
+      if (!inScopeIds.has(id)) folds.add(id);
     }
-    // Every step refolds the canvas around the trail, so a relayout is
-    // always coming — the controller cuts to the destination in the
-    // relayout's own commit (never glide-then-jump).
-    setFlyTarget((prev) => ({
-      legalId: current,
-      nonce: (prev?.nonce ?? 0) + 1,
-    }));
-  };
-  // "How does this rule work?" — open the walk AT the rule, both
-  // directions on offer; the first step decides up or down.
-  const startWalkAt = (legalId: string) => {
-    pendingOpeningRef.current = null;
-    setInspected(null);
-
-    setScenarioMode(false);
-    savedWalkSelection.current = {
-      outputs: selectedOutputs,
-      folded: new Set(folded),
-    };
-    setWalk({ direction: null, trail: [legalId], cursor: 0 });
-    focusWalkTrail(null, [legalId]);
-  };
-  const startWalk = (direction: "up" | "down", legalId: string) => {
-    pendingOpeningRef.current = null;
-    dismissLauncher();
-
-    setScenarioMode(false);
-    savedWalkSelection.current = {
-      outputs: selectedOutputs,
-      folded: new Set(folded),
-    };
-    setWalk({ direction, trail: [legalId], cursor: 0 });
-    focusWalkTrail(direction, [legalId]);
-  };
-  const walkTo = (legalId: string, direction?: "up" | "down") => {
-    setWalk((current) => {
-      if (!current) return current;
-      const nextDirection = current.direction ?? direction ?? "down";
-      // Advancing from mid-trail branches off: keep up to the cursor,
-      // then append.
-      const trail = [...current.trail.slice(0, current.cursor + 1), legalId];
-      focusWalkTrail(nextDirection, trail);
-      return { ...current, direction: nextDirection, trail, cursor: trail.length - 1 };
+    for (const id of folded) folds.add(id);
+    restoreFoldedRef.current = folds;
+    setLensTrail((trail) => {
+      if (trail.length === 0)
+        savedSelection.current = {
+          outputs: selectedOutputs,
+          folded: new Set(folded),
+        };
+      return [...trail, legalId];
     });
-  };
-  const walkFocus = (index: number) => {
-    if (!walk || index === walk.cursor) return;
-    // The cursor drives the scope: stepping back re-roots the canvas
-    // to that step's view (down-walks widen again, up-walks shrink),
-    // and the camera flies with it.
-    setWalk({ ...walk, cursor: index });
-    focusWalkTrail(walk.direction, walk.trail.slice(0, index + 1));
-  };
-  const endWalk = () => {
-    setWalk(null);
-    if (savedWalkSelection.current) {
-      setSelectedOutputs(savedWalkSelection.current.outputs);
-      restoreFoldedRef.current = savedWalkSelection.current.folded;
-      setFolded(savedWalkSelection.current.folded);
-      savedWalkSelection.current = null;
-    }
+    setSelectedOutputs([legalId]);
+    flyTo(legalId);
+    inspectRule(legalId);
   };
 
   const intentMatches = useMemo(() => {
@@ -650,12 +587,13 @@ export function GraphViewerApp() {
         visited.add(id);
         const rule = byId.get(id);
         if (!rule) return;
-        // Person/member-entity rules cannot be traced against the
-        // abstract unit household — one of them fails the whole run.
-        // Traverse through them, but never request them as variables.
-        const personLevel =
-          rule.entity != null && /person|member/i.test(rule.entity);
-        if (rule.kind === "derived" && !personLevel) reachable.add(id);
+        // Rules on entities other than the household unit (Person,
+        // Asset, …) cannot be traced against the household query —
+        // any one of them fails the whole run. Traverse through
+        // them, but never request them as variables.
+        const offUnit =
+          rule.entity != null && !/household|unit/i.test(rule.entity);
+        if (rule.kind === "derived" && !offUnit) reachable.add(id);
         for (const dep of rule.ruleDeps) walk(dep);
       };
       // Every run computes the outermost layer and everything in
@@ -678,28 +616,65 @@ export function GraphViewerApp() {
         });
       // The runtime resolves variables by bare rule name (legalId
       // forms fail on some packages), so trace requests speak names.
-      // One bad or excess variable fails the whole run, so walk a
-      // ladder — each rung keeps as many intermediates as the engine
-      // will accept before giving up on tracing entirely.
       const bareNames = [
-        ...new Set(
-          [...reachable].map((id) => id.split("#").pop() ?? id),
-        ),
-      ];
-      let response: Response | null = null;
-      for (const cap of [96, 48, 24, 0]) {
-        const variables = bareNames.slice(0, cap);
+        ...new Set([...reachable].map((id) => id.split("#").pop() ?? id)),
+      ].slice(0, 96);
+      const tryVariables = async (variables: string[]) => {
         lastRunRequest.current = {
           jurisdiction: effectiveProgram.jurisdiction,
           program_id: effectiveProgram.programId,
           values: scenario,
           variables,
         };
-        response = await attempt(variables);
-        if (response.ok) break;
+        const result = await attempt(variables);
+        return result.ok ? result : null;
+      };
+      // One bad name fails the WHOLE trace. Try everything; on
+      // failure, probe chunks under a bounded request budget and keep
+      // the good ones — so the middle of the graph still lights up
+      // instead of collapsing to outputs-only.
+      let response = await tryVariables(bareNames);
+      if (!response && bareNames.length > 0) {
+        const good: string[] = [];
+        let probes = 0;
+        const probe = async (chunk: string[], depth: number) => {
+          if (chunk.length === 0 || probes >= 9) return;
+          probes += 1;
+          const result = await attempt(chunk);
+          if (result.ok) {
+            good.push(...chunk);
+            return;
+          }
+          // One halving pass, then drop the poisoned few.
+          if (depth >= 1 || chunk.length === 1) return;
+          const mid = Math.ceil(chunk.length / 2);
+          await probe(chunk.slice(0, mid), depth + 1);
+          await probe(chunk.slice(mid), depth + 1);
+        };
+        const size = Math.ceil(bareNames.length / 4);
+        for (let i = 0; i < bareNames.length; i += size) {
+          await probe(bareNames.slice(i, i + size), 0);
+        }
+        response = await tryVariables(good);
       }
-      if (!response || !response.ok)
-        throw new Error(`run failed (${response?.status ?? "?"})`);
+      if (!response) {
+        // Even outputs-only failed: the package itself can't run.
+        lastRunRequest.current = {
+          jurisdiction: effectiveProgram.jurisdiction,
+          program_id: effectiveProgram.programId,
+          values: scenario,
+          variables: [],
+        };
+        const bare = await attempt([]);
+        if (!bare.ok) {
+          throw new Error(
+            bare.status === 502
+              ? "The engine can't run this program right now — its compiled package is unavailable upstream."
+              : `run failed (${bare.status})`,
+          );
+        }
+        response = bare;
+      }
       const data = (await response.json()) as {
         outputs: Record<string, number | string | boolean | null>;
         trace: Array<{ variable: string; value: unknown }>;
@@ -1090,7 +1065,7 @@ export function GraphViewerApp() {
       .slice(0, 100);
   }, [indexSearch, graph, inScopeIds, mainlandIds]);
   // Take me there — wherever "there" is: in-scope results fly in
-  // place; out-of-scope results leave the walk and re-root on the
+  // place; out-of-scope results leave the lens and re-root on the
   // rule itself.
   const goToSearchResult = (match: {
     legalId: string;
@@ -1102,10 +1077,11 @@ export function GraphViewerApp() {
       if (match.kind === "input") inspectInput(match.legalId);
       return;
     }
-    // Out of the current scope (a walk narrowed the canvas, or a
+    // Out of the current scope (a lens narrowed the canvas, or a
     // deep link scoped it): restore the whole tree, then land on the
     // match with its path pinned alight.
-    if (walk) endWalk();
+    setLensTrail([]);
+    savedSelection.current = null;
     surveyRef.current = true;
     // A match on a standalone piece brings its whole island on stage —
     // the user asked for it by name.
@@ -1167,11 +1143,11 @@ export function GraphViewerApp() {
     const key =
       Object.keys(structureTraces).sort().join("|") +
       "::" +
-      (lensTrail.length > 0 || walk ? "always" : "auto");
+      (lensTrail.length > 0 ? "always" : "auto");
     if (foldedInitialized.current !== key) {
       foldedInitialized.current = key;
       if (restoreFoldedRef.current) {
-        // A lens or walk just closed — bring back the exact fold
+        // A lens just closed — bring back the exact fold
         // state the user left, not a fresh dissection.
         setFolded(restoreFoldedRef.current);
         restoreFoldedRef.current = null;
@@ -1180,12 +1156,6 @@ export function GraphViewerApp() {
         // instead of re-dissecting the new selection. Identity-stable:
         // a fresh empty Set would trigger a second full relayout.
         surveyRef.current = false;
-        setFolded((current) => (current.size === 0 ? current : new Set()));
-      } else if (walk) {
-        // Walk scope is the selection itself: the origin shows the
-        // rule's whole downstream tree, descending re-roots into a
-        // smaller fully-open tree, ascending accumulates a larger
-        // one. Nothing folds while walking.
         setFolded((current) => (current.size === 0 ? current : new Set()));
       } else {
         setFolded(
@@ -1196,7 +1166,7 @@ export function GraphViewerApp() {
         );
       }
     }
-  }, [structureTraces, lensTrail.length, walk]);
+  }, [structureTraces, lensTrail.length]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -1290,7 +1260,10 @@ export function GraphViewerApp() {
   useEffect(() => {
     if (!runResult) return;
     setPlaneFresh(true);
-    // Land the way the graph opens: on the top computed node.
+    // Land the way the graph opens: on the top computed node. The
+    // value chips resize every card, so a relayout is coming — the
+    // camera cuts inside its commit and the crossfade (plane-fresh
+    // scene rule) folds teleport + cut into one perceived change.
     if (summitOutput) {
       setFlyTarget((current) => ({
         legalId: summitOutput,
@@ -1339,7 +1312,7 @@ export function GraphViewerApp() {
   }, [runResult, liveTraces.executed]);
 
   // Computed values by durable legal id (from the live traces), for
-  // the walk panel.
+  // the step-by-step replay bar.
   const valueByLegalId = useMemo(() => {
     const map = new Map<string, string>();
     const visit = (node: TraceNode, seen: Set<string>) => {
@@ -1524,10 +1497,41 @@ export function GraphViewerApp() {
                 </label>
               ))}
               {activeFields.length === 0 && (
-                <p className="run-hint">
-                  Pick inputs on the left — unanswered ones fall to the
-                  law's defaults.
-                </p>
+                <>
+                  <p className="run-hint">
+                    Pick inputs on the left — unanswered ones fall to the
+                    law's defaults.
+                  </p>
+                  {inputCatalog.some(
+                    (input) => input.name in CURATED_SAMPLES,
+                  ) && (
+                    <button
+                      type="button"
+                      className="run-sample"
+                      onClick={() => {
+                        // One click to a runnable household: the curated
+                        // starter values this package understands.
+                        const starters = inputCatalog.filter(
+                          (input) => input.name in CURATED_SAMPLES,
+                        );
+                        setSelectedLevers(starters.map((input) => input.name));
+                        // Merge under any answers already typed on the
+                        // canvas — a sample never overwrites the user.
+                        setScenario((current) => ({
+                          ...Object.fromEntries(
+                            starters.map((input) => [
+                              input.name,
+                              CURATED_SAMPLES[input.name]!,
+                            ]),
+                          ),
+                          ...current,
+                        }));
+                      }}
+                    >
+                      Start from a sample household
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1570,7 +1574,7 @@ export function GraphViewerApp() {
           </h1>
           <p className="plane-launcher-sub">
             Pick a program — the whole law opens on the canvas: search it,
-            walk any rule, answer questions, and run.
+            isolate any rule, answer questions, and run.
           </p>
           {programsLoading ? (
             <p className="plane-launcher-loading">Loading programs…</p>
@@ -1612,7 +1616,7 @@ export function GraphViewerApp() {
         </div>
       </div>
     )}
-    <main className={`app-shell no-sidebar ${walk ? "walk-active" : ""}`}>
+    <main className="app-shell no-sidebar">
 
       <section className="viewer-panel">
         <div className="top-controls">
@@ -1756,40 +1760,6 @@ export function GraphViewerApp() {
               </div>
             </div>
           )}
-        {lensFocusId && (
-          <div className="lens-bar" role="navigation" aria-label="Rule lens trail">
-            <button type="button" className="lens-crumb lens-crumb-root" onClick={closeLens}>
-              ⊞ Map
-            </button>
-            {lensTrail.map((id, index) => (
-              <span key={`${id}-${index}`} className="lens-crumb-wrap">
-                <span aria-hidden className="lens-sep">▸</span>
-                <button
-                  type="button"
-                  className={`lens-crumb ${index === lensTrail.length - 1 ? "is-current" : ""}`}
-                  onClick={() => jumpLens(index)}
-                >
-                  {humanize(id.split("#").pop() ?? id)}
-                </button>
-              </span>
-            ))}
-            {lensConsumers.length > 0 && (
-              <span className="lens-consumers">
-                <span className="lens-consumers-label">used by</span>
-                {lensConsumers.map((rule) => (
-                  <button
-                    key={rule.legalId}
-                    type="button"
-                    className="lens-consumer-chip"
-                    onClick={() => openLens(rule.legalId)}
-                  >
-                    {humanize(rule.name)}
-                  </button>
-                ))}
-              </span>
-            )}
-          </div>
-        )}
 
           {error && <div className="status error">{error}</div>}
 
@@ -1806,11 +1776,10 @@ export function GraphViewerApp() {
               showValues={Boolean(runResult)}
               executionActive={Boolean(runResult)}
               executedLegalIds={effectiveExecuted}
-              dissect={lensFocusId || walk ? "always" : "auto"}
+              dissect={lensFocusId ? "always" : "auto"}
               collapsed={folded}
               onCollapsedChange={setFolded}
               flyTo={flyTarget}
-              walkTrail={walk ? walk.trail.slice(0, walk.cursor + 1) : null}
               onInspect={focusNode}
               pinnedLegalId={
                 inspected && "legalId" in inspected && inspected.legalId
@@ -1829,334 +1798,6 @@ export function GraphViewerApp() {
           )}
         </div>
 
-        {walk && (() => {
-          const currentId = walk.trail[walk.cursor];
-          const rule = walkRuleById.get(currentId);
-          const input = walkInputById.get(currentId);
-          const isUp = walk.direction === "up";
-          const atOrigin = walk.direction === null;
-          const nextUp =
-            isUp || atOrigin ? consumersOf(currentId) : [];
-          const depRules = !isUp && rule
-            ? rule.ruleDeps
-                .map((id) => walkRuleById.get(id))
-                .filter((dep): dep is NonNullable<typeof dep> => Boolean(dep))
-            : [];
-          const depInputs = !isUp && rule
-            ? rule.inputDeps
-                .map((id) => walkInputById.get(id))
-                .filter((dep): dep is NonNullable<typeof dep> => Boolean(dep))
-            : [];
-          const atEnd = atOrigin
-            ? nextUp.length === 0 && depRules.length === 0
-            : isUp
-              ? nextUp.length === 0
-              : depRules.length === 0;
-          const name = humanize(
-            (rule?.name ?? input?.name ?? currentId.split("#").pop()) || "",
-          );
-          const value = valueByLegalId.get(currentId) ?? null;
-          return (
-            <aside className="walk-panel" aria-label="Guided walk">
-              <div className="walk-head">
-                <button
-                  type="button"
-                  className="results-close"
-                  onClick={endWalk}
-                  aria-label="End the walk"
-                >
-                  ×
-                </button>
-              </div>
-              <ol className="walk-sequence" aria-label="Walk sequence">
-                {walk.trail.map((id, index) => (
-                  <li key={`${id}-${index}`}>
-                    <button
-                      type="button"
-                      className={index === walk.cursor ? "is-current" : ""}
-                      onClick={() => walkFocus(index)}
-                    >
-                      {humanize(
-                        (walkRuleById.get(id)?.name ??
-                          walkInputById.get(id)?.name ??
-                          id.split("#").pop()) || "",
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-
-              <div className="walk-card">
-                <h2>{name}</h2>
-                {rule?.kind === "parameter" && rule.formula ? (
-                  <p className="parameter-value">
-                    {formatParameterValue(
-                      rule.formula.replace(/\s+/g, " ").trim(),
-                      rule.unit ?? null,
-                    )}
-                  </p>
-                ) : null}
-                {value !== null && <p className="walk-value">{value}</p>}
-                {(() => {
-                  const cite =
-                    rule?.source ??
-                    (currentId
-                      ? humanizeCitation(fileLegalIdOf(currentId))
-                      : null);
-                  if (!cite || /composition/i.test(cite)) return null;
-                  return (
-                    <p className="walk-cite">
-                      {rule?.sourceUrl ? (
-                        <a
-                          href={rule.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {cite} ↗
-                        </a>
-                      ) : (
-                        cite
-                      )}
-                    </p>
-                  );
-                })()}
-                {input && (
-                  <p className="walk-note">
-                    A fact asked of the household — the raw material of the
-                    computation.
-                  </p>
-                )}
-                <dl className="node-inspector-meta walk-meta">
-                  {(rule?.entity ?? input?.entity) ? (
-                    <>
-                      <dt>Entity</dt>
-                      <dd>
-                        {humanize((rule?.entity ?? input?.entity) as string)}
-                      </dd>
-                    </>
-                  ) : null}
-                  {rule?.period ? (
-                    <>
-                      <dt>Period</dt>
-                      <dd>{rule.period}</dd>
-                    </>
-                  ) : null}
-                  {rule?.unit ? (
-                    <>
-                      <dt>Unit</dt>
-                      <dd>{rule.unit}</dd>
-                    </>
-                  ) : null}
-                  {null}
-                  {rule &&
-                  (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
-                    <>
-                      <dt>Built from</dt>
-                      <dd>
-                        <div className="node-inspector-consumers">
-                          {rule.ruleDeps.map((depId) => (
-                            <button
-                              type="button"
-                              key={depId}
-                              onClick={() => flyFromIndex(depId)}
-                              title="Fly to this rule on the canvas"
-                            >
-                              {humanize(
-                                walkRuleById.get(depId)?.name ??
-                                  depId.split("#").pop() ??
-                                  depId,
-                              )}
-                            </button>
-                          ))}
-                          {rule.inputDeps.map((depId) => (
-                            <span key={depId} className="node-inspector-dep-q">
-                              {humanize(
-                                walkInputById.get(depId)?.name ??
-                                  (depId.split("#").pop() ?? depId).split(".").pop() ??
-                                  depId,
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                      </dd>
-                    </>
-                  ) : null}
-                                    {input && input.sample !== undefined && input.sample !== null ? (
-                    <>
-                      <dt>Default</dt>
-                      <dd className="node-inspector-mono">
-                        {typeof input.sample === "object"
-                          ? JSON.stringify(input.sample)
-                          : String(input.sample)}
-                      </dd>
-                    </>
-                  ) : null}
-                </dl>
-                {rule?.formula && rule.kind !== "parameter" && (
-                  <details className="node-inspector-code walk-code">
-                    <summary>Formula</summary>
-                    <div className="node-inspector-code-body">
-                      <FormulaPretty source={rule.formula} />
-                    </div>
-                  </details>
-                )}
-              </div>
-
-              <div className="walk-arrows" aria-label="Walk navigation">
-                <button
-                  type="button"
-                  disabled={walk.cursor === 0}
-                  onClick={() => walkFocus(walk.cursor - 1)}
-                  aria-label="Previous step"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  disabled={walk.cursor >= walk.trail.length - 1 && atEnd}
-                  onClick={() => {
-                    if (walk.cursor < walk.trail.length - 1) {
-                      walkFocus(walk.cursor + 1);
-                    } else if (atOrigin) {
-                      if (depRules.length > 0) walkTo(depRules[0].legalId, "down");
-                      else if (nextUp.length > 0) walkTo(nextUp[0].legalId, "up");
-                    } else if (isUp && nextUp.length > 0) {
-                      walkTo(nextUp[0].legalId);
-                    } else if (!isUp && depRules.length > 0) {
-                      walkTo(depRules[0].legalId);
-                    }
-                  }}
-                  aria-label="Next step"
-                >
-                  →
-                </button>
-              </div>
-              {atEnd ? (
-                <div className="walk-end">
-                  {isUp ? (
-                    <>
-                      <strong>🏁 End of the line.</strong>
-                      <p>
-                        {name} feeds nothing further — it is a final result
-                        of this program.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <strong>⚑ Bedrock.</strong>
-                      <p>
-                        {rule?.kind === "parameter"
-                          ? `${name} is a constant fixed by the law — nothing further to unfold.`
-                          : depInputs.length > 0
-                            ? `${name} rests directly on ${depInputs.length} household ${depInputs.length === 1 ? "question" : "questions"}.`
-                            : `${name} rests on no further rules.`}
-                      </p>
-                      {depInputs.length > 0 && (
-                        <div className="walk-input-chips">
-                          {depInputs.slice(0, 8).map((dep) => (
-                            <span key={dep.legalId}>{humanize(dep.name)}</span>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    className="walk-lens"
-                    onClick={() => {
-                      const target = rule ? currentId : walk.trail[1] ?? currentId;
-                      endWalk();
-                      openLens(target);
-                    }}
-                  >
-                    ⊙ Open this on the map
-                  </button>
-                </div>
-              ) : atOrigin ? (
-                <div className="walk-next">
-                  {depRules.length > 0 && (
-                    <>
-                      <span className="walk-next-label">
-                        Built from {depRules.length}{" "}
-                        {depRules.length === 1 ? "rule" : "rules"} — walk down:
-                      </span>
-                      <div className="walk-choices">
-                        {depRules.slice(0, 6).map((next) => (
-                          <button
-                            key={next.legalId}
-                            type="button"
-                            onClick={() => walkTo(next.legalId, "down")}
-                          >
-                            {humanize(next.name)}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {nextUp.length > 0 && (
-                    <>
-                      <span className="walk-next-label">
-                        Feeds {nextUp.length}{" "}
-                        {nextUp.length === 1 ? "rule" : "rules"} — walk up:
-                      </span>
-                      <div className="walk-choices">
-                        {nextUp.slice(0, 6).map((next) => (
-                          <button
-                            key={next.legalId}
-                            type="button"
-                            onClick={() => walkTo(next.legalId, "up")}
-                          >
-                            {humanize(next.name)}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {depInputs.length > 0 && (
-                    <div className="walk-input-chips">
-                      {depInputs.slice(0, 6).map((dep) => (
-                        <span key={dep.legalId}>{humanize(dep.name)}</span>
-                      ))}
-                      {depInputs.length > 6 && (
-                        <span>+{depInputs.length - 6} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="walk-next">
-                  <span className="walk-next-label">
-                    {isUp
-                      ? `Feeds ${nextUp.length} ${nextUp.length === 1 ? "rule" : "rules"} — walk on:`
-                      : `Computed from ${depRules.length} ${depRules.length === 1 ? "rule" : "rules"}:`}
-                  </span>
-                  <div className="walk-choices">
-                    {(isUp ? nextUp : depRules).slice(0, 9).map((next) => (
-                      <button
-                        key={next.legalId}
-                        type="button"
-                        onClick={() => walkTo(next.legalId)}
-                      >
-                        {humanize(next.name)}
-                      </button>
-                    ))}
-                  </div>
-                  {!isUp && depInputs.length > 0 && (
-                    <div className="walk-input-chips">
-                      {depInputs.slice(0, 6).map((dep) => (
-                        <span key={dep.legalId}>{humanize(dep.name)}</span>
-                      ))}
-                      {depInputs.length > 6 && (
-                        <span>+{depInputs.length - 6} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </aside>
-          );
-        })()}
-
         {inspected &&
           (() => {
             const legalId =
@@ -2172,7 +1813,13 @@ export function GraphViewerApp() {
               meta?.citation ??
               rule?.source ??
               (legalId ? fileLegalIdOf(legalId) : null);
-            const citation = rawCitation ? humanizeSource(rawCitation) : null;
+            // A synthetic package home is not a source — a question
+            // with no citation shows no Source row rather than the
+            // raw "axiom:us-ny-snap-fy-2026" id.
+            const citation =
+              rawCitation && !rawCitation.startsWith("axiom:")
+                ? humanizeSource(rawCitation)
+                : null;
             const parameterValue =
               meta?.parameterValue ??
               (rule?.kind === "parameter" && rule.formula
@@ -2195,9 +1842,17 @@ export function GraphViewerApp() {
               ) {
                 return source.split("#")[0] ?? null;
               }
-              for (const consumer of consumers) {
-                const file = fileLegalIdOf(consumer.legalId);
-                if (/:(statutes|regulations)\//.test(file)) return file;
+              // Only questions borrow a consumer's provision — they
+              // have no home in the law, so the section that asks them
+              // is the honest read. A RULE with an unreadable home (a
+              // policy file the corpus text doesn't carry) must never
+              // point at a consumer's law: that provision does not
+              // contain it.
+              if (!rule) {
+                for (const consumer of consumers) {
+                  const file = fileLegalIdOf(consumer.legalId);
+                  if (/:(statutes|regulations)\//.test(file)) return file;
+                }
               }
               return null;
             })();
@@ -2207,12 +1862,34 @@ export function GraphViewerApp() {
               <button
                 type="button"
                 className="results-close"
-                onClick={() => setInspected(null)}
+                onClick={() => {
+                  // In isolation the sidebar IS the mode — closing it
+                  // ends the isolation and restores the map.
+                  if (lensTrail.length > 0) closeLens();
+                  setInspected(null);
+                }}
                 aria-label="Close inspector"
               >
                 ×
               </button>
             </div>
+            {lensTrail.length > 1 && (
+              <nav
+                className="lens-bar lens-bar-docked"
+                aria-label="Isolation trail"
+              >
+                {lensTrail.map((id, index) => (
+                  <button
+                    type="button"
+                    key={`${id}-${index}`}
+                    className={`lens-crumb ${index === lensTrail.length - 1 ? "is-current" : ""}`}
+                    onClick={() => jumpLens(index)}
+                  >
+                    {humanize(id.split("#").pop() ?? id)}
+                  </button>
+                ))}
+              </nav>
+            )}
             <h2 className="node-inspector-title">
               {humanize("label" in inspected ? (inspected.label ?? "") : "")}
             </h2>
@@ -2335,64 +2012,97 @@ export function GraphViewerApp() {
                 </>
               ) : null}
                           </dl>
-            {/* Dependency sections live below the vitals — they can run
-                long (a work requirement builds from a dozen questions),
-                so each is a count-labelled collapsible with its own
-                scroll instead of rows stretching the meta grid. */}
-            {rule && (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0) ? (
-              <details
-                className="node-inspector-deps"
-                open={rule.ruleDeps.length + rule.inputDeps.length <= 8}
-              >
-                <summary>
-                  Built from · {rule.ruleDeps.length + rule.inputDeps.length}
-                </summary>
-                <div className="node-inspector-consumers">
-                  {rule.ruleDeps.map((depId) => (
-                    <button
-                      type="button"
-                      key={depId}
-                      onClick={() => flyFromIndex(depId)}
-                      title="Fly to this rule on the canvas"
-                    >
-                      {humanize(
-                        walkRuleById.get(depId)?.name ??
-                          depId.split("#").pop() ??
-                          depId,
-                      )}
-                    </button>
-                  ))}
-                  {rule.inputDeps.map((depId) => (
-                    <span key={depId} className="node-inspector-dep-q">
-                      {humanize(
-                        walkInputById.get(depId)?.name ??
-                          (depId.split("#").pop() ?? depId).split(".").pop() ??
-                          depId,
-                      )}
-                    </span>
-                  ))}
+            {/* The flow panel: where this rule comes from and where it
+                goes, side by side. ↓ descends into a dependency, ↑
+                climbs to a consumer (expanding the canvas when the
+                consumer is upstream of the current view). Rows wrap —
+                the inspector never scrolls sideways. */}
+            {(rule &&
+              (rule.ruleDeps.length > 0 || rule.inputDeps.length > 0)) ||
+            consumers.length > 0 ? (
+              <div className="node-inspector-flow">
+                <div className="node-inspector-flow-col">
+                  <p className="node-inspector-flow-label">
+                    Built from
+                    {rule
+                      ? ` · ${rule.ruleDeps.length + rule.inputDeps.length}`
+                      : ""}
+                  </p>
+                  <div className="node-inspector-flow-list">
+                    {(rule?.ruleDeps ?? []).map((depId) => (
+                      <button
+                        type="button"
+                        key={depId}
+                        onClick={() => flyFromIndex(depId)}
+                        title="Descend to this rule on the canvas"
+                      >
+                        {humanize(
+                          walkRuleById.get(depId)?.name ??
+                            depId.split("#").pop() ??
+                            depId,
+                        )}
+                      </button>
+                    ))}
+                    {(rule?.inputDeps ?? []).map((depId) => (
+                      <button
+                        type="button"
+                        key={depId}
+                        className="node-inspector-flow-q"
+                        onClick={() => {
+                          flyFromIndex(depId);
+                          inspectInput(depId);
+                        }}
+                        title="Fly to this question on the canvas"
+                      >
+                        {humanize(
+                          walkInputById.get(depId)?.name ??
+                            (depId.split("#").pop() ?? depId)
+                              .split(".")
+                              .pop() ??
+                            depId,
+                        )}
+                      </button>
+                    ))}
+                    {!rule ||
+                    (rule.ruleDeps.length === 0 &&
+                      rule.inputDeps.length === 0) ? (
+                      <span className="node-inspector-flow-empty">
+                        nothing — a leaf
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </details>
-            ) : null}
-            {consumers.length > 0 ? (
-              <details
-                className="node-inspector-deps"
-                open={consumers.length <= 8}
-              >
-                <summary>Used by · {consumers.length}</summary>
-                <div className="node-inspector-consumers">
-                  {consumers.map((consumer) => (
-                    <button
-                      type="button"
-                      key={consumer.legalId}
-                      onClick={() => flyFromIndex(consumer.legalId)}
-                      title="Fly to this rule on the canvas"
-                    >
-                      {humanize(consumer.name)}
-                    </button>
-                  ))}
+                <div className="node-inspector-flow-col">
+                  <p className="node-inspector-flow-label">
+                    Used by · {consumers.length}
+                  </p>
+                  <div className="node-inspector-flow-list">
+                    {consumers.map((consumer) => (
+                      <button
+                        type="button"
+                        key={consumer.legalId}
+                        onClick={() =>
+                          inScopeIds.has(consumer.legalId)
+                            ? flyFromIndex(consumer.legalId)
+                            : expandLensTo(consumer.legalId)
+                        }
+                        title={
+                          inScopeIds.has(consumer.legalId)
+                            ? "Climb to this rule on the canvas"
+                            : "Expand the canvas up to this rule"
+                        }
+                      >
+                        {humanize(consumer.name)}
+                      </button>
+                    ))}
+                    {consumers.length === 0 && (
+                      <span className="node-inspector-flow-empty">
+                        nothing — a final result
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </details>
+              </div>
             ) : null}
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
@@ -2407,10 +2117,10 @@ export function GraphViewerApp() {
             inspected.kind !== "input" ? (
               <button
                 type="button"
-                className="node-inspector-lens"
-                onClick={() => startWalkAt(inspected.legalId)}
+                className="node-inspector-link"
+                onClick={() => isolateAt(inspected.legalId)}
               >
-                ⊙ How does this rule work?
+                Isolate this rule
               </button>
             ) : null}
             {"kind" in inspected &&

@@ -55,10 +55,12 @@ interface Props {
   collapsed?: Set<string>;
   onCollapsedChange?: (next: Set<string>) => void;
   /** Fly the camera to this rule; bump nonce to re-trigger. */
-  flyTo?: { legalId: string; nonce: number } | null;
-  /** The guided walk's visited legal ids — lit on the canvas, the
-   *  current step strongest. */
-  walkTrail?: string[] | null;
+  flyTo?: {
+    legalId: string;
+    nonce: number;
+    immediate?: boolean;
+    soft?: boolean;
+  } | null;
   /** Run mode: the execution layer is live — executed nodes lift,
    *  the rest recede, the camera flies the executed path. */
   executionActive?: boolean;
@@ -106,7 +108,6 @@ export function InteractiveRuleGraph({
   collapsed: controlledCollapsed,
   onCollapsedChange,
   flyTo,
-  walkTrail,
   executionActive = false,
   executedLegalIds,
   onInspect,
@@ -452,25 +453,13 @@ export function InteractiveRuleGraph({
   }, [edges, executedIds]);
 
 
-  const walkSet = useMemo(() => new Set(walkTrail ?? []), [walkTrail]);
-  const walkCurrent = walkTrail?.[walkTrail.length - 1] ?? null;
-
   const displayNodes = useMemo(() => {
     let out = nodes.map((n) => {
       const d = n.data as IrgNodeData;
       const legalId =
         "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
       const bucket = legalId?.split(":")[1]?.split("/")[0];
-      const walkClass = legalId
-        ? legalId === walkCurrent
-          ? " irg-walk-current"
-          : walkSet.has(legalId)
-            ? " irg-walk-trail"
-            : ""
-        : "";
-      return bucket || walkClass
-        ? { ...n, className: `${bucket ? `irg-src-${bucket}` : ""}${walkClass}`.trim() }
-        : n;
+      return bucket ? { ...n, className: `irg-src-${bucket}` } : n;
     });
     if (executionActive) {
       out = out.map((n) => ({
@@ -493,7 +482,7 @@ export function InteractiveRuleGraph({
         highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
       }`.trim(),
     }));
-  }, [nodes, highlightSet, executionActive, executedIds, walkSet, walkCurrent]);
+  }, [nodes, highlightSet, executionActive, executedIds]);
 
   const displayEdges = useMemo(() => {
     let out = edges;
@@ -904,7 +893,12 @@ function FlyToController({
   layoutSig,
   nodes,
 }: {
-  target: { legalId: string; nonce: number; immediate?: boolean } | null;
+  target: {
+    legalId: string;
+    nonce: number;
+    immediate?: boolean;
+    soft?: boolean;
+  } | null;
   layoutSig: string;
   nodes: Node[];
 }) {
@@ -915,6 +909,7 @@ function FlyToController({
   const cutMode = useRef(false);
   const faded = useRef(false);
   const immediate = useRef(false);
+  const soft = useRef(false);
   const [armed, setArmed] = useState(0);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
@@ -932,6 +927,7 @@ function FlyToController({
     last.current = target.nonce;
     chaseId.current = target.legalId;
     immediate.current = Boolean(target.immediate);
+    soft.current = Boolean(target.soft);
     cutMode.current = false;
     faded.current = false;
     chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
@@ -956,13 +952,17 @@ function FlyToController({
   };
   const cutTo = () => {
     if (!chaseId.current || Date.now() > chaseUntil.current) return;
+    // A soft chase glides through the relayout's commit (small unfolds
+    // like clicking a question in the flow panel); a hard cut is for
+    // scene-scale changes.
+    const duration = soft.current ? 500 : 0;
     if (chaseId.current === "*") {
-      void flow.fitView({ duration: 0, padding: 0.1, minZoom: 0.01 });
+      void flow.fitView({ duration, padding: 0.1, minZoom: 0.01 });
     } else {
       const center = centerOf(chaseId.current);
       if (!center) return;
       void flow.setCenter(center.x, center.y, {
-        duration: 0,
+        duration,
         zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
       });
     }
@@ -970,7 +970,7 @@ function FlyToController({
     // Keep the chase briefly alive so a second measured layout pass
     // re-cuts to the final geometry, then let it die.
     chaseUntil.current = Date.now() + 700;
-    if (!faded.current) {
+    if (!faded.current && !soft.current) {
       faded.current = true;
       const wrap = document.querySelector<HTMLElement>(
         ".graph-viewer-root .irg-wrap",

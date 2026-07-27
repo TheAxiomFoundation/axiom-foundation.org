@@ -111,9 +111,9 @@
     0 0 0 1px var(--color-accent-line),
     0 8px 28px -10px rgba(146, 64, 14, 0.45);
 }
-.graph-viewer-root .plane-live .irg-value {
-  animation: plane-value-in 0.45s var(--ease-out, ease) both;
-}
+/* Value chips carry no blanket entrance animation — hundreds mounting
+   at once read as a full-canvas shimmer. The staggered exec-order
+   cascade (below) and the results sheet still use the keyframes. */
 @keyframes plane-value-in {
   from {
     opacity: 0;
@@ -226,7 +226,6 @@
     animation: none;
   }
   .graph-viewer-root .results-sheet,
-  .graph-viewer-root .plane-live .irg-value,
   .graph-viewer-root .results-value {
     animation: none;
   }
@@ -410,6 +409,22 @@
 .graph-viewer-root .irg-scene-cut .react-flow__viewport {
   animation: irg-scene-fade 340ms var(--ease-out, ease-out);
 }
+/* A run landing is the SAME scene gaining light, not a scope change —
+   the full blackout would read as a blink, but a RAW cut shows every
+   card teleporting through the value-chip relayout. A gentle
+   crossfade folds the relayout + camera cut into one perceived
+   change without ever going dark. */
+.graph-viewer-root .plane-fresh .irg-scene-cut .react-flow__viewport {
+  animation: irg-scene-crossfade 300ms var(--ease-out, ease-out);
+}
+@keyframes irg-scene-crossfade {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes irg-scene-fade {
   from {
     opacity: 0;
@@ -431,14 +446,23 @@
 }
 
 /* ── Run mode: execution as a depth layer ── */
-/* Non-executed matter recedes into depth of field. */
+/* Non-executed matter recedes. Opacity + desaturation only — blur
+   across hundreds of nodes is a compositing storm that shimmers the
+   whole canvas ("3D flicker") every time the camera or layout moves. */
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-off {
   opacity: 0.3;
-  filter: blur(1.3px) saturate(0.75);
+  filter: saturate(0.75);
   transition: opacity 0.5s ease, filter 0.5s ease;
 }
 .graph-viewer-root .plane-live .react-flow__node.irg-exec-off:hover {
   opacity: 0.95;
+  filter: none;
+}
+/* The results you asked for never recede — a Result card stays lit
+   even when its value did not come back, so the selection reads
+   without needing a hover. */
+.graph-viewer-root .plane-live .react-flow__node:has(.irg-output) {
+  opacity: 1;
   filter: none;
 }
 /* Executed nodes lift off the canvas. */
@@ -544,6 +568,7 @@
      the card — the canvas never clips it. */
   max-height: calc(100% - 128px);
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 @keyframes inspector-in {
@@ -551,9 +576,16 @@
   to { opacity: 1; transform: none; }
 }
 .graph-viewer-root .node-inspector-head {
+  /* The close button floats in the corner — the row itself takes no
+     vertical space, so the title starts at the top of the card. */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  height: 0;
+}
+.graph-viewer-root .node-inspector-head .results-close {
+  position: relative;
+  z-index: 2;
+  margin: -4px -6px 0 0;
 }
 .graph-viewer-root .node-inspector-kind {
   font-family: var(--f-mono);
@@ -567,7 +599,9 @@
   padding: 2px 8px;
 }
 .graph-viewer-root .node-inspector-title {
-  margin: 8px 0 0;
+  margin: 0;
+  /* Clearance for the corner close button. */
+  padding-right: 26px;
   font-size: 16px;
   font-weight: 650;
   line-height: 1.3;
@@ -600,7 +634,8 @@
   white-space: pre-wrap;
 }
 .graph-viewer-root .node-inspector-link {
-  display: inline-block;
+  /* Each action on its own line — Isolate, Read the law, … */
+  display: block;
   margin-top: 12px;
   font-size: 12.5px;
   font-weight: 550;
@@ -634,17 +669,13 @@
      must not reflow 400 cards — that was the scroll hitch. */
   visibility: hidden;
 }
-/* Keep computed values visible in run mode even from afar — the
-   execution layer outranks the LOD. */
-.graph-viewer-root
-  .irg-wrap[data-lod="far"]
-  .plane-live
-  .irg-exec-node
-  .irg-value,
+/* Keep computed values visible in run mode even from afar — after a
+   run the values ARE the content; the execution layer outranks the
+   LOD's quiet-map rule. */
 .graph-viewer-root
   .plane-live
   .irg-wrap[data-lod="far"]
-  .irg-exec-node
+  .irg-node
   .irg-value {
   display: block;
   visibility: visible;
@@ -776,6 +807,27 @@
   font-weight: 550;
   color: var(--color-ink);
 }
+/* Isolation trail docked inside the inspector — flows with the card
+   instead of floating over the canvas. */
+.graph-viewer-root .node-inspector .lens-bar-docked {
+  position: static;
+  max-width: none;
+  padding: 0 26px 10px 0;
+  margin: 0 0 10px;
+  border: none;
+  border-bottom: 1px solid var(--color-rule);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+/* Crumbs wrap — a long rule name is never cut off. */
+.graph-viewer-root .node-inspector .lens-bar-docked .lens-crumb {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
 .graph-viewer-root .lens-crumb-wrap {
   display: inline-flex;
   align-items: center;
@@ -784,35 +836,6 @@
 .graph-viewer-root .lens-sep {
   color: var(--color-ink-muted);
   font-size: 10px;
-}
-.graph-viewer-root .lens-consumers {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-.graph-viewer-root .lens-consumers-label {
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.graph-viewer-root .lens-consumer-chip {
-  border: 1px solid var(--color-rule);
-  background: var(--color-paper-elevated);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font: inherit;
-  font-size: 11.5px;
-  color: var(--color-ink-secondary);
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.graph-viewer-root .lens-consumer-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
 }
 .graph-viewer-root .node-inspector-lens {
   display: block;
@@ -986,17 +1009,13 @@
      must not reflow 400 cards — that was the scroll hitch. */
   visibility: hidden;
 }
-/* Keep computed values visible in run mode even from afar — the
-   execution layer outranks the LOD. */
-.graph-viewer-root
-  .irg-wrap[data-lod="far"]
-  .plane-live
-  .irg-exec-node
-  .irg-value,
+/* Keep computed values visible in run mode even from afar — after a
+   run the values ARE the content; the execution layer outranks the
+   LOD's quiet-map rule. */
 .graph-viewer-root
   .plane-live
   .irg-wrap[data-lod="far"]
-  .irg-exec-node
+  .irg-node
   .irg-value {
   display: block;
   visibility: visible;
@@ -1136,35 +1155,6 @@
 .graph-viewer-root .lens-sep {
   color: var(--color-ink-muted);
   font-size: 10px;
-}
-.graph-viewer-root .lens-consumers {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-.graph-viewer-root .lens-consumers-label {
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.graph-viewer-root .lens-consumer-chip {
-  border: 1px solid var(--color-rule);
-  background: var(--color-paper-elevated);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font: inherit;
-  font-size: 11.5px;
-  color: var(--color-ink-secondary);
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.graph-viewer-root .lens-consumer-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
 }
 .graph-viewer-root .node-inspector-lens {
   display: block;
@@ -1699,236 +1689,6 @@
   max-height: 240px;
 }
 
-/* ═══ The guided walk ═══ */
-.graph-viewer-root .walk-panel {
-  position: absolute;
-  top: 84px;
-  right: 24px;
-  bottom: 22px;
-  z-index: 15;
-  width: min(400px, calc(100% - 48px));
-  overflow-y: auto;
-  background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
-  border: 1px solid var(--color-rule);
-  border-radius: 16px;
-  box-shadow:
-    0 1px 2px rgba(28, 25, 23, 0.08),
-    0 24px 60px -20px rgba(28, 25, 23, 0.4);
-  padding: 16px 18px 18px;
-  animation: inspector-in 0.3s var(--ease-out, ease) both;
-}
-.graph-viewer-root .walk-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.graph-viewer-root .walk-direction {
-  font-family: var(--f-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-accent-hover);
-}
-.graph-viewer-root .walk-trail {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.graph-viewer-root .walk-trail button {
-  border: 1px solid var(--color-rule);
-  background: var(--color-paper);
-  border-radius: 999px;
-  padding: 2px 9px;
-  font: inherit;
-  font-size: 10.5px;
-  color: var(--color-ink-muted);
-  cursor: pointer;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.graph-viewer-root .walk-trail button.is-current {
-  border-color: var(--color-accent-line);
-  background: var(--color-accent-light);
-  color: var(--color-accent-hover);
-  font-weight: 600;
-}
-.graph-viewer-root .walk-card {
-  margin-top: 14px;
-  border: 1px solid var(--color-rule);
-  border-radius: 12px;
-  background: var(--color-paper-elevated);
-  padding: 14px 16px;
-  box-shadow: 0 8px 24px -16px rgba(28, 25, 23, 0.4);
-}
-.graph-viewer-root .walk-kind {
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent-line);
-  background: var(--color-accent-light);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-.graph-viewer-root .walk-card h2 {
-  margin: 8px 0 0;
-  font-size: 17px;
-  font-weight: 650;
-  line-height: 1.3;
-  color: var(--color-ink);
-}
-.graph-viewer-root .walk-value {
-  margin: 5px 0 0;
-  font-size: 24px;
-  font-weight: 650;
-  color: var(--color-accent-hover);
-  font-variant-numeric: tabular-nums;
-}
-.graph-viewer-root .walk-cite {
-  margin: 7px 0 0;
-  font-size: 11.5px;
-  color: var(--color-ink-muted);
-}
-.graph-viewer-root .walk-formula {
-  display: block;
-  margin-top: 8px;
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  line-height: 1.55;
-  color: var(--color-ink-secondary);
-  background: var(--color-rule-subtle);
-  border-radius: 7px;
-  padding: 6px 9px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.graph-viewer-root .walk-note {
-  margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-ink-secondary);
-}
-.graph-viewer-root .walk-next {
-  margin-top: 14px;
-}
-.graph-viewer-root .walk-next-label {
-  font-family: var(--f-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.graph-viewer-root .walk-choices {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.graph-viewer-root .walk-choices button {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid var(--color-rule);
-  background: var(--color-paper-elevated);
-  border-radius: 10px;
-  padding: 9px 12px;
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-ink);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.12s var(--ease-out, ease),
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.graph-viewer-root .walk-choices button:hover {
-  transform: translateX(3px);
-  border-color: var(--color-accent);
-  box-shadow: 0 8px 20px -12px rgba(217, 119, 6, 0.5);
-}
-.graph-viewer-root .walk-choices button span {
-  flex-shrink: 0;
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  font-weight: 400;
-  color: var(--color-ink-muted);
-}
-.graph-viewer-root .walk-input-chips {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.graph-viewer-root .walk-input-chips span {
-  border: 1px dashed color-mix(in srgb, var(--color-ink-muted) 40%, transparent);
-  border-radius: 999px;
-  padding: 1.5px 9px;
-  font-size: 10.5px;
-  color: var(--color-ink-muted);
-  background: var(--color-paper);
-}
-.graph-viewer-root .walk-end {
-  margin-top: 14px;
-  border: 1px solid rgba(22, 101, 52, 0.25);
-  background: rgba(22, 101, 52, 0.05);
-  border-radius: 12px;
-  padding: 13px 15px;
-}
-.graph-viewer-root .walk-end strong {
-  font-size: 13.5px;
-  color: var(--color-success, #166534);
-}
-.graph-viewer-root .walk-end p {
-  margin: 6px 0 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--color-ink-secondary);
-}
-.graph-viewer-root .walk-lens {
-  margin-top: 12px;
-  width: 100%;
-  border: 1px solid var(--color-accent-line);
-  background: var(--color-accent-light);
-  border-radius: 9px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-accent-hover);
-  cursor: pointer;
-}
-
-/* ═══ Walk mode: the walk owns the surface ═══ */
-.graph-viewer-root .app-shell.walk-active {
-  grid-template-columns: minmax(0, 1fr);
-}
-.graph-viewer-root .app-shell.walk-active .side-panel {
-  display: none;
-}
-/* The walked trail lights on the canvas; the current step strongest. */
-.graph-viewer-root .react-flow__node.irg-walk-trail .irg-node {
-  box-shadow:
-    0 0 0 1.5px var(--color-accent-line),
-    0 6px 18px -10px rgba(217, 119, 6, 0.45);
-}
-.graph-viewer-root .react-flow__node.irg-walk-current .irg-node {
-  box-shadow:
-    0 0 0 2px var(--color-accent),
-    0 4px 8px rgba(28, 25, 23, 0.12),
-    0 22px 44px -16px rgba(217, 119, 6, 0.6);
-  transform: scale(1.03);
-}
-
-
 .graph-viewer-root .irg-wrap {
   overflow: hidden;
 }
@@ -2175,73 +1935,75 @@
   word-break: break-word;
 }
 
-.graph-viewer-root .node-inspector-consumers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-}
-.graph-viewer-root .node-inspector-consumers button {
-  padding: 2px 8px;
-  border: 1px solid var(--color-rule);
-  border-radius: 999px;
-  background: var(--color-paper);
-  color: var(--color-ink-secondary);
-  font-size: 11px;
-  cursor: pointer;
-}
-.graph-viewer-root .node-inspector-consumers button:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.graph-viewer-root .node-inspector-consumers span {
-  font-size: 11px;
-  color: var(--color-ink-muted);
-}
 
-.graph-viewer-root .node-inspector-deps {
+
+/* The flow panel: Built from | Used by, side by side. Rows are full-
+   width, text wraps — the inspector never scrolls sideways. */
+.graph-viewer-root .node-inspector-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--color-rule);
 }
-.graph-viewer-root .node-inspector-deps summary {
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
+.graph-viewer-root .node-inspector-flow-col {
+  min-width: 0;
+}
+.graph-viewer-root .node-inspector-flow-label {
+  margin: 0 0 6px;
   font-family: var(--f-mono, monospace);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-ink-muted);
 }
-.graph-viewer-root .node-inspector-deps summary::-webkit-details-marker {
-  display: none;
-}
-.graph-viewer-root .node-inspector-deps[open] summary {
-  color: var(--color-accent);
-}
-.graph-viewer-root .node-inspector-deps .node-inspector-consumers {
-  max-height: 150px;
+.graph-viewer-root .node-inspector-flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 230px;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
-.graph-viewer-root .node-inspector-deps summary::after {
-  content: " ▾";
+.graph-viewer-root .node-inspector-flow-list button,
+.graph-viewer-root .node-inspector-flow-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper);
+  color: var(--color-ink-secondary);
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.graph-viewer-root .node-inspector-flow-list button {
+  cursor: pointer;
+}
+.graph-viewer-root .node-inspector-flow-list button:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.graph-viewer-root .node-inspector-flow-q {
+  border-style: dashed;
   color: var(--color-ink-muted);
-  font-size: 10px;
+  cursor: pointer;
 }
-.graph-viewer-root .node-inspector-deps[open] summary::after {
-  content: " ▴";
+.graph-viewer-root .node-inspector-flow-q:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
-.graph-viewer-root .node-inspector-deps > div {
-  margin-top: 6px;
-}
-.graph-viewer-root .node-inspector-dep-q {
-  padding: 2px 8px;
-  border: 1px dashed var(--color-rule);
-  border-radius: 999px;
+.graph-viewer-root .node-inspector-flow-empty {
   font-size: 11px;
   color: var(--color-ink-muted);
+  font-style: italic;
 }
 
 .graph-viewer-root .node-inspector-code-body {
@@ -2389,9 +2151,6 @@
 .graph-viewer-root .outputs-panel {
   animation: panel-in 0.2s var(--ease-out, ease) both;
 }
-.graph-viewer-root .walk-panel {
-  animation: panel-in 0.28s var(--ease-out, ease) both;
-}
 .graph-viewer-root .results-sheet {
   animation: panel-in 0.3s var(--ease-out, ease) both;
 }
@@ -2399,12 +2158,6 @@
   .graph-viewer-root .react-flow__node,
   .graph-viewer-root .react-flow__edge-path {
     transition: none;
-  }
-  .graph-viewer-root .node-inspector,
-  .graph-viewer-root .outputs-panel,
-  .graph-viewer-root .walk-panel,
-  .graph-viewer-root .results-sheet {
-    animation: none;
   }
 }
 
@@ -2414,81 +2167,7 @@
   border-radius: 6px;
 }
 
-/* Walk-card metadata: the inspector's sheet, compacted. */
-.graph-viewer-root .walk-meta {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-rule);
-}
-.graph-viewer-root .walk-code {
-  margin-top: 8px;
-}
 
-/* The walk sequence: a numbered path you can step in and out of. */
-.graph-viewer-root .walk-sequence {
-  list-style: none;
-  margin: 0 0 12px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.graph-viewer-root .walk-sequence li {
-  position: relative;
-  padding-left: 18px;
-}
-.graph-viewer-root .walk-sequence li::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 0;
-  bottom: 0;
-  width: 1.5px;
-  background: var(--color-rule);
-}
-.graph-viewer-root .walk-sequence li:first-child::before {
-  top: 50%;
-}
-.graph-viewer-root .walk-sequence li:last-child::before {
-  bottom: 50%;
-}
-.graph-viewer-root .walk-sequence li::after {
-  content: "";
-  position: absolute;
-  left: 2.5px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-paper-elevated);
-  border: 1.5px solid var(--color-ink-muted);
-}
-.graph-viewer-root .walk-sequence li:has(button.is-current)::after {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.graph-viewer-root .walk-sequence button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--color-ink-secondary);
-  font-size: 12.5px;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-.graph-viewer-root .walk-sequence button:hover {
-  color: var(--color-accent);
-  background: var(--color-paper);
-}
-.graph-viewer-root .walk-sequence button.is-current {
-  color: var(--color-accent-hover, #b45309);
-  font-weight: 600;
-}
 
 /* Scenario stages: 1 Inputs · 2 Outputs · 3 Run. */
 .graph-viewer-root .scenario-steps {
@@ -2759,40 +2438,6 @@
   align-self: center;
 }
 
-/* Walk arrows: the journey's own forward and back. */
-.graph-viewer-root .walk-arrows {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin: 10px 0 2px;
-}
-.graph-viewer-root .walk-arrows button {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-accent);
-  border-radius: 999px;
-  background: var(--color-paper-elevated);
-  color: var(--color-accent-hover, #b45309);
-  font-size: 15px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    transform 0.15s ease,
-    opacity 0.15s ease;
-}
-.graph-viewer-root .walk-arrows button:hover:not(:disabled) {
-  background: var(--color-accent-light, rgba(217, 119, 6, 0.12));
-  transform: translateY(-1px);
-}
-.graph-viewer-root .walk-arrows button:disabled {
-  opacity: 0.35;
-  border-color: var(--color-rule);
-  color: var(--color-ink-muted);
-  cursor: default;
-}
 
 /* Inside the outputs popover and the scenario stage the container
    scrolls — the selected pills need no cap of their own. */
@@ -3088,9 +2733,6 @@
   letter-spacing: -0.01em;
   color: var(--color-accent-hover, #b45309);
 }
-.graph-viewer-root .walk-card .parameter-value {
-  font-size: 24px;
-}
 
 /* The run sheet: full screen — answer questions (blank until you
    type), pick results, run. */
@@ -3274,6 +2916,21 @@
   margin: 0 0 10px;
   font-size: 12.5px;
   color: var(--color-ink-muted);
+}
+.graph-viewer-root .run-sample {
+  padding: 7px 14px;
+  border: 1px dashed var(--color-accent-line, var(--color-rule));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-accent-hover, #b45309);
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.graph-viewer-root .run-sample:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light, rgba(217, 119, 6, 0.08));
 }
 .graph-viewer-root .scenario-field-controls {
   display: inline-flex;

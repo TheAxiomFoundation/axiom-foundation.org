@@ -492,7 +492,9 @@ export function GraphViewerApp() {
         if (!cancelled)
           setAllPrograms(
             programs.filter(
-              (item) => !HIDDEN_COUNTRIES.has(countryOf(item.jurisdiction)),
+              (item) =>
+                !HIDDEN_COUNTRIES.has(countryOf(item.jurisdiction)) &&
+                !HIDDEN_PROGRAMS.has(programKey(item)),
             ),
           );
       })
@@ -2748,6 +2750,9 @@ function connectedComponent(
 /** Jurisdictions hidden from the viewer for now (registry still
  *  serves them; this is presentation only). */
 const HIDDEN_COUNTRIES = new Set<Country>(["uk"]);
+/** Individual programs hidden for now — us-ny/tanf executes into a
+ *  known parameter-table gap until rulespec-us#1131's artifact lands. */
+const HIDDEN_PROGRAMS = new Set<string>(["us-ny/tanf"]);
 
 function initialCountry(): Country {
   if (typeof window === "undefined") return "us";

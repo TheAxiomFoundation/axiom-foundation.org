@@ -1455,10 +1455,13 @@ export function GraphViewerApp() {
   }
 
   const launchRun = () => {
+    // Always closes the panel — even when the answer-edit auto-run is
+    // already in flight (the first press used to be swallowed by a
+    // disabled button while that run finished behind the panel).
     setRunPanelOpen(false);
     setScenarioMode(true);
     if (launcher !== "closed") dismissLauncher();
-    void runScenario();
+    if (!running) void runScenario();
   };
 
   // The constellation layout: hubs for each family of shared federal
@@ -1754,10 +1757,9 @@ export function GraphViewerApp() {
           <button
             type="button"
             className="run-button"
-            disabled={running}
             onClick={() => launchRun()}
           >
-            {running ? "Running…" : "Run it all"}
+            {running ? "Running — show the graph" : "Run it all"}
           </button>
         </div>
         {runError && <p className="run-error">{runError}</p>}

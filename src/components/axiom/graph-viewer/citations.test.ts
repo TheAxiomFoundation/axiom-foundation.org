@@ -115,16 +115,45 @@ describe("manual-bucket citations", () => {
 describe("humanizeRuleName", () => {
   it("title-cases snake_case rule names", () => {
     expect(humanizeRuleName("elderly_disabled_credit")).toBe(
-      "Elderly Disabled Credit"
+      "Elderly Disabled Credit",
     );
     expect(humanizeRuleName("snap_monthly_allotment")).toBe(
-      "SNAP Monthly Allotment"
+      "SNAP Monthly Allotment",
+    );
+    expect(humanizeRuleName("taxable_year_is_full_12_months")).toBe(
+      "Taxable Year Is Full 12 Months",
     );
   });
 
   it("keeps acronyms upper-case", () => {
     expect(humanizeRuleName("cdcc")).toBe("CDCC");
     expect(humanizeRuleName("snap_agi_limit")).toBe("SNAP AGI Limit");
+    expect(humanizeRuleName("eitc_child_count")).toBe("EITC Child Count");
+    expect(humanizeRuleName("ssn_verification_required")).toBe(
+      "SSN Verification Required",
+    );
+    expect(humanizeRuleName("itin_user")).toBe("ITIN User");
+    expect(humanizeRuleName("amt_exemption_base_amount")).toBe(
+      "AMT Exemption Base Amount",
+    );
+    expect(humanizeRuleName("earnings_with_fica_withheld")).toBe(
+      "Earnings With FICA Withheld",
+    );
+    expect(humanizeRuleName("person_described_in_42_cfr_435_4")).toBe(
+      "Person Described In 42 CFR 435 4",
+    );
+    expect(humanizeRuleName("lcwra_element_amount")).toBe(
+      "LCWRA Element Amount",
+    );
+  });
+
+  it("is stable when re-humanizing output", () => {
+    const label = humanizeRuleName("eitc_child_count");
+    expect(humanizeRuleName(label)).toBe(label);
+  });
+
+  it("leaves already-humanized plain words unchanged", () => {
+    expect(humanizeRuleName("Taxable Year")).toBe("Taxable Year");
   });
 
   it("survives odd input", () => {

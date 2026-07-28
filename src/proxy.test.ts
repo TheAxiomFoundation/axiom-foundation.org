@@ -13,7 +13,45 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "https://app.axiom-foundation.org/axiom/us/statute/7"
+      "https://app.axiom-foundation.org/axiom/v2/us/statute/7"
+    );
+  });
+
+  it("routes every jurisdiction-rooted path to the v2 surface", () => {
+    for (const [path, expected] of [
+      ["/us/statute/26/164", "/axiom/v2/us/statute/26/164"],
+      ["/us/statute/7/2017/a", "/axiom/v2/us/statute/7/2017/a"],
+      ["/us-co/regulation/10-ccr-2506-1/4.207.3", "/axiom/v2/us-co/regulation/10-ccr-2506-1/4.207.3"],
+      // Browse depths render the v2 list view.
+      ["/us/statute/26", "/axiom/v2/us/statute/26"],
+      ["/us/statute", "/axiom/v2/us/statute"],
+      ["/us", "/axiom/v2/us"],
+      ["/us/policy/usda/snap", "/axiom/v2/us/policy/usda/snap"],
+      // Jurisdictions without citation paths (and the legacy alias)
+      // stay on the v1 tree browser, which navigates by provision_id.
+      ["/ca", "/axiom/ca"],
+      ["/ca/statute/act/1", "/axiom/ca/statute/act/1"],
+      ["/canada", "/axiom/canada"],
+      ["/canada/regulation", "/axiom/canada/regulation"],
+    ] as const) {
+      const response = proxy(
+        request(
+          `https://app.axiom-foundation.org${path}`,
+          "app.axiom-foundation.org"
+        )
+      );
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        `https://app.axiom-foundation.org${expected}`
+      );
+    }
+  });
+
+  it("applies the same v2 routing on localhost", () => {
+    const response = proxy(
+      request("http://localhost:3000/us/statute/26/164", "localhost")
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "http://localhost:3000/axiom/v2/us/statute/26/164"
     );
   });
 
@@ -103,7 +141,7 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://localhost:4944/axiom/us-co/statute"
+      "http://localhost:4944/axiom/v2/us-co/statute"
     );
   });
 
@@ -113,7 +151,7 @@ describe("proxy", () => {
     );
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
-      "http://localhost:4944/axiom/uk/legislation"
+      "http://localhost:4944/axiom/v2/uk/legislation"
     );
   });
 
@@ -124,6 +162,29 @@ describe("proxy", () => {
 
     expect(response.headers.get("x-middleware-rewrite")).toBe(
       "http://app.localhost:4944/axiom/canada/regulation"
+    );
+  });
+
+  it("rewrites jurisdiction paths on preview and marketing hosts too", () => {
+    // Vercel preview deployment: internal bare links must resolve.
+    const preview = proxy(
+      request(
+        "https://axiom-foundation-abc123-policy-engine.vercel.app/us/statute/26/32",
+        "axiom-foundation-abc123-policy-engine.vercel.app"
+      )
+    );
+    expect(preview.headers.get("x-middleware-rewrite")).toBe(
+      "https://axiom-foundation-abc123-policy-engine.vercel.app/axiom/v2/us/statute/26/32"
+    );
+    // Marketing host: the globally mounted palette can navigate here.
+    const marketing = proxy(
+      request(
+        "https://axiom-foundation.org/us/statute/26/32",
+        "axiom-foundation.org"
+      )
+    );
+    expect(marketing.headers.get("x-middleware-rewrite")).toBe(
+      "https://axiom-foundation.org/axiom/v2/us/statute/26/32"
     );
   });
 

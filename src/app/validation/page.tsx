@@ -6,7 +6,7 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 export const metadata: Metadata = {
   title: "Validation — Axiom Foundation",
   description:
-    "How the Axiom Foundation checks its encodings: cross-checks against independent oracles — PolicyEngine, TAXSIM, EUROMOD-family models, ACCESS NYC, and government quality-control data.",
+    "How the Axiom Foundation checks its encodings: cross-checks against independent oracles — PolicyEngine, TAXSIM, EUROMOD-family models, SPSD/M, ACCESS NYC, and government quality-control data.",
 };
 
 interface Oracle {
@@ -34,6 +34,12 @@ const ORACLES: Oracle[] = [
     scope: "UK, EU & Global South",
     body: "The EUROMOD family of tax-benefit microsimulation models, maintained by university and EC research teams.",
     href: "https://euromod-web.jrc.ec.europa.eu",
+  },
+  {
+    name: "SPSD/M",
+    scope: "Canada tax & transfers",
+    body: "Statistics Canada's Social Policy Simulation Database and Model — the reference microsimulation of Canadian federal and provincial taxes and transfers.",
+    href: "https://www.statcan.gc.ca/en/microsimulation/spsdm/spsdm",
   },
   {
     name: "PSL Tax-Calculator",
@@ -79,7 +85,7 @@ export default function ValidationPage() {
         {/* Live dashboard — embedded, mirrors the docs architecture embed */}
         <Reveal as="section" className="mb-20">
           <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
-            <h2 className="heading-section m-0">The dashboard, live</h2>
+            <h2 className="heading-section m-0">The oracle dashboard</h2>
             <a
               href="https://axiom-oracles.vercel.app"
               target="_blank"
@@ -94,12 +100,15 @@ export default function ValidationPage() {
             Cross-engine comparisons as they stand &mdash; every divergence is
             a question about the law or its encoding.
           </p>
-          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
+          {/* The dashboard's own 69px topbar (sticky brand bar) is
+              redundant inside this page — shift the iframe up so the
+              embed starts at the content. */}
+          <div className="h-[560px] border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
             <iframe
               src="https://axiom-oracles.vercel.app"
               title="Validation dashboard"
               loading="lazy"
-              className="block w-full h-[560px] border-0"
+              className="block w-full h-[629px] -mt-[69px] border-0"
             />
           </div>
         </Reveal>
@@ -162,7 +171,7 @@ export default function ValidationPage() {
               {
                 n: "03",
                 title: "Disagreements explained",
-                body: "Reviewer agents explain each discrepancy before a human signs off. Disagreements get explained, not erased — the audit reports ship with the release.",
+                body: "Reviewer agents explain each discrepancy. Disagreements get explained, not erased — the audit reports ship with the release.",
               },
             ].map((step) => (
               <div key={step.n} className="card-edition p-6">

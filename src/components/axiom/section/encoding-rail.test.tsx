@@ -1,0 +1,327 @@
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+import { EncodingRail } from "./encoding-rail";
+import type { RuleEncodingData } from "@/lib/supabase";
+import { _resetRawFetchCache } from "@/lib/axiom/rulespec/raw-cache";
+
+const YAML = [
+  "format: rulespec/v1",
+  "module:",
+  "  name: eitc",
+  "rules:",
+  "  - name: rule_for_a",
+  "    kind: derived",
+  "    source: 26 USC 32(a)",
+  "    versions:",
+  "      - effective_from: '2026-01-01'",
+  "        formula: 'x'",
+  "  - name: rule_for_b",
+  "    kind: derived",
+  "    source: 26 USC 32(b)",
+  "    versions:",
+  "      - effective_from: '2026-01-01'",
+  "        formula: 'y'",
+].join("\n");
+
+function makeEncoding(): RuleEncodingData {
+  return {
+    encoding_run_id: "github:statutes/26/32.yaml",
+    citation: "26 USC 32",
+    session_id: null,
+    file_path: "statutes/26/32.yaml",
+    rulespec_content: YAML,
+    final_scores: null,
+    iterations: null,
+    total_duration_ms: null,
+    agent_type: null,
+    agent_model: null,
+    data_source: null,
+    has_issues: null,
+    note: null,
+    timestamp: null,
+    encoder_version: null,
+  };
+}
+
+const CHUNKS = [
+  {
+    anchor: "a",
+    designator: "(a)",
+    label: "(a) Allowance of credit",
+    text: "(a) Allowance of credit, see section 151 for details.",
+  },
+  {
+    anchor: "b",
+    designator: "(b)",
+    label: "(b) Percentages",
+    text: "(b) Percentages table text.",
+  },
+];
+const ENCODED_RULES = [
+  { name: "rule_for_a", kind: "derived", anchors: ["a"] },
+  { name: "rule_for_b", kind: "derived", anchors: ["b"] },
+];
+
+/** Mount fake subsection targets and control their reading-line
+ *  positions; the scroll-spy reads getBoundingClientRect().top. */
+function placeSections(tops: Record<string, number>) {
+  for (const [id, top] of Object.entries(tops)) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("section");
+      el.id = id;
+      document.body.appendChild(el);
+    }
+    el.getBoundingClientRect = () =>
+      ({ top, bottom: top + 1000, left: 0, right: 0, width: 0, height: 1000, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+  }
+}
+
+function scrollTo(tops: Record<string, number>) {
+  placeSections(tops);
+  act(() => {
+    fireEvent.scroll(window);
+  });
+}
+
+const OUTGOING = [
+  {
+    direction: "outgoing" as const,
+    citation_text: "section 151",
+    pattern_kind: "test",
+    confidence: 1,
+    start_offset: 0,
+    end_offset: 11,
+    other_citation_path: "us/statute/26/151",
+    other_provision_id: null,
+    other_heading: null,
+    target_resolved: true,
+  },
+];
+
+function renderRail() {
+  return render(
+    <EncodingRail
+      encoding={makeEncoding()}
+      jurisdiction="us"
+      citationPath="us/statute/26/32"
+      isRepealed={false}
+      chunks={CHUNKS}
+      encodedRules={ENCODED_RULES}
+      outgoing={OUTGOING}
+      incoming={[]}
+    />
+  );
+}
+
+describe("EncodingRail", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    // Async like a real frame — the hook assigns the frame id before
+    // the callback runs and clears it inside the callback.
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      setTimeout(() => cb(0), 0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetRawFetchCache();
+    document.body.innerHTML = "";
+  });
+
+  it("shows the section skeleton before any subsection crosses the reading line", () => {
+    placeSections({ a: 500, b: 1500 });
+    renderRail();
+    expect(screen.getByTestId("rail-header")).toHaveTextContent(
+      "Whole section"
+    );
+    // Drawers: rules and citations, collapsed by default.
+    expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");
+    expect(screen.getByTestId("rail-rules")).toHaveTextContent("rules (2)");
+    expect(screen.getByTestId("rail-citations")).toBeInTheDocument();
+  });
+
+  it("follows scroll: shows only the active subsection's rules", async () => {
+    placeSections({ a: 500, b: 1500 });
+    renderRail();
+
+    scrollTo({ a: -200, b: 900 }); // reading (a)
+    await waitFor(() => {
+      expect(screen.getByText("(a) Allowance of credit")).toBeInTheDocument();
+      expect(screen.queryByText("(b) Percentages")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("rule_for_a")).toBeInTheDocument();
+    expect(screen.queryByText("rule_for_b")).not.toBeInTheDocument();
+    // The node's own citations show; the source-file header does not.
+    expect(screen.getByTestId("references-panel")).toBeInTheDocument();
+    expect(screen.queryByText("Shown source")).not.toBeInTheDocument();
+    // Rule cards link back into the reading column.
+    const backLink = screen.getByTitle("Jump to this subsection in the text");
+    expect(backLink).toHaveAttribute("href", "#a");
+
+    scrollTo({ a: -1200, b: 100 }); // reading (b)
+    await waitFor(() => {
+      expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
+      expect(screen.queryByText("(a) Allowance of credit")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("rule_for_b")).toBeInTheDocument();
+  });
+
+  it("lists executable programs in the overview and scopes them per node", async () => {
+    const programs = [
+      {
+        jurisdiction: "us",
+        programId: "us-eitc",
+        mode: "compiled" as const,
+        status: "ready" as const,
+        ruleCount: 3,
+        anchors: ["a", "b"],
+        ruleNames: ["eitc_amount"],
+      },
+      {
+        jurisdiction: "us-co",
+        programId: "co-snap",
+        mode: "fixture" as const,
+        status: "ready" as const,
+        ruleCount: 1,
+        anchors: ["b"],
+        ruleNames: ["snap_x"],
+      },
+    ];
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        programs={programs}
+      />
+    );
+    // Overview: both families listed — co-snap folds into the "snap"
+    // family with a CO jurisdiction chip.
+    expect(screen.getByTestId("rail-programs")).toBeInTheDocument();
+    expect(screen.getByText("us-eitc")).toBeInTheDocument();
+    expect(screen.getByText("snap")).toBeInTheDocument();
+    expect(screen.queryByText("co-snap")).not.toBeInTheDocument();
+    // Each jurisdiction chip deep-links into the graph viewer, scoped
+    // to the program and focused on this provision's rules.
+    const chip = screen.getByText("CO").closest("a");
+    const href = new URL(chip!.getAttribute("href")!);
+    expect(href.searchParams.get("program")).toBe("us-co/co-snap");
+    expect(href.searchParams.get("focus")).toBe("us:statutes/26/32");
+
+    // Reading (a): only the program with rules under (a) remains.
+    scrollTo({ a: -200, b: 900 });
+    await waitFor(() => {
+      expect(screen.getByText("us-eitc")).toBeInTheDocument();
+      expect(screen.queryByText("snap")).not.toBeInTheDocument();
+    });
+  });
+
+  it("adds a per-rule graph link carrying the rule's legal id", async () => {
+    const programs = [
+      {
+        jurisdiction: "us",
+        programId: "us-eitc",
+        mode: "compiled" as const,
+        status: "ready" as const,
+        ruleCount: 2,
+        anchors: ["a", "b"],
+        ruleNames: ["rule_for_a"],
+      },
+    ];
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        programs={programs}
+        ruleFiles={{ rule_for_a: "statutes/26/32/a.yaml" }}
+      />
+    );
+    // Scroll into (a) so rule_for_a's card renders.
+    scrollTo({ a: -200, b: 900 });
+    await waitFor(() =>
+      expect(screen.getByTestId("rule-graph-link")).toBeInTheDocument()
+    );
+    const href = new URL(
+      screen.getByTestId("rule-graph-link").getAttribute("href")!
+    );
+    expect(href.searchParams.get("program")).toBe("us/us-eitc");
+    expect(href.searchParams.get("focus")).toBe(
+      "us:statutes/26/32/a#rule_for_a"
+    );
+    // "Use in builder" carries the same legal id; the builder resolves
+    // the program itself.
+    const builderHref = new URL(
+      screen.getByTestId("rule-builder-link").getAttribute("href")!
+    );
+    expect(builderHref.searchParams.get("output")).toBe(
+      "us:statutes/26/32/a#rule_for_a"
+    );
+    // rule_for_b has no known home file → no graph link on its card.
+    scrollTo({ a: -1200, b: 100 });
+    await waitFor(() =>
+      expect(screen.getByText("rule_for_b")).toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("rule-graph-link")
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it("renders no programs block when coverage is empty", () => {
+    placeSections({ a: 500, b: 1500 });
+    renderRail();
+    expect(screen.queryByTestId("rail-programs")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state for subsections nothing cites", async () => {
+    renderRail();
+    scrollTo({ a: -200, b: 900 });
+    // Re-point (a)'s rules at nothing by scrolling to a chunk with no rules
+    // — simulate by rendering with a rule-less chunk instead.
+    document.body.innerHTML = "";
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={[
+          {
+            anchor: "j",
+            designator: "(j)",
+            label: "(j) Inflation adjustments",
+            text: "(j) Inflation adjustments text.",
+          },
+        ]}
+        encodedRules={[{ name: "rule_for_a", kind: "derived", anchors: ["a"] }]}
+        outgoing={[]}
+        incoming={[]}
+      />
+    );
+    scrollTo({ j: -50 });
+    await waitFor(() =>
+      expect(
+        screen.getByText("No rules are tied directly to this part of the section.")
+      ).toBeInTheDocument()
+    );
+  });
+});

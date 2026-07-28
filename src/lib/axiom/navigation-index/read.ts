@@ -257,17 +257,25 @@ export async function getNavigationIndexChildren({
 export async function getNavigationIndexNode(
   path: string
 ): Promise<NavigationNodeRow | null> {
+  // Not maybeSingle(): the index has shipped duplicate rows for a
+  // path (us/statute/26 appeared twice after a partial re-ingestion,
+  // one copy with a corrupted sort_key), and maybeSingle() turns
+  // that into a 503 for the whole subtree. Order by sort_key
+  // descending so the canonically-sorted row wins deterministically;
+  // the duplicate itself is an upstream corpus bug.
   const result = await withTimeout(
     supabaseCorpus
       .from("navigation_nodes")
       .select("*")
       .eq("path", path)
-      .maybeSingle(),
+      .order("sort_key", { ascending: false })
+      .limit(1),
     NAVIGATION_QUERY_TIMEOUT_MS
   );
   if (!result) throw new NavigationIndexUnavailableError();
   if (result.error) throw new NavigationIndexUnavailableError();
-  return (result.data as NavigationNodeRow | null) ?? null;
+  const rows = (result.data ?? []) as NavigationNodeRow[];
+  return rows[0] ?? null;
 }
 
 export async function getNavigationIndexPrefixRows({
@@ -352,22 +360,26 @@ export async function getResolvableNavigationNodeIds(
   const matchedCitationPaths = new Set<string>();
 
   if (provisionIds.length > 0) {
-    const result = await withTimeout(
-      supabaseCorpus
-        .from("current_provisions")
-        .select("id")
-        .in("id", provisionIds),
-      NAVIGATION_QUERY_TIMEOUT_MS
-    );
-    if (!result) throw new NavigationIndexUnavailableError();
-    if (result.error) throw new NavigationIndexUnavailableError();
-    for (const row of (result.data ?? []) as Array<{ id: string | null }>) {
-      if (row.id) matchedProvisionIds.add(row.id);
+    // Chunked: a single 200-value IN over long paths can blow the
+    // statement timeout (observed on us/policy).
+    for (let i = 0; i < provisionIds.length; i += 100) {
+      const result = await withTimeout(
+        supabaseCorpus
+          .from("current_provisions")
+          .select("id")
+          .in("id", provisionIds.slice(i, i + 100)),
+        NAVIGATION_QUERY_TIMEOUT_MS
+      );
+      if (!result) throw new NavigationIndexUnavailableError();
+      if (result.error) throw new NavigationIndexUnavailableError();
+      for (const row of (result.data ?? []) as Array<{ id: string | null }>) {
+        if (row.id) matchedProvisionIds.add(row.id);
+      }
     }
   }
 
   if (citationPaths.length > 0) {
-    const citationFilters = [
+    const filters = [
       ...citationPaths.map((path) => `citation_path.eq.${path}`),
       ...rows
         .filter((row) => row.has_children)
@@ -375,20 +387,22 @@ export async function getResolvableNavigationNodeIds(
           const path = row.citation_path ?? row.path;
           return `and(citation_path.gte.${path}/,citation_path.lt.${path}~)`;
         }),
-    ].join(",");
-    const result = await withTimeout(
-      supabaseCorpus
-        .from("current_provisions")
-        .select("citation_path")
-        .or(citationFilters),
-      NAVIGATION_QUERY_TIMEOUT_MS
-    );
-    if (!result) throw new NavigationIndexUnavailableError();
-    if (result.error) throw new NavigationIndexUnavailableError();
-    for (const row of (result.data ?? []) as Array<{
-      citation_path: string | null;
-    }>) {
-      if (row.citation_path) matchedCitationPaths.add(row.citation_path);
+    ];
+    for (let i = 0; i < filters.length; i += 40) {
+      const result = await withTimeout(
+        supabaseCorpus
+          .from("current_provisions")
+          .select("citation_path")
+          .or(filters.slice(i, i + 40).join(",")),
+        NAVIGATION_QUERY_TIMEOUT_MS
+      );
+      if (!result) throw new NavigationIndexUnavailableError();
+      if (result.error) throw new NavigationIndexUnavailableError();
+      for (const row of (result.data ?? []) as Array<{
+        citation_path: string | null;
+      }>) {
+        if (row.citation_path) matchedCitationPaths.add(row.citation_path);
+      }
     }
   }
 

@@ -4,10 +4,12 @@ import { Nav } from "../components/nav";
 describe("Nav", () => {
   it("renders the full launch navigation links (pages only, no scroll anchors)", () => {
     render(<Nav />);
-    expect(screen.getAllByText("Axiom")[0]).toHaveAttribute(
+    // The app entry is the "Get started" CTA button, not a tab.
+    expect(screen.getAllByText("Get started")[0]).toHaveAttribute(
       "href",
-      "https://app.axiom-foundation.org",
+      "https://axiom.org/app",
     );
+    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
     expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
@@ -24,19 +26,31 @@ describe("Nav", () => {
 
   it("renders the demos dropdown grouped by stakeholder", () => {
     render(<Nav />);
-    // Group headers mirror the demo-gallery taxonomy in axiom-demo-shell.
-    expect(screen.getAllByText("Builders").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI labs").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Government").length).toBeGreaterThan(0);
+    // Group headers are the demo-gallery row sentences from axiom-demo-shell.
     expect(
-      screen.getAllByText("Small company checker")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#reg-demo");
+      screen.getAllByText("Build government systems on the law").length,
+    ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Grounded benefits assistant")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#finbot");
+      screen.getAllByText("Ground AI models in citable law").length,
+    ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Colorado SNAP cliffs")[0].closest("a"),
-    ).toHaveAttribute("href", "/demos#co-snap-cliffs");
+      screen.getAllByText("Power products on rules you don't rebuild").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Simulate policy on real rules").length,
+    ).toBeGreaterThan(0);
+    // Labels are active phrases, shared with the shell gallery tiles.
+    expect(
+      screen.getAllByText("Build a form")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=builder");
+    // The small company checker was pulled from the gallery.
+    expect(screen.queryByText("Small company checker")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText("Get accurate answers")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=chatbot");
+    expect(
+      screen.getAllByText("Explore benefits cliffs")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=snap");
     expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
       "href",
       "/demos",

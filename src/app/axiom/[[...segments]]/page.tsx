@@ -13,6 +13,9 @@ import {
 import { loadTreeNodes } from "@/lib/axiom/tree-node-loader";
 import { getAxiomStats, type AxiomStats } from "@/lib/supabase";
 import { AxiomClient } from "./axiom-client";
+import V2SectionPage, {
+  generateMetadata as generateV2Metadata,
+} from "../v2/[...segments]/page";
 
 interface PageProps {
   params: Promise<{ segments?: string[] }>;
@@ -21,10 +24,22 @@ interface PageProps {
 const INITIAL_TREE_STATE_TIMEOUT_MS = 1500;
 const INITIAL_AXIOM_STATS_TIMEOUT_MS = 1500;
 
+/** Turbopack dev lazily compiles routes, and until the sibling
+ *  ``/axiom/v2/[...segments]`` route is compiled this optional
+ *  catch-all can win the match for ``/axiom/v2/*`` — silently
+ *  rendering v1 for the whole promoted surface. Delegating makes the
+ *  router's pick irrelevant. */
+function v2Params(segments: string[]) {
+  return { params: Promise.resolve({ segments: segments.slice(1) }) };
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { segments } = await params;
+  if (segments?.[0] === "v2" && segments.length > 1) {
+    return generateV2Metadata(v2Params(segments));
+  }
   const meta = await getAxiomRuleMetadata(segments);
   return {
     title: meta.title,
@@ -51,6 +66,9 @@ export async function generateMetadata({
 
 export default async function AxiomPage({ params }: PageProps) {
   const { segments } = await params;
+  if (segments?.[0] === "v2" && segments.length > 1) {
+    return V2SectionPage(v2Params(segments));
+  }
   const [meta, initialEncodedOnly, initialStats] = await Promise.all([
     getAxiomRuleMetadata(segments),
     getInitialEncodedOnly(),

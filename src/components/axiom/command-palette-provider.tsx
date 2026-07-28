@@ -38,8 +38,12 @@ const PaletteContext = createContext<Ctx>({
  */
 export function CommandPaletteProvider({
   children,
+  hrefPrefix,
 }: {
   children: React.ReactNode;
+  /** Passed through to the palette: keeps section-depth navigation
+   *  inside the v2 reader when the provider wraps v2 pages. */
+  hrefPrefix?: string;
 }) {
   const [isOpen, setOpen] = useState(false);
 
@@ -60,7 +64,7 @@ export function CommandPaletteProvider({
   return (
     <PaletteContext.Provider value={{ open, close, isOpen }}>
       {children}
-      <CommandPalette open={isOpen} onClose={close} />
+      <CommandPalette open={isOpen} onClose={close} hrefPrefix={hrefPrefix} />
     </PaletteContext.Provider>
   );
 }

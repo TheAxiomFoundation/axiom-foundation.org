@@ -1,16 +1,37 @@
 @import "tailwindcss";
+@import "./architecture-graphics.css";
+/* The nav (and other shared components) live in packages/ui — outside
+   Tailwind's automatic source detection, so their utility classes are
+   only generated if the same class happens to appear in src/. Register
+   the package source explicitly. */
+@source "../../packages/ui/src";
+
+/* tokens.css's global `a { text-decoration: underline }` is unlayered,
+   so it outranks Tailwind's layered .no-underline utility on every
+   anchor. This unlayered, higher-specificity rule restores the
+   utility's intent. */
+a.no-underline {
+  text-decoration: none;
+}
+a.text-white,
+a.text-white:hover {
+  color: #fff;
+}
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
 
 /* ── Mobile: prevent horizontal page scroll ──
-   The shared tokens already set `overflow-x: hidden` on <body>, but a
-   fixed-position decorative canvas (the citation-network background) is
-   sized to `window.innerWidth`, which can edge a hair past the layout
-   viewport on small screens and let the document element scroll
-   sideways. Clamping the root element closes that gap. No effect on
-   desktop, where nothing exceeds the viewport. */
-html {
-  overflow-x: hidden;
+   The shared tokens set `overflow-x: hidden` on <body>, and this rule
+   used to mirror it on <html> because a fixed-position decorative
+   canvas (the citation-network background) sized to
+   `window.innerWidth` can edge a hair past the layout viewport on
+   small screens. `clip` instead of `hidden` because hidden turns the
+   root into a scroll container, which silently disables
+   `position: sticky` against page scroll (the v2 reader's TOC and
+   encoding rail). clip clips without creating a scroll container. */
+html,
+body {
+  overflow-x: clip;
 }
 
 /* Belt-and-suspenders: the background canvas is purely decorative and
@@ -126,3 +147,628 @@ canvas[aria-hidden] {
 }
 
 
+
+/* ── /coverage hero: the platform stack — three isometric layers
+   from source documents down to machine-readable encodings. Hover a
+   layer or its callout to lift that plane (paired via :has()). */
+.pstack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+.pstack-visual {
+  position: relative;
+  height: 500px;
+}
+.pstack-plane {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 320px;
+  height: 320px;
+  margin-left: -160px;
+  border-radius: 24px;
+  border: 1px solid rgba(28, 25, 23, 0.1);
+  transform: translateY(calc(var(--layer) * 98px)) rotateX(58deg)
+    rotateZ(45deg);
+  box-shadow: 0 30px 50px rgba(28, 25, 23, 0.16);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms ease;
+  animation: pstack-drop 640ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--layer) * 130ms);
+}
+@keyframes pstack-drop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--layer) * 98px - 36px)) rotateX(58deg)
+      rotateZ(45deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(calc(var(--layer) * 98px)) rotateX(58deg)
+      rotateZ(45deg);
+  }
+}
+/* Layer skins: raw paper dots → ruled provisions → amber machine
+   layer. Textures are CSS gradients, no assets. */
+.pstack-plane-documents {
+  background-color: var(--color-paper-elevated);
+  background-image: radial-gradient(
+    circle,
+    rgba(28, 25, 23, 0.22) 1.1px,
+    transparent 1.4px
+  );
+  background-size: 20px 20px;
+}
+.pstack-plane-provisions {
+  background-color: #ece8e3;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(28, 25, 23, 0.09) 0,
+    rgba(28, 25, 23, 0.09) 1px,
+    transparent 1px,
+    transparent 11px
+  );
+}
+.pstack-plane-encodings {
+  background-color: #b45309;
+  background-image: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.14) 0,
+      rgba(255, 255, 255, 0.14) 9px,
+      transparent 9px,
+      transparent 20px
+    ),
+    linear-gradient(135deg, #d97706, #92400e);
+  box-shadow: 0 34px 60px rgba(180, 83, 9, 0.32);
+}
+/* Hover pairing: lifting a plane from either side. */
+.pstack-plane:hover,
+.pstack:has(.pstack-callout[data-layer="documents"]:hover)
+  .pstack-plane-documents,
+.pstack:has(.pstack-callout[data-layer="provisions"]:hover)
+  .pstack-plane-provisions,
+.pstack:has(.pstack-callout[data-layer="encodings"]:hover)
+  .pstack-plane-encodings {
+  transform: translateY(calc(var(--layer) * 98px - 16px)) rotateX(58deg)
+    rotateZ(45deg);
+  box-shadow: 0 42px 64px rgba(28, 25, 23, 0.2);
+}
+.pstack:has(.pstack-plane-documents:hover)
+  .pstack-callout[data-layer="documents"],
+.pstack:has(.pstack-plane-provisions:hover)
+  .pstack-callout[data-layer="provisions"],
+.pstack:has(.pstack-plane-encodings:hover)
+  .pstack-callout[data-layer="encodings"],
+.pstack-callout:hover {
+  border-color: var(--color-rule);
+  background: var(--color-paper-elevated);
+}
+.pstack-callouts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.pstack-callout {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: border-color 180ms ease, background 180ms ease;
+  animation: pstack-callout-in 480ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--layer) * 130ms + 160ms);
+}
+@keyframes pstack-callout-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.pstack-callout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.pstack-callout-name {
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.pstack-callout-value {
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.9rem;
+  /* Exactly 1em: the odometer reels are 1em-tall clipping boxes, so
+     any other line-height makes the plain-text SSR figure and the
+     hydrated reels differ in height — a visible shift on swap. */
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+.pstack-callout-detail {
+  font-family: var(--f-body);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+  margin-top: 0.55rem;
+  max-width: 44ch;
+}
+@media (max-width: 900px) {
+  .pstack {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .pstack-visual {
+    display: none;
+  }
+  .pstack-callout {
+    border-color: var(--color-rule);
+    background: var(--color-paper-elevated);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pstack-plane,
+  .pstack-callout {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ── /coverage listing: a country filter over one-line jurisdiction
+   rows — documents, provisions, encodings. */
+.cov-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--color-rule);
+  background: rgba(28, 25, 23, 0.05);
+}
+.cov-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.36rem 0.72rem;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.cov-filter-btn:hover {
+  color: var(--color-ink);
+}
+.cov-filter-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-filter-on,
+.cov-filter-on:hover {
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
+}
+.cov-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 0.6rem;
+}
+@media (max-width: 560px) {
+  .cov-rows {
+    grid-template-columns: 1fr;
+  }
+}
+.cov-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 100%;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+  padding: 0.55rem 0.9rem 0.5rem;
+}
+.cov-row-name {
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.cov-row-nums {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  white-space: nowrap;
+}
+.cov-row-num {
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-secondary);
+}
+.cov-row-num-enc {
+  color: var(--color-accent);
+}
+
+/* ── /coverage scrollytelling: the stack assembles on scroll.
+   .pscroll-live is added by the client driver only on wide viewports
+   without prefers-reduced-motion; without it (SSR, no JS, mobile,
+   reduced motion) the section is normal height and fully visible. */
+.pstack-slot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pstack-slot .pstack-plane {
+  pointer-events: auto;
+}
+.pscroll-live {
+  min-height: 240vh;
+}
+.pscroll-live .pscroll-sticky {
+  position: sticky;
+  top: 88px;
+}
+.pscroll-live .pstack {
+  min-height: calc(100vh - 220px);
+  align-items: center;
+}
+.pscroll-live .pstack-plane,
+.pscroll-live .pstack-callout {
+  animation: none;
+}
+.pscroll-live .pstack-slot {
+  transition: opacity 480ms ease,
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pscroll-live .pstack-callout {
+  transition: opacity 420ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease, background 180ms ease;
+}
+.pscroll-live[data-step="1"] .pstack-slot:nth-child(2),
+.pscroll-live[data-step="1"] .pstack-slot:nth-child(3),
+.pscroll-live[data-step="2"] .pstack-slot:nth-child(3) {
+  opacity: 0;
+  transform: translateY(-34px);
+}
+.pscroll-live[data-step="1"] .pstack-callout:nth-child(2),
+.pscroll-live[data-step="1"] .pstack-callout:nth-child(3),
+.pscroll-live[data-step="2"] .pstack-callout:nth-child(3) {
+  opacity: 0;
+  transform: translateX(18px);
+  pointer-events: none;
+}
+.pscroll-hint {
+  margin: 1.2rem 0 0;
+  text-align: center;
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  transition: opacity 300ms ease;
+}
+.pscroll-hint[data-done] {
+  opacity: 0;
+}
+
+/* ── /coverage callout refinements: pipeline ordinals, the mini
+   document-mix bar (same segment language as the cards), and serif
+   italic for the prose support lines. */
+.pstack-ordinal {
+  color: var(--color-accent);
+  margin-right: 0.55rem;
+}
+.pstack-prose {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 0.93rem;
+  letter-spacing: 0.01em;
+}
+
+/* ── Rolling odometer digits for the coverage figures. The reels are
+   a client enhancement: SSR/no-JS/reduced-motion render plain text. */
+.roll {
+  display: inline-flex;
+  overflow: hidden;
+}
+.roll-digit {
+  display: inline-block;
+  position: relative;
+  width: 1ch;
+  height: 1em;
+  overflow: hidden;
+}
+.roll-strip {
+  display: block;
+  transition: transform 950ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.roll-cell {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}
+.roll-strip-spin {
+  animation: roll-spin 900ms linear infinite;
+}
+@keyframes roll-spin {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-10em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-strip-spin {
+    animation: none;
+  }
+  .roll-strip {
+    transition: none;
+  }
+}
+
+/* Pre-hydration guard: the server HTML shows the fully assembled
+   stack (right for SEO and no-JS), but browsers that WILL run the
+   scroll driver would paint it for a split second and then snap back
+   to layer 1 when hydration engages. Under the exact conditions the
+   driver activates (scripting on, wide viewport, motion allowed),
+   pre-hide the later layers and pre-size the section so nothing
+   jumps. Applies to the route loading state too — it shares .pscroll. */
+@media (scripting: enabled) and (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .pscroll:not(.pscroll-live) {
+    min-height: 240vh;
+  }
+  /* Identical stage geometry before the driver engages — the live
+     class centers the stage and pins it sticky, and any difference
+     from the loading/pre-hydration state reads as the graphic and
+     callouts jumping when hydration lands. */
+  .pscroll:not(.pscroll-live) .pscroll-sticky {
+    position: sticky;
+    top: 88px;
+  }
+  .pscroll:not(.pscroll-live) .pstack {
+    min-height: calc(100vh - 220px);
+    align-items: center;
+  }
+  .pscroll:not(.pscroll-live) .pstack-slot:nth-child(n + 2),
+  .pscroll:not(.pscroll-live) .pstack-callout:nth-child(n + 2) {
+    opacity: 0;
+  }
+  /* In scrolly mode the scroll assembly IS the entrance: no CSS
+     entrance animations at all. This also keeps the loading→loaded
+     swap still — layer one must not re-drop when the streamed page
+     replaces the loading state. (Entrances still play for no-JS and
+     reduced-scrolly visitors.) */
+  .pscroll .pstack-plane,
+  .pscroll .pstack-callout {
+    animation: none;
+  }
+  /* The scroll hint renders in server HTML; show it whenever the
+     driver will engage so it occupies the same slot the loading
+     state's "counting…" line held — no blink across the swap.
+     (Extra .pscroll ancestor outweighs the base display: none.) */
+  .pscroll .pscroll-hint-scroll {
+    display: block;
+  }
+}
+.pscroll-hint-scroll {
+  display: none;
+}
+
+
+/* ── Landing "what it powers": live demo previews inside the use-case
+   cards — the demo-shell gallery's scaled-iframe thumb, inlined. The
+   iframe renders the real app at full width and scales down; clicks
+   pass through to the wrapping link (pointer-events: none). */
+.landing-demo-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper-elevated);
+}
+.landing-demo-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.05));
+}
+.landing-demo-thumb iframe {
+  --preview-scale: 0.2;
+  position: absolute;
+  inset: 0;
+  width: calc(100% / var(--preview-scale));
+  height: calc(100% / var(--preview-scale));
+  border: 0;
+  pointer-events: none;
+  transform: scale(var(--preview-scale));
+  transform-origin: 0 0;
+}
+
+/* The counting status: a small pulsing tag riding inline beside the
+   first layer's digits while any reel still rolls. Gated to
+   scripting+motion: without either the figures render settled and
+   there is nothing to count. */
+.pstack-counting {
+  display: none;
+  margin-left: 1.4em;
+  font-family: var(--f-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .pstack-counting {
+    display: inline-block;
+  }
+}
+.pstack-counting[data-on] {
+  opacity: 1;
+  animation: cov-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cov-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pstack-counting[data-on] {
+    animation: none;
+  }
+}
+
+/* "counting the corpus…" — animated ellipsis so a slow load never
+   reads as stuck. Static ellipsis under reduced motion. */
+.cov-counting::after {
+  content: "…";
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: cov-dots 1.2s steps(1) infinite;
+}
+@keyframes cov-dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cov-counting::after {
+    animation: none;
+  }
+}
+
+/* Blog post body — Ghost-authored HTML rendered in the site's own
+   typography. Kept to the elements Ghost's editor actually emits. */
+.blog-prose {
+  font-family: var(--f-body, inherit);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--color-ink-secondary);
+}
+.blog-prose p {
+  margin: 0 0 1.4em;
+}
+.blog-prose h2,
+.blog-prose h3 {
+  font-family: var(--f-display, inherit);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--color-ink);
+  margin: 2.2em 0 0.7em;
+  line-height: 1.25;
+}
+.blog-prose h2 {
+  font-size: 1.5rem;
+}
+.blog-prose h3 {
+  font-size: 1.2rem;
+}
+.blog-prose a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.blog-prose a:hover {
+  color: var(--color-accent-hover, var(--color-accent));
+}
+.blog-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid var(--color-rule);
+}
+.blog-prose figure {
+  margin: 2em 0;
+}
+.blog-prose figcaption {
+  margin-top: 0.6em;
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+.blog-prose blockquote {
+  margin: 1.8em 0;
+  padding-left: 1.2em;
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-ink);
+  font-style: italic;
+}
+.blog-prose ul,
+.blog-prose ol {
+  margin: 0 0 1.4em;
+  padding-left: 1.4em;
+}
+.blog-prose li {
+  margin-bottom: 0.4em;
+}
+.blog-prose hr {
+  margin: 2.5em 0;
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}
+.blog-prose pre {
+  margin: 1.8em 0;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  background: var(--color-paper-elevated);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  font-family: var(--f-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.blog-prose code {
+  font-family: var(--f-mono);
+  font-size: 0.88em;
+}

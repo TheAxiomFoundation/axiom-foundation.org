@@ -54,8 +54,8 @@ export default function CodeBlock({
 
   if (language === "plain" || !Prism.languages[prismLanguage]) {
     return (
-      <pre className={preClassName}>
-        <code className={syntaxClass}>{code}</code>
+      <pre className={preClassName} suppressHydrationWarning>
+        <code className={syntaxClass} suppressHydrationWarning>{code}</code>
       </pre>
     );
   }
@@ -66,7 +66,7 @@ export default function CodeBlock({
       : Prism.highlight(code, Prism.languages[prismLanguage], prismLanguage);
 
   return (
-    <pre className={preClassName}>
+    <pre className={preClassName} suppressHydrationWarning>
       <code
         className={syntaxClass}
         dangerouslySetInnerHTML={{ __html: html }}

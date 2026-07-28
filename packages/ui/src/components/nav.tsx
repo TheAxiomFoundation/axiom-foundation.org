@@ -44,40 +44,49 @@ export interface NavProps {
   /** Logo image src. Defaults to "/logos/axiom-foundation.svg".
    *  When baseUrl is set, resolved relative to baseUrl. */
   logoSrc?: string;
+  /** Rendered at the right edge of the bar, after the links — e.g.
+   *  the app's search / command-palette trigger. */
+  rightSlot?: React.ReactNode;
 }
 
 // v2 launch nav — every top-level entry navigates to a page (no mixed
 // scroll-anchor/page behavior). The landing sections are reachable
 // through the page itself; demos group by the segment they serve.
 const DEFAULT_LINKS: NavLink[] = [
+  { href: "/coverage", label: "Coverage" },
   { href: "/validation", label: "Validation" },
   {
     href: "/demos",
     label: "What's possible",
     // Stakeholder grouping mirrors the demo-gallery taxonomy in
-    // axiom-demo-shell (Builders / AI labs / Government).
+    // axiom-demo-shell (Builders / AI labs / Government). ?d=<id>
+    // deep-links into the embedded shell gallery's modal — ids must
+    // match the shell's data.js.
     groups: [
       {
-        label: "Builders",
+        label: "Build government systems on the law",
         items: [
-          { href: "/demos#reg-demo", label: "Small company checker" },
-          { href: "/demos#form-builder", label: "Form Builder" },
-          { href: "/demos#architecture", label: "Architecture map" },
+          { href: "/demos?d=workflow", label: "Check a workflow" },
+          { href: "/demos?d=guidance", label: "Reconcile primary sources" },
         ],
       },
       {
-        label: "AI labs",
+        label: "Ground AI models in citable law",
         items: [
-          { href: "/demos#finbot", label: "Grounded benefits assistant" },
-          { href: "/demos#guidance-impact", label: "Guidance impact visualizer" },
+          { href: "/demos?d=chatbot", label: "Get accurate answers" },
         ],
       },
       {
-        label: "Government",
+        label: "Power products on rules you don't rebuild",
         items: [
-          { href: "/demos#workflow-checker", label: "SNAP workflow checker" },
-          { href: "/demos#co-snap-cliffs", label: "Colorado SNAP cliffs" },
-          { href: "/demos#microsim", label: "Microsimulation" },
+          { href: "/demos?d=builder", label: "Build a form" },
+        ],
+      },
+      {
+        label: "Simulate policy on real rules",
+        items: [
+          { href: "/demos?d=snap", label: "Explore benefits cliffs" },
+          { href: "/demos?d=microsim", label: "Simulate household impacts" },
         ],
       },
       {
@@ -86,6 +95,7 @@ const DEFAULT_LINKS: NavLink[] = [
       },
     ],
   },
+  { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
   { href: "/team", label: "Team" },
 ];
@@ -94,18 +104,21 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Nav({
   baseUrl = "",
-  appUrl = "https://app.axiom-foundation.org",
+  appUrl = "https://axiom.org/app",
   pathname,
   renderLink: LinkComponent,
   extraLinks = [],
   logoSrc,
+  rightSlot,
 }: NavProps = {}) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
+  // The app entry is no longer a tab — it's the "Get started" CTA
+  // button at the right edge of the bar.
   const navLinks = useMemo(
-    () => [{ href: appUrl, label: "Axiom" }, ...DEFAULT_LINKS, ...extraLinks],
-    [appUrl, extraLinks],
+    () => [...DEFAULT_LINKS, ...extraLinks],
+    [extraLinks],
   );
 
   const resolvedLogoSrc = logoSrc
@@ -199,17 +212,21 @@ export function Nav({
     return entries;
   }
 
-  /** Grouped desktop panel — one column per stakeholder, unlabeled
-   *  groups (e.g. "All demos") as a footer row under a hairline. */
+  /** Grouped desktop panel — a 2×2 grid of use-cases, each headed by
+   *  the demo-gallery row sentence, unlabeled groups (e.g. "All
+   *  demos") as a footer row under a hairline. */
   function renderGroupedPanel(groups: NonNullable<NavLink["groups"]>) {
     const columns = groups.filter((g) => g.label);
     const footer = groups.filter((g) => !g.label);
     return (
       <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.14)]">
-        <div className="flex gap-10">
+        {/* Fixed column tracks: fr-based tracks collapse to zero inside
+            the shrink-to-fit absolute panel; the nav container's
+            uppercase/tracking must be explicitly reset. */}
+        <div className="grid grid-cols-[220px_220px] gap-x-12 gap-y-7">
           {columns.map((group) => (
-            <div key={group.label} className="min-w-[140px]">
-              <div className="mb-3 font-mono text-[0.7rem] font-semibold tracking-[0.18em] uppercase text-[var(--color-ink)]">
+            <div key={group.label}>
+              <div className="mb-2.5 font-display text-[0.98rem] font-normal normal-case tracking-normal leading-snug text-[var(--color-ink)]">
                 {group.label}
                 <span
                   aria-hidden
@@ -277,17 +294,11 @@ export function Nav({
     );
   }
 
+  // Mobile drawer: grouped entries collapse to their top-level link
+  // (the demos sub-menu made the drawer taller than the screen) —
+  // the destination page carries the full gallery.
   function renderMobileEntry(link: NavLink) {
-    if (!link.items?.length && !link.groups?.length)
-      return renderNavLink(link, true);
-    return (
-      <div key={link.href}>
-        {renderNavLink(link, true)}
-        <div className="ml-4 border-l border-[var(--color-rule-subtle)] pl-4">
-          {dropdownEntries(link, true)}
-        </div>
-      </div>
-    );
+    return renderNavLink(link, true);
   }
 
   const homeHref = baseUrl || "/";
@@ -318,6 +329,7 @@ export function Nav({
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderDesktopEntry(link))}
+          {rightSlot}
           <a
             href="https://github.com/TheAxiomFoundation"
             className="nav-icon gradient-icon"
@@ -327,6 +339,12 @@ export function Nav({
             aria-label="GitHub"
           >
             <GitHubIcon className="w-5 h-5" />
+          </a>
+          <a
+            href={appUrl}
+            className="inline-flex items-center rounded-full bg-[var(--color-accent)] px-5 py-2 -mr-4 font-mono text-[0.7rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            Get started
           </a>
         </nav>
 
@@ -357,8 +375,20 @@ export function Nav({
 
       {/* Mobile drawer */}
       {open && (
-        <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
+        <nav className="md:hidden max-h-[calc(100vh-64px)] overflow-y-auto border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderMobileEntry(link))}
+          <a
+            href={appUrl}
+            onClick={close}
+            className="mt-5 inline-flex items-center rounded-full bg-[var(--color-accent)] px-6 py-2.5 font-mono text-[0.75rem] tracking-[0.12em] uppercase text-white no-underline transition-colors hover:bg-[var(--color-accent-hover)]"
+          >
+            Get started
+          </a>
+          {rightSlot && (
+            <div className="mt-4" onClick={close}>
+              {rightSlot}
+            </div>
+          )}
         </nav>
       )}
     </header>

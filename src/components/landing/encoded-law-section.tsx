@@ -29,30 +29,6 @@ const LAYERS = [
   },
 ];
 
-const PTC_TIMELINE = [
-  {
-    period: "2014 – 2020",
-    note: "Original ACA",
-    rate: "2.0% – 9.5%",
-    desc: "Sliding scale, 100–400% FPL",
-  },
-  {
-    period: "2021 – 2025",
-    note: "ARPA + IRA extension",
-    rate: "0.0% – 8.5%",
-    desc: "Suspended floor, no income cap",
-    highlight: true,
-  },
-  {
-    period: "2026 →",
-    note: "Reverts",
-    rate: "2.0% – 9.5%",
-    desc: "Back to original schedule",
-  },
-];
-
-const SHOW_WORKED_EXAMPLE = true;
-
 export function EncodedLawSection() {
   return (
     <section
@@ -104,74 +80,6 @@ export function EncodedLawSection() {
           ))}
         </RevealGroup>
 
-        {/* Worked example — hidden in Round 1, returns at launch */}
-        {SHOW_WORKED_EXAMPLE && (
-        <Reveal className="max-w-[920px] mx-auto" amount={0.15}>
-          <div className="text-center mb-10">
-            <span className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)]">
-              An encoding, in detail
-            </span>
-            <h3 className="font-display font-light text-[1.6rem] tracking-[0.04em] text-[var(--color-ink)] mt-3 mb-3">
-              ACA Premium Tax Credit, three eras
-            </h3>
-            <p className="font-body text-[0.95rem] text-[var(--color-ink-secondary)] max-w-[600px] mx-auto leading-relaxed">
-              The same statute &mdash;{" "}
-              <span className="font-mono text-[0.85rem] text-[var(--color-ink)]">
-                26 USC &sect; 36B(b)(3)
-              </span>{" "}
-              &mdash; computes three different answers depending on when you
-              ask.
-            </p>
-          </div>
-
-          <div className="border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)]">
-            <div className="grid grid-cols-[1.2fr_1fr_1fr_1.4fr] font-mono text-[0.65rem] tracking-[0.18em] uppercase border-b border-[var(--color-rule)] bg-[var(--color-rule-subtle)] text-[var(--color-ink-muted)]">
-              <div className="px-5 py-3">Effective</div>
-              <div className="px-5 py-3">Trigger</div>
-              <div className="px-5 py-3">Rate band</div>
-              <div className="px-5 py-3">Notes</div>
-            </div>
-            {PTC_TIMELINE.map((row) => (
-              <div
-                key={row.period}
-                className={`grid grid-cols-[1.2fr_1fr_1fr_1.4fr] border-b border-[var(--color-rule-subtle)] last:border-b-0 transition-colors ${
-                  row.highlight ? "bg-[var(--color-accent-light)]" : ""
-                }`}
-              >
-                <div
-                  className={`px-5 py-4 font-mono text-[0.85rem] tnum ${
-                    row.highlight
-                      ? "text-[var(--color-accent)]"
-                      : "text-[var(--color-ink)]"
-                  }`}
-                  style={{ fontFeatureSettings: '"tnum","lnum"' }}
-                >
-                  {row.period}
-                </div>
-                <div className="px-5 py-4 font-body text-[0.9rem] text-[var(--color-ink-secondary)]">
-                  {row.note}
-                </div>
-                <div
-                  className="px-5 py-4 font-mono text-[0.85rem] text-[var(--color-ink)] tnum"
-                  style={{ fontFeatureSettings: '"tnum","lnum"' }}
-                >
-                  {row.rate}
-                </div>
-                <div className="px-5 py-4 font-body text-[0.85rem] text-[var(--color-ink-secondary)]">
-                  {row.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center mt-8 font-body text-[0.95rem] text-[var(--color-ink-muted)] max-w-[640px] mx-auto leading-relaxed">
-            <span className="serif-italic text-[var(--color-ink-secondary)]">
-              Same code, three answers.
-            </span>{" "}
-            Pass a date, get the rule that applied.
-          </p>
-        </Reveal>
-        )}
       </div>
     </section>
   );

@@ -21,66 +21,50 @@ describe("DocsPage", () => {
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /documentation homes/i })
-    ).toBeInTheDocument();
-    expect(
       screen.getByText(/docs live in the repo that owns the code or contract/i)
     ).toBeInTheDocument();
     expect(screen.getAllByText("axiom-corpus").length).toBeGreaterThan(0);
     expect(screen.getAllByText("axiom-encode").length).toBeGreaterThan(0);
   });
 
-  it("indexes the canonical docs across the pipeline", () => {
+  it("no longer indexes the per-repo doc links (Documentation homes removed)", () => {
     render(<DocsPage />);
     expect(
-      screen.getByRole("link", { name: /signed corpus releases/i })
-    ).toHaveAttribute(
-      "href",
-      "https://github.com/TheAxiomFoundation/axiom-corpus/blob/main/docs/named-release-publication.md"
-    );
+      screen.queryByRole("heading", { name: /documentation homes/i })
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /the rulespec schema/i })
-    ).toHaveAttribute(
-      "href",
-      "https://github.com/TheAxiomFoundation/axiom-rules-engine/blob/main/docs/rulespec.md"
-    );
+      screen.queryByRole("link", { name: /signed corpus releases/i })
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /source claims format/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /bitemporal semantics/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /jurisdiction repositories/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /oracle adapters/i })
-    ).toHaveAttribute("href", "https://github.com/TheAxiomFoundation/axiom-oracles");
+      screen.queryByRole("link", { name: /oracle adapters/i })
+    ).not.toBeInTheDocument();
     // The internal lab notebook stays in the repo, not on the index.
     expect(screen.queryByText(/methods log/i)).not.toBeInTheDocument();
   });
 
-  it("embeds the live architecture map", () => {
+  it("renders the pipeline strip natively — no architecture iframe", () => {
     render(<DocsPage />);
+    expect(screen.queryByTitle("Cross-system architecture map")).toBeNull();
     expect(
-      screen.getByTitle("Cross-system architecture map")
-    ).toHaveAttribute("src", "https://axiom-architecture-one.vercel.app");
+      screen.getByRole("heading", { name: /^the architecture$/i })
+    ).toBeInTheDocument();
+    // The strip mounts client-side (jsdom runs effects, so it's here).
+    expect(
+      screen.getByRole("img", { name: /five equal stations/i })
+    ).toBeInTheDocument();
   });
 
-  it("links to canonical repo docs and related maps", () => {
+  it("no longer shows the Related maps row (held back for now)", () => {
     render(<DocsPage />);
-
     expect(
-      screen.getByRole("link", { name: /rulespec proof validation/i })
-    ).toHaveAttribute(
-      "href",
-      "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/rulespec-proof-validation.md"
-    );
+      screen.queryByRole("heading", { name: /related maps/i })
+    ).toBeNull();
     expect(
-      screen.getByRole("link", { name: /technical stack/i })
-    ).toHaveAttribute("href", "/stack");
+      screen.queryByRole("link", { name: /technical stack/i })
+    ).toBeNull();
     expect(
-      screen.getByRole("link", { name: /encoder system map/i })
-    ).toHaveAttribute("href", "/encoder");
+      screen.queryByRole("link", { name: /encoder system map/i })
+    ).toBeNull();
+    expect(screen.queryByRole("link", { name: /open axiom/i })).toBeNull();
   });
 });

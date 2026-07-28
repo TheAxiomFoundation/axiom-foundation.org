@@ -40,6 +40,13 @@ export function RuleSpecTab({
   jurisdiction,
   citationPath,
   isRepealed,
+  showSummary = true,
+  ruleGroups,
+  includeUngrouped = true,
+  showHeader = true,
+  textAnchors,
+  graphLinkForRule,
+  builderLinkForRule,
 }: {
   encoding: RuleEncodingData | null;
   loading: boolean;
@@ -50,6 +57,28 @@ export function RuleSpecTab({
    *  the source corpus has materialized child provisions. */
   citationPath?: string | null;
   isRepealed?: boolean;
+  /** The module summary is usually a verbatim source excerpt; hide
+   *  it on surfaces that already render the full source text. */
+  showSummary?: boolean;
+  /** Optional document-ordered grouping of rule cards (v2 section
+   *  reader): each group renders under a subsection header. Rules
+   *  not named in any group trail under "Other". */
+  ruleGroups?: Array<{ label: string; ruleNames: string[] }>;
+  /** When false, rules outside ruleGroups are omitted instead of
+   *  trailing under "Other" — used by the rail's follow-scroll mode,
+   *  which shows only the active subsection's rules. */
+  includeUngrouped?: boolean;
+  /** When false, the "Shown source" header and score block are
+   *  omitted — the rail's per-node view shows only rule cards. */
+  showHeader?: boolean;
+  /** rule name → in-page text anchor; when present a rule card links
+   *  back to the subsection of the source text it implements. */
+  textAnchors?: Record<string, string>;
+  /** rule name → graph-viewer deep link (the rule's legal ID as
+   *  focus); when it returns a URL the card shows a "graph" link. */
+  graphLinkForRule?: (ruleName: string) => string | null;
+  /** rule name → dashboard-builder deep link (use as output). */
+  builderLinkForRule?: (ruleName: string) => string | null;
 }) {
   const tests = useRuleSpecTests(encoding, jurisdiction);
   const descendants = useEncodedDescendants(
@@ -138,33 +167,49 @@ export function RuleSpecTab({
 
   return (
     <div className="space-y-8">
-      <SourceHeader
-        filePath={encoding.file_path}
-        description={sourceDescription}
-        gitHubUrl={gitHubUrl}
-        isGitHub={isGitHub}
-        ancestorPath={ancestorPath}
-      />
+      {showHeader && (
+        <SourceHeader
+          filePath={encoding.file_path}
+          description={sourceDescription}
+          gitHubUrl={gitHubUrl}
+          isGitHub={isGitHub}
+          ancestorPath={ancestorPath}
+        />
+      )}
 
-      {scores && !isGitHub && <ScoresBlock scores={scores} />}
+      {showHeader && scores && !isGitHub && <ScoresBlock scores={scores} />}
 
       {docHasContent ? (
         <>
-          {doc!.module.summary && (
+          {showSummary && doc!.module.summary && (
             <Summary text={doc!.module.summary} />
           )}
-          {doc!.rules.length > 0 && (
-            <div className="space-y-6">
-              <div className="eyebrow">Rules</div>
-              {doc!.rules.map((rule) => (
-                <RuleCard
-                  key={rule.name}
-                  rule={rule}
-                  tests={testsByRule.get(rule.name) ?? []}
-                />
-              ))}
-            </div>
-          )}
+          {doc!.rules.length > 0 &&
+            (ruleGroups && ruleGroups.length > 0 ? (
+              <GroupedRules
+                rules={doc!.rules}
+                groups={ruleGroups}
+                testsByRule={testsByRule}
+                includeUngrouped={includeUngrouped}
+                textAnchors={textAnchors}
+                graphLinkForRule={graphLinkForRule}
+                builderLinkForRule={builderLinkForRule}
+              />
+            ) : (
+              <div className="space-y-6">
+                <div className="eyebrow">Rules</div>
+                {doc!.rules.map((rule) => (
+                  <RuleCard
+                    key={rule.name}
+                    rule={rule}
+                    tests={testsByRule.get(rule.name) ?? []}
+                    textAnchor={textAnchors?.[rule.name]}
+                    graphHref={graphLinkForRule?.(rule.name) ?? null}
+                    builderHref={builderLinkForRule?.(rule.name) ?? null}
+                  />
+                ))}
+              </div>
+            ))}
           {doc!.parseErrors.length > 0 && (
             <ParseErrorsBlock errors={doc!.parseErrors} />
           )}
@@ -193,6 +238,83 @@ export function RuleSpecTab({
 // ----------------------------------------------------------------------------
 // Sub-components
 // ----------------------------------------------------------------------------
+
+/**
+ * Rule cards grouped to mirror the source document's subsection
+ * order. Groups render in the given order; any parsed rule not named
+ * in a group trails under "Other" so nothing silently disappears.
+ */
+function GroupedRules({
+  rules,
+  groups,
+  testsByRule,
+  includeUngrouped = true,
+  textAnchors,
+  graphLinkForRule,
+  builderLinkForRule,
+}: {
+  rules: RuleSpecRule[];
+  groups: Array<{ label: string; ruleNames: string[] }>;
+  testsByRule: Map<string, RuleSpecTestCase[]>;
+  includeUngrouped?: boolean;
+  textAnchors?: Record<string, string>;
+  graphLinkForRule?: (ruleName: string) => string | null;
+  builderLinkForRule?: (ruleName: string) => string | null;
+}) {
+  const byName = new Map(rules.map((rule) => [rule.name, rule]));
+  const grouped = new Set(groups.flatMap((group) => group.ruleNames));
+  const leftovers = includeUngrouped
+    ? rules.filter((rule) => !grouped.has(rule.name))
+    : [];
+  const sections = [
+    ...groups
+      .map((group) => ({
+        label: group.label,
+        rules: group.ruleNames
+          .map((name) => byName.get(name))
+          .filter((rule): rule is RuleSpecRule => Boolean(rule)),
+      }))
+      .filter((group) => group.rules.length > 0),
+    ...(leftovers.length > 0 ? [{ label: "Other", rules: leftovers }] : []),
+  ];
+
+  if (sections.length === 0) {
+    return (
+      <p className="text-sm text-[var(--color-ink-muted)] leading-relaxed">
+        No rules are tied directly to this part of the section.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {sections.map((section) => (
+        <section key={section.label} className="space-y-4">
+          {section.label && (
+            <div className="border-b border-[var(--color-rule)] pb-1.5">
+              <span
+                className="text-sm text-[var(--color-ink)]"
+                style={{ fontFamily: "var(--f-serif)" }}
+              >
+                {section.label}
+              </span>
+            </div>
+          )}
+          {section.rules.map((rule) => (
+            <RuleCard
+              key={rule.name}
+              rule={rule}
+              tests={testsByRule.get(rule.name) ?? []}
+              textAnchor={textAnchors?.[rule.name]}
+              graphHref={graphLinkForRule?.(rule.name) ?? null}
+              builderHref={builderLinkForRule?.(rule.name) ?? null}
+            />
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
 
 function SourceHeader({
   filePath,
@@ -296,13 +418,24 @@ function Summary({ text }: { text: string }) {
 function RuleCard({
   rule,
   tests,
+  textAnchor,
+  graphHref = null,
+  builderHref = null,
 }: {
   rule: RuleSpecRule;
   tests: RuleSpecTestCase[];
+  /** In-page anchor of the source-text subsection this rule
+   *  implements — renders a back-link into the reading column. */
+  textAnchor?: string;
+  /** Graph-viewer deep link focused on this rule's node. */
+  graphHref?: string | null;
+  /** Builder deep link with this rule preselected as an output. */
+  builderHref?: string | null;
 }) {
   const anchor = `rule-${rule.name}`;
   const yamlBlock = useMemo(() => dumpRuleYaml(rule), [rule]);
   const meta = ruleMeta(rule);
+  const title = ruleTitle(rule);
   return (
     <article
       id={anchor}
@@ -312,17 +445,57 @@ function RuleCard({
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h3 className="m-0 font-mono text-sm font-semibold text-[var(--color-ink)] break-all">
-              {ruleTitle(rule)}
+              {title}
             </h3>
-            <code className="mt-1 block font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
-              #{rule.name}
-            </code>
+            {/* The technical id repeats the title verbatim for plain
+                derived/parameter rules — only show it when it adds
+                information (relation-kind rules with derived titles). */}
+            {title !== rule.name && (
+              <code className="mt-1 block font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
+                #{rule.name}
+              </code>
+            )}
           </div>
-          {rule.kind && (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-              {humanizeKind(rule.kind)}
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {rule.kind && (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                {humanizeKind(rule.kind)}
+              </span>
+            )}
+            {textAnchor && (
+              <a
+                href={`#${textAnchor}`}
+                title="Jump to this subsection in the text"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                ({textAnchor}) in text ↖
+              </a>
+            )}
+            {graphHref && (
+              <a
+                href={graphHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View this rule's node and dependencies in the program graph"
+                data-testid="rule-graph-link"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                graph ↗
+              </a>
+            )}
+            {builderHref && (
+              <a
+                href={builderHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Use this rule as a calculator output in the builder"
+                data-testid="rule-builder-link"
+                className="font-mono text-[10px] text-[var(--color-accent)] no-underline hover:underline"
+              >
+                use in builder ↗
+              </a>
+            )}
+          </div>
         </div>
         {meta.length > 0 && (
           <dl className="mt-3 grid grid-cols-1 gap-1.5 text-[11px]">

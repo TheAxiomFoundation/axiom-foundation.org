@@ -41,7 +41,7 @@ export const JURISDICTIONS_SEED: Jurisdiction[] = [
     hasCitationPaths: true,
   },
   { slug: "ca", label: "Canada", hasCitationPaths: false },
-  { slug: "nz", label: "New Zealand", hasCitationPaths: false },
+  { slug: "nz", label: "New Zealand", hasCitationPaths: true },
 
   // US states + DC + territories
   { slug: "us-al", label: "Alabama", hasCitationPaths: true },

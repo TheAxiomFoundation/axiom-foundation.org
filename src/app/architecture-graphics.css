@@ -1,0 +1,613 @@
+/* Ported from axiom-architecture/src/styles.css — the flat pipeline
+   strip (fp-*) and the journey film (jw-*), plus the shared svg
+   shell (.lsk). Tokens map 1:1 to the site's tokens.css. */
+
+.lsk__wrap {
+  overflow-x: auto;
+}
+.lsk {
+  display: block;
+  width: 100%;
+  min-width: 960px;
+  height: auto;
+}
+
+.fp-eyebrow {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  fill: var(--color-ink);
+}
+.fp-level {
+  font-family: var(--f-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  fill: var(--color-ink-muted);
+}
+.fp-chip {
+  fill: var(--color-paper-elevated);
+  stroke: rgba(28, 25, 23, 0.4);
+  stroke-width: 0.8;
+}
+.fp-card {
+  fill: var(--color-paper-elevated);
+  stroke: rgba(28, 25, 23, 0.55);
+  stroke-width: 0.9;
+}
+.fp-mono {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  fill: var(--color-ink);
+}
+.fp-mono--muted { fill: var(--color-ink-muted); }
+.fp-mono--sm { font-size: 9.5px; }
+.fp-mono--tiny { font-size: 8.5px; }
+.fp-mono--node { font-size: 8px; }
+.fp-mono--wax { fill: var(--color-accent); font-size: 9.5px; }
+
+.fp-key { fill: var(--color-ink-muted); }
+
+.fp-serif {
+  font-family: var(--f-serif);
+  font-size: 13.5px;
+  fill: var(--color-ink);
+}
+.fp-serifsm {
+  font-family: var(--f-serif);
+  font-size: 12px;
+  fill: var(--color-ink);
+}
+.fp-serifq {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 11px;
+  fill: var(--color-ink);
+}
+.fp-station {
+  font-family: var(--f-mono);
+  font-size: 14px;
+  font-weight: 600;
+  fill: var(--color-ink);
+}
+.fp-specname {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--color-ink);
+}
+.fp-gatechip {
+  fill: var(--color-paper-elevated);
+  stroke: var(--color-success);
+  stroke-width: 1.1;
+}
+.fp-gatetext {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-success);
+}
+.fp-gatename {
+  fill: var(--color-ink);
+  font-size: 8.5px;
+}
+.fp-sealtick {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--color-accent);
+}
+.fp-cap {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 11px;
+  fill: var(--color-ink-muted);
+}
+.fp-threadcap {
+  font-family: var(--f-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  fill: var(--color-accent);
+}
+.fp-threadlabel {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 11.5px;
+  fill: var(--color-ink-muted);
+}
+.fp-grouphead {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: var(--color-ink);
+}
+.fp-shelflabel {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--color-ink-muted);
+}
+.fp-capq {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 11.5px;
+  fill: var(--color-ink-muted);
+}
+.fpwrap {
+  position: relative;
+}
+.fpwrap__fs {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  border: 1px solid rgba(28, 25, 23, 0.35);
+  border-radius: 999px;
+  width: 30px;
+  height: 26px;
+  cursor: pointer;
+}
+.fpwrap__fs:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.fpwrap:fullscreen {
+  background: var(--color-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3vh 3vw;
+}
+.fpwrap:fullscreen .lsk {
+  max-height: 94vh;
+}
+
+.jw-collabel {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  fill: var(--color-ink);
+}
+.jw-doceyebrow {
+  font-family: var(--f-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  fill: var(--color-ink-muted);
+}
+.jw-docserif {
+  font-family: var(--f-serif);
+  font-size: 17px;
+  fill: var(--color-ink);
+}
+.jw-doctitle {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  fill: var(--color-ink);
+}
+.jw-seckey {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-accent);
+}
+.jw-seclabel {
+  font-family: var(--f-serif);
+  font-size: 12.5px;
+  fill: var(--color-ink);
+}
+.jw-leader {
+  fill: none;
+  stroke: var(--color-ink-muted);
+  stroke-width: 0.9;
+  stroke-dasharray: 2 3;
+}
+.jw-cardname {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--color-ink);
+}
+.jw-cardcode {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  fill: var(--color-accent);
+}
+.jw-gatehead {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  fill: var(--color-ink-muted);
+}
+.jw-gatetick {
+  font-family: var(--f-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  fill: var(--color-success);
+}
+.jw-gatetick-name {
+  fill: var(--color-ink);
+  font-size: 11px;
+}
+.jw-gatetick--fail {
+  fill: var(--color-accent);
+}
+.jw-gatetick--pending {
+  fill: var(--color-ink-muted);
+  font-weight: 400;
+}
+.jw-gatetick--pending .jw-gatetick-name {
+  fill: var(--color-ink-muted);
+}
+.jw-gatechip {
+  fill: var(--color-paper-elevated);
+  stroke: var(--color-success);
+  stroke-width: 1.1;
+}
+.jw-gatechip--pending {
+  stroke: rgba(28, 25, 23, 0.35);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 3;
+}
+.jw-gatechip--fail {
+  stroke: var(--color-accent);
+}
+.jw-wbserif {
+  font-family: var(--f-serif);
+  font-size: 12.5px;
+  fill: var(--color-ink);
+}
+.jw-wbcode {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  fill: var(--color-ink);
+}
+.jw-wbyaml {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  fill: var(--color-ink);
+}
+.jw-wbkey {
+  fill: var(--color-ink-muted);
+}
+.jw-wbproof {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  fill: var(--color-accent);
+}
+.jw-redraft {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  fill: var(--color-accent);
+}
+.jw-nodeeyebrow {
+  font-family: var(--f-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  fill: var(--color-ink-muted);
+}
+.jw-nodetitle {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--color-ink);
+}
+.jw-nodetiny {
+  font-family: var(--f-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.02em;
+  fill: var(--color-ink-secondary);
+}
+.jw-nodemini {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  fill: var(--color-ink-secondary);
+}
+.jw-nodevalue {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-success);
+}
+.jw-nodecheck {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  fill: var(--color-success);
+}
+.jw-edge {
+  fill: none;
+  stroke: rgba(87, 83, 78, 0.45);
+  /* thinner than the inter-bundle wires (0.9): these lines sit densely
+     packed inside clusters that shrink to a few dozen px, so at equal
+     width they'd read far heavier */
+  stroke-width: 0.8;
+  /* hold line weight through the pull-back — scaled edges go sub-pixel
+     and the far graph dissolves */
+  vector-effect: non-scaling-stroke;
+}
+.jw-progtitle {
+  font-family: var(--f-serif);
+  font-size: 21px;
+  fill: var(--color-ink);
+}
+.jw-progrow {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  fill: var(--color-ink);
+}
+.jw-progrow--muted {
+  fill: var(--color-ink-muted);
+  font-size: 10px;
+}
+.jw-sealcheck {
+  font-family: var(--f-mono);
+  font-size: 20px;
+  fill: var(--color-accent);
+}
+.jw-sealline {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  fill: var(--color-ink-muted);
+}
+.jw-devserif {
+  font-family: var(--f-serif);
+  font-size: 16px;
+  fill: var(--color-ink);
+}
+.jw-devmono {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  fill: var(--color-ink);
+}
+.jw-term {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  fill: #efece2;
+}
+.jw-term--answer {
+  fill: #7fbf8e;
+}
+.jw-consistency {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  fill: var(--color-ink-muted);
+}
+.jw-name {
+  font-family: var(--f-serif);
+  font-size: 24px;
+  fill: var(--color-ink);
+}
+.jw-sub {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  fill: var(--color-ink-muted);
+}
+.jw-worldlabel {
+  font-family: var(--f-mono);
+  font-size: 40px;
+  letter-spacing: 0.06em;
+  fill: var(--color-ink-secondary);
+}
+.jw-chip1 {
+  font-family: var(--f-mono);
+  font-size: 12.5px;
+  fill: var(--color-ink);
+}
+.jw-chip2 {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  fill: var(--color-ink-muted);
+}
+
+/* journey demo layering + the corpus library (ported with the film) */
+.jdemo__stage {
+  position: relative;
+}
+.jdemo__layer {
+  animation: jdemo-in 700ms var(--ease-out);
+}
+.jdemo__over {
+  position: absolute;
+  inset: 0;
+  /* no background here: the film svg paints its own paper backdrop over
+     the 620-unit stage only, so the caption band below keeps the
+     section's tint in both acts (a full-bleed paper box used to snap in
+     with the film) */
+  animation: jdemo-in 1200ms var(--ease-out) both;
+}
+.jdemo__over .lsk__wrap {
+  margin-top: 0;
+}
+.jdemo__over--out {
+  animation: jdemo-out 1400ms ease both;
+}
+.jdemo__ctrl {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.jdemo__ctrl button {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  border: 1px solid rgba(28, 25, 23, 0.35);
+  border-radius: 999px;
+  width: 30px;
+  height: 26px;
+  cursor: pointer;
+}
+.jdemo__ctrl button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.jdemo__ctrl-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  margin-left: 8px;
+}
+.jdemo__ctrl-fs {
+  position: absolute;
+  right: 0;
+}
+.jdemo:fullscreen {
+  background: var(--color-paper);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3vh 4vw;
+  overflow: auto;
+}
+.clib-svg {
+  display: block;
+  width: 100%;
+  min-width: 960px;
+  height: auto;
+}
+
+/* Mobile: the journey scales to fit the viewport instead of forcing
+   a 960px pan (viewBox SVGs scale cleanly). Captions get larger
+   viewBox-unit sizes to stay legible at phone scale. The docs
+   pipeline strip keeps its pan — its content is denser. */
+@media (max-width: 900px) {
+  .jdemo__stage .lsk,
+  .clib-svg {
+    min-width: 0;
+  }
+  .jw-name {
+    font-size: 36px;
+  }
+  .jw-sub {
+    font-size: 19px;
+  }
+}
+
+/* The scrolly's pinned stage: below the header on desktop; on phones
+   the film is only ~a third of the screen tall, so the stage takes
+   the full viewport and centers the film in it. */
+.journey-sticky {
+  position: sticky;
+  top: 96px;
+}
+@media (max-width: 900px) {
+  .journey-sticky {
+    top: 0;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+.clib-cap {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--color-ink-muted);
+}
+.clib-cap--light { fill: #948b7e; }
+
+.clib-plaque {
+  font-family: var(--f-mono);
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  fill: var(--color-ink-muted);
+}
+.clib-plaque--light { fill: #948b7e; }
+
+.clib-plaque--digital {
+  fill: var(--color-success);
+  opacity: 0.75;
+}
+.clib-spinelabel {
+  font-family: var(--f-mono);
+  font-size: 5.5px;
+  letter-spacing: 0.05em;
+  fill: rgba(250, 249, 246, 0.85);
+}
+.clib-titlepage {
+  font-family: var(--f-serif);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  fill: var(--color-ink);
+}
+.clib-titlepage-italic {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 21px;
+  fill: var(--color-ink);
+}
+.clib-chapter {
+  font-family: var(--f-serif);
+  font-size: 13px;
+  fill: var(--color-ink);
+}
+.clib-toc {
+  font-family: var(--f-serif);
+  font-size: 10.5px;
+  fill: var(--color-ink);
+}
+.clib-cover-eyebrow {
+  font-family: var(--f-mono);
+  font-size: 7px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  fill: #e6c893;
+}
+.clib-cover-title {
+  font-family: var(--f-serif);
+  font-size: 26px;
+  letter-spacing: 0.1em;
+  fill: #efd7ae;
+}
+.clib-cover-sub {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 14px;
+  fill: #e6c893;
+}
+.clib-toollabel {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  fill: #e9e4da;
+}
+.clib-toolsub {
+  font-family: var(--f-mono);
+  font-size: 8px;
+  fill: #948b7e;
+}
+@keyframes jdemo-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes jdemo-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

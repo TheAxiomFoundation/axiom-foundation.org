@@ -145,6 +145,30 @@ describe("humanizeRuleName", () => {
     expect(humanizeRuleName("lcwra_element_amount")).toBe(
       "LCWRA Element Amount",
     );
+    expect(humanizeRuleName("snap_standard_deduction_48_states_dc")).toBe(
+      "SNAP Standard Deduction 48 States DC",
+    );
+    expect(
+      humanizeRuleName(
+        "household_received_leap_or_e_ebt_payment_within_previous_12_months",
+      ),
+    ).toBe("Household Received LEAP Or E EBT Payment Within Previous 12 Months");
+    expect(humanizeRuleName("snap_state_sme_flat_amount")).toBe(
+      "SNAP State SME Flat Amount",
+    );
+    expect(
+      humanizeRuleName("actual_excess_applies_when_excess_exceeds_smed"),
+    ).toBe("Actual Excess Applies When Excess Exceeds SMED");
+    expect(humanizeRuleName("ak_ssp_payment_standard")).toBe(
+      "Ak SSP Payment Standard",
+    );
+  });
+
+  it("does not touch words that merely contain acronym substrings", () => {
+    expect(humanizeRuleName("debtor_has_ssn")).toBe("Debtor Has SSN");
+    expect(humanizeRuleName("countable_debt_amount")).toBe(
+      "Countable Debt Amount",
+    );
   });
 
   it("is stable when re-humanizing output", () => {

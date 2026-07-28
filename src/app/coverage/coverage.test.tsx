@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockGetCoverageData } = vi.hoisted(() => ({
@@ -34,6 +34,14 @@ const DATA: CoverageData = {
       documentTotal: 331,
       provisionCount: 9897,
       encodingFileCount: 1200,
+    },
+    {
+      slug: "us-ok",
+      label: "Oklahoma",
+      documents: { manual: 1 },
+      documentTotal: 1,
+      provisionCount: 212,
+      encodingFileCount: 0,
     },
     {
       slug: "us-ms",
@@ -88,27 +96,47 @@ describe("CoveragePage", () => {
       screen.getByText(/Machine-readable rules, each linked back/)
     ).toBeInTheDocument();
 
-    // Jurisdiction rows: full breakdown — documents by type,
-    // provisions, encodings. Corpus rows link to the browse tree.
-    const usRow = screen.getByText("US Federal").closest("a");
-    expect(usRow).toHaveAttribute("href", "/us");
-    expect(
-      screen.getByText(
-        "331 documents — 225 statutes · 80 regulations · 24 guidance · 2 forms"
-      )
-    ).toBeInTheDocument();
+    // Jurisdiction rows: one line each — documents, provisions,
+    // encodings. No type breakdowns, and rows are never links.
+    expect(screen.getByText("US Federal").closest("a")).toBeNull();
+    expect(screen.getByText("331 documents")).toBeInTheDocument();
     expect(screen.getByText("9,897 provisions")).toBeInTheDocument();
     expect(screen.getByText("1,200 encodings")).toBeInTheDocument();
+    expect(screen.queryByText(/225 statutes/)).toBeNull();
+    // Singular document count reads naturally.
+    expect(screen.getByText("1 document")).toBeInTheDocument();
 
-    // Encodings-only rows: unlinked, amber, ingestion pending.
+    // Encodings-only rows show just their amber figure.
     expect(screen.getByText("Mississippi").closest("a")).toBeNull();
     expect(screen.getByText("300 encodings")).toBeInTheDocument();
+
+    // Rows sort alphabetically regardless of the data-layer order.
+    // (Scoped to row names — the filter buttons repeat country text.)
+    const names = Array.from(
+      document.querySelectorAll<HTMLElement>(".cov-rows .cov-row-name")
+    ).map((el) => el.textContent);
+    expect(names).toEqual([
+      "Mississippi",
+      "Oklahoma",
+      "United Kingdom",
+      "US Federal",
+    ]);
+
+    // The country filter narrows the listing; All restores it.
     expect(
-      screen.getAllByText(/corpus ingestion pending/).length
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/amber counts are encodings/)
+      screen.getByRole("group", { name: /filter by country/i })
     ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "United Kingdom" })
+    );
+    expect(screen.queryByText("US Federal")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "United States" }));
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
+    expect(
+      document.querySelector(".cov-rows .cov-row-name")?.textContent
+    ).toBe("Mississippi");
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByText("US Federal")).toBeInTheDocument();
 
     // No program concepts anywhere on the page.
     expect(screen.queryByText(/by program/i)).toBeNull();

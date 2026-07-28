@@ -1,98 +1,116 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type { JurisdictionCoverage } from "@/lib/axiom/coverage-page";
 
 /**
- * The coverage listing: one row per jurisdiction with its full
- * breakdown — documents by type, provisions, encoding files.
- * Deliberately minimal: no sorting, no filtering, everything visible
- * at a glance.
+ * The coverage listing: one line per jurisdiction — documents,
+ * provisions, encoding files — alphabetical, with a country filter
+ * on top. Deliberately minimal beyond that: everything visible at a
+ * glance.
  */
 
 const numberFormat = new Intl.NumberFormat("en-US");
 const n = (value: number) => numberFormat.format(value);
 
-/** "225 statutes", "104 policies", "24 guidance" — naive plural:
- *  mass nouns exempt, -y → -ies, otherwise -s. */
-const UNCOUNTABLE = new Set(["guidance"]);
-function docTypeLabel(type: string, count: number): string {
-  const label =
-    count === 1 || UNCOUNTABLE.has(type) || type.endsWith("s")
-      ? type
-      : type.endsWith("y")
-        ? `${type.slice(0, -1)}ies`
-        : `${type}s`;
-  return `${n(count)} ${label}`;
-}
+const COUNTRY_LABELS: Record<string, string> = {
+  us: "United States",
+  uk: "United Kingdom",
+  be: "Belgium",
+  ca: "Canada",
+  canada: "Canada",
+  nz: "New Zealand",
+};
 
-function docBreakdown(j: JurisdictionCoverage): string | null {
-  if (j.documentTotal === 0) return null;
-  const parts = Object.entries(j.documents)
-    .sort((a, b) => b[1] - a[1])
-    .map(([type, count]) => docTypeLabel(type, count));
-  return `${n(j.documentTotal)} ${
-    j.documentTotal === 1 ? "document" : "documents"
-  } — ${parts.join(" · ")}`;
-}
+/** "us-co" → "us"; "canada" → "canada". */
+const countryOf = (slug: string) => slug.split("-")[0];
+const countryLabel = (code: string) =>
+  COUNTRY_LABELS[code] ?? code.toUpperCase();
 
 export function JurisdictionBreakdown({
   jurisdictions,
 }: {
   jurisdictions: JurisdictionCoverage[];
 }) {
+  const [country, setCountry] = useState<string | null>(null);
+
+  const countries = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const j of jurisdictions) {
+      const code = countryOf(j.slug);
+      if (!map.has(code)) map.set(code, countryLabel(code));
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [jurisdictions]);
+
+  const rows = useMemo(
+    () =>
+      jurisdictions
+        .filter((j) => country === null || countryOf(j.slug) === country)
+        .slice()
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [jurisdictions, country]
+  );
+
   return (
-    <>
+    <div>
+      <div
+        className="cov-filter mb-6"
+        role="group"
+        aria-label="Filter by country"
+      >
+        <button
+          type="button"
+          onClick={() => setCountry(null)}
+          className={
+            country === null ? "cov-filter-btn cov-filter-on" : "cov-filter-btn"
+          }
+          aria-pressed={country === null}
+        >
+          All
+        </button>
+        {countries.map(([code, label]) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setCountry(code)}
+            className={
+              country === code
+                ? "cov-filter-btn cov-filter-on"
+                : "cov-filter-btn"
+            }
+            aria-pressed={country === code}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <ul className="cov-rows">
-        {jurisdictions.map((j) => {
-          const inCorpus = j.provisionCount > 0;
-          const breakdown = docBreakdown(j);
-          const inner = (
-            <>
-              <div className="cov-row-head">
-                <span className="cov-row-name">{j.label}</span>
-                <span className="cov-row-nums">
-                  {inCorpus && (
-                    <span className="cov-row-num">
-                      {n(j.provisionCount)} provisions
-                    </span>
-                  )}
-                  {j.encodingFileCount > 0 && (
-                    <span className="cov-row-num cov-row-num-enc">
-                      {n(j.encodingFileCount)} encodings
-                    </span>
-                  )}
-                </span>
-              </div>
-              {(breakdown || !inCorpus) && (
-                <p className="cov-row-docs">
-                  {breakdown ?? "corpus ingestion pending"}
-                </p>
-              )}
-            </>
-          );
-          return (
-            <li key={j.slug}>
-              {inCorpus ? (
-                <a
-                  href={`/${j.slug}`}
-                  className="cov-row"
-                  aria-label={`${j.label}: ${n(j.provisionCount)} provisions. Browse.`}
-                >
-                  {inner}
-                </a>
-              ) : (
-                <span
-                  className="cov-row cov-row-static"
-                  aria-label={`${j.label}: ${n(j.encodingFileCount)} encoding files, corpus ingestion pending.`}
-                >
-                  {inner}
+        {rows.map((j) => (
+          <li key={j.slug} className="cov-row">
+            <span className="cov-row-name">{j.label}</span>
+            <span className="cov-row-nums">
+              {j.documentTotal > 0 && (
+                <span className="cov-row-num">
+                  {n(j.documentTotal)}{" "}
+                  {j.documentTotal === 1 ? "document" : "documents"}
                 </span>
               )}
-            </li>
-          );
-        })}
+              {j.provisionCount > 0 && (
+                <span className="cov-row-num">
+                  {n(j.provisionCount)} provisions
+                </span>
+              )}
+              {j.encodingFileCount > 0 && (
+                <span className="cov-row-num cov-row-num-enc">
+                  {n(j.encodingFileCount)} encodings
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
       </ul>
-      <p className="cov-legend">
-        amber counts are encodings ahead of corpus ingestion
-      </p>
-    </>
+    </div>
   );
 }

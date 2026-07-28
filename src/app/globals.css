@@ -327,14 +327,44 @@ canvas[aria-hidden] {
   }
 }
 
-/* ── /coverage listing: one row per jurisdiction with its full
-   breakdown — documents by type, provisions, encodings. */
-.cov-legend {
-  margin-top: 0.9rem;
+/* ── /coverage listing: a country filter over one-line jurisdiction
+   rows — documents, provisions, encodings. */
+.cov-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--color-rule);
+  background: rgba(28, 25, 23, 0.05);
+}
+.cov-filter-btn {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--f-mono);
   font-size: 0.66rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-ink-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.36rem 0.72rem;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.cov-filter-btn:hover {
+  color: var(--color-ink);
+}
+.cov-filter-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-filter-on,
+.cov-filter-on:hover {
+  color: var(--color-ink);
+  background: var(--color-paper-elevated);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
 }
 .cov-rows {
   list-style: none;
@@ -351,30 +381,14 @@ canvas[aria-hidden] {
 }
 .cov-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
   height: 100%;
   border: 1px solid var(--color-rule);
   border-radius: 8px;
   background: var(--color-paper-elevated);
-  padding: 0.7rem 0.9rem 0.65rem;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 150ms ease;
-}
-a.cov-row:hover,
-a.cov-row:focus-visible {
-  border-color: var(--color-accent);
-}
-a.cov-row:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-.cov-row-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  padding: 0.55rem 0.9rem 0.5rem;
 }
 .cov-row-name {
   font-family: var(--f-body);
@@ -398,14 +412,6 @@ a.cov-row:focus-visible {
 }
 .cov-row-num-enc {
   color: var(--color-accent);
-}
-.cov-row-docs {
-  margin: 0;
-  font-family: var(--f-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.03em;
-  line-height: 1.6;
-  color: var(--color-ink-muted);
 }
 
 /* ── /coverage scrollytelling: the stack assembles on scroll.

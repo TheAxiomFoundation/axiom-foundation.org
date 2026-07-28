@@ -59,6 +59,11 @@ function isBypassPath(pathname: string): boolean {
   return (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
+    // PostHog's same-origin proxy (next.config rewrites → us.i.posthog
+    // .com). The app-host catch-all was rewriting it to /axiom/ingest,
+    // serving HTML with a 200 — analytics silently swallowed on the
+    // app subdomain.
+    pathname.startsWith("/ingest/") ||
     pathname === "/favicon.ico" ||
     pathname === "/favicon.svg" ||
     pathname === "/robots.txt" ||

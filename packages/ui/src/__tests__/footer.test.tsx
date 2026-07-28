@@ -53,7 +53,7 @@ describe("Footer", () => {
     render(<Footer baseUrl="https://axiom-foundation.org" />);
     expect(screen.getByText("Contact")).toHaveAttribute(
       "href",
-      "mailto:hello@axiom-foundation.org",
+      "mailto:hello@axiom.org",
     );
   });
 

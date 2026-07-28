@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
+import { trackAxiomEvent } from "@/lib/analytics";
 
 export function Hero() {
   const [mounted, setMounted] = useState(false);
@@ -39,11 +40,19 @@ export function Hero() {
           {/* Registration lives in the announcement card above — the hero
               pulls readers into the story instead of repeating the CTA. */}
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <a href="#gap" className="btn-primary">
+            <a
+              href="#gap"
+              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "why_this_exists" })}
+              className="btn-primary"
+            >
               Why this exists
               <ArrowRightIcon className="w-5 h-5" />
             </a>
-            <a href="#encoder" className="btn-outline">
+            <a
+              href="#encoder"
+              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "see_encoder_run" })}
+              className="btn-outline"
+            >
               See the encoder run
             </a>
           </div>

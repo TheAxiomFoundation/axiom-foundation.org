@@ -7,12 +7,123 @@
     {
       "source": "/proposal",
       "destination": "https://proposal.axiom-foundation.org/"
+    },
+    {
+      "source": "/demos",
+      "destination": "https://axiom-demo-shell.vercel.app/demos"
+    },
+    {
+      "source": "/demos/:path(.*)",
+      "destination": "https://axiom-demo-shell.vercel.app/demos/:path(.*)"
+    },
+    {
+      "source": "/gallery/chatbot",
+      "destination": "https://finbot-snap-demo.vercel.app/gallery/chatbot"
+    },
+    {
+      "source": "/gallery/chatbot/:path(.*)",
+      "destination": "https://finbot-snap-demo.vercel.app/gallery/chatbot/:path(.*)"
+    },
+    {
+      "source": "/gallery/reg-demo",
+      "destination": "https://axiom-reg-demo.vercel.app/gallery/reg-demo"
+    },
+    {
+      "source": "/gallery/reg-demo/:path(.*)",
+      "destination": "https://axiom-reg-demo.vercel.app/gallery/reg-demo/:path(.*)"
+    },
+    {
+      "source": "/gallery/builder",
+      "destination": "https://dashboard-builder-flax.vercel.app/gallery/builder"
+    },
+    {
+      "source": "/gallery/builder/:path(.*)",
+      "destination": "https://dashboard-builder-flax.vercel.app/gallery/builder/:path(.*)"
+    },
+    {
+      "source": "/gallery/workflow",
+      "destination": "https://co-snap-workflow-checker.vercel.app/gallery/workflow"
+    },
+    {
+      "source": "/gallery/workflow/:path(.*)",
+      "destination": "https://co-snap-workflow-checker.vercel.app/gallery/workflow/:path(.*)"
+    },
+    {
+      "source": "/gallery/cliffs",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/cliffs"
+    },
+    {
+      "source": "/gallery/cliffs/:path(.*)",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/cliffs/:path(.*)"
+    },
+    {
+      "source": "/gallery/microsim",
+      "destination": "https://axiom-microsim.vercel.app/gallery/microsim"
+    },
+    {
+      "source": "/gallery/microsim/:path(.*)",
+      "destination": "https://axiom-microsim.vercel.app/gallery/microsim/:path(.*)"
+    },
+    {
+      "source": "/architecture",
+      "destination": "https://axiom-architecture-one.vercel.app/architecture"
+    },
+    {
+      "source": "/architecture/:path(.*)",
+      "destination": "https://axiom-architecture-one.vercel.app/architecture/:path(.*)"
+    },
+    {
+      "source": "/graph-viewer",
+      "destination": "https://rulespec-graph-viewer.vercel.app/graph-viewer"
+    },
+    {
+      "source": "/graph-viewer/:path(.*)",
+      "destination": "https://rulespec-graph-viewer.vercel.app/graph-viewer/:path(.*)"
+    },
+    {
+      "source": "/oracles",
+      "destination": "https://axiom-oracles.vercel.app/oracles"
+    },
+    {
+      "source": "/oracles/:path(.*)",
+      "destination": "https://axiom-oracles.vercel.app/oracles/:path(.*)"
+    },
+    {
+      "source": "/bills",
+      "destination": "https://axiom-bills.vercel.app/bills"
+    },
+    {
+      "source": "/bills/:path(.*)",
+      "destination": "https://axiom-bills.vercel.app/bills/:path(.*)"
+    },
+    {
+      "source": "/local",
+      "destination": "https://axiom-local-pi.vercel.app/local"
+    },
+    {
+      "source": "/local/:path(.*)",
+      "destination": "https://axiom-local-pi.vercel.app/local/:path(.*)"
     }
   ],
   "redirects": [
     {
+      "source": "/chatbot",
+      "destination": "/gallery/chatbot",
+      "permanent": false
+    },
+    {
+      "source": "/chatbot/:path(.*)",
+      "destination": "/gallery/chatbot/:path(.*)",
+      "permanent": false
+    },
+    {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.axiom-foundation.org"
+        }
+      ],
       "destination": "https://axiom-foundation.org/:path",
       "permanent": true
     },
@@ -24,6 +135,86 @@
     {
       "source": "/pbif-proposal/:path*",
       "destination": "https://pbif-proposal.axiom-foundation.org/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/builder",
+      "destination": "/gallery/builder",
+      "permanent": false
+    },
+    {
+      "source": "/builder/:path(.*)",
+      "destination": "/gallery/builder/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/workflow",
+      "destination": "/gallery/workflow",
+      "permanent": false
+    },
+    {
+      "source": "/workflow/:path(.*)",
+      "destination": "/gallery/workflow/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/reg-demo",
+      "destination": "/gallery/reg-demo",
+      "permanent": false
+    },
+    {
+      "source": "/reg-demo/:path(.*)",
+      "destination": "/gallery/reg-demo/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/snap",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/cliffs",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/cliffs/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/gallery/snap",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/gallery/snap/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/snap/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/microsim",
+      "destination": "/gallery/microsim",
+      "permanent": false
+    },
+    {
+      "source": "/microsim/:path(.*)",
+      "destination": "/gallery/microsim/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/guidance",
+      "destination": "https://guidance-impact-visualizer.vercel.app/",
+      "permanent": false
+    },
+    {
+      "source": "/guidance/:path(.*)",
+      "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
       "permanent": false
     }
   ]

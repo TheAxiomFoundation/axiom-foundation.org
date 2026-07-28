@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SITE_HOST = "axiom-foundation.org";
+const SITE_HOST = "axiom.org";
 const APP_HOST = "app.axiom-foundation.org";
 
 // Citation paths the app is allowed to serve at the root of the

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LAUNCH_EVENT_URL, LAUNCH_UTC, UPDATES_URL } from "@/lib/launch";
+import { trackAxiomEvent } from "@/lib/analytics";
 
 interface Countdown {
   days: number;
@@ -129,6 +130,7 @@ export function AnnouncementBanner() {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <a
                   href={LAUNCH_EVENT_URL}
+                  onClick={() => trackAxiomEvent("announcement_cta_clicked", { cta: "join_launch_event" })}
                   className="announce-cta inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 font-body text-[0.88rem] font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-[rgba(217,119,6,0.22)]"
                   style={{
                     borderColor: "rgba(217,119,6,0.55)",
@@ -139,6 +141,7 @@ export function AnnouncementBanner() {
                 </a>
                 <a
                   href={UPDATES_URL}
+                  onClick={() => trackAxiomEvent("announcement_cta_clicked", { cta: "get_updates" })}
                   className="announce-link inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--color-rule)] px-4 py-2 font-body text-[0.88rem] font-medium transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-rule-strong)]"
                 >
                   Get updates

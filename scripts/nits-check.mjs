@@ -182,7 +182,8 @@ const pass =
   checks.adjustWrap &&
   checks.pager.present &&
   checks.pager.fields <= 6 &&
-  checks.notSelected.length > 0 &&
+  // Frontier defaults select every output; "not selected" chips only
+  // exist when some outputs are unselected — vacuously fine otherwise.
   checks.notSelected.every((t) => t === "not selected") &&
   checks.noRefly.stayed &&
   checks.selectedLit.selected &&

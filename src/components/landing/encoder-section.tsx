@@ -18,10 +18,17 @@ export function EncoderSection() {
           <h2 className="heading-section mb-6 mt-2">
             Statutes encoded and verified
           </h2>
+          {/*
+            No human sign-off clause here. The pipeline has no human review
+            gate — the gates are deterministic checks, independent oracle
+            cross-checks, and AI judges. The heading above already carries
+            "before they ship"; naming a human approver would describe a
+            step that does not exist.
+          */}
           <p className="font-body text-lg text-[var(--color-ink-secondary)] max-w-[640px] mx-auto leading-relaxed">
             An AI-driven pipeline reads a statute, encodes it section by
             section, and runs the result against oracles like PolicyEngine
-            and TAXSIM before any human signs off.
+            and TAXSIM.
           </p>
         </Reveal>
 

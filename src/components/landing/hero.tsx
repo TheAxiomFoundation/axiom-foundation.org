@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import { axiomAppHref } from "@/lib/urls";
+import { trackAxiomEvent } from "@/lib/analytics";
 
 export function Hero() {
   const [mounted, setMounted] = useState(false);
@@ -38,11 +39,19 @@ export function Hero() {
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <a href={axiomAppHref()} className="btn-primary">
+            <a
+              href={axiomAppHref()}
+              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "explore_the_law" })}
+              className="btn-primary"
+            >
               Explore the law
               <ArrowRightIcon className="w-5 h-5" />
             </a>
-            <a href="#encoder" className="btn-outline">
+            <a
+              href="#encoder"
+              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "see_encoder_run" })}
+              className="btn-outline"
+            >
               See the encoder run
             </a>
           </div>

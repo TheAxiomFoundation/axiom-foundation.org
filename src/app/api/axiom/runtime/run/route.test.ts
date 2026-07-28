@@ -14,6 +14,7 @@ vi.mock("@/lib/axiom/runtime/api", () => ({
 }));
 
 import { POST } from "./route";
+import { _resetRunRouteState } from "./limiter";
 
 function post(body: unknown): Request {
   return new Request("http://localhost/api/axiom/runtime/run", {
@@ -25,6 +26,7 @@ function post(body: unknown): Request {
 
 describe("POST /api/axiom/runtime/run", () => {
   beforeEach(() => {
+    _resetRunRouteState();
     getRuntimePackageMock.mockReset();
     runCalculateMock.mockReset();
     isConfiguredMock.mockReset();
@@ -84,5 +86,70 @@ describe("POST /api/axiom/runtime/run", () => {
       (await POST(post({ jurisdiction: "us-co", program_id: "co-snap" })))
         .status
     ).toBe(502);
+  });
+
+  it("retries an uncertified refusal without section rules, then succeeds", async () => {
+    getRuntimePackageMock.mockResolvedValue({
+      sample_request: { program_id: "co-snap" },
+      default_outputs: ["snap_allotment"],
+    });
+    runCalculateMock
+      .mockResolvedValueOnce({ uncertified: true })
+      .mockResolvedValueOnce({ outputs: { snap_allotment: 298 } });
+
+    const response = await POST(
+      post({
+        jurisdiction: "us-co",
+        program_id: "co-snap",
+        section_rules: ["us:statutes/7/2017/a#snap_allotment"],
+      })
+    );
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.outputs.snap_allotment).toBe(298);
+    expect(runCalculateMock).toHaveBeenCalledTimes(2);
+    // The retry drops the section rules and runs the bare sample.
+    expect(runCalculateMock.mock.calls[1][0]).toEqual({
+      program_id: "co-snap",
+    });
+  });
+
+  it("422s uncertified_program when even the bare sample is refused", async () => {
+    getRuntimePackageMock.mockResolvedValue({
+      sample_request: { program_id: "co-snap" },
+    });
+    runCalculateMock.mockResolvedValue({ uncertified: true });
+
+    const response = await POST(
+      post({ jurisdiction: "us-co", program_id: "co-snap" })
+    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toBe("uncertified_program");
+  });
+
+  it("passes provenance through when the engine reports it", async () => {
+    getRuntimePackageMock.mockResolvedValue({
+      sample_request: { program_id: "co-snap" },
+    });
+    const provenance = {
+      ledger_id: "ledger-1",
+      certified_set_version: "v1",
+      vintage: {
+        encoding_release: "enc-1",
+        engine_release: "eng-1",
+        corpus_release: "cor-1",
+      },
+      certificates: [],
+    };
+    runCalculateMock.mockResolvedValue({
+      outputs: { snap_allotment: 298 },
+      provenance,
+    });
+
+    const response = await POST(
+      post({ jurisdiction: "us-co", program_id: "co-snap" })
+    );
+    const data = await response.json();
+    expect(data.provenance).toEqual(provenance);
   });
 });

@@ -12,11 +12,10 @@ import { SectionToc } from "./section-toc";
 import { FocusScroll } from "./focus-scroll";
 import { EncodingRail } from "./encoding-rail";
 import { CitationPreviewLayer } from "./citation-preview";
-import { TraceProvider } from "./trace-context";
-import { ChunkTraceChips } from "./chunk-trace";
 import { SubsectionActions } from "./subsection-actions";
 import { ActionStrip } from "./action-strip";
-import { programFamilySummary } from "@/lib/axiom/runtime/families";
+import { CollapsibleText } from "./collapsible-text";
+import { primaryProgram } from "./primary-program";
 import {
   builderUrlForRule,
   composeGraphViewerUrl,
@@ -43,6 +42,125 @@ function formatDate(value: string | null): string | null {
     month: "short",
     day: "numeric",
   });
+}
+
+const ORACLE_LABELS: Readonly<Record<string, string>> = {
+  policyengine: "PolicyEngine",
+  taxsim: "TAXSIM",
+  ukmod: "UKMOD",
+  euromod: "EUROMOD",
+};
+
+/** Past this many subsections the segment map gives way to numerals. */
+const COVERAGE_MAP_MAX_UNITS = 16;
+
+const CHIP_CLASS =
+  "inline-flex items-center gap-2 rounded-full border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] px-3 py-1.5 text-[12px] font-medium leading-none text-[var(--color-ink-secondary)]";
+
+/**
+ * The section's trust row — three quiet status chips in the app's
+ * sans, product-style rather than typewriter-style:
+ *
+ *   (∀ 8 rules) (▰▱▱▱▱▱ 1 of 6 subsections) (✓ Verified · PolicyEngine)
+ *
+ * Coverage is a map, not a meter: one segment per top-level
+ * subsection in document order, filled where rules exist; each
+ * segment links to its subsection. The verified chip appears only
+ * for external-oracle parity comparisons — golden expectations are
+ * self-graded and earn nothing. Denominators always shown.
+ */
+function EncodingStatusLine({ data }: { data: SectionPageData }) {
+  if (data.encodedRules.length === 0) return null;
+  const unitAnchors =
+    data.provisions.length > 0
+      ? data.provisions
+          .filter((provision) => provision.relativeDepth === 1)
+          .map((provision) => provision.anchor)
+      : data.bodyChunks.map((chunk) => chunk.anchor);
+  const encodedAnchors = new Set(
+    data.encodedRules.flatMap((entry) => entry.anchors)
+  );
+  const encodedCount = unitAnchors.filter((anchor) =>
+    encodedAnchors.has(anchor)
+  ).length;
+
+  return (
+    <div className="mt-3.5 flex flex-wrap items-center gap-2">
+      <span className={CHIP_CLASS}>
+        <span
+          aria-hidden
+          className="text-[13px] font-semibold text-[var(--color-accent)]"
+        >
+          ∀
+        </span>
+        {data.encodedRules.length}{" "}
+        {data.encodedRules.length === 1 ? "rule" : "rules"}
+      </span>
+
+      {unitAnchors.length > 0 && (
+        <span
+          className={CHIP_CLASS}
+          title={
+            encodedCount === unitAnchors.length
+              ? "Every subsection has encoded rules"
+              : `Encoded so far: ${unitAnchors
+                  .filter((anchor) => encodedAnchors.has(anchor))
+                  .map((anchor) => `(${anchor})`)
+                  .join(" ") || "none at subsection level"}`
+          }
+        >
+          {unitAnchors.length <= COVERAGE_MAP_MAX_UNITS && (
+            <span className="inline-flex items-center gap-[3px]" aria-hidden>
+              {unitAnchors.map((anchor) => (
+                <a
+                  key={anchor}
+                  href={`#${anchor}`}
+                  title={`(${anchor}) — ${
+                    encodedAnchors.has(anchor) ? "encoded" : "not yet encoded"
+                  }`}
+                  className={`h-[5px] w-[14px] rounded-full transition-colors ${
+                    encodedAnchors.has(anchor)
+                      ? "bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]"
+                      : "bg-[var(--color-rule)] hover:bg-[var(--color-ink-muted)]"
+                  }`}
+                />
+              ))}
+            </span>
+          )}
+          {encodedCount === unitAnchors.length
+            ? `All ${unitAnchors.length} subsections`
+            : `${encodedCount} of ${unitAnchors.length} subsections`}
+        </span>
+      )}
+
+      {data.parity && (
+        <span
+          className="inline-flex cursor-help items-center gap-2 rounded-full border border-[rgba(22,101,52,0.25)] bg-[rgba(22,101,52,0.06)] px-3 py-1.5 text-[12px] font-medium leading-none text-[var(--color-success)]"
+          title={`⊨ Externally verified: ${data.parity.programId} (${data.parity.jurisdiction}) agrees with ${
+            ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle
+          } — ${data.parity.caseDescriptions.join(" — ")}`}
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 12 12"
+            className="h-3 w-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 6.2 4.8 9 10 3.4" />
+          </svg>
+          Verified · {ORACLE_LABELS[data.parity.oracle] ?? data.parity.oracle}
+          <span className="opacity-60">
+            {data.parity.caseCount}{" "}
+            {data.parity.caseCount === 1 ? "case" : "cases"}
+          </span>
+        </span>
+      )}
+    </div>
+  );
 }
 
 function Breadcrumbs({ data }: { data: SectionPageData }) {
@@ -84,6 +202,127 @@ function AnchorLink({ anchor }: { anchor: string }) {
       #
     </a>
   );
+}
+
+
+/** Top-level provision with its whole subtree — one collapsible unit
+ *  so provision-backed sections compress the same way chunked ones
+ *  do. Heading, chips, and actions stay outside the clamp. */
+function ProvisionGroup({
+  head,
+  children: childProvisions,
+  data,
+  sectionFocus,
+}: {
+  head: SectionProvision;
+  children: SectionProvision[];
+  data: SectionPageData;
+  sectionFocus: string | null;
+}) {
+  const anchor = head.anchor;
+  const focused = data.focusAnchor === anchor;
+  const groupRules = data.encodedRules.filter((entry) =>
+    entry.anchors.includes(anchor)
+  );
+  const { graphHref, builderHref } = focused
+    ? subsectionActionHrefs(data, anchor, groupRules)
+    : { graphHref: null, builderHref: null };
+  const heading = head.rule.heading?.trim();
+  const textLength =
+    (head.rule.body?.length ?? 0) +
+    childProvisions.reduce(
+      (sum, child) => sum + (child.rule.body?.length ?? 0),
+      0
+    );
+  const clamp = data.encodedRules.length > 0 && !focused && textLength > 420;
+  const content = (
+    <>
+      {head.rule.body && (
+        <div className="mt-2">
+          <RuleBody
+            body={head.rule.body}
+            refs={[]}
+            citationPath={head.rule.citation_path ?? undefined}
+            testId={null}
+          />
+        </div>
+      )}
+      {childProvisions.map((child) => (
+        <ProvisionBlock
+          key={child.rule.id}
+          provision={child}
+          data={data}
+          sectionFocus={sectionFocus}
+        />
+      ))}
+    </>
+  );
+  return (
+    <section
+      id={anchor}
+      className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
+    >
+      <h2 className="mt-7 flex items-baseline gap-2 text-lg font-semibold text-[var(--color-ink)]">
+        <Link
+          href={`/${data.citationPath}/${anchor}`}
+          className="font-mono text-[0.85em] text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
+          title={`Open ${data.citationPath}/${anchor}`}
+        >
+          {head.designator}
+        </Link>
+        {heading && <span className="min-w-0 truncate">{heading}</span>}
+        {groupRules.length > 0 && (
+          <span
+            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+            title={groupRules.map((entry) => entry.name).join(", ")}
+          >
+            ∀ {groupRules.length}
+          </span>
+        )}
+        <AnchorLink anchor={anchor} />
+      </h2>
+      {focused && (
+        <SubsectionActions
+          citationLabel={formatLegalCitation(data.citationPath, anchor)}
+          href={`/${data.citationPath}/${anchor}`}
+          graphHref={graphHref}
+          builderHref={builderHref}
+        />
+      )}
+      {clamp ? <CollapsibleText>{content}</CollapsibleText> : content}
+    </section>
+  );
+}
+
+/** Split the flat, path-sorted provision list into top-level groups.
+ *  Orphans before the first top-level provision pass through. */
+function groupProvisions(provisions: SectionProvision[]): Array<{
+  head: SectionProvision | null;
+  children: SectionProvision[];
+}> {
+  const groups: Array<{
+    head: SectionProvision | null;
+    children: SectionProvision[];
+  }> = [];
+  let current: (typeof groups)[number] | null = null;
+  for (const provision of provisions) {
+    if (provision.relativeDepth === 1) {
+      current = { head: provision, children: [] };
+      groups.push(current);
+    } else if (
+      current?.head &&
+      provision.anchor.startsWith(`${current.head.anchor}-`)
+    ) {
+      current.children.push(provision);
+    } else {
+      if (!current || current.head) {
+        current = { head: null, children: [] };
+        groups.push(current);
+      }
+      current.children.push(provision);
+    }
+  }
+  return groups;
 }
 
 function ProvisionBlock({
@@ -146,9 +385,6 @@ function ProvisionBlock({
           builderHref={builderHref}
         />
       )}
-      {isTopLevel && (
-        <ChunkTraceChips anchor={anchor} sectionFocus={sectionFocus} />
-      )}
       {rule.body && (
         <div className="mt-2">
           <RuleBody
@@ -177,9 +413,12 @@ function subsectionActionHrefs(
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const slug = data.citationPath.split("/")[0];
   const graphProgram =
+    data.programs.find(
+      (program) =>
+        program.status === "ready" && program.anchors.includes(anchor)
+    ) ??
     data.programs.find((program) => program.anchors.includes(anchor)) ??
-    data.programs[0] ??
-    null;
+    primaryProgram(data.programs);
   const inPrograms = new Set(
     data.programs.flatMap((program) => program.ruleNames)
   );
@@ -197,59 +436,26 @@ function subsectionActionHrefs(
             fileGraphFocus(slug, data.ruleFiles[composeRule.name])
           )
         : null;
-  const builderRule =
-    sorted.find(
-      (rule) => inPrograms.has(rule.name) && data.ruleFiles[rule.name]
-    ) ?? sorted.find((rule) => data.ruleFiles[rule.name]);
-  const builderHref = builderRule
-    ? builderUrlForRule(
-        ruleGraphFocus(slug, data.ruleFiles[builderRule.name], builderRule.name)
-      )
-    : null;
+  // Builder gets the section-level legal id: its deep-link handler
+  // scopes the output picker to this provision and the user selects
+  // which rules become outputs there — no per-rule link picking here.
+  const builderHref =
+    sectionFocus && subsectionRules.length > 0
+      ? builderUrlForRule(sectionFocus)
+      : null;
   return { graphHref, builderHref };
 }
 
-/** Durable legal ids for the section's rules — requested as extra
- *  trace variables on runs so the column lights with the values this
- *  section computed. */
-function sectionRuleIds(data: SectionPageData): string[] {
-  const slug = data.citationPath.split("/")[0];
-  return data.encodedRules
-    // Only derived rules are queryable engine outputs — requesting a
-    // parameter fails the whole run ("unknown derived output").
-    .filter(
-      (entry) => entry.kind === "derived" && data.ruleFiles[entry.name]
-    )
-    .slice(0, 12)
-    .map((entry) =>
-      ruleGraphFocus(slug, data.ruleFiles[entry.name], entry.name)
-    );
-}
-
 /**
- * Builder target for the header strip. Prefer a rule the coverage
- * data says actually lives in a composed program graph — a rule
- * that's only in the repo file can't be resolved by the builder's
- * program probe and would land on the plain picker.
+ * Builder target for the header strip: the section-level legal id.
+ * The builder resolves a program containing the section's rules and
+ * lands on its output picker scoped to this provision, where the
+ * user selects which rulespec rules become calculator outputs.
  */
 function stripBuilderHref(data: SectionPageData): string | null {
-  const inPrograms = new Set(
-    data.programs.flatMap((program) => program.ruleNames)
-  );
-  // Derived rules survive program composition; parameters are often
-  // inlined, so a parameter output can't be preselected downstream.
-  const candidates = [...data.encodedRules].sort(
-    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
-  );
-  const rule =
-    candidates.find(
-      (entry) => inPrograms.has(entry.name) && data.ruleFiles[entry.name]
-    ) ?? candidates.find((entry) => data.ruleFiles[entry.name]);
-  if (!rule) return null;
-  const slug = data.citationPath.split("/")[0];
-  return builderUrlForRule(
-    ruleGraphFocus(slug, data.ruleFiles[rule.name], rule.name)
-  );
+  const sectionFocus = graphFocusForCitationPath(data.citationPath);
+  if (!sectionFocus || data.encodedRules.length === 0) return null;
+  return builderUrlForRule(sectionFocus);
 }
 
 /**
@@ -277,19 +483,32 @@ function ChunkBlock({
   data: SectionPageData;
 }) {
   const focused = data.focusAnchor === chunk.anchor;
-  const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const chunkRules = data.encodedRules.filter((rule) =>
     rule.anchors.includes(chunk.anchor)
   );
   const { graphHref, builderHref } = focused
     ? subsectionActionHrefs(data, chunk.anchor, chunkRules)
     : { graphHref: null, builderHref: null };
+  // The encoded layer leads the page; long source text sits behind a
+  // clamped preview unless the reader deep-linked to this subsection
+  // or the section carries no encodings at all (then text is the
+  // only content and stands open).
+  const clamp =
+    data.encodedRules.length > 0 && !focused && chunk.text.length > 420;
+  const body = (
+    <RuleBody
+      body={chunk.text}
+      refs={refsForChunk(data.rootRefs, chunk.text)}
+      citationPath={data.root.citation_path ?? undefined}
+      testId={null}
+    />
+  );
   return (
     <section
       id={chunk.anchor}
       className={`group scroll-mt-24 ${focused ? FOCUSED_SUBSECTION_CLASS : ""}`}
     >
-      <h2 className="mt-8 flex items-baseline gap-2">
+      <h2 className="mt-7 flex items-baseline gap-2">
         <Link
           href={`/${data.citationPath}/${chunk.anchor}`}
           className="font-mono text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors"
@@ -297,6 +516,20 @@ function ChunkBlock({
         >
           {chunk.designator}
         </Link>
+        <span
+          className="min-w-0 truncate text-[15px] text-[var(--color-ink)]"
+          style={{ fontFamily: "var(--f-serif)" }}
+        >
+          {chunk.label.replace(/^\([a-z]{1,2}\)\s*/, "")}
+        </span>
+        {chunkRules.length > 0 && (
+          <span
+            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+            title={chunkRules.map((rule) => rule.name).join(", ")}
+          >
+            ∀ {chunkRules.length}
+          </span>
+        )}
         <AnchorLink anchor={chunk.anchor} />
       </h2>
       {focused && (
@@ -307,14 +540,8 @@ function ChunkBlock({
           builderHref={builderHref}
         />
       )}
-      <ChunkTraceChips anchor={chunk.anchor} sectionFocus={sectionFocus} />
       <div className="mt-1">
-        <RuleBody
-                    body={chunk.text}
-          refs={refsForChunk(data.rootRefs, chunk.text)}
-          citationPath={data.root.citation_path ?? undefined}
-          testId={null}
-        />
+        {clamp ? <CollapsibleText>{body}</CollapsibleText> : body}
       </div>
     </section>
   );
@@ -357,7 +584,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const heading = data.root.heading?.trim();
   const effective = formatDate(data.root.effective_date);
   const outgoing = buildInlineReferences(
-    data.root.body,
+    data.refBody ?? data.root.body,
     data.citationPath,
     data.rootRefs
   ).filter((ref) => ref.direction === "outgoing");
@@ -367,8 +594,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
 
   return (
-    <TraceProvider>
-    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[200px_minmax(0,1fr)_360px]">
+    <div className="mx-auto grid w-full max-w-[88rem] grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[210px_minmax(0,1fr)_400px]">
       <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />
@@ -383,17 +609,15 @@ export function SectionReader({ data }: { data: SectionPageData }) {
         </div>
 
         <header className="border-b border-[var(--color-rule)] pb-5">
-          <p className="font-mono text-[12px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {data.citationPath}
-          </p>
           {heading && (
             <h1
-              className="mt-2 text-2xl font-semibold text-[var(--color-ink)]"
+              className="text-2xl font-semibold text-[var(--color-ink)]"
               style={{ fontFamily: "var(--f-serif)" }}
             >
               {heading}
             </h1>
           )}
+          <EncodingStatusLine data={data} />
           <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-[var(--color-ink-muted)]">
             {effective && <span>Effective {effective}</span>}
             {data.root.source_url && (
@@ -408,18 +632,13 @@ export function SectionReader({ data }: { data: SectionPageData }) {
             )}
           </div>
           <ActionStrip
-            sectionRuleIds={sectionRuleIds(data)}
             encodedRuleCount={data.encodedRules.length}
-            familySummary={programFamilySummary(data.programs)}
-            defaultProgram={
-              data.programs.find((program) => program.status === "ready") ??
-              null
-            }
-            graphHref={
-              data.programs[0] && sectionFocus
-                ? graphViewerUrl(data.programs[0], sectionFocus)
-                : stripComposeHref(data)
-            }
+            graphHref={(() => {
+              const program = primaryProgram(data.programs);
+              return program && sectionFocus
+                ? graphViewerUrl(program, sectionFocus)
+                : stripComposeHref(data);
+            })()}
             builderHref={stripBuilderHref(data)}
             citationLabel={formatLegalCitation(data.citationPath)}
             href={`/${data.citationPath}`}
@@ -453,19 +672,43 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           )
         )}
 
-        {data.provisions.map((provision) => (
-          <ProvisionBlock
-            key={provision.rule.id}
-            provision={provision}
-            data={data}
-            sectionFocus={sectionFocus}
-          />
-        ))}
+        {groupProvisions(data.provisions).map((group, index) =>
+          group.head ? (
+            <ProvisionGroup
+              key={group.head.rule.id}
+              head={group.head}
+              data={data}
+              sectionFocus={sectionFocus}
+            >
+              {group.children}
+            </ProvisionGroup>
+          ) : (
+            group.children.map((provision) => (
+              <ProvisionBlock
+                key={provision.rule.id}
+                provision={provision}
+                data={data}
+                sectionFocus={sectionFocus}
+              />
+            ))
+          )
+        )}
 
         {data.truncated && (
           <p className="mt-8 text-sm text-[var(--color-ink-muted)]">
             This section is unusually large; deeper subsections were cut
-            off. Use the tree browser to reach them.
+            off. Open a subsection via its designator link — for example{" "}
+            {data.toc[0] ? (
+              <Link
+                href={`/${data.citationPath}/${data.toc[0].anchor.split("-")[0]}`}
+                className="underline decoration-[var(--color-rule)] underline-offset-2 hover:text-[var(--color-ink)]"
+              >
+                {data.toc[0].label.split(" ")[0]}
+              </Link>
+            ) : (
+              "its heading"
+            )}{" "}
+            — to read its full text.
           </p>
         )}
 
@@ -496,10 +739,8 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           incoming={incoming}
           programs={data.programs}
           ruleFiles={data.ruleFiles}
-          sectionRuleIds={sectionRuleIds(data)}
         />
       </aside>
     </div>
-    </TraceProvider>
   );
 }

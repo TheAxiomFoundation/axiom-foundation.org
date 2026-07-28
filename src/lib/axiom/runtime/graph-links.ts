@@ -1,14 +1,18 @@
 /**
- * Deep links from a section page into the rule-graph viewer — the
- * interim section→graph bridge until the DAG pane lands in-app (F3).
- * The viewer accepts ?program=<jurisdiction>/<program_id> to select a
- * program and ?focus=<fileLegalId prefix> to pre-select the rules
- * derived from the provision the reader came from.
+ * Deep links from a section page into the rule-graph viewer — now a
+ * first-class in-app surface at /graph (the F3 promise). The viewer
+ * accepts ?program=<jurisdiction>/<program_id> to select a program
+ * and ?focus=<fileLegalId prefix> to pre-select the rules derived
+ * from the provision the reader came from. NEXT_PUBLIC_GRAPH_VIEWER_URL
+ * still overrides to an external deployment when set.
  *
  * Pure module: safe to import from client components.
  */
 
-const DEFAULT_VIEWER_BASE = "https://rulespec-graph-viewer.vercel.app";
+function viewerBase(): string {
+  const override = process.env.NEXT_PUBLIC_GRAPH_VIEWER_URL;
+  return override ? override.replace(/\/$/, "") : "/app";
+}
 
 const CITATION_TO_REPO_BUCKET: Readonly<Record<string, string>> =
   Object.freeze({
@@ -70,10 +74,7 @@ export function fileGraphFocus(
  * or rule legal id from fileGraphFocus/ruleGraphFocus.
  */
 export function composeGraphViewerUrl(focus: string): string {
-  const base = (
-    process.env.NEXT_PUBLIC_GRAPH_VIEWER_URL ?? DEFAULT_VIEWER_BASE
-  ).replace(/\/$/, "");
-  return `${base}/?compose=${encodeURIComponent(focus)}`;
+  return `${viewerBase()}?compose=${encodeURIComponent(focus)}`;
 }
 
 const DEFAULT_BUILDER_BASE = "https://dashboard-builder-flax.vercel.app";
@@ -95,13 +96,10 @@ export function graphViewerUrl(
   program: { jurisdiction: string; programId: string },
   focus: string | null
 ): string {
-  const base = (
-    process.env.NEXT_PUBLIC_GRAPH_VIEWER_URL ?? DEFAULT_VIEWER_BASE
-  ).replace(/\/$/, "");
   const params = new URLSearchParams();
   const country = program.jurisdiction.split("-")[0];
   if (country && country !== "us") params.set("country", country);
   params.set("program", `${program.jurisdiction}/${program.programId}`);
   if (focus) params.set("focus", focus);
-  return `${base}/?${params.toString()}`;
+  return `${viewerBase()}?${params.toString()}`;
 }

@@ -1,0 +1,463 @@
+/* Scoped copy of the rulespec-graph-viewer stylesheet: selectors
+   are prefixed with .graph-viewer-root so viewer tokens cannot leak into
+   the app, and 100vh becomes 100%% so the wrapper owns height.
+   Regenerate by re-running the scoper over the upstream file. */
+.graph-viewer-root{
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.graph-viewer-root{
+  background: #f4f1ec;
+  color: #181512;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.graph-viewer-root button, .graph-viewer-root input, .graph-viewer-root select, .graph-viewer-root textarea{
+  font: inherit;
+}
+
+.graph-viewer-root .app-shell{
+  display: grid;
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  height: 100%;
+  overflow: hidden;
+}
+
+.graph-viewer-root .side-panel{
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  border-right: 1px solid #d8d1ca;
+  background:
+    linear-gradient(180deg, #fffdf9 0%, #fbf4ed 100%);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.8) inset;
+  height: 100%;
+  min-height: 0;
+  padding: 22px 22px;
+  overflow: hidden;
+}
+
+.graph-viewer-root .country-toggle{
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: max-content;
+  border: 1px solid #d2c8bd;
+  border-radius: 999px;
+  background: #fff;
+  padding: 2px;
+}
+
+.graph-viewer-root .country-toggle-btn{
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #625b53;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  min-width: 44px;
+  padding: 6px 12px;
+}
+
+.graph-viewer-root .country-toggle-btn.is-active{
+  background: #1d1915;
+  color: #fff;
+}
+
+.graph-viewer-root .brand{
+  display: grid;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e1dad3;
+}
+
+.graph-viewer-root .brand span{
+  color: #8b431f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.graph-viewer-root .brand strong{
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 29px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.graph-viewer-root .brand p{
+  color: #625b53;
+  font-size: 13px;
+  line-height: 1.35;
+  margin: 2px 0 0;
+}
+
+.graph-viewer-root .control-block{
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding: 15px;
+  border: 1px solid #e0d8d0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.graph-viewer-root .control-block label{
+  display: grid;
+  gap: 6px;
+  color: #625b53;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.graph-viewer-root .control-block input, .graph-viewer-root .control-block select, .graph-viewer-root .control-block textarea{
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d2c8bd;
+  border-radius: 6px;
+  background: #fff;
+  color: #181512;
+  padding: 9px 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.graph-viewer-root .control-block input:focus, .graph-viewer-root .control-block select:focus, .graph-viewer-root .control-block textarea:focus{
+  border-color: #9d4d25;
+  box-shadow: 0 0 0 3px rgba(157, 77, 37, 0.12);
+  outline: none;
+}
+
+.graph-viewer-root .output-option{
+  border: 1px solid #1d1915;
+  border-radius: 6px;
+  background: #1d1915;
+  color: #fff;
+  cursor: pointer;
+  padding: 11px 13px;
+}
+
+.graph-viewer-root .program-summary{
+  color: #625b53;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: -2px 0 0;
+}
+
+.graph-viewer-root .section-head{
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.graph-viewer-root .section-head.stacked{
+  display: grid;
+  gap: 3px;
+}
+
+.graph-viewer-root .section-head h2{
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.graph-viewer-root .section-head span{
+  color: #746d65;
+  font-size: 12px;
+}
+
+.graph-viewer-root .outputs-control{
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.graph-viewer-root .outputs-head{
+  align-items: start;
+}
+
+.graph-viewer-root .outputs-head div{
+  display: grid;
+  gap: 3px;
+}
+
+.graph-viewer-root .outputs-head strong{
+  border: 1px solid #ded8d1;
+  border-radius: 999px;
+  background: #fff;
+  color: #625b53;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.graph-viewer-root .selected-output-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 72px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.graph-viewer-root .selected-output-list button{
+  border: 1px solid #d4cabf;
+  border-radius: 999px;
+  background: #fffaf4;
+  color: #1d1915;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.graph-viewer-root .selected-output-list button::after{
+  color: #8b431f;
+  content: " x";
+}
+
+.graph-viewer-root .selected-output-list button:hover{
+  border-color: #b77755;
+  background: #f7eee5;
+}
+
+.graph-viewer-root .output-search{
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.graph-viewer-root .output-search input{
+  padding-left: 12px;
+}
+
+.graph-viewer-root .output-list{
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.graph-viewer-root .output-option{
+  display: block;
+  border-color: #ded8d1;
+  background: #fff;
+  color: #181512;
+  padding: 9px 11px;
+  text-align: left;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.graph-viewer-root .output-option.is-selected{
+  border-color: #8b431f;
+  background: #f4e8dd;
+  box-shadow: 0 0 0 1px rgba(139, 67, 31, 0.12) inset;
+}
+
+.graph-viewer-root .output-option:hover{
+  border-color: #b77755;
+  transform: translateY(-1px);
+}
+
+.graph-viewer-root .output-option span{
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.graph-viewer-root .output-empty{
+  border: 1px dashed #d2c8bd;
+  border-radius: 6px;
+  color: #746d65;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 14px;
+}
+
+.graph-viewer-root .viewer-panel{
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.graph-viewer-root .graph-stage{
+  display: grid;
+  grid-row: 2;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.graph-viewer-root .viewer-header{
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #ded8d1;
+}
+
+.graph-viewer-root .viewer-header > div:first-child{
+  min-width: 0;
+}
+
+.graph-viewer-root .viewer-header p{
+  color: #8b431f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.graph-viewer-root .viewer-header h1{
+  max-width: 980px;
+  font-size: clamp(30px, 4vw, 56px);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 0.96;
+  margin: 0;
+}
+
+.graph-viewer-root .status, .graph-viewer-root .empty-state{
+  border: 1px solid #ded8d1;
+  border-radius: 6px;
+  background: #fffaf4;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.graph-viewer-root .loading-state{
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  border: 1px solid #ded8d1;
+  border-radius: 6px;
+  background: #fffaf4;
+  color: #625b53;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.graph-viewer-root .loading-spinner{
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e1dad3;
+  border-top-color: #8b431f;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  animation: spin 760ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.graph-viewer-root .status.error{
+  border-color: #b34a3b;
+  color: #8b2e25;
+}
+
+.graph-viewer-root .status.warning{
+  border-color: #c89753;
+  color: #7a541b;
+}
+
+.graph-viewer-root .irg-wrap{
+  grid-row: 2;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid #d8d1ca;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 16px 50px rgba(45, 34, 24, 0.08);
+}
+
+@media (max-width: 900px) {
+  .graph-viewer-root{
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .graph-viewer-root .app-shell{
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .graph-viewer-root .side-panel{
+    border-right: 0;
+    border-bottom: 1px solid #ded8d1;
+    height: auto;
+    overflow: visible;
+    padding: 18px 16px;
+  }/* Keep the long output picker from expanding to its full height (50+
+     rows) and burying the graph far below the fold. A compact fixed-height
+     scroll box keeps the picker usable while the graph stays within reach.
+     (50vh was still ~half the screen on a phone.) */
+
+
+   
+  .graph-viewer-root .output-list{
+    max-height: 240px;
+  }
+
+  .graph-viewer-root .selected-output-list{
+    max-height: 72px;
+  }/* Long output labels should wrap rather than risk pushing the layout
+     wider than the viewport. */
+
+
+   
+  .graph-viewer-root .output-option span, .graph-viewer-root .selected-output-list button{
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .graph-viewer-root .viewer-header{
+    display: flex;
+    gap: 12px;
+  }
+
+  .graph-viewer-root .viewer-header h1{
+    overflow-wrap: anywhere;
+  }
+
+  .graph-viewer-root .viewer-panel{
+    height: auto;
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .graph-viewer-root .irg-wrap{
+    min-height: 70vh;
+  }
+}

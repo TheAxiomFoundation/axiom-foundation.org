@@ -1,0 +1,2809 @@
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  Background,
+  BackgroundVariant,
+  ConnectionLineType,
+  Handle,
+  MarkerType,
+  MiniMap,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
+import { BaseEdge, SmoothStepEdge, useReactFlow, type EdgeProps } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import dagre from "dagre";
+import type { DashboardSpec, ParameterRule, TraceNode } from "./types";
+import {
+  evalAst,
+  parseFormula,
+  toBool,
+  type AstNode,
+  type EvalValue,
+} from "./formula";
+import { axiomAppUrl, fileLegalIdOf, humanizeCitation, humanizeSource } from "./citations";
+
+interface Props {
+  spec: DashboardSpec;
+  /** legalId → trace node for every output (and recursively its dependencies). */
+  traces: Record<string, TraceNode>;
+  /** Builder hook to toggle exposure of an input from inside the graph.
+   *  Click on an exposed input removes it; click on a default input
+   *  exposes it. App.tsx's handleExposeInput implements both directions. */
+  onExposeInput?: (legalId: string) => void;
+  /** Builder feedback: which inputs are already user-driven. */
+  exposedInputIds?: Set<string>;
+  /** Builder feedback: which rules are already exposed as outputs. */
+  selectedOutputIds?: Set<string>;
+  /** When true, show evaluated values + verdict colors. False = pure structure. */
+  showValues?: boolean;
+  /**
+   * Parameter rules from the program graph. When a formula references a
+   * bare name that resolves to one of these, the resulting node renders
+   * with a hover popover showing the parameter's citation, current value
+   * and a link to the Axiom app entry.
+   */
+  parameterRules?: ParameterRule[];
+  /** Dissection policy: "auto" folds only past the size threshold;
+   *  "always" opens one hop regardless (the rule lens). */
+  dissect?: "auto" | "always";
+  /** Controlled fold state (the navigator tree shares it). */
+  collapsed?: Set<string>;
+  onCollapsedChange?: (next: Set<string>) => void;
+  /** Fly the camera to this rule; bump nonce to re-trigger. */
+  flyTo?: {
+    legalId: string;
+    nonce: number;
+    immediate?: boolean;
+    soft?: boolean;
+  } | null;
+  /** Run mode: the execution layer is live — executed nodes lift,
+   *  the rest recede, the camera flies the executed path. */
+  executionActive?: boolean;
+  /** Durable legal ids the run actually computed or consumed —
+   *  the executed subgraph. */
+  executedLegalIds?: Set<string>;
+  /** Node click → inspector. Fired for plain clicks (not action
+   *  rows, which keep their own routing). */
+  onInspect?: (data: IrgNodeData) => void;
+  /** Keep this node's lineage lit while its info card is open. */
+  pinnedLegalId?: string | null;
+  /** Light this node's lineage while the pointer rests on its Index
+   *  entry — the sidebar and the canvas are the same map. */
+  hoverLegalId?: string | null;
+  /** Clicking empty canvas — the app closes the info card. */
+  onPaneClear?: () => void;
+  /** Double-click → open the rule lens on this node. */
+  onLens?: (legalId: string) => void;
+}
+
+/**
+ * Pan/zoom interactive DAG of every selected output's computation. Powered
+ * by React Flow.
+ *
+ * Design:
+ *   - Atomic inputs and sub-rules dedupe across outputs, so a shared input
+ *     like `household_size` appears once and connects to every output that
+ *     uses it. The graph naturally encodes the dashboard's full structure.
+ *   - Sub-rule pills start *collapsed* — clicking expands them inline by
+ *     replacing the pill with its formula's AST (recursive). Clicking
+ *     again collapses. This makes huge programs explorable without
+ *     overwhelming the user up front.
+ *   - Layout via dagre; React Flow handles pan/zoom/drag, minimap, and
+ *     fit-to-view controls.
+ */
+export function InteractiveRuleGraph({
+  spec,
+  traces,
+  onExposeInput,
+  exposedInputIds,
+  selectedOutputIds,
+  showValues = false,
+  parameterRules,
+  dissect = "auto",
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+  flyTo,
+  executionActive = false,
+  executedLegalIds,
+  onInspect,
+  pinnedLegalId = null,
+  hoverLegalId = null,
+  onPaneClear,
+  onLens,
+}: Props) {
+  // Sub-rules expand inline by default — the user gets the full DAG to atomic
+  // inputs out of the box. They can collapse any sub-rule to hide its
+  // internals; we track those user-collapses in the `collapsed` set rather
+  // than the inverse.
+  const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(
+    () => initialCollapse(traces, dissect),
+  );
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+  const setCollapsed = useCallback(
+    (update: Set<string> | ((current: Set<string>) => Set<string>)) => {
+      const apply = (current: Set<string>) =>
+        typeof update === "function" ? update(current) : update;
+      if (onCollapsedChange) {
+        onCollapsedChange(apply(controlledCollapsedRef.current ?? new Set()));
+      } else {
+        setInternalCollapsed(apply);
+      }
+    },
+    [onCollapsedChange],
+  );
+  const controlledCollapsedRef = useRef(controlledCollapsed);
+  controlledCollapsedRef.current = controlledCollapsed;
+  // Re-dissect when the program (trace set) or policy changes
+  // (uncontrolled mode only — controlled owners re-dissect themselves).
+  const traceKey = Object.keys(traces).sort().join("|") + "::" + dissect;
+  const lastTraceKey = useRef(traceKey);
+  useEffect(() => {
+    if (lastTraceKey.current !== traceKey) {
+      lastTraceKey.current = traceKey;
+      if (!controlledCollapsed) {
+        setInternalCollapsed(initialCollapse(traces, dissect));
+      }
+    }
+  }, [traceKey, traces, dissect, controlledCollapsed]);
+  // "wires": collapse operator boxes — atomic inputs connect directly to
+  //   the sub-rule or output that consumes them. Cleanest overview, and
+  //   the default since most users care about structure first.
+  // "operators": full graph with every AND / + / IF / count_where node
+  //   visible — opt-in for when the user wants to inspect arithmetic.
+  const [detail, setDetail] = useState<"operators" | "wires">("wires");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Execution dissects its own path: nodes the run computed unfold
+  // so the machinery that actually ran is visible, while untouched
+  // branches stay folded.
+  useEffect(() => {
+    if (!executionActive || !executedLegalIds || executedLegalIds.size === 0) {
+      return;
+    }
+    setCollapsed((current) => {
+      let changed = false;
+      const next = new Set(current);
+      for (const id of executedLegalIds) {
+        if (next.delete(id)) changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [executionActive, executedLegalIds]);
+
+  // Semantic zoom: far viewports render constellation pills, mid
+  // hides secondary chrome, near shows full cards.
+  const [lod, setLod] = useState<"near" | "mid" | "far">("near");
+  const lodTimer = useRef<number | null>(null);
+  // While the camera moves, hover is inert: a cursor incidentally
+  // crossing cards mid-flight must not flicker highlights.
+  const moveBusy = useRef(false);
+  const moveEndTimer = useRef<number | null>(null);
+  // When the user hovers any node, dim everything that isn't part of its
+  // lineage (ancestors that feed into it + descendants it feeds). For a
+  // mathematical operator that means "the boxes it pertains to"; for an
+  // intermediate variable that means the chain on both sides.
+  const [highlightNodeId, setHighlightNodeId] = useState<string | null>(null);
+  // Wait for web fonts before the first visible graph render. Otherwise we
+  // measure labels with fallback metrics, render a layout, then rebuild and
+  // let React Flow fitView again when the final font arrives.
+  const [fontsReady, setFontsReady] = useState(
+    () => typeof document === "undefined" || !("fonts" in document),
+  );
+  useEffect(() => {
+    if (typeof document === "undefined" || !("fonts" in document)) return;
+    let cancelled = false;
+    void (document as Document).fonts.ready.then(() => {
+      if (!cancelled) setFontsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Track Fullscreen API state so the toggle reflects reality (user may
+  // press Esc, click outside, etc.).
+  useEffect(() => {
+    const handler = () => {
+      setIsFullscreen(document.fullscreenElement === wrapRef.current);
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!wrapRef.current) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void wrapRef.current.requestFullscreen();
+    }
+  }, []);
+
+  const toggleCollapse = useCallback(
+    (legalId: string) => {
+      setCollapsed((s) => {
+        const next = new Set(s);
+        if (next.has(legalId)) next.delete(legalId);
+        else next.add(legalId);
+        return next;
+      });
+    },
+    [setCollapsed],
+  );
+
+  const collapseAll = useCallback(() => {
+    // Best-effort: collapse every rule mentioned in the trace tree. Computed
+    // each time so it reflects the current spec/trace.
+    const all = new Set<string>();
+    for (const t of Object.values(traces)) {
+      collectRuleIds(t, all);
+    }
+    setCollapsed(all);
+  }, [traces, setCollapsed]);
+
+  const expandAll = useCallback(
+    () => setCollapsed(new Set()),
+    [setCollapsed],
+  );
+
+  const canExposeInputs = !!onExposeInput;
+  const { nodes, edges } = useMemo(
+    () =>
+      buildGraph(
+        spec,
+        traces,
+        collapsed,
+        exposedInputIds,
+        showValues,
+        detail,
+        canExposeInputs,
+        parameterRules,
+        selectedOutputIds,
+      ),
+    [
+      spec,
+      traces,
+      collapsed,
+      exposedInputIds,
+      showValues,
+      detail,
+      canExposeInputs,
+      parameterRules,
+      selectedOutputIds,
+      fontsReady,
+    ],
+  );
+
+  // Pre-compute the incoming and outgoing edge maps once per build. We use
+  // these to BFS both directions from any hovered node and find its full
+  // lineage (ancestors that contribute + descendants it feeds).
+  const adjacency = useMemo(() => {
+    const incoming = new Map<string, string[]>();
+    const outgoing = new Map<string, string[]>();
+    for (const e of edges) {
+      if (!incoming.has(e.target)) incoming.set(e.target, []);
+      incoming.get(e.target)!.push(e.source);
+      if (!outgoing.has(e.source)) outgoing.set(e.source, []);
+      outgoing.get(e.source)!.push(e.target);
+    }
+    return { incoming, outgoing };
+  }, [edges]);
+
+  // Fast id → kind lookup for the lineage walker.
+  const kindById = useMemo(() => {
+    const m = new Map<string, IrgNodeData["kind"]>();
+    for (const n of nodes) m.set(n.id, (n.data as IrgNodeData).kind);
+    return m;
+  }, [nodes]);
+
+  // Highlighted set for the currently-hovered node.
+  //   - Math operators (AND/+/IF/=): "the boxes it pertains to" — nearest
+  //     variables on each side. Chained operators are walked through
+  //     transparently so the highlight reaches actual semantic inputs and
+  //     consumers, not just plumbing.
+  //   - Inputs and intermediate variables (sub-rules): only the
+  //     downstream chain — every rule/output the variable flows into.
+  //     Lets the user trace "where does this contribute?" without
+  //     pulling in the upstream definition (which is shown when the
+  //     rule itself is expanded inline).
+  //   - Outputs: ancestors (the only meaningful direction — outputs
+  //     have nothing downstream).
+  // A dissection can unmount the hovered card mid-hover, so its
+  // mouseleave never fires and the stale lineage would dim the whole
+  // rebuilt graph. Any rebuild clears the hover highlight.
+  useEffect(() => {
+    setHighlightNodeId(null);
+  }, [nodes]);
+
+  const nodeIdForLegalId = (legalId: string | null) => {
+    if (!legalId) return null;
+    const match = nodes.find(
+      (n) =>
+        (n.data as IrgNodeData & { legalId?: string }).legalId === legalId,
+    );
+    return match?.id ?? null;
+  };
+  const pinnedNodeId = useMemo(
+    () => nodeIdForLegalId(pinnedLegalId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, pinnedLegalId],
+  );
+  const hoverNodeId = useMemo(
+    () => nodeIdForLegalId(hoverLegalId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodes, hoverLegalId],
+  );
+  // Canvas hover wins while moving, then an Index hover, then the
+  // pin that lasts while the info card is open.
+  const activeHighlightId = highlightNodeId ?? hoverNodeId ?? pinnedNodeId;
+
+  const highlightSet = useMemo(() => {
+    if (!activeHighlightId) return null;
+    const startKind = kindById.get(activeHighlightId);
+    if (!startKind) return null;
+
+    const seen = new Set<string>([activeHighlightId]);
+    const walkAll = (start: string, adj: Map<string, string[]>) => {
+      const queue = [start];
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        for (const next of adj.get(cur) ?? []) {
+          if (!seen.has(next)) {
+            seen.add(next);
+            queue.push(next);
+          }
+        }
+      }
+    };
+
+    if (startKind === "operator" || startKind === "ifGate") {
+      const isPassthrough = (k: IrgNodeData["kind"] | undefined) =>
+        k === "operator" || k === "ifGate";
+      const walkThrough = (start: string, adj: Map<string, string[]>) => {
+        const queue = [start];
+        while (queue.length > 0) {
+          const cur = queue.shift()!;
+          for (const next of adj.get(cur) ?? []) {
+            if (seen.has(next)) continue;
+            seen.add(next);
+            if (isPassthrough(kindById.get(next))) queue.push(next);
+            // else: variable — included, but we don't recurse past it.
+          }
+        }
+      };
+      walkThrough(activeHighlightId, adjacency.incoming);
+      walkThrough(activeHighlightId, adjacency.outgoing);
+      return seen;
+    }
+
+    if (startKind === "input") {
+      // Inputs flow rightward — descendants are the only meaningful chain.
+      walkAll(activeHighlightId, adjacency.outgoing);
+      return seen;
+    }
+
+    // Outputs and intermediate sub-rules: ancestors only — the chain
+    // that contributes to the hovered node.
+    walkAll(activeHighlightId, adjacency.incoming);
+    return seen;
+  }, [activeHighlightId, adjacency, kindById]);
+
+  // Apply the highlight by tagging each node and edge with a className
+  // reflecting whether it's on the lineage. CSS handles the dim/emphasize
+  // transitions so this re-render is cheap.
+  // The executed subgraph: nodes carrying a computed value while the
+  // execution layer is live. Drives depth-of-field, edge glow, and
+  // the camera.
+  const executedIds = useMemo(() => {
+    if (!executionActive) return new Set<string>();
+    const ids = new Set<string>();
+    for (const n of nodes) {
+      const d = n.data as IrgNodeData;
+      if (
+        "legalId" in d &&
+        d.legalId &&
+        executedLegalIds?.has(d.legalId)
+      ) {
+        ids.add(n.id);
+      }
+    }
+    return ids;
+  }, [nodes, executionActive, executedLegalIds]);
+
+  const outputNodeIds = useMemo(
+    () =>
+      nodes
+        .filter((n) => (n.data as IrgNodeData).kind === "output")
+        .map((n) => n.id),
+    [nodes],
+  );
+
+  // Depth of each executed node along the executed subgraph, for the
+  // wave: values and lifts ripple in computation order.
+  const execDepth = useMemo(() => {
+    const depth = new Map<string, number>();
+    if (executedIds.size === 0) return depth;
+    const incoming = new Map<string, string[]>();
+    for (const e of edges) {
+      if (executedIds.has(e.source) && executedIds.has(e.target)) {
+        if (!incoming.has(e.target)) incoming.set(e.target, []);
+        incoming.get(e.target)!.push(e.source);
+      }
+    }
+    const resolve = (id: string, stack: Set<string>): number => {
+      const cached = depth.get(id);
+      if (cached !== undefined) return cached;
+      if (stack.has(id)) return 0;
+      stack.add(id);
+      const parents = incoming.get(id) ?? [];
+      const d =
+        parents.length === 0
+          ? 0
+          : Math.max(...parents.map((p) => resolve(p, stack))) + 1;
+      depth.set(id, d);
+      return d;
+    };
+    for (const id of executedIds) resolve(id, new Set());
+    return depth;
+  }, [edges, executedIds]);
+
+
+  const displayNodes = useMemo(() => {
+    let out = nodes.map((n) => {
+      const d = n.data as IrgNodeData;
+      const legalId =
+        "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
+      const bucket = legalId?.split(":")[1]?.split("/")[0];
+      // Precomputed wrapper classes — the :has() selectors these
+      // replace forced style recalc across every node on the canvas.
+      const marks = [
+        bucket ? `irg-src-${bucket}` : "",
+        "value" in d && d.value && "showValues" in d && d.showValues
+          ? "irg-has-value"
+          : "",
+        "kind" in d && d.kind === "output" ? "irg-is-output" : "",
+        // The card whose info panel is open — run mode keeps it lit
+        // even when the execution layer would recede it.
+        n.id === pinnedNodeId ? "irg-inspected" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return marks ? { ...n, className: marks } : n;
+    });
+    if (executionActive) {
+      out = out.map((n) => ({
+        ...n,
+        className: `${n.className ?? ""} ${
+          executedIds.has(n.id) ? "irg-exec-node" : "irg-exec-off"
+        }`.trim(),
+        style: executedIds.has(n.id)
+          ? {
+              ...n.style,
+              ["--exec-order" as string]: String(execDepth.get(n.id) ?? 0),
+            }
+          : n.style,
+      }));
+    }
+    if (!highlightSet) return out;
+    return out.map((n) => ({
+      ...n,
+      className: `${n.className ?? ""} ${
+        highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
+      }`.trim(),
+    }));
+  }, [nodes, highlightSet, executionActive, executedIds, pinnedNodeId]);
+
+  const displayEdges = useMemo(() => {
+    let out = edges;
+    if (executionActive) {
+      out = out.map((e) => ({
+        ...e,
+        className: `${e.className ?? ""} ${
+          executedIds.has(e.source) && executedIds.has(e.target)
+            ? "irg-exec-edge"
+            : "irg-exec-dim"
+        }`.trim(),
+      }));
+    }
+    if (!highlightSet) return out;
+    return out.map((e) => {
+      const lit = highlightSet.has(e.source) && highlightSet.has(e.target);
+      return {
+        ...e,
+        className: `${e.className ?? ""} ${lit ? "irg-rf-on-path" : "irg-rf-dimmed"}`.trim(),
+      };
+    });
+  }, [edges, highlightSet, executionActive, executedIds]);
+
+  // Coarse geometry fingerprint — changes whenever a relayout moves
+  // nodes, which is what the survey camera needs to chase.
+  const layoutSig = useMemo(
+    () =>
+      displayNodes.length +
+      ":" +
+      Math.round(
+        displayNodes.reduce((sum, n) => sum + n.position.x + n.position.y, 0),
+      ),
+    [displayNodes],
+  );
+
+  if (!fontsReady) {
+    return (
+      <div ref={wrapRef} className="irg-wrap">
+        <div className="irg-loading">Preparing graph…</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      data-lod={lod}
+      className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}
+    >
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={displayNodes}
+          edges={displayEdges}
+          nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
+          elevateEdgesOnSelect={false}
+          fitView
+          fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.4 }}
+          minZoom={0.01}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+          onMove={(_event, viewport) => {
+            if (!moveBusy.current) {
+              moveBusy.current = true;
+              setHighlightNodeId(null);
+              wrapRef.current?.classList.add("is-moving");
+            }
+            if (moveEndTimer.current)
+              window.clearTimeout(moveEndTimer.current);
+            moveEndTimer.current = window.setTimeout(() => {
+              moveBusy.current = false;
+              wrapRef.current?.classList.remove("is-moving");
+            }, 180);
+            const zoom = viewport.zoom;
+            // Defer LOD swaps until the camera rests, and switch with
+            // hysteresis — resting exactly on a boundary must not
+            // thrash the chrome on/off (reads as heavy flicker).
+            if (lodTimer.current) window.clearTimeout(lodTimer.current);
+            lodTimer.current = window.setTimeout(() => {
+              setLod((current) => {
+                if (current === "near") {
+                  if (zoom < 0.4) return "far";
+                  if (zoom < 0.7) return "mid";
+                  return "near";
+                }
+                if (current === "mid") {
+                  if (zoom > 0.8) return "near";
+                  if (zoom < 0.38) return "far";
+                  return "mid";
+                }
+                if (zoom > 0.8) return "near";
+                if (zoom > 0.46) return "mid";
+                return "far";
+              });
+            }, 300);
+          }}
+          connectionLineType={ConnectionLineType.SmoothStep}
+          nodesDraggable
+          nodesConnectable={false}
+          elementsSelectable
+          onNodeMouseEnter={(_e, node) => {
+            if (moveBusy.current) return;
+            const kind = (node.data as IrgNodeData).kind;
+            // Literals (raw numbers) aren't useful to highlight from — they
+            // appear in many unrelated places and would light up half the
+            // graph at once.
+            if (kind !== "literal") setHighlightNodeId(node.id);
+          }}
+          onNodeMouseLeave={() => setHighlightNodeId(null)}
+          onPaneClick={() => onPaneClear?.()}
+          onNodeDoubleClick={(_e, node) => {
+            const data = node.data as IrgNodeData;
+            if ("legalId" in data && data.legalId && data.kind !== "input") {
+              onLens?.(data.legalId);
+            }
+          }}
+          onNodeClick={(e, node) => {
+            const data = node.data as IrgNodeData;
+            const target = e.target as HTMLElement;
+            // Each action row tags itself with data-action; we route the
+            // click to the right handler based on which row was hit.
+            const actionEl = target.closest(".irg-action") as HTMLElement | null;
+            const action = actionEl?.dataset.action;
+            if (data.kind === "input" && onExposeInput && actionEl) {
+              onExposeInput(data.legalId);
+              return;
+            }
+            if (data.kind === "ruleRef") {
+              if (action === "collapse" && data.canExpand) {
+                toggleCollapse(data.legalId);
+                return;
+              }
+            }
+            if (data.kind === "output") {
+              if (action === "collapse" && data.canExpand) {
+                toggleCollapse(data.legalId);
+                return;
+              }
+            }
+            if (!actionEl) onInspect?.(data);
+          }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#e7e5e4" />
+          <FlyToController
+            target={flyTo ?? null}
+            layoutSig={layoutSig}
+            nodes={displayNodes}
+          />
+
+          <GraphMiniMap />
+          <SmoothControls />
+        </ReactFlow>
+        <div className="irg-toolbar">
+          <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
+            <button
+              type="button"
+              className={`irg-toolbar-btn ${detail === "operators" ? "is-active" : ""}`}
+              onClick={() => setDetail("operators")}
+              role="tab"
+              aria-selected={detail === "operators"}
+              title="Show operators (AND, OR, IF, comparisons, arithmetic)"
+            >
+              Operators
+            </button>
+            <button
+              type="button"
+              className={`irg-toolbar-btn ${detail === "wires" ? "is-active" : ""}`}
+              onClick={() => setDetail("wires")}
+              role="tab"
+              aria-selected={detail === "wires"}
+              title="Hide operators — show only inputs, sub-rules, outputs and the wires between them"
+            >
+              Wires only
+            </button>
+          </div>
+          <button
+            type="button"
+            className="irg-toolbar-btn"
+            onClick={expandAll}
+            title="Expand every sub-rule inline"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            className="irg-toolbar-btn"
+            onClick={collapseAll}
+            title="Collapse every sub-rule into a clickable terminal"
+          >
+            Collapse all
+          </button>
+        </div>
+        <button
+          type="button"
+          className="irg-fullscreen-btn"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit full screen (Esc)" : "Enter full screen"}
+          aria-label={isFullscreen ? "Exit full screen" : "Enter full screen"}
+        >
+          {isFullscreen ? (
+            // collapse glyph
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+              <path
+                d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            // expand glyph
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+              <path
+                d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+        </button>
+      </ReactFlowProvider>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Node data + components
+// ─────────────────────────────────────────────────────────────────────────
+
+interface NodeMeta {
+  /** Short kind line: "Output · money", "Input · boolean", "Rule · judgment" */
+  kindLine: string;
+  /** Humanized citation, e.g. "10 CCR 2506-1 § 4.207.3 (Colorado)". */
+  citation?: string;
+  /** URL of the rule's primary legal source — when present, the citation
+   *  renders as a link to it. */
+  sourceUrl?: string | null;
+  /** Full legal ID (mono, small) so power users can grep. */
+  legalId: string;
+  /** Deep link into the Axiom app's regulation viewer, if resolvable. */
+  appUrl?: string | null;
+  /** For rules: a one-liner of the rule's formula (truncated) so the user
+   *  gets the "what does this compute" without expanding. */
+  formulaPreview?: string;
+  /** For parameters: the constant value or expression backing the parameter. */
+  parameterValue?: string;
+  /** Full formula text — shown only behind an unfold in the inspector. */
+  formula?: string;
+}
+
+export type IrgNodeData =
+  | {
+      kind: "output";
+      label: string;
+      legalId: string;
+      verdictCls: string;
+      value: string;
+      showValues: boolean;
+      meta: NodeMeta;
+      /** True when the underlying trace has a formula whose upstream
+       *  chain we can collapse. */
+      canExpand: boolean;
+      /** Steps hidden behind this node while collapsed. */
+      hiddenCount?: number;
+      /** Current collapse state — drives "+ expand" / "− collapse". */
+      isExpanded: boolean;
+    }
+  | {
+      kind: "input";
+      label: string;
+      legalId: string;
+      source: "user" | "default";
+      canExpose: boolean;
+      value: string;
+      showValues: boolean;
+      meta: NodeMeta;
+    }
+  | {
+      kind: "operator";
+      label: string;
+      verdictCls: string;
+      value: string;
+      showValues: boolean;
+    }
+  | {
+      kind: "ifGate";
+      label: string;
+      verdictCls: string;
+      branchLabel: string;
+      value: string;
+      showValues: boolean;
+    }
+  | {
+      kind: "ruleRef";
+      label: string;
+      legalId: string;
+      canExpand: boolean;
+      hiddenCount?: number;
+      isParameter: boolean;
+      /** Whether the rule is currently selected as a dashboard output. */
+      isOutput: boolean;
+      verdictCls: string;
+      value: string;
+      isExpanded: boolean;
+      showValues: boolean;
+      meta: NodeMeta;
+    }
+  | {
+      kind: "literal";
+      label: string;
+    }
+  | {
+      kind: "unknown";
+      label: string;
+      isParameter?: boolean;
+      /** Set when the unknown identifier resolves to a parameter rule —
+       *  enables the hover popover with citation/value/Axiom link. */
+      meta?: NodeMeta;
+    };
+
+/** Inputs only emit edges (rightward), so they don't need a target handle. */
+/** Fly the viewport to a rule by durable legal id. */
+/**
+ * The minimap is a working map, not a picture: drag the viewport box
+ * to pan, wheel to zoom, and click anywhere to travel there — at a
+ * readable zoom, since "go to that section" is the point of a click.
+ */
+function GraphMiniMap() {
+  const flow = useReactFlow();
+  return (
+    <MiniMap
+      nodeColor={(n) => miniMapColor(n.data as IrgNodeData)}
+      nodeStrokeColor={(n) => miniMapColor(n.data as IrgNodeData)}
+      nodeBorderRadius={2}
+      pannable
+      zoomable
+      position="bottom-right"
+      style={{ background: "var(--color-paper-elevated)", border: "1px solid var(--color-rule)" }}
+      onClick={(_event, position) => {
+        const zoom = flow.getViewport().zoom;
+        void flow.setCenter(position.x, position.y, {
+          duration: 500,
+          zoom: Math.max(zoom, 0.6),
+        });
+      }}
+    />
+  );
+}
+
+/** Zoom controls that glide — the stock Controls snap. */
+function SmoothControls() {
+  const flow = useReactFlow();
+  return (
+    <div className="smooth-controls" aria-label="Zoom controls">
+      <button
+        type="button"
+        onClick={() => void flow.zoomIn({ duration: 320 })}
+        aria-label="Zoom in"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        onClick={() => void flow.zoomOut({ duration: 320 })}
+        aria-label="Zoom out"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          void flow.fitView({
+            duration: 950,
+            padding: 0.12,
+            interpolate: "smooth",
+            minZoom: 0.01,
+          })
+        }
+        aria-label="Fit the whole graph"
+        title="Fit the whole graph"
+      >
+        ⛶
+      </button>
+    </div>
+  );
+}
+
+/** Duration scaled to how far the camera must travel — short hops
+ *  stay quick, cross-map flights take a long smooth arc. */
+function flightDuration(
+  flow: ReturnType<typeof useReactFlow>,
+  targetX: number,
+  targetY: number,
+): number {
+  const viewport = flow.getViewport();
+  const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
+  const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
+  const screenDistance =
+    Math.hypot(targetX - centerX, targetY - centerY) * viewport.zoom;
+  return Math.min(1700, Math.max(600, Math.round(screenDistance * 0.6)));
+}
+
+function FlyToController({
+  target,
+  layoutSig,
+  nodes,
+}: {
+  target: {
+    legalId: string;
+    nonce: number;
+    immediate?: boolean;
+    soft?: boolean;
+  } | null;
+  layoutSig: string;
+  nodes: Node[];
+}) {
+  const flow = useReactFlow();
+  const last = useRef(0);
+  const chaseUntil = useRef(0);
+  const chaseId = useRef<string | null>(null);
+  const cutMode = useRef(false);
+  const faded = useRef(false);
+  const immediate = useRef(false);
+  const soft = useRef(false);
+  const [armed, setArmed] = useState(0);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  // ONE destination per target. Two ways to arrive:
+  //  - the layout stays put (immediate flights, in-scope jumps):
+  //    a smooth glide;
+  //  - a relayout lands while the chase is armed (walk steps refold
+  //    the canvas every time): animating from the stale viewport
+  //    reads as two movements — the layout jump, then the pan — so
+  //    the camera CUTS to the destination inside the relayout's own
+  //    commit and the scene fades in as one change. The second
+  //    layout pass re-cuts under the fade, invisibly.
+  useEffect(() => {
+    if (!target || target.nonce === last.current) return;
+    last.current = target.nonce;
+    chaseId.current = target.legalId;
+    immediate.current = Boolean(target.immediate);
+    soft.current = Boolean(target.soft);
+    cutMode.current = false;
+    faded.current = false;
+    chaseUntil.current = Date.now() + (target.legalId === "*" ? 10_000 : 8_000);
+    // A walk step commits its refolded layout and this chase in the
+    // SAME render — the sig effect above has already run and found no
+    // armed chase. If the layout just moved, this arrival IS the
+    // relayout: cut now instead of waiting out the fallback glide.
+    if (Date.now() - lastSigChangeAt.current < 250) cutTo();
+    setArmed((tick) => tick + 1);
+  }, [target]);
+  const lastSigChangeAt = useRef(0);
+  const centerOf = (id: string) => {
+    const match = nodesRef.current.find(
+      (node) =>
+        (node.data as IrgNodeData & { legalId?: string }).legalId === id,
+    );
+    if (!match) return null;
+    return {
+      x: match.position.x + (match.measured?.width ?? 220) / 2,
+      y: match.position.y + (match.measured?.height ?? 90) / 2,
+    };
+  };
+  const cutTo = () => {
+    if (!chaseId.current || Date.now() > chaseUntil.current) return;
+    // A soft chase glides through the relayout's commit (small unfolds
+    // like clicking a question in the flow panel); a hard cut is for
+    // scene-scale changes.
+    const duration = soft.current ? 500 : 0;
+    if (chaseId.current === "*") {
+      void flow.fitView({ duration, padding: 0.1, minZoom: 0.01 });
+    } else {
+      const center = centerOf(chaseId.current);
+      if (!center) return;
+      void flow.setCenter(center.x, center.y, {
+        duration,
+        zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+      });
+    }
+    cutMode.current = true;
+    // Keep the chase briefly alive so a second measured layout pass
+    // re-cuts to the final geometry, then let it die.
+    chaseUntil.current = Date.now() + 700;
+    if (!faded.current && !soft.current) {
+      faded.current = true;
+      const wrap = document.querySelector<HTMLElement>(
+        ".graph-viewer-root .irg-wrap",
+      );
+      if (wrap) {
+        wrap.classList.remove("irg-scene-cut");
+        void wrap.offsetWidth;
+        wrap.classList.add("irg-scene-cut");
+      }
+    }
+  };
+  const layoutSigSeen = useRef(layoutSig);
+  useLayoutEffect(() => {
+    if (layoutSig === layoutSigSeen.current) return;
+    layoutSigSeen.current = layoutSig;
+    lastSigChangeAt.current = Date.now();
+    if (armed === 0) return;
+    cutTo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutSig, armed, flow]);
+  useEffect(() => {
+    if (armed === 0 || !chaseId.current || Date.now() > chaseUntil.current)
+      return;
+    // The glide only serves the layout-at-rest case; once a relayout
+    // has cut, later timers must stay quiet.
+    if (cutMode.current) return;
+    const delay = immediate.current ? 0 : 1000;
+    const timer = window.setTimeout(() => {
+      if (cutMode.current || !chaseId.current) return;
+      if (chaseId.current === "*") {
+        void flow.fitView({
+          duration: 900,
+          padding: 0.1,
+          minZoom: 0.01,
+          interpolate: "smooth",
+        });
+        return;
+      }
+      const center = centerOf(chaseId.current);
+      if (center) {
+        void flow.setCenter(center.x, center.y, {
+          duration: flightDuration(flow, center.x, center.y),
+          interpolate: "smooth",
+          zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
+        });
+        // The destination is reached — later unrelated relayouts must
+        // not yank the camera back.
+        chaseUntil.current = Date.now() + 900;
+      }
+    }, delay);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutSig, armed, flow]);
+  return null;
+}
+
+const HandleSource = () => (
+  <Handle type="source" position={Position.Right} className="irg-handle" />
+);
+/** Outputs only receive edges (from the left); no source handle. */
+const HandleTarget = () => (
+  <Handle type="target" position={Position.Left} className="irg-handle" />
+);
+/** Intermediate nodes both receive and emit. */
+const HandleBoth = () => (
+  <>
+    <Handle type="target" position={Position.Left} className="irg-handle" />
+    <Handle type="source" position={Position.Right} className="irg-handle" />
+  </>
+);
+
+/**
+ * Hover popover that reveals the node's citation, legal ID and a link to
+ * read the underlying statute/regulation in the Axiom app.
+ *
+ * Visibility is driven by React state with a small leave-delay so the
+ * user can move their cursor from the node to the popover (and click the
+ * link) without the popover snapping shut. The popover is rendered into
+ * a portal anchored to document.body — React Flow's container has
+ * overflow:hidden for pan/zoom, which would otherwise clip popovers on
+ * nodes near the canvas edge.
+ */
+function useHoverPopover() {
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const enter = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setOpen(true);
+  }, []);
+  const leave = useCallback(() => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      timerRef.current = null;
+    }, 220);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+  return { open, enter, leave };
+}
+
+const POPOVER_WIDTH = 280;
+const POPOVER_GAP = 8;
+
+const NodeInfo = ({
+  meta,
+  title,
+  open,
+  anchorRef,
+  onEnter,
+  onLeave,
+}: {
+  meta: NodeMeta;
+  title: string;
+  open: boolean;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  onEnter: () => void;
+  onLeave: () => void;
+}) => {
+  // Position relative to the node element. Re-measured each open and on
+  // window scroll/resize so we don't drift if the user pans the canvas.
+  const [pos, setPos] = useState<{ left: number; top: number; place: "above" | "below" } | null>(
+    null,
+  );
+  // Portal into the current fullscreen element when one is active —
+  // otherwise document.body is hidden and the popover wouldn't render at
+  // all. Listening to `fullscreenchange` keeps the target current as the
+  // user toggles in/out without re-opening the popover.
+  const [portalTarget, setPortalTarget] = useState<HTMLElement>(
+    () => (document.fullscreenElement as HTMLElement | null) ?? document.body,
+  );
+  useEffect(() => {
+    const sync = () => {
+      setPortalTarget(
+        (document.fullscreenElement as HTMLElement | null) ?? document.body,
+      );
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const measure = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      // Default above; flip below if there isn't enough room (so popovers
+      // on top-of-viewport nodes don't get clipped offscreen).
+      const place: "above" | "below" =
+        rect.top > 220 || rect.bottom + 220 > window.innerHeight ? "above" : "below";
+      const top = place === "above" ? rect.top - POPOVER_GAP : rect.bottom + POPOVER_GAP;
+      // Clamp horizontally so the popover never overflows the viewport.
+      const halfW = POPOVER_WIDTH / 2;
+      const left = Math.max(halfW + 8, Math.min(window.innerWidth - halfW - 8, centerX));
+      setPos({ left, top, place });
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open, anchorRef]);
+
+  if (!open || !pos) return null;
+  return createPortal(
+    <div
+      className={`irg-popover irg-popover-${pos.place}`}
+      style={{ left: pos.left, top: pos.top }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
+      <div className="irg-pop-eyebrow">{meta.kindLine}</div>
+      <div className="irg-pop-title">{softBreak(humanizeLabel(title))}</div>
+      {meta.parameterValue && (
+        <div className="irg-pop-value">
+          <span>Value</span>
+          <strong>{meta.parameterValue}</strong>
+        </div>
+      )}
+      {meta.formulaPreview && (
+        <div className="irg-pop-formula">{meta.formulaPreview}</div>
+      )}
+      {meta.citation &&
+        (meta.sourceUrl ? (
+          <a
+            className="irg-pop-cite irg-pop-cite-link"
+            href={meta.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {meta.citation} ↗
+          </a>
+        ) : (
+          <div className="irg-pop-cite">{meta.citation}</div>
+        ))}
+      {meta.appUrl && (
+        <a
+          className="irg-pop-link"
+          href={meta.appUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open in Axiom app ↗
+        </a>
+      )}
+    </div>,
+    portalTarget,
+  );
+};
+
+/**
+ * Insert zero-width spaces after `_` and `.` so the browser breaks
+ * snake_case / dotted identifiers at semantic boundaries instead of
+ * shearing through the middle of a word. Each token is still selectable
+ * and copies cleanly (ZWSPs are stripped by most clipboard targets).
+ */
+/**
+ * Convert a snake_case identifier into a human-readable label —
+ * "snap_household_size" → "Snap household size". Used for every label
+ * the graph renders so non-engineers don't have to read raw RuleSpec
+ * identifiers. The raw legal-id is still available on hover via the
+ * info popover.
+ */
+function humanizeLabel(s: string): string {
+  if (!s) return s;
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function softBreak(s: string): string {
+  return s.replace(/([_.])/g, "$1​");
+}
+
+/**
+ * Tiny "ⓘ" badge anchored to the node's top-right corner. Hovering or
+ * focusing it opens the popover; the box itself stays clean so the user
+ * can drag/click without accidental popovers cluttering every motion.
+ */
+
+const OutputNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "output" }>;
+  const pop = useHoverPopover();
+  const ref = useRef<HTMLDivElement>(null);
+  const answerPopulated = useAnswerBoxPopulated(d.legalId);
+  return (
+    <div
+      ref={ref}
+      className={`irg-node irg-output ${d.showValues ? d.verdictCls : "irg-neutral"}`}
+    >
+      <HandleBoth />
+      <div className="irg-eyebrow">Result</div>
+      <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
+      {!answerPopulated && d.showValues && d.value && (
+        <div className="irg-value">{d.value}</div>
+      )}
+      {d.canExpand && (
+        <div
+          className="irg-action irg-action-secondary irg-action-clickable"
+          data-action="collapse"
+        >
+          {d.isExpanded
+            ? "− collapse"
+            : d.hiddenCount
+              ? `+ expand · ${d.hiddenCount} rules`
+              : "+ expand"}
+        </div>
+      )}
+      <NodeInfo
+        meta={d.meta}
+        title={d.label}
+        open={pop.open}
+        anchorRef={ref}
+        onEnter={pop.enter}
+        onLeave={pop.leave}
+      />
+    </div>
+  );
+};
+
+function InlineAnswer({ legalId }: { legalId: string }) {
+  const { values, answered, onChange } = useContext(InputEditContext);
+  const fragment = legalId.split("#").pop() ?? "";
+  if (!onChange || !fragment.startsWith("input.")) return null;
+  const name = fragment.slice("input.".length);
+  if (!(name in values)) {
+    // The runtime cannot ingest this question yet — no field is
+    // better than a field the engine silently ignores.
+    return null;
+  }
+  const value = values[name];
+  const stop = (event: { stopPropagation: () => void }) =>
+    event.stopPropagation();
+  return (
+    <div
+      className={`irg-answer nodrag ${answered.has(name) ? "is-answered" : ""}`}
+      onClick={stop}
+      onDoubleClick={stop}
+    >
+      {typeof value === "boolean" ? (
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(event) => onChange(name, event.target.checked)}
+          aria-label="Answer"
+        />
+      ) : (
+        <input
+          type="number"
+          value={
+            value === undefined || Number.isNaN(value as number)
+              ? ""
+              : String(value)
+          }
+          placeholder="answer…"
+          onChange={(event) =>
+            onChange(
+              name,
+              event.target.value === ""
+                ? Number.NaN
+                : Number(event.target.value),
+            )
+          }
+          aria-label="Answer"
+        />
+      )}
+    </div>
+  );
+}
+
+/** True when this node renders an answer box that already holds a
+ *  value — the card's own value line would just repeat it (and get
+ *  clipped), so callers hide it. */
+function useAnswerBoxPopulated(legalId: string): boolean {
+  const { values, onChange } = useContext(InputEditContext);
+  const fragment = legalId.split("#").pop() ?? "";
+  if (!onChange || !fragment.startsWith("input.")) return false;
+  const name = fragment.slice("input.".length);
+  if (!(name in values)) return false;
+  const value = values[name];
+  // A checkbox always displays its state; a number box counts once typed.
+  return typeof value === "boolean" || !Number.isNaN(value as number);
+}
+
+/** Inline value editing on Question cards — provided by the app so
+ *  the canvas itself is a form: type a number, flip a toggle, run. */
+export const InputEditContext = createContext<{
+  values: Record<string, number | boolean>;
+  answered: Set<string>;
+  onChange: ((name: string, value: number | boolean) => void) | null;
+}>({ values: {}, answered: new Set(), onChange: null });
+
+const InputNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "input" }>;
+  const status = d.source === "user" ? "selected" : "not selected";
+  const pop = useHoverPopover();
+  const ref = useRef<HTMLDivElement>(null);
+  const answerPopulated = useAnswerBoxPopulated(d.legalId);
+  const { values, answered, onChange } = useContext(InputEditContext);
+  const inputFragment = d.legalId.split("#").pop() ?? "";
+  const inputName = inputFragment.startsWith("input.")
+    ? inputFragment.slice("input.".length)
+    : null;
+  const settable = Boolean(onChange && inputName && inputName in values);
+  const isAnswered = Boolean(inputName && answered.has(inputName));
+  // Affordance shows when the parent wired up onExposeInput (Step III).
+  // Action label flips with the current state — same hook toggles both
+  // ways via App.tsx's handleExposeInput.
+  const showAction = d.canExpose || d.source === "user";
+  return (
+    <div
+      ref={ref}
+      className={`irg-node irg-input irg-input-${d.source} ${d.canExpose ? "irg-can-expose" : ""} ${isAnswered ? "is-answered" : ""}`}
+    >
+      <HandleSource />
+      <div className="irg-eyebrow">
+        Question · <span className={`irg-status irg-status-${d.source}`}>{d.source === "user" ? "asked" : "not asked"}</span>
+      </div>
+      <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
+      {!answerPopulated && d.showValues && d.value && (
+        <div className="irg-value">{d.value}</div>
+      )}
+      {/* Honesty on the card: after a run, an unanswered question says
+          so — a downstream "No" can mean "not asked". */}
+      {d.showValues && settable && !isAnswered && (
+        <div className="irg-default-chip">using default</div>
+      )}
+      {showAction && (
+        <div className="irg-action irg-action-clickable">
+          {d.source === "user" ? "− remove" : "+ ask the user"}
+        </div>
+      )}
+      <NodeInfo
+        meta={d.meta}
+        title={d.label}
+        open={pop.open}
+        anchorRef={ref}
+        onEnter={pop.enter}
+        onLeave={pop.leave}
+      />
+    </div>
+  );
+};
+
+const OperatorNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "operator" }>;
+  return (
+    <div className={`irg-node irg-operator ${d.showValues ? d.verdictCls : "irg-neutral"}`}>
+      <HandleBoth />
+      <div className="irg-op-label">{d.label}</div>
+      {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
+    </div>
+  );
+};
+
+const IfGateNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "ifGate" }>;
+  return (
+    <div className={`irg-node irg-ifgate ${d.showValues ? d.verdictCls : "irg-neutral"}`}>
+      <HandleBoth />
+      <div className="irg-op-label">IF</div>
+      {d.showValues && d.branchLabel && <div className="irg-eyebrow">{d.branchLabel}</div>}
+      {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
+    </div>
+  );
+};
+
+const RuleRefNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "ruleRef" }>;
+  const pop = useHoverPopover();
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={ref}
+      className={`irg-node irg-rule ${d.isParameter ? "irg-parameter" : ""} ${d.showValues ? d.verdictCls : "irg-neutral"} ${d.canExpand ? "irg-can-expand" : ""} ${d.isOutput ? "irg-rule-output" : ""}`}
+    >
+      <HandleBoth />
+      <div className="irg-eyebrow">
+        {d.isParameter ? "Parameter" : d.isOutput ? "Step · result" : "Step"}
+      </div>
+      <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      <InlineAnswer legalId={d.legalId} />
+      {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
+      {d.canExpand && (
+        <div
+          className="irg-action irg-action-secondary irg-action-clickable"
+          data-action="collapse"
+        >
+          {d.isExpanded
+            ? "− collapse"
+            : d.hiddenCount
+              ? `+ expand · ${d.hiddenCount} rules`
+              : "+ expand"}
+        </div>
+      )}
+      <NodeInfo
+        meta={d.meta}
+        title={d.label}
+        open={pop.open}
+        anchorRef={ref}
+        onEnter={pop.enter}
+        onLeave={pop.leave}
+      />
+    </div>
+  );
+};
+
+const LiteralNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "literal" }>;
+  return (
+    <div className="irg-node irg-literal">
+      <HandleSource />
+      {d.label}
+    </div>
+  );
+};
+
+const UnknownNode = ({ data }: NodeProps) => {
+  const d = data as Extract<IrgNodeData, { kind: "unknown" }>;
+  const pop = useHoverPopover();
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={ref} className={`irg-node irg-unknown ${d.isParameter ? "irg-parameter" : ""}`}>
+      <HandleSource />
+      <div className="irg-eyebrow">{d.isParameter ? "Parameter" : "Unresolved"}</div>
+      <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
+      {d.meta && (
+        <NodeInfo
+          meta={d.meta}
+          title={d.label}
+          open={pop.open}
+          anchorRef={ref}
+          onEnter={pop.enter}
+          onLeave={pop.leave}
+        />
+      )}
+    </div>
+  );
+};
+
+/** Wires merge like a tree: every forward edge runs level from its
+ *  source, joins a rail fixed just left of its TARGET, and turns
+ *  once into it. Edges bound for the same target overlap on that
+ *  rail — many sources become one trunk entering the card, instead
+ *  of a stack of separate brackets. Near-level edges take a single
+ *  gentle curve; backward edges fall back to smoothstep. */
+const RAIL_OFFSET = 28;
+const RAIL_RADIUS = 12;
+const RoundedSmoothStep = (props: EdgeProps) => {
+  const { sourceX, sourceY, targetX, targetY, markerEnd, style } = props;
+  const dy = targetY - sourceY;
+  if (
+    targetX - sourceX > RAIL_OFFSET + RAIL_RADIUS + 6 &&
+    Math.abs(dy) >= RAIL_RADIUS * 2
+  ) {
+    const data = props.data as
+      | { route?: "target" | "source"; railOffset?: number }
+      | undefined;
+    const route = data?.route ?? "target";
+    const offset = data?.railOffset ?? RAIL_OFFSET;
+    const rail = route === "source" ? sourceX + offset : targetX - offset;
+    const dir = dy > 0 ? 1 : -1;
+    const path =
+      `M ${sourceX},${sourceY} ` +
+      `L ${rail - RAIL_RADIUS},${sourceY} ` +
+      `Q ${rail},${sourceY} ${rail},${sourceY + dir * RAIL_RADIUS} ` +
+      `L ${rail},${targetY - dir * RAIL_RADIUS} ` +
+      `Q ${rail},${targetY} ${rail + RAIL_RADIUS},${targetY} ` +
+      `L ${targetX},${targetY}`;
+    return (
+      <BaseEdge id={props.id} path={path} markerEnd={markerEnd} style={style} />
+    );
+  }
+  if (targetX - sourceX > RAIL_OFFSET && Math.abs(dy) < RAIL_RADIUS * 2) {
+    // Near-level: one gentle S instead of a micro-staircase.
+    const midX = (sourceX + targetX) / 2;
+    const path =
+      `M ${sourceX},${sourceY} C ${midX},${sourceY} ${midX},${targetY} ${targetX},${targetY}`;
+    return (
+      <BaseEdge id={props.id} path={path} markerEnd={markerEnd} style={style} />
+    );
+  }
+  return (
+    <SmoothStepEdge
+      {...props}
+      pathOptions={{ borderRadius: RAIL_RADIUS, offset: RAIL_OFFSET }}
+    />
+  );
+};
+const EDGE_TYPES = { smoothstep: RoundedSmoothStep };
+
+const NODE_TYPES = {
+  output: OutputNode,
+  input: InputNode,
+  operator: OperatorNode,
+  ifGate: IfGateNode,
+  ruleRef: RuleRefNode,
+  literal: LiteralNode,
+  unknown: UnknownNode,
+};
+
+function miniMapColor(d: IrgNodeData): string {
+  switch (d.kind) {
+    case "output": return "#1c1917";
+    case "input": return d.source === "user" ? "#166534" : "#b45309";
+    case "ruleRef": return "#92400e";
+    case "unknown": return d.isParameter ? "#78716c" : "#a8a29e";
+    case "ifGate": return "#92400e";
+    case "operator": return "#92400e";
+    case "literal": return "#e7e5e4";
+    default: return "#a8a29e";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Graph construction
+// ─────────────────────────────────────────────────────────────────────────
+
+interface BuildResult {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+function buildGraph(
+  spec: DashboardSpec,
+  traces: Record<string, TraceNode>,
+  collapsed: Set<string>,
+  exposedInputIds: Set<string> | undefined,
+  showValues: boolean,
+  detail: "operators" | "wires" = "operators",
+  canExposeInputs: boolean = false,
+  parameterRules?: ParameterRule[],
+  selectedOutputIds?: Set<string>,
+): BuildResult {
+  // Index parameter rules by bare name so the formula walker can resolve
+  // identifiers that aren't in the trace (parameters get inlined as
+  // constants by the engine and don't appear as trace nodes).
+  const parametersByName = new Map<string, ParameterRule>();
+  for (const p of parameterRules ?? []) parametersByName.set(p.name, p);
+  // Recursively flatten the trace tree into a lookup so we can resolve any
+  // sub-rule reference no matter how deep it appears.
+  const traceByLegalId = flattenTrace(traces);
+  // Build by-name index for the formula parser's identifiers (rule labels +
+  // input bare names → trace node).
+  const byName = new Map<string, TraceNode>();
+  for (const t of traceByLegalId.values()) {
+    if (t.dtype === "input") {
+      const bare = t.legalId.split("#").pop()?.replace(/^input\./, "");
+      if (bare) byName.set(bare, t);
+    } else if (t.label) {
+      byName.set(t.label, t);
+    }
+  }
+
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  const nodeIds = new Map<string, string>(); // dedup key → node id
+  let counter = 0;
+  const nextId = () => `n${counter++}`;
+
+  // Pre-create all OUTPUT nodes for the selected outputs *before* walking
+  // any formula. This lets walkAst redirect a sub-rule reference back to
+  // its existing OUTPUT node when an intermediate rule has been promoted
+  // (otherwise the same legalId ends up rendered twice — once as the
+  // dashboard's output, once as a ruleRef inside another output's chain).
+  const outputBindings = spec.outputs.filter((b) => traces[b.legalId]);
+  const outputNodeIdByLegalId = new Map<string, string>();
+  for (const binding of outputBindings) {
+    const outputTrace = traces[binding.legalId]!;
+    const outputId = `out:${binding.legalId}`;
+    const isExpanded = !collapsed.has(binding.legalId);
+    const canExpand = Boolean(outputTrace.formula);
+    if (!nodeIds.has(outputId)) {
+      const id = nextId();
+      nodeIds.set(outputId, id);
+      outputNodeIdByLegalId.set(binding.legalId, id);
+      nodes.push({
+        id,
+        type: "output",
+        position: { x: 0, y: 0 },
+        data: {
+          kind: "output",
+          label: binding.label,
+          legalId: binding.legalId,
+          verdictCls: verdictClass(outputTrace),
+          value: showValues ? formatValue(outputTrace.value) : "",
+          showValues,
+          meta: buildMeta(outputTrace, "Output"),
+          canExpand,
+          hiddenCount: isExpanded ? 0 : hiddenDescendantCount(outputTrace),
+          isExpanded,
+        } satisfies IrgNodeData,
+      });
+    } else {
+      outputNodeIdByLegalId.set(binding.legalId, nodeIds.get(outputId)!);
+    }
+  }
+
+  const walkCtx: WalkCtx = {
+    nodes,
+    edges,
+    nodeIds,
+    nextId,
+    byName,
+    traceByLegalId,
+    collapsed,
+    exposedInputIds,
+    canExposeInputs,
+    showValues,
+    parametersByName,
+    selectedOutputIds,
+    outputNodeIdByLegalId,
+  };
+
+  for (const binding of outputBindings) {
+    const outputTrace = traces[binding.legalId]!;
+    const outputId = `out:${binding.legalId}`;
+    const outputNodeId = nodeIds.get(outputId)!;
+    const isExpanded = !collapsed.has(binding.legalId);
+    if (outputTrace.formula && isExpanded) {
+      const sourceId = walkExpr(
+        outputTrace.formula,
+        outputTrace.legalId,
+        walkCtx,
+      );
+      if (sourceId) {
+        edges.push({
+          id: `e${edges.length}`,
+          source: sourceId,
+          target: outputNodeId,
+          type: "smoothstep",
+          animated: false,
+          className: "irg-edge-default",
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#78716c" },
+          style: { strokeWidth: 1.5 },
+        });
+      }
+    }
+
+    if (detail === "wires" && isExpanded) {
+      wireTraceChildren(outputTrace, outputNodeId, walkCtx);
+    }
+  }
+
+  // Stash parametersByName on the walk context — visible to walkAst's
+  // ident handler when resolving names that aren't in the trace.
+  // (Threaded via closure since WalkCtx is local to this scope.)
+  const ctxExtras = { parametersByName };
+  void ctxExtras;
+
+  // Wires-only mode: collapse every operator/IF/literal/non-parameter unknown
+  // node so the graph shows only inputs, parameters, sub-rules, and outputs
+  // connected by direct wires. Each removed node's incoming and outgoing
+  // edges are merged.
+  if (detail === "wires") {
+    const result = collapseOperators(nodes, edges);
+    layout(result.nodes, result.edges);
+    return result;
+  }
+
+  layout(nodes, edges);
+  return { nodes, edges };
+}
+
+function wireTraceChildren(parent: TraceNode, parentNodeId: string, ctx: WalkCtx): void {
+  for (const child of parent.children ?? []) {
+    const childNodeId = ensureTraceNode(child, ctx);
+    addEdge(ctx, childNodeId, parentNodeId, "");
+  }
+}
+
+function ensureTraceNode(t: TraceNode, ctx: WalkCtx): string {
+  if (t.dtype === "input") {
+    const exposed = ctx.exposedInputIds?.has(t.legalId) ?? t.inputSource === "user";
+    const dedupKey = `input:${t.legalId}`;
+    const label =
+      (t.label && t.label.trim()) ||
+      t.legalId.split("#").pop()?.replace(/^input\./, "").replace(/^relation\./, "") ||
+      "(unnamed)";
+    return ensureNode(ctx, dedupKey, {
+      type: "input",
+      data: {
+        kind: "input",
+        label,
+        legalId: t.legalId,
+        source: exposed ? "user" : "default",
+        canExpose: !exposed && ctx.canExposeInputs,
+        value: ctx.showValues ? formatValue(t.value) : "",
+        showValues: ctx.showValues,
+        meta: buildMeta(t, "Input"),
+      } satisfies IrgNodeData,
+    });
+  }
+
+  const existingOutputId = ctx.outputNodeIdByLegalId.get(t.legalId);
+  if (existingOutputId) return existingOutputId;
+
+  const isParameter = t.ruleKind === "parameter";
+  const isExpanded = !ctx.collapsed.has(t.legalId);
+  const ruleNodeId = ensureNode(ctx, `rule:${t.legalId}`, {
+    type: "ruleRef",
+    data: {
+      kind: "ruleRef",
+      label: t.label || t.legalId.split("#").pop() || "(unnamed)",
+      legalId: t.legalId,
+      canExpand: Boolean(t.formula) && !isParameter,
+      hiddenCount: isExpanded ? 0 : hiddenDescendantCount(t),
+      isParameter,
+      isOutput: ctx.selectedOutputIds?.has(t.legalId) ?? false,
+      verdictCls: verdictClass(t),
+      value: ctx.showValues ? formatValue(t.value) : "",
+      isExpanded,
+      showValues: ctx.showValues,
+      meta: buildMeta(t, isParameter ? "Parameter" : "Rule"),
+    } satisfies IrgNodeData,
+  });
+
+  if (isExpanded && !isParameter) {
+    wireTraceChildren(t, ruleNodeId, ctx);
+  }
+
+  return ruleNodeId;
+}
+
+/**
+ * Remove operator/IF/literal/non-parameter unknown boxes and merge their
+ * incoming & outgoing edges into direct wires from sources to targets. Edge
+ * styling inherited from the outgoing edge so verdict coloring (active branch,
+ * failing AND-clause, etc.) survives the collapse.
+ */
+function collapseOperators(nodes: Node[], edges: Edge[]): BuildResult {
+  const passthroughIds = new Set(
+    nodes
+      .filter((n) => {
+        const data = n.data as IrgNodeData;
+        return (
+          data.kind === "operator" ||
+          data.kind === "ifGate" ||
+          data.kind === "literal" ||
+          (data.kind === "unknown" && !data.isParameter)
+        );
+      })
+      .map((n) => n.id),
+  );
+
+  if (passthroughIds.size === 0) return { nodes, edges };
+
+  // Build adjacency: for each node, its incoming and outgoing edges.
+  const inByNode = new Map<string, Edge[]>();
+  const outByNode = new Map<string, Edge[]>();
+  for (const e of edges) {
+    if (!inByNode.has(e.target)) inByNode.set(e.target, []);
+    inByNode.get(e.target)!.push(e);
+    if (!outByNode.has(e.source)) outByNode.set(e.source, []);
+    outByNode.get(e.source)!.push(e);
+  }
+
+  // For each non-passthrough source, follow its outgoing edges; if a target
+  // is a passthrough, recursively follow that passthrough's outgoing edges
+  // until we hit a non-passthrough target. Build a new edge from source →
+  // that target, inheriting styling from the LAST edge in the chain (the one
+  // closest to the surviving target — that's where verdict coloring lives).
+  const newEdges: Edge[] = [];
+  const seenEdgeKey = new Set<string>();
+
+  function reach(nodeId: string, lastStyledEdge: Edge): Array<{ target: string; styled: Edge }> {
+    if (!passthroughIds.has(nodeId)) {
+      return [{ target: nodeId, styled: lastStyledEdge }];
+    }
+    const downstream = outByNode.get(nodeId) ?? [];
+    const out: Array<{ target: string; styled: Edge }> = [];
+    for (const next of downstream) {
+      // The next edge's styling overrides if it has verdict-related class.
+      const styled = chooseStyled(lastStyledEdge, next);
+      out.push(...reach(next.target, styled));
+    }
+    return out;
+  }
+
+  for (const e of edges) {
+    if (passthroughIds.has(e.source)) continue; // covered when its parent is processed
+    const reaches = reach(e.target, e);
+    for (const r of reaches) {
+      const key = `${e.source}->${r.target}`;
+      if (seenEdgeKey.has(key)) continue;
+      seenEdgeKey.add(key);
+      newEdges.push({
+        ...r.styled,
+        id: `wire-${newEdges.length}`,
+        source: e.source,
+        target: r.target,
+        // Drop labels — they referred to the operator that's now gone.
+        label: undefined,
+      });
+    }
+  }
+
+  const survivingNodes = nodes.filter((n) => !passthroughIds.has(n.id));
+  return { nodes: survivingNodes, edges: newEdges };
+}
+
+/** Pick the more-meaningful of two edges' styling (verdict-coloured wins). */
+function chooseStyled(a: Edge, b: Edge): Edge {
+  const score = (e: Edge): number => {
+    const c = e.className ?? "";
+    if (c.includes("pass")) return 3;
+    if (c.includes("fail")) return 3;
+    if (c.includes("dim")) return 2;
+    return 1;
+  };
+  return score(b) >= score(a) ? b : a;
+}
+
+interface WalkCtx {
+  nodes: Node[];
+  edges: Edge[];
+  nodeIds: Map<string, string>;
+  nextId: () => string;
+  byName: Map<string, TraceNode>;
+  traceByLegalId: Map<string, TraceNode>;
+  /** Sub-rule legal IDs the user has manually collapsed. Defaults: every rule expanded. */
+  collapsed: Set<string>;
+  exposedInputIds: Set<string> | undefined;
+  /** True when the parent passed an onExposeInput callback (Step III only). */
+  canExposeInputs: boolean;
+  showValues: boolean;
+  /** Parameter rules from the program graph, indexed by bare name. Used
+   *  to enrich "unknown" nodes with citation + value when the formula
+   *  references a parameter the engine inlined as a constant. */
+  parametersByName: Map<string, ParameterRule>;
+  /** Rule legal IDs already exposed as dashboard outputs — drives the
+   *  result styling on rule nodes. */
+  selectedOutputIds: Set<string> | undefined;
+  /** legalId → existing OUTPUT node id. When the formula walker resolves
+   *  a sub-rule whose legalId is already an output binding, we reuse
+   *  the OUTPUT node instead of creating a parallel ruleRef. */
+  outputNodeIdByLegalId: Map<string, string>;
+}
+
+/**
+ * Render a parsed formula expression as nodes/edges, returning the id of
+ * the node that this expression's value emerges from.
+ *
+ * `parentScope` is the legalId of the rule whose formula we're rendering —
+ * used to differentiate per-rule operator instances (so two `+` from
+ * different rules don't accidentally dedupe).
+ */
+function walkExpr(formula: string, parentScope: string, ctx: WalkCtx): string | null {
+  const ast = parseFormula(formula);
+  if (ast.kind === "error") return null;
+  return walkAst(ast, parentScope, `${parentScope}::root`, ctx);
+}
+
+function walkAst(node: AstNode, parentScope: string, opPath: string, ctx: WalkCtx): string {
+  const lookupValue = (name: string): EvalValue => {
+    const t = ctx.byName.get(name);
+    if (!t) return null;
+    return t.value as EvalValue;
+  };
+
+  switch (node.kind) {
+    case "ident": {
+      const t = ctx.byName.get(node.name);
+      if (!t) {
+        // Name doesn't resolve to a traced rule/input — try parameter
+        // lookup so the user gets rich hover info on policy parameters.
+        const param = ctx.parametersByName.get(node.name);
+        const dedupKey = `unknown:${parentScope}:${node.name}`;
+        return ensureNode(ctx, dedupKey, {
+          type: "unknown",
+          data: {
+            kind: "unknown",
+            label: node.name,
+            isParameter: Boolean(param),
+            meta: param ? buildParameterMeta(param) : undefined,
+          } satisfies IrgNodeData,
+        });
+      }
+      if (t.dtype === "input") {
+        const exposed = ctx.exposedInputIds?.has(t.legalId) ?? t.inputSource === "user";
+        const dedupKey = `input:${t.legalId}`;
+        // Robust label fallback: t.label → formula token → bare legal-id
+        // suffix (after `#input.` or `#relation.`). Guarantees the box is
+        // never empty even if the engine omits the label.
+        const fallback = t.legalId
+          .split("#")
+          .pop()
+          ?.replace(/^input\./, "")
+          .replace(/^relation\./, "") ?? node.name;
+        const label = (t.label && t.label.trim()) || node.name || fallback || "(unnamed)";
+        // Only advertise "+ expose" when the builder actually wired a
+        // handler. Otherwise the affordance lies.
+        const canExpose = !exposed && ctx.canExposeInputs;
+        return ensureNode(ctx, dedupKey, {
+          type: "input",
+          data: {
+            kind: "input",
+            label,
+            legalId: t.legalId,
+            source: exposed ? "user" : "default",
+            canExpose,
+            value: ctx.showValues ? formatValue(t.value) : "",
+            showValues: ctx.showValues,
+            meta: buildMeta(t, "Input"),
+          } satisfies IrgNodeData,
+        });
+      }
+      // If this rule was promoted to a dashboard output, the spec.outputs
+      // pre-pass already created an OUTPUT node for it. Reuse that node
+      // so the same legalId doesn't render as both an output and a
+      // ruleRef in the same graph.
+      const existingOutputId = ctx.outputNodeIdByLegalId.get(t.legalId);
+      if (existingOutputId) return existingOutputId;
+      // Sub-rule reference. By default render its formula's AST inline; the
+      // rule pill is the "result" node. User can collapse the rule to hide
+      // its internals and click again to re-expand.
+      const isExpanded = !ctx.collapsed.has(t.legalId);
+      const ruleNodeKey = `rule:${t.legalId}`;
+      const isParameter = t.ruleKind === "parameter";
+      const isOutput = ctx.selectedOutputIds?.has(t.legalId) ?? false;
+      const ruleNodeId = ensureNode(ctx, ruleNodeKey, {
+        type: "ruleRef",
+        data: {
+          kind: "ruleRef",
+          label: t.label || node.name,
+          legalId: t.legalId,
+          canExpand: Boolean(t.formula) && !isParameter,
+          hiddenCount: isExpanded ? 0 : hiddenDescendantCount(t),
+          isParameter,
+          isOutput,
+          verdictCls: verdictClass(t),
+          value: ctx.showValues ? formatValue(t.value) : "",
+          isExpanded,
+          showValues: ctx.showValues,
+          meta: buildMeta(t, isParameter ? "Parameter" : "Rule"),
+        } satisfies IrgNodeData,
+      });
+      if (isExpanded && t.formula && !isParameter) {
+        const inlineSource = walkExpr(t.formula, t.legalId, ctx);
+        if (inlineSource) {
+          // Connect the expanded sub-rule's AST to the rule node so the
+          // reader sees its internals flowing in.
+          const edgeId = `e${ctx.edges.length}`;
+          if (!ctx.edges.find((e) => e.id === edgeId && e.source === inlineSource && e.target === ruleNodeId)) {
+            ctx.edges.push({ id: edgeId, source: inlineSource, target: ruleNodeId, type: "smoothstep" });
+          }
+        }
+      }
+      return ruleNodeId;
+    }
+
+    case "number":
+    case "bool": {
+      const text = String(node.kind === "number" ? node.value : node.value);
+      const dedupKey = `lit:${opPath}:${text}`;
+      return ensureNode(ctx, dedupKey, {
+        type: "literal",
+        data: { kind: "literal", label: text } satisfies IrgNodeData,
+      });
+    }
+
+    case "logical": {
+      const op = node.op;
+      const operands = flattenLogical(node, op);
+      const operandValues = operands.map((o) => evalAst(o, lookupValue));
+      const value = evalAst(node, lookupValue);
+      const verdictCls = verdictClassOfBool(value);
+      const decisive =
+        op === "and"
+          ? (v: EvalValue) => v !== null && !toBool(v)
+          : (v: EvalValue) => v !== null && toBool(v);
+      const myKey = `op:${parentScope}:${opPath}:${op}`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label: op.toUpperCase(),
+          verdictCls,
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      operands.forEach((child, i) => {
+        const childId = walkAst(child, parentScope, `${opPath}/${op}[${i}]`, ctx);
+        const cls =
+          ctx.showValues && decisive(operandValues[i] ?? null)
+            ? op === "and"
+              ? "fail"
+              : "pass"
+            : "";
+        addEdge(ctx, childId, myId, cls);
+      });
+      return myId;
+    }
+
+    case "comparison": {
+      const value = evalAst(node, lookupValue);
+      const verdictCls = verdictClassOfBool(value);
+      const myKey = `op:${parentScope}:${opPath}:${node.op}`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label: node.op,
+          verdictCls,
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      const lid = walkAst(node.left, parentScope, `${opPath}/cmp.l`, ctx);
+      const rid = walkAst(node.right, parentScope, `${opPath}/cmp.r`, ctx);
+      addEdge(ctx, lid, myId, "");
+      addEdge(ctx, rid, myId, "");
+      return myId;
+    }
+
+    case "arith": {
+      const value = evalAst(node, lookupValue);
+      const operands =
+        node.op === "+" || node.op === "*" ? flattenArith(node, node.op) : [node.left, node.right];
+      const myKey = `op:${parentScope}:${opPath}:${node.op}`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label: node.op,
+          verdictCls: "rg-numeric",
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      operands.forEach((child, i) => {
+        const cid = walkAst(child, parentScope, `${opPath}/${node.op}[${i}]`, ctx);
+        addEdge(ctx, cid, myId, "");
+      });
+      return myId;
+    }
+
+    case "unary": {
+      const value = evalAst(node, lookupValue);
+      const label = node.op === "not" ? "NOT" : "−";
+      const verdictCls = node.op === "not" ? verdictClassOfBool(value) : "rg-numeric";
+      const myKey = `op:${parentScope}:${opPath}:${node.op}`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label,
+          verdictCls,
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      const cid = walkAst(node.operand, parentScope, `${opPath}/u`, ctx);
+      addEdge(ctx, cid, myId, "");
+      return myId;
+    }
+
+    case "call": {
+      const value = evalAst(node, lookupValue);
+      const cls = ["any", "all"].includes(node.name) ? verdictClassOfBool(value) : "rg-numeric";
+      const myKey = `op:${parentScope}:${opPath}:call:${node.name}`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label: node.name,
+          verdictCls: cls,
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      node.args.forEach((arg, i) => {
+        const cid = walkAst(arg, parentScope, `${opPath}/call[${i}]`, ctx);
+        addEdge(ctx, cid, myId, "");
+      });
+      return myId;
+    }
+
+    case "index": {
+      const myKey = `op:${parentScope}:${opPath}:index`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "operator",
+        data: {
+          kind: "operator",
+          label: "table[i]",
+          verdictCls: "rg-numeric",
+          value: "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      const tid = walkAst(node.target, parentScope, `${opPath}/idx.t`, ctx);
+      const iid = walkAst(node.index, parentScope, `${opPath}/idx.i`, ctx);
+      addEdge(ctx, tid, myId, "");
+      addEdge(ctx, iid, myId, "");
+      return myId;
+    }
+
+    case "ifElse": {
+      const condValue = evalAst(node.cond, lookupValue);
+      const value = evalAst(node, lookupValue);
+      const condTrue = condValue !== null && toBool(condValue);
+      const verdictCls = verdictClassOfBool(value);
+      const myKey = `op:${parentScope}:${opPath}:if`;
+      const myId = ensureNode(ctx, myKey, {
+        type: "ifGate",
+        data: {
+          kind: "ifGate",
+          label: "IF",
+          verdictCls,
+          branchLabel:
+            condValue === null ? "" : condTrue ? "→ then" : "→ else",
+          value: ctx.showValues ? formatValue(value) : "",
+          showValues: ctx.showValues,
+        } satisfies IrgNodeData,
+      });
+      const cid = walkAst(node.cond, parentScope, `${opPath}/cond`, ctx);
+      const tid = walkAst(node.then, parentScope, `${opPath}/then`, ctx);
+      const eid = walkAst(node.else_, parentScope, `${opPath}/else`, ctx);
+      addEdgeWithLabel(ctx, cid, myId, "test", ctx.showValues ? "" : "");
+      addEdgeWithLabel(
+        ctx,
+        tid,
+        myId,
+        "if true",
+        ctx.showValues
+          ? condValue === null
+            ? ""
+            : condTrue
+              ? "pass"
+              : "dim"
+          : "",
+      );
+      addEdgeWithLabel(
+        ctx,
+        eid,
+        myId,
+        "if false",
+        ctx.showValues
+          ? condValue === null
+            ? ""
+            : condTrue
+              ? "dim"
+              : "pass"
+          : "",
+      );
+      return myId;
+    }
+
+    case "error":
+      return ensureNode(ctx, `err:${opPath}`, {
+        type: "unknown",
+        data: { kind: "unknown", label: node.text } satisfies IrgNodeData,
+      });
+  }
+}
+
+function ensureNode(
+  ctx: WalkCtx,
+  dedupKey: string,
+  spec: { type: keyof typeof NODE_TYPES; data: IrgNodeData },
+): string {
+  if (ctx.nodeIds.has(dedupKey)) return ctx.nodeIds.get(dedupKey)!;
+  const id = ctx.nextId();
+  ctx.nodeIds.set(dedupKey, id);
+  ctx.nodes.push({
+    id,
+    type: spec.type,
+    position: { x: 0, y: 0 },
+    data: spec.data,
+  });
+  return id;
+}
+
+function addEdge(ctx: WalkCtx, source: string, target: string, cls: string) {
+  // Dedup edges by (source, target).
+  if (ctx.edges.find((e) => e.source === source && e.target === target)) return;
+  const id = `e${ctx.edges.length}`;
+  ctx.edges.push({
+    id,
+    source,
+    target,
+    type: "smoothstep",
+    className: edgeClass(cls),
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeColorVar(cls) },
+    style: { strokeWidth: cls === "pass" || cls === "fail" ? 2 : 1.5 },
+  });
+}
+
+function addEdgeWithLabel(
+  ctx: WalkCtx,
+  source: string,
+  target: string,
+  label: string,
+  cls: string,
+) {
+  if (ctx.edges.find((e) => e.source === source && e.target === target)) return;
+  const id = `e${ctx.edges.length}`;
+  ctx.edges.push({
+    id,
+    source,
+    target,
+    type: "smoothstep",
+    label,
+    className: edgeClass(cls),
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeColorVar(cls) },
+    style: { strokeWidth: cls === "pass" || cls === "fail" ? 2 : 1.5 },
+    labelStyle: { fontFamily: "var(--f-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase" },
+    labelBgStyle: { fill: "var(--color-paper-elevated)", stroke: "var(--color-rule)" },
+    labelBgPadding: [4, 2],
+    labelBgBorderRadius: 8,
+  });
+}
+
+function edgeClass(cls: string): string {
+  if (cls === "pass") return "irg-edge-pass";
+  if (cls === "fail") return "irg-edge-fail";
+  if (cls === "dim") return "irg-edge-dim";
+  return "irg-edge-default";
+}
+
+function edgeColorVar(cls: string): string {
+  if (cls === "pass") return "#166534";
+  if (cls === "fail") return "#991b1b";
+  if (cls === "dim") return "#a8a29e";
+  return "#78716c";
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Layout (dagre)
+// ─────────────────────────────────────────────────────────────────────────
+
+function layout(nodes: Node[], edges: Edge[]) {
+  const dense = nodes.length > 250;
+  const run = (ranksep: number, nodesep: number) => {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "LR", nodesep, ranksep, marginx: 24, marginy: 24 });
+    g.setDefaultEdgeLabel(() => ({}));
+    for (const n of nodes) g.setNode(n.id, nodeSize(n));
+    for (const e of edges) g.setEdge(e.source, e.target);
+    dagre.layout(g);
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const n of nodes) {
+      const info = g.node(n.id);
+      if (!info) continue;
+      n.position = {
+        x: info.x - info.width / 2,
+        y: info.y - info.height / 2,
+      };
+      (n as Node).width = info.width;
+      (n as Node).height = info.height;
+      minY = Math.min(minY, n.position.y);
+      maxY = Math.max(maxY, n.position.y + info.height);
+    }
+    return maxY - minY;
+  };
+  // Tall towers need wider aisles: when the layout runs long top to
+  // bottom, pull the columns further apart so the rails and lanes
+  // have room — gently, scaled to the height.
+  const baseRank = dense ? 68 : 92;
+  const baseNode = dense ? 14 : 24;
+  const height = run(baseRank, baseNode);
+  const stretch = Math.min(1.7, Math.max(1, height / 4200));
+  if (stretch > 1.08) {
+    run(Math.round(baseRank * stretch), baseNode + 2);
+  }
+
+  packComponents(nodes, edges);
+  chooseEdgeRoutes(nodes, edges);
+}
+
+/**
+ * Decide each forward edge's orientation against the real card
+ * rectangles: prefer merging at the target (tree trunks), but when
+ * that level run would slice through an unrelated card, exit at the
+ * source instead — and if both cross, keep the lesser evil. The
+ * edge component reads data.route.
+ */
+function chooseEdgeRoutes(nodes: Node[], edges: Edge[]) {
+  const rects = new Map(
+    nodes.map((n) => [
+      n.id,
+      {
+        x: n.position.x,
+        y: n.position.y,
+        w: n.width ?? 220,
+        h: n.height ?? 80,
+      },
+    ]),
+  );
+  const crossings = (
+    y: number,
+    x1: number,
+    x2: number,
+    skip1: string,
+    skip2: string,
+  ) => {
+    if (x2 <= x1) return 0;
+    let count = 0;
+    for (const [id, r] of rects) {
+      if (id === skip1 || id === skip2) continue;
+      if (
+        y > r.y &&
+        y < r.y + r.h &&
+        Math.max(x1, r.x) < Math.min(x2, r.x + r.w)
+      ) {
+        count++;
+      }
+    }
+    return count;
+  };
+  // Lane assignment by interval coloring: each trunk's vertical span
+  // is known (its node's y to its farthest partner's y), so within a
+  // column, overlapping trunks take different rail offsets and can
+  // never run collinear. Sources get the same for source-routed
+  // exits.
+  const laneOf = (forTargets: boolean) => {
+    const spans = new Map<string, { lo: number; hi: number }>();
+    for (const e of edges) {
+      const self = rects.get(forTargets ? e.target : e.source);
+      const other = rects.get(forTargets ? e.source : e.target);
+      if (!self || !other) continue;
+      const selfY = self.y + self.h / 2;
+      const otherY = other.y + other.h / 2;
+      const id = forTargets ? e.target : e.source;
+      const span = spans.get(id) ?? { lo: selfY, hi: selfY };
+      span.lo = Math.min(span.lo, otherY);
+      span.hi = Math.max(span.hi, otherY);
+      spans.set(id, span);
+    }
+    const byColumn = new Map<number, { id: string; lo: number; hi: number }[]>();
+    for (const [id, span] of spans) {
+      const r = rects.get(id)!;
+      const columnX = Math.round((forTargets ? r.x : r.x + r.w) / 10);
+      const bucket = byColumn.get(columnX) ?? [];
+      bucket.push({ id, ...span });
+      byColumn.set(columnX, bucket);
+    }
+    // Median horizontal gap between columns decides how far lanes
+    // can spread.
+    const columnXs = [...byColumn.keys()].sort((a, b) => a - b);
+    let gap = 68;
+    if (columnXs.length > 1) {
+      const gaps = columnXs.slice(1).map((x, i) => (x - columnXs[i]) * 10);
+      gaps.sort((a, b) => a - b);
+      gap = gaps[Math.floor(gaps.length / 2)] ?? 68;
+    }
+    const laneStep = Math.max(9, Math.min(16, Math.floor((gap - 40) / 5)));
+    const lanes = new Map<string, number>();
+    for (const members of byColumn.values()) {
+      members.sort((a, b) => a.lo - b.lo);
+      const laneEnds: number[] = [];
+      for (const m of members) {
+        let lane = laneEnds.findIndex((end) => end + 10 < m.lo);
+        if (lane === -1) {
+          if (laneEnds.length < 5) {
+            lane = laneEnds.length;
+            laneEnds.push(m.hi);
+          } else {
+            lane = laneEnds.indexOf(Math.min(...laneEnds));
+            laneEnds[lane] = Math.max(laneEnds[lane], m.hi);
+          }
+        } else {
+          laneEnds[lane] = m.hi;
+        }
+        lanes.set(m.id, 20 + lane * laneStep);
+      }
+    }
+    return lanes;
+  };
+  const targetLanes = laneOf(true);
+  const sourceLanes = laneOf(false);
+  for (const e of edges) {
+    const source = rects.get(e.source);
+    const target = rects.get(e.target);
+    if (!source || !target) continue;
+    const sx = source.x + source.w;
+    const sy = source.y + source.h / 2;
+    const tx = target.x;
+    const ty = target.y + target.h / 2;
+    if (tx - sx <= 46 || Math.abs(ty - sy) < 24) continue;
+    const targetOffset = targetLanes.get(e.target) ?? 28;
+    const sourceOffset = sourceLanes.get(e.source) ?? 28;
+    const crossTarget = crossings(sy, sx, tx - targetOffset, e.source, e.target);
+    const crossSource = crossings(ty, sx + sourceOffset, tx, e.source, e.target);
+    const route =
+      crossTarget === 0
+        ? "target"
+        : crossSource === 0
+          ? "source"
+          : crossTarget <= crossSource
+            ? "target"
+            : "source";
+    e.data = {
+      ...(e.data ?? {}),
+      route,
+      railOffset: route === "target" ? targetOffset : sourceOffset,
+    };
+  }
+}
+
+/**
+ * Dagre stacks disconnected components along the cross axis, so a
+ * many-output selection degenerates into a mile-high needle. Edges
+ * never cross components, so re-packing the component bounding boxes
+ * into shelf rows aiming at a screen-ish aspect is safe — the atlas
+ * becomes a rectangle instead of a strip.
+ */
+function packComponents(nodes: Node[], edges: Edge[]) {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let root = id;
+    while (parent.get(root) !== undefined && parent.get(root) !== root) {
+      root = parent.get(root)!;
+    }
+    parent.set(id, root);
+    return root;
+  };
+  for (const n of nodes) parent.set(n.id, n.id);
+  for (const e of edges) {
+    const a = find(e.source);
+    const b = find(e.target);
+    if (a !== b) parent.set(a, b);
+  }
+
+  const groups = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const root = find(n.id);
+    const group = groups.get(root);
+    if (group) group.push(n);
+    else groups.set(root, [n]);
+  }
+  if (groups.size < 2) return;
+
+  const GAP = 140;
+  const boxes = [...groups.values()].map((members) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of members) {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + (n.width ?? 200));
+      maxY = Math.max(maxY, n.position.y + (n.height ?? 80));
+    }
+    return { members, minX, minY, w: maxX - minX, h: maxY - minY };
+  });
+  boxes.sort((a, b) => b.h - a.h);
+
+  const area = boxes.reduce((sum, b) => sum + (b.w + GAP) * (b.h + GAP), 0);
+  const targetWidth = Math.max(
+    Math.sqrt(area * 1.7),
+    Math.max(...boxes.map((b) => b.w)),
+  );
+
+  let x = 0;
+  let y = 0;
+  let rowHeight = 0;
+  for (const box of boxes) {
+    if (x > 0 && x + box.w > targetWidth) {
+      x = 0;
+      y += rowHeight + GAP;
+      rowHeight = 0;
+    }
+    const dx = x - box.minX;
+    const dy = y - box.minY;
+    for (const n of box.members) {
+      n.position = { x: n.position.x + dx, y: n.position.y + dy };
+    }
+    x += box.w + GAP;
+    rowHeight = Math.max(rowHeight, box.h);
+  }
+}
+
+/**
+ * Compute the rendered size of a node so dagre can lay them out without
+ * overlap. We let labels wrap rather than truncate, so we estimate how many
+ * lines the label will need at the node's max width and grow the height
+ * accordingly. The width stays fixed (so columns stay aligned in the LR
+ * layout) but tall/wrappy labels push the box vertically.
+ */
+function nodeSize(n: Node): { width: number; height: number } {
+  const data = n.data as IrgNodeData;
+  const labelText = "label" in data ? data.label : "";
+  switch (data.kind) {
+    case "output":
+    case "input":
+    case "ruleRef":
+      return labelledNodeSize(labelText, data, 220);
+    case "ifGate":
+      return { width: 140, height: 76 };
+    case "operator":
+      return { width: 110, height: 60 };
+    case "literal":
+      return { width: 80, height: 40 };
+    case "unknown":
+      return labelledNodeSize(labelText, data, 200, /* small */ true);
+  }
+}
+
+/** Estimate height for a label-bearing node by guessing line wrap. */
+function labelledNodeSize(
+  label: string,
+  data: IrgNodeData,
+  width: number,
+  small = false,
+): { width: number; height: number } {
+  // Measure the actual rendered height of the label by inserting it
+  // into a hidden offscreen <div> styled identically to .irg-label.
+  // Far more reliable than estimating from char counts — the browser
+  // handles kerning / sub-pixel rounding / font-loading nuances for
+  // free, so dagre's layout matches what's actually drawn.
+  // Per-kind horizontal padding must match CSS or the measured wrap
+  // points will diverge from the rendered ones. Inputs get extra side
+  // padding because their pill shape eats into the corners.
+  const horizontalPaddingPx = data.kind === "input" ? 40 : 28;
+  const usableWidth = width - horizontalPaddingPx;
+  const labelBlockHeight = label
+    ? measureLabelHeight(softBreak(humanizeLabel(label)), usableWidth)
+    : 16;
+
+  // Per-kind chrome (padding + eyebrow + value/action rows). Generous
+  // buffers since these are still estimated — but their content is
+  // small and predictable so error here is bounded.
+  let chrome: number;
+  if (small) {
+    chrome = 50;
+  } else if (data.kind === "input") {
+    chrome = 110; // padding + eyebrow + inline answer + divider row
+  } else if (data.kind === "output") {
+    const outputRows = data.canExpand ? 1 : 0;
+    chrome = 50 + outputRows * 22;
+  } else if (data.kind === "ruleRef") {
+    const actionRows = data.canExpand ? 1 : 0;
+    chrome = 50 + actionRows * 22;
+  } else {
+    chrome = 56;
+  }
+  return { width, height: chrome + labelBlockHeight };
+}
+
+/**
+ * Measure the rendered height of a label by inserting it into a hidden
+ * offscreen <div> styled identically to `.irg-label`, then reading
+ * getBoundingClientRect(). Singleton element so we don't thrash the DOM.
+ */
+let measureEl: HTMLDivElement | null = null;
+function getMeasureEl(): HTMLDivElement {
+  if (measureEl) return measureEl;
+  const el = document.createElement("div");
+  el.setAttribute("aria-hidden", "true");
+  el.style.position = "fixed";
+  el.style.left = "-9999px";
+  el.style.top = "-9999px";
+  el.style.fontFamily =
+    "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+  el.style.fontSize = "11px";
+  el.style.fontWeight = "500";
+  el.style.lineHeight = "16px";
+  el.style.letterSpacing = "0.04em";
+  el.style.whiteSpace = "normal";
+  el.style.overflowWrap = "anywhere";
+  el.style.wordBreak = "break-word";
+  el.style.visibility = "hidden";
+  el.style.padding = "0";
+  el.style.margin = "0";
+  el.style.boxSizing = "border-box";
+  document.body.appendChild(el);
+  measureEl = el;
+  return el;
+}
+
+function measureLabelHeight(text: string, widthPx: number): number {
+  const el = getMeasureEl();
+  el.style.width = `${widthPx}px`;
+  el.textContent = text;
+  // +1 so sub-pixel rounding never lands a hair short of the browser's
+  // actual render. Cost of rounding up is one fewer pixel of empty
+  // space; cost of rounding down is a clipped action row.
+  return Math.ceil(el.getBoundingClientRect().height) + 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Build the metadata that the hover popover renders. Pulls citation, legal
+ * ID and Axiom-app deep-link from the trace node — preferring the
+ * homeFile (input-leaves only) over the legal ID's file portion.
+ */
+/** Hover popover metadata for a parameter rule — citation, value, link. */
+function buildParameterMeta(p: ParameterRule): NodeMeta {
+  const citation = p.source
+    ? humanizeSource(p.source)
+    : humanizeCitation(p.fileLegalId);
+  const appUrl = p.fileLegalId ? axiomAppUrl(p.fileLegalId) : null;
+  const dtypeText = p.dtype ? ` · ${p.dtype}` : "";
+  // For simple parameters the formula is the constant value (e.g. "35").
+  // Truncate so longer table-shaped parameters don't blow up the popover.
+  const valuePreview = p.formula
+    ? truncate(p.formula.replace(/\s+/g, " ").trim(), 140)
+    : undefined;
+  return {
+    kindLine: `Parameter${dtypeText}${p.unit ? ` · ${p.unit}` : ""}`,
+    citation,
+    sourceUrl: p.sourceUrl ?? null,
+    legalId: p.legalId,
+    appUrl,
+    parameterValue: valuePreview,
+  };
+}
+
+function buildMeta(t: TraceNode, kind: "Output" | "Input" | "Rule" | "Parameter"): NodeMeta {
+  const fileLegalId = t.homeFile ?? fileLegalIdOf(t.legalId);
+  const citation = t.source
+    ? humanizeSource(t.source)
+    : fileLegalId
+      ? humanizeCitation(fileLegalId)
+      : undefined;
+  const appUrl = fileLegalId ? axiomAppUrl(fileLegalId) : null;
+  const dtypeText = t.dtype && t.dtype !== "input" ? ` · ${t.dtype}` : "";
+  // Translate engine vocab into the user's vocab — Input → Question,
+  // Rule → Step. Output stays Output since "result" is a layered
+  // concept the user already sees as the eyebrow on the node body.
+  const friendly =
+    kind === "Input"
+      ? "Question"
+      : kind === "Rule"
+        ? "Step"
+        : kind === "Parameter"
+          ? "Parameter"
+          : "Result";
+  return {
+    kindLine: `${friendly}${dtypeText}`,
+    citation,
+    sourceUrl: t.sourceUrl ?? null,
+    legalId: t.legalId,
+    appUrl,
+    parameterValue:
+      kind === "Parameter" && t.formula
+        ? truncate(t.formula.replace(/\s+/g, " ").trim(), 140)
+        : undefined,
+    formula: t.formula ?? undefined,
+  };
+}
+
+function truncate(s: string | undefined, max: number): string | undefined {
+  if (!s) return undefined;
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
+/** How many descendant steps a trace node hides when collapsed. */
+function hiddenDescendantCount(node: TraceNode, seen = new Set<string>()): number {
+  if (seen.has(node.legalId)) return 0;
+  seen.add(node.legalId);
+  let count = 0;
+  for (const child of node.children ?? []) {
+    count += 1 + hiddenDescendantCount(child, seen);
+  }
+  return count;
+}
+
+/** Dissection threshold: beyond this many reachable steps, the graph
+ *  opens focused — outputs and their first-level steps only, with
+ *  everything deeper behind "+ expand" counts. */
+const FOCUS_THRESHOLD = 120;
+
+export function initialCollapse(
+  traces: Record<string, TraceNode>,
+  dissect: "auto" | "always" = "auto",
+): Set<string> {
+  const total = flattenTrace(traces).size;
+  if (dissect === "auto" && total <= FOCUS_THRESHOLD) return new Set();
+  const collapsed = new Set<string>();
+  const walk = (node: TraceNode, depth: number, seen: Set<string>) => {
+    if (seen.has(node.legalId)) return;
+    seen.add(node.legalId);
+    // Keep the outputs' immediate structure visible; fold everything
+    // below the first level of steps.
+    if (depth >= 1 && node.formula && (node.children?.length ?? 0) > 0) {
+      collapsed.add(node.legalId);
+    }
+    for (const child of node.children ?? []) walk(child, depth + 1, seen);
+  };
+  const seen = new Set<string>();
+  for (const root of Object.values(traces)) walk(root, 0, seen);
+  return collapsed;
+}
+
+function flattenTrace(traces: Record<string, TraceNode>): Map<string, TraceNode> {
+  const out = new Map<string, TraceNode>();
+  function walk(t: TraceNode) {
+    if (out.has(t.legalId)) return;
+    out.set(t.legalId, t);
+    for (const c of t.children ?? []) walk(c);
+  }
+  for (const t of Object.values(traces)) walk(t);
+  return out;
+}
+
+/** Walk the trace recursively and accumulate every rule legal ID. Used by
+ *  "Collapse all" — we need to know what to add to the collapsed set. */
+function collectRuleIds(t: TraceNode, out: Set<string>): void {
+  if (t.dtype !== "input" && t.formula) out.add(t.legalId);
+  for (const c of t.children ?? []) collectRuleIds(c, out);
+}
+
+function flattenLogical(node: AstNode, op: "and" | "or"): AstNode[] {
+  if (node.kind === "logical" && node.op === op) {
+    return [...flattenLogical(node.left, op), ...flattenLogical(node.right, op)];
+  }
+  return [node];
+}
+
+function flattenArith(node: AstNode, op: "+" | "*"): AstNode[] {
+  if (node.kind === "arith" && node.op === op) {
+    return [...flattenArith(node.left, op), ...flattenArith(node.right, op)];
+  }
+  return [node];
+}
+
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (v === "holds") return "✓ holds";
+  if (v === "not_holds") return "✗ does not hold";
+  if (v === "undetermined") return "?";
+  if (typeof v === "boolean") return v ? "✓ true" : "✗ false";
+  if (typeof v === "number") {
+    return v.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+  return String(v);
+}
+
+function verdictClass(t: TraceNode): string {
+  if (t.dtype === "judgment") {
+    if (t.value === "holds") return "irg-holds";
+    if (t.value === "not_holds") return "irg-fails";
+    return "irg-undet";
+  }
+  return "irg-numeric";
+}
+
+function verdictClassOfBool(v: EvalValue): string {
+  if (v === null) return "irg-undet";
+  return toBool(v) ? "irg-holds" : "irg-fails";
+}
+
+// Suppress unused-variable warning in TS when useEffect isn't currently used.
+void useEffect;

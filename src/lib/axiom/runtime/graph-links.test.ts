@@ -22,9 +22,10 @@ describe("fileGraphFocus", () => {
 describe("composeGraphViewerUrl", () => {
   it("links the viewer's compose-on-demand mode", () => {
     const url = new URL(
-      composeGraphViewerUrl("us:regulations/47-cfr/54/403")
+      composeGraphViewerUrl("us:regulations/47-cfr/54/403"),
+      "http://app.test"
     );
-    expect(url.origin).toBe("https://rulespec-graph-viewer.vercel.app");
+    expect(url.pathname).toBe("/app");
     expect(url.searchParams.get("compose")).toBe(
       "us:regulations/47-cfr/54/403"
     );
@@ -88,9 +89,10 @@ describe("graphViewerUrl", () => {
       graphViewerUrl(
         { jurisdiction: "us-co", programId: "co-snap" },
         "us:statutes/7/2017"
-      )
+      ),
+      "http://app.test"
     );
-    expect(url.origin).toBe("https://rulespec-graph-viewer.vercel.app");
+    expect(url.pathname).toBe("/app");
     expect(url.searchParams.get("program")).toBe("us-co/co-snap");
     expect(url.searchParams.get("focus")).toBe("us:statutes/7/2017");
     expect(url.searchParams.get("country")).toBeNull();
@@ -98,7 +100,8 @@ describe("graphViewerUrl", () => {
 
   it("sets country for non-US jurisdictions and works without focus", () => {
     const url = new URL(
-      graphViewerUrl({ jurisdiction: "uk", programId: "universal-credit" }, null)
+      graphViewerUrl({ jurisdiction: "uk", programId: "universal-credit" }, null),
+      "http://app.test"
     );
     expect(url.searchParams.get("country")).toBe("uk");
     expect(url.searchParams.get("focus")).toBeNull();

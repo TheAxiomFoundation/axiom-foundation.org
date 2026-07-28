@@ -4,6 +4,7 @@ import type { RuleReference } from "@/lib/supabase";
 import {
   buildSectionToc,
   compareCitationPaths,
+  dedupeRootBody,
   railChunksFromProvisions,
   mapRulesToSubsections,
   refsForChunk,
@@ -11,9 +12,31 @@ import {
   splitBodyIntoSubsections,
   subtreeAnchor,
   type SectionProvision,
+  mapRulesToDeepPath,
+  joinedSegmentPaths,
 } from "./section-page";
 
 const ROOT = "us/statute/26/32";
+
+describe("joinedSegmentPaths", () => {
+  it("emits dotted and dashed joins for a two-part section number", () => {
+    expect(joinedSegmentPaths("us-ia", ["statute", "422", "12C"])).toEqual([
+      "us-ia/statute/422.12C",
+      "us-ia/statute/422-12C",
+    ]);
+  });
+
+  it("emits only the dashed join for deeper numbers", () => {
+    expect(joinedSegmentPaths("us-mt", ["statute", "15", "1", "1"])).toEqual([
+      "us-mt/statute/15-1-1",
+    ]);
+  });
+
+  it("emits nothing when the number is a single segment already", () => {
+    expect(joinedSegmentPaths("us-or", ["statute", "315.264"])).toEqual([]);
+    expect(joinedSegmentPaths("us", ["statute"])).toEqual([]);
+  });
+});
 
 function provision(
   subPath: string,
@@ -317,5 +340,123 @@ describe("refsForChunk", () => {
     expect(
       refsForChunk([ref("section 1", "incoming")], "see section 1")
     ).toEqual([]);
+  });
+});
+
+describe("dedupeRootBody", () => {
+  const base = {
+    id: "id",
+    jurisdiction: "us",
+    doc_type: "statute",
+    parent_id: null,
+    level: 4,
+    ordinal: null,
+    heading: null,
+    effective_date: null,
+    repeal_date: null,
+    source_url: null,
+    source_path: null,
+    citation_path: "us/statute/26/32/a",
+    rulespec_path: null,
+    has_rulespec: false,
+    created_at: "",
+    updated_at: "",
+  } as const;
+  const child = (body: string): Rule => ({
+    ...base,
+    body,
+    citation_path: "us/statute/26/32/a/1",
+  });
+
+  it("trims a root body that repeats its descendants, keeping the chapeau", () => {
+    const childText =
+      "In the case of an eligible individual, there shall be allowed a credit for the taxable year.";
+    const root: Rule = {
+      ...base,
+      body: `(1) In general ${childText}`,
+    };
+    const deduped = dedupeRootBody(root, [child(childText)]);
+    expect(deduped.body).toBe("(1) In general");
+  });
+
+  it("drops the body entirely when nothing precedes the repeated text", () => {
+    const childText =
+      "In the case of an eligible individual, there shall be allowed a credit for the taxable year.";
+    const root: Rule = { ...base, body: childText };
+    expect(dedupeRootBody(root, [child(childText)]).body).toBeNull();
+  });
+
+  it("keeps the body when descendants carry different text", () => {
+    const root: Rule = {
+      ...base,
+      body: "Chapeau text that stands alone and is not repeated below.",
+    };
+    const deduped = dedupeRootBody(root, [
+      child("Completely different descendant text that is long enough."),
+    ]);
+    expect(deduped.body).toBe(root.body);
+  });
+
+  it("keeps the body when there are no descendants", () => {
+    const root: Rule = { ...base, body: "(a) Text." };
+    expect(dedupeRootBody(root, []).body).toBe("(a) Text.");
+  });
+});
+
+
+describe("mapRulesToDeepPath", () => {
+  const yaml = [
+    "format: rulespec/v1",
+    "rules:",
+    "  - name: snap_calculated_monthly_allotment_before_minimums",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(e)(2)(ii)(A)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'x'",
+    "  - name: snap_net_income_before_shelter",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(e)(1)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'y'",
+    "  - name: snap_total_gross_income",
+    "    kind: derived",
+    "    source: 7 CFR 273.10(c)",
+    "    versions:",
+    "      - effective_from: '2025-10-01'",
+    "        formula: 'z'",
+  ].join("\n");
+
+  it("keeps only rules citing the deep paragraph or below", () => {
+    const links = mapRulesToDeepPath(
+      "us/regulation/7/273/10",
+      ["e", "2", "ii", "A"],
+      yaml
+    );
+    expect(links).toEqual([
+      {
+        name: "snap_calculated_monthly_allotment_before_minimums",
+        kind: "derived",
+        anchors: [],
+      },
+    ]);
+  });
+
+  it("anchors deeper citations to the page's next-level unit", () => {
+    const links = mapRulesToDeepPath("us/regulation/7/273/10", ["e"], yaml);
+    expect(links.map((link) => link.name).sort()).toEqual([
+      "snap_calculated_monthly_allotment_before_minimums",
+      "snap_net_income_before_shelter",
+    ]);
+    const allotment = links.find((link) =>
+      link.name.startsWith("snap_calculated")
+    );
+    expect(allotment?.anchors).toEqual(["2"]);
+  });
+
+  it("returns nothing without content or relative depth", () => {
+    expect(mapRulesToDeepPath("us/regulation/7/273/10", ["e"], null)).toEqual([]);
+    expect(mapRulesToDeepPath("us/regulation/7/273/10", [], yaml)).toEqual([]);
   });
 });

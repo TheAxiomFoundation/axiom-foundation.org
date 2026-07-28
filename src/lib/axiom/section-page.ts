@@ -17,6 +17,7 @@ import {
   getProvisionCoverage,
   type ProvisionProgramCoverage,
 } from "@/lib/axiom/runtime/coverage";
+import { listParityCases } from "@/lib/axiom/runtime/api";
 import { getSectionEncoding } from "@/lib/axiom/section-encoding";
 
 /**
@@ -88,6 +89,12 @@ export interface SectionPageData {
   bodyChunks: BodyChunk[];
   toc: SectionTocEntry[];
   rootRefs: RuleReference[];
+  /**
+   * The root body as ingested, before descendant-duplication
+   * trimming — the inferred-reference pass reads this so citations
+   * survive the dedupe.
+   */
+  refBody?: string | null;
   /** RuleSpec encoding for the section (encoding_runs or GitHub). */
   encoding: RuleEncodingData | null;
   /** Rules from ``encoding`` mapped to their subsection anchors. */
@@ -111,6 +118,24 @@ export interface SectionPageData {
   next: SectionNeighbor | null;
   /** True when the subtree hit SUBTREE_LIMIT and was cut off. */
   truncated: boolean;
+  /**
+   * How much of the section the encodings cover: distinct top-level
+   * subsections with rules vs. subsections total. Null when the
+   * section has no subsection structure to measure against.
+   */
+  encodedCoverage: { encodedUnits: number; totalUnits: number } | null;
+  /**
+   * Oracle verification for the section's covering programs.
+   * Only external-oracle comparisons earn "verified" — golden
+   * expectations alone are self-graded (executable, not verified).
+   */
+  parity: {
+    oracle: string;
+    caseCount: number;
+    programId: string;
+    jurisdiction: string;
+    caseDescriptions: string[];
+  } | null;
 }
 
 /**
@@ -244,6 +269,62 @@ export function mapRulesToSubsections(
       anchors,
     };
   });
+}
+
+/**
+ * Deep-page variant of the rule↔provision join: the requested page
+ * sits BELOW the encoded module (e.g. 7 CFR 273.10(e)(2)(ii)(A) under
+ * the section-granular ``regulations/7-cfr/273/10`` file). File
+ * anchors can't help — there are no deeper files — so match each
+ * rule's full ``source`` parenthetical chain against the page's
+ * relative segments: keep rules citing this paragraph or below, and
+ * anchor them to the page's own next-level unit when the citation
+ * goes deeper still.
+ */
+export function mapRulesToDeepPath(
+  encodingRootPath: string,
+  relSegments: string[],
+  rulespecContent: string | null
+): EncodedRuleLink[] {
+  if (!rulespecContent || relSegments.length === 0) return [];
+  const doc = parseRuleSpec(rulespecContent);
+  if (!doc) return [];
+  const section = encodingRootPath.split("/").at(-1) ?? "";
+  if (!section) return [];
+  // "273.10(e)(2)(ii)(A)" → chains of parenthetical segments after
+  // the section number; a source may cite several chains.
+  const chainRe = new RegExp(
+    `(?:§+\\s*)?${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
+    "g"
+  );
+  const rel = relSegments.map((segment) => segment.toLowerCase());
+  const links: EncodedRuleLink[] = [];
+  for (const rule of doc.rules) {
+    const source = rule.source ?? "";
+    const anchors = new Set<string>();
+    let cited = false;
+    for (const match of source.matchAll(chainRe)) {
+      const segments = Array.from(
+        match[1].matchAll(/\(([A-Za-z0-9]{1,4})\)/g),
+        (seg) => seg[1]
+      );
+      const lower = segments.map((segment) => segment.toLowerCase());
+      const within =
+        lower.length >= rel.length &&
+        rel.every((segment, index) => lower[index] === segment);
+      if (!within) continue;
+      cited = true;
+      const next = segments[rel.length];
+      if (next) anchors.add(next);
+    }
+    if (!cited) continue;
+    links.push({
+      name: rule.name,
+      kind: rule.kind ?? null,
+      anchors: Array.from(anchors),
+    });
+  }
+  return links;
 }
 
 /**
@@ -518,9 +599,96 @@ async function getNavigationNode(
   return (result.data as NavigationNodeRow | null) ?? null;
 }
 
-export async function getSectionPageData(
+/**
+ * The resolution half of the section page: which ingested row (or
+ * synthesized root) serves this URL. Split from data assembly so the
+ * route can decide 404-vs-render before streaming anything, and so
+ * container paths (a CFR part with navigable children but no corpus
+ * row of its own) can divert to the browse view.
+ */
+export interface SectionResolution {
+  root: Rule;
+  citationPath: string;
+  focusAnchor: string | null;
+  /** True when no corpus row exists at the path itself and the root
+   *  was synthesized over descendant rows — the signal that the path
+   *  may be a navigation container rather than a section. */
+  synthetic: boolean;
+  /**
+   * True when the path names a navigation container (a CFR part, a
+   * statute chapter) rather than a section: no body text of its own
+   * *and* a navigation node with children. The route diverts these
+   * to the browse view. Sections stay readers — 7 USC 2017's nav
+   * node has no children, and subsection-granular sections (42 USC
+   * 1396a) have no nav node at all.
+   */
+  containerCandidate: boolean;
+  prefetchedSubtree: { provisions: Rule[]; truncated: boolean } | null;
+}
+
+/**
+ * Does the requested subsection anchor actually exist below this
+ * ancestor? Ancestor fallback must never silently satisfy a URL with
+ * unrelated ancestor content (…/7/2011 showing all of Title 7).
+ */
+function anchorExistsUnder(
+  root: Rule,
+  citationPath: string,
+  anchor: string,
+  subtree: { provisions: Rule[] }
+): boolean {
+  const found = subtree.provisions.some((rule) => {
+    const relative = subtreeAnchor(
+      citationPath,
+      (rule.citation_path as string) ?? ""
+    );
+    return relative === anchor || relative.startsWith(`${anchor}-`);
+  });
+  if (found) return true;
+  if (subtree.provisions.length === 0 && root.body) {
+    if (
+      splitBodyIntoSubsections(root.body).chunks.some(
+        (chunk) => chunk.anchor === anchor
+      )
+    ) {
+      return true;
+    }
+    // Some single-row sections run their subsection markers inline
+    // ("(a) Month of application—(1) …", 7 CFR 273.10) where the
+    // chunker finds no line-anchored boundaries. A literal "(e)"
+    // marker in a body-bearing SECTION row is still real evidence the
+    // subsection exists — the Title-7 guard case (a body-less
+    // container satisfying …/2011) stays refused because it has no
+    // body to match against.
+    return new RegExp(`\\(${escapeRegExp(anchor)}\\)`).test(root.body);
+  }
+  return false;
+}
+
+/**
+ * Joined-segment citation candidates for slash-form section URLs.
+ * ruleSegments = [docType, ...numberParts]; emits the dotted join of
+ * the first two number parts ("422/12C" → "422.12C") and the dashed
+ * join of all of them ("15/1/1" → "15-1-1") — the two conventions
+ * state corpora use for single-row sections.
+ */
+export function joinedSegmentPaths(
+  slug: string,
+  ruleSegments: string[]
+): string[] {
+  const [docType, ...parts] = ruleSegments;
+  if (!docType || parts.length < 2) return [];
+  const paths: string[] = [];
+  if (parts.length === 2) {
+    paths.push([slug, docType, `${parts[0]}.${parts[1]}`].join("/"));
+  }
+  paths.push([slug, docType, parts.join("-")].join("/"));
+  return paths;
+}
+
+export async function resolveSection(
   segments: string[]
-): Promise<SectionPageData | null> {
+): Promise<SectionResolution | null> {
   const resolved = resolveAxiomPath(segments);
   if (
     resolved.phase !== "rule" ||
@@ -539,6 +707,7 @@ export async function getSectionPageData(
   let root = await getProvisionByCitationPath(requestedPath).catch(() => null);
   let citationPath = requestedPath;
   let focusAnchor: string | null = null;
+  let synthetic = false;
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
@@ -551,6 +720,7 @@ export async function getSectionPageData(
     if (probe.provisions.length > 0) {
       const navNode = await getNavigationNode(requestedPath);
       root = synthesizeSectionRoot(requestedPath, resolved, navNode?.label);
+      synthetic = true;
       prefetchedSubtree = probe;
     }
   }
@@ -575,8 +745,26 @@ export async function getSectionPageData(
           const navNode = await getNavigationNode(dashPath);
           root = synthesizeSectionRoot(dashPath, resolved, navNode?.label);
           citationPath = dashPath;
+          synthetic = true;
           prefetchedSubtree = probe;
         }
+      }
+    }
+  }
+  if (!root) {
+    // State corpora often store a section's number joined into ONE
+    // path segment — dotted ("us-ia/statute/422.12C", Oregon
+    // "315.264") or dashed ("us-mt/statute/15-1-1") — while encoding
+    // legal ids and human URLs split it on slashes. Retry the joined
+    // shapes before climbing to an ancestor.
+    for (const candidate of joinedSegmentPaths(slug, ruleSegments)) {
+      const rule = await getProvisionByCitationPath(candidate).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = candidate;
+        break;
       }
     }
   }
@@ -587,30 +775,98 @@ export async function getSectionPageData(
         () => null
       );
       if (rule) {
+        // Only focus the anchor when it really exists under the
+        // ancestor. When it doesn't: a body-bearing section still
+        // satisfies the citation (subsection markers vary by ingest —
+        // "(3)" vs "3." — and Source links append them best-effort),
+        // so render it unfocused; a bodyless container keeps the hard
+        // 404 — rendering Title 7 for a missing …/7/2011 would lie.
+        const anchor = ruleSegments[end];
+        const subtree = await getSubtreeProvisions(candidate);
+        const anchored = anchorExistsUnder(rule, candidate, anchor, subtree);
+        if (!anchored && !rule.body) {
+          return null;
+        }
         root = rule;
         citationPath = candidate;
-        focusAnchor = ruleSegments[end];
+        focusAnchor = anchored ? anchor : null;
+        prefetchedSubtree = subtree;
         break;
       }
     }
   }
   if (!root) return null;
+  let containerCandidate = false;
+  if (!root.body) {
+    const navNode = await getNavigationNode(citationPath);
+    containerCandidate = navNode?.has_children === true;
+  }
+  return {
+    root,
+    citationPath,
+    focusAnchor,
+    synthetic,
+    containerCandidate,
+    prefetchedSubtree,
+  };
+}
 
-  const [subtree, rootRefs, node, sectionEncoding, programs] =
+/**
+ * Trim the root body when descendant rows repeat its text (mixed
+ * ingestion shapes: a subsection row whose body holds the whole
+ * subsection *and* paragraph rows below it). Rendering both
+ * duplicates statutory text. Keeps any chapeau before the first
+ * repeated descendant; drops the body entirely when nothing precedes
+ * it.
+ */
+export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
+  const body = root.body;
+  if (!body) return root;
+  const firstChildBody = descendants
+    .map((rule) => rule.body?.trim() ?? "")
+    .find((text) => text.length >= 20);
+  if (!firstChildBody) return root;
+  const needle = firstChildBody.slice(0, 60);
+  const index = body.indexOf(needle);
+  if (index < 0) return root;
+  const intro = body.slice(0, index).trim();
+  return { ...root, body: intro.length > 0 ? intro : null };
+}
+
+export async function getSectionPageData(
+  segments: string[]
+): Promise<SectionPageData | null> {
+  const resolution = await resolveSection(segments);
+  if (!resolution) return null;
+  return getSectionPageDataFromResolution(resolution);
+}
+
+export async function getSectionPageDataFromResolution(
+  resolution: SectionResolution
+): Promise<SectionPageData | null> {
+  const { citationPath, focusAnchor, prefetchedSubtree } = resolution;
+  let root = resolution.root;
+
+  const [subtree, rootRefs, node, sectionEncoding, programs, parityCases] =
     await Promise.all([
       prefetchedSubtree ?? getSubtreeProvisions(citationPath),
       getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
       getNavigationNode(citationPath),
       getSectionEncoding(root.id, citationPath).catch(() => ({
         encoding: null,
+        encodingRootPath: null,
         fileAnchors: {},
         ruleFiles: {},
       })),
       getProvisionCoverage(citationPath).catch(
         () => [] as ProvisionProgramCoverage[]
       ),
+      listParityCases().catch(() => []),
     ]);
   const encoding = sectionEncoding.encoding;
+
+  const refBody = root.body;
+  root = dedupeRootBody(root, subtree.provisions);
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -642,9 +898,71 @@ export async function getSectionPageData(
           children: [],
         }));
 
+  const encodingRoot = sectionEncoding.encodingRootPath ?? citationPath;
+  const encodedRules =
+    encodingRoot === citationPath
+      ? applyFileAnchors(
+          mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
+          sectionEncoding.fileAnchors
+        )
+      : // The request is DEEPER than the encoded module (paragraph page
+        // under a section-granular file): join by each rule's source
+        // citation instead of file anchors, keeping only rules that
+        // cite this paragraph or below and anchoring them to the
+        // page's own next-level units.
+        mapRulesToDeepPath(
+          encodingRoot,
+          citationPath.slice(encodingRoot.length + 1).split("/"),
+          encoding?.rulespec_content ?? null
+        );
+
+  // Coverage: which top-level subsections carry rules, out of how
+  // many the section has.
+  const unitAnchors =
+    provisions.length > 0
+      ? provisions
+          .filter((provision) => provision.relativeDepth === 1)
+          .map((provision) => provision.anchor)
+      : bodySplit.chunks.map((chunk) => chunk.anchor);
+  const encodedAnchors = new Set(
+    encodedRules.flatMap((entry) => entry.anchors)
+  );
+  const encodedCoverage =
+    unitAnchors.length > 0 && encodedRules.length > 0
+      ? {
+          encodedUnits: unitAnchors.filter((anchor) =>
+            encodedAnchors.has(anchor)
+          ).length,
+          totalUnits: unitAnchors.length,
+        }
+      : null;
+
+  // Oracle verification: the first covering program with an
+  // external-oracle parity comparison.
+  let parity: SectionPageData["parity"] = null;
+  for (const program of programs) {
+    const cases = parityCases.filter(
+      (item) =>
+        item.jurisdiction === program.jurisdiction &&
+        item.program_id === program.programId &&
+        item.oracles.length > 0
+    );
+    if (cases.length > 0) {
+      parity = {
+        oracle: cases[0].oracles[0],
+        caseCount: cases.length,
+        programId: program.programId,
+        jurisdiction: program.jurisdiction,
+        caseDescriptions: cases.map((item) => item.description),
+      };
+      break;
+    }
+  }
+
   return {
     citationPath,
     root,
+    refBody,
     breadcrumbs: buildBreadcrumbs(citationPath.split("/")),
     provisions,
     intro: bodySplit.intro,
@@ -652,16 +970,15 @@ export async function getSectionPageData(
     toc,
     rootRefs,
     encoding,
-    encodedRules: applyFileAnchors(
-      mapRulesToSubsections(citationPath, encoding?.rulespec_content ?? null),
-      sectionEncoding.fileAnchors
-    ),
+    encodedRules,
     programs,
     ruleFiles: sectionEncoding.ruleFiles,
     focusAnchor,
     prev,
     next,
     truncated: subtree.truncated,
+    encodedCoverage,
+    parity,
   };
 }
 

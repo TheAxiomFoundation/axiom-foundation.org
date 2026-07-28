@@ -4,6 +4,12 @@ import {
   runCalculate,
   isRuntimeApiConfigured,
 } from "@/lib/axiom/runtime/api";
+import {
+  clientKey,
+  getCachedRun,
+  isRateLimited,
+  setCachedRun,
+} from "./limiter";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +31,9 @@ export async function POST(request: Request) {
       { error: "runtime_unconfigured" },
       { status: 503 }
     );
+  }
+  if (isRateLimited(clientKey(request))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   let body: {
     jurisdiction?: unknown;
@@ -59,6 +68,16 @@ export async function POST(request: Request) {
         .slice(0, MAX_SECTION_RULES)
     : [];
 
+  const cacheKey = `${jurisdiction}/${programId}|${[...sectionRules]
+    .sort()
+    .join(",")}`;
+  const cachedRun = getCachedRun(cacheKey);
+  if (cachedRun !== null) {
+    return NextResponse.json(cachedRun, {
+      headers: { "cache-control": "no-store" },
+    });
+  }
+
   const detail = await getRuntimePackage(jurisdiction, programId);
   if (!detail?.sample_request) {
     return NextResponse.json({ error: "package_not_found" }, { status: 404 });
@@ -74,17 +93,29 @@ export async function POST(request: Request) {
           variables: [...new Set([...baseVariables, ...sectionRules])],
         }
       : detail.sample_request;
-  const result = await runCalculate(request_);
+  let result = await runCalculate(request_);
+  if (result && "uncertified" in result && sectionRules.length > 0) {
+    // Certified serving refuses the WHOLE request when any explicit
+    // variable is uncertified — the section's rules may lag the
+    // ledger while the sample itself still runs. Retry once without
+    // them so the reader keeps its outputs, just unlit.
+    result = await runCalculate(detail.sample_request);
+  }
+  if (result && "uncertified" in result) {
+    return NextResponse.json({ error: "uncertified_program" }, { status: 422 });
+  }
   if (!result) {
     return NextResponse.json({ error: "calculate_failed" }, { status: 502 });
   }
-  return NextResponse.json(
-    {
-      outputs: result.outputs,
-      trace: result.trace ?? [],
-      period: detail.default_period ?? null,
-      sample: true,
-    },
-    { headers: { "cache-control": "no-store" } }
-  );
+  const payload = {
+    outputs: result.outputs,
+    trace: result.trace ?? [],
+    period: detail.default_period ?? null,
+    sample: true,
+    provenance: result.provenance ?? null,
+  };
+  setCachedRun(cacheKey, payload);
+  return NextResponse.json(payload, {
+    headers: { "cache-control": "no-store" },
+  });
 }

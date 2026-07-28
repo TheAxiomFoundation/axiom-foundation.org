@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import CodeBlock from "@/components/code-block";
 import { axiomAppHref } from "@/lib/urls";
+import { layerTrust } from "@/lib/stack-trust";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -15,6 +16,7 @@ import {
   TargetIcon,
   TerminalIcon,
   VersionIcon,
+  WarningIcon,
 } from "@/components/icons";
 
 type SnippetLanguage = "xml" | "python" | "yaml" | "catala" | "plain";
@@ -836,6 +838,50 @@ export function StackSystemPage() {
                     <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
                       {selectedLayer.summary}
                     </p>
+
+                    {layerTrust[selectedLayer.id] ? (
+                      <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper)] p-5 mb-8">
+                        <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
+                          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--color-accent)]">
+                            what you can check here
+                          </p>
+                          <Link
+                            href="/verify"
+                            className="font-mono text-xs text-[var(--color-ink-muted)] underline underline-offset-4 hover:text-[var(--color-ink)]"
+                          >
+                            run the checks
+                          </Link>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          <div className="flex flex-col gap-3">
+                            {layerTrust[selectedLayer.id].checkable.map(
+                              (item) => (
+                                <div
+                                  key={item}
+                                  className="flex items-start gap-3 font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed"
+                                >
+                                  <CheckIcon className="w-4 h-4 text-[var(--color-success)] mt-0.5 shrink-0" />
+                                  <span>{item}</span>
+                                </div>
+                              ),
+                            )}
+                          </div>
+
+                          <div className="flex flex-col gap-3">
+                            {layerTrust[selectedLayer.id].open.map((item) => (
+                              <div
+                                key={item}
+                                className="flex items-start gap-3 font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed"
+                              >
+                                <WarningIcon className="w-4 h-4 text-[var(--color-accent)] mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                       <div>

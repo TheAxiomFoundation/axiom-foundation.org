@@ -64,7 +64,9 @@ function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
     rootRefs: [],
     encoding: null,
     encodedRules: [
-      { name: "eitc_phased_in", kind: "derived", anchors: ["a"] },
+      // Both anchors: the rail scopes to the subsection under the
+      // reading line, which jsdom resolves arbitrarily.
+      { name: "eitc_phased_in", kind: "derived", anchors: ["a", "b"] },
     ],
     programs: [],
     ruleFiles: {},
@@ -97,26 +99,29 @@ describe("SectionReader", () => {
   it("renders header, chunks, chips, TOC, and neighbors", () => {
     render(<SectionReader data={makeData()} />);
     expect(screen.getByText("Earned income")).toBeInTheDocument();
-    expect(screen.getByText("us/statute/26/32")).toBeInTheDocument();
+    // The citation path is implied by the breadcrumbs — no eyebrow.
     expect(screen.getByText("Official source")).toHaveAttribute(
       "href",
       "https://uscode.house.gov/32"
     );
-    // The header action strip carries the status line and verbs.
+    // The header action strip carries the verbs (graph/build/cite).
     const strip = screen.getByTestId("action-strip");
-    // Encoded but not covered by any program (and no known rule file
-    // to compose from): the strip says so instead of showing verbs.
-    expect(strip).toHaveTextContent(
-      "encoded, not yet in an executable program"
-    );
+    // Encoded but no known rule file to link from: the strip says so
+    // instead of showing dead verbs.
+    expect(strip).toHaveTextContent("encoded — links pending mirror sync");
     expect(within(strip).getByTestId("strip-cite")).toBeInTheDocument();
-    // Chunk sections with designator links into their own URLs; no
-    // rule-name chips in the reading flow.
+    // Chunk sections with designator links into their own URLs.
     expect(screen.getByTitle("Open us/statute/26/32/a")).toHaveAttribute(
       "href",
       "/us/statute/26/32/a"
     );
-    expect(screen.queryByText("eitc_phased_in")).not.toBeInTheDocument();
+    // The encoded layer leads the rail: the encodings block names
+    // each rule and grounds it in the subsection it implements.
+    const encodings = screen.getByTestId("rail-encodings");
+    expect(within(encodings).getByText("eitc_phased_in")).toBeInTheDocument();
+    expect(
+      within(encodings).getByText(/§ 32 \(a\)\(b\) · derived/)
+    ).toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");
     expect(screen.getByText(/§ 33/)).toHaveAttribute("rel", "next");
@@ -188,21 +193,25 @@ describe("SectionReader", () => {
     ).toBeInTheDocument();
     // Graph opens the covering program focused on this subsection.
     const graph = within(row).getByText("graph ↗");
-    const graphHref = new URL(graph.getAttribute("href")!);
+    const graphHref = new URL(graph.getAttribute("href")!, "http://app.test");
     expect(graphHref.searchParams.get("program")).toBe("us/us-eitc");
     expect(graphHref.searchParams.get("focus")).toBe("us:statutes/26/32/a");
     // Builder gets the subsection's encoded rule as the output.
     const builder = within(row).getByText("use in builder ↗");
-    const builderHref = new URL(builder.getAttribute("href")!);
-    expect(builderHref.searchParams.get("output")).toBe(
-      "us:statutes/26/32/a#eitc_phased_in"
-    );
+    const builderHref = new URL(builder.getAttribute("href")!, "http://app.test");
+    // Section-level id: the builder scopes its output picker to the
+    // provision and the user selects rules there.
+    expect(builderHref.searchParams.get("output")).toBe("us:statutes/26/32");
     // The row belongs to (a); (b) has none.
     expect(row.closest("section")?.id).toBe("a");
   });
 
   it("omits graph and builder actions without coverage, keeping cite", () => {
-    render(<SectionReader data={makeData({ focusAnchor: "b" })} />);
+    render(
+      <SectionReader
+        data={makeData({ focusAnchor: "b", encodedRules: [] })}
+      />
+    );
     const row = screen.getByTestId("subsection-actions");
     expect(
       within(row).getByText("cite · 26 U.S.C. § 32(b)")
@@ -275,8 +284,8 @@ describe("SectionReader", () => {
     expect(within(row).getByText("graph ↗")).toBeInTheDocument();
     const builder = within(row).getByText("use in builder ↗");
     expect(
-      new URL(builder.getAttribute("href")!).searchParams.get("output")
-    ).toBe("us:statutes/26/32/d#limit_rule");
+      new URL(builder.getAttribute("href")!, "http://app.test").searchParams.get("output")
+    ).toBe("us:statutes/26/32");
     // A real subsection URL on the designator; rule-name chips no
     // longer sit in the reading flow.
     expect(screen.getByTitle("Open us/statute/26/32/d")).toHaveAttribute(

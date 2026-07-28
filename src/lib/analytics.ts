@@ -2,27 +2,8 @@
 
 import posthog from "posthog-js";
 
-/* v8 ignore start -- PostHog init is env-dependent */
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST = "https://us.i.posthog.com";
-
-let initialized = false;
-
-export function initPostHog() {
-  if (initialized || !POSTHOG_KEY || typeof window === "undefined") return;
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
-    person_profiles: "identified_only",
-    // 'history_change' (not `true`) is required to capture $pageview on
-    // SPA route changes — `true` only captures the initial page load.
-    capture_pageview: "history_change",
-    capture_pageleave: true,
-    autocapture: false,
-    respect_dnt: true,
-  });
-  initialized = true;
-}
-/* v8 ignore stop */
+/* v8 ignore start -- env-dependent capture */
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_KEY;
 
 // ---- Custom axiom events ----
 
@@ -63,9 +44,22 @@ export type AxiomEvent =
           }
         | { kind: "search"; citation_path: string }
       );
+    }
+  | {
+      event: "announcement_cta_clicked";
+      properties: { cta: "join_launch_event" | "get_updates" };
+    }
+  | {
+      event: "hero_cta_clicked";
+      properties: {
+        cta: "explore_the_law" | "why_this_exists" | "see_encoder_run";
+      };
+    }
+  | {
+      event: "hero_search_submitted";
+      properties: { query_length: number };
     };
 
-/* v8 ignore start -- env-dependent capture */
 export function trackAxiomEvent<T extends AxiomEvent>(
   event: T["event"],
   properties: T["properties"]

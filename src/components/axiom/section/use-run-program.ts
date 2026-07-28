@@ -33,7 +33,11 @@ export function syncRunParam(value: string | null) {
  */
 export function useRunProgram() {
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState(false);
+  // "uncertified" is the certified-serving refusal (422) — a state
+  // about the program, not an outage — so consumers can say so.
+  const [error, setError] = useState<false | "generic" | "uncertified">(
+    false
+  );
   const { run, setRun } = useTraceRun();
 
   const runProgram = useCallback(
@@ -53,6 +57,10 @@ export function useRunProgram() {
             section_rules: sectionRuleIds,
           }),
         });
+        if (response.status === 422) {
+          setError("uncertified");
+          return;
+        }
         if (!response.ok) throw new Error(String(response.status));
         const data = (await response.json()) as RunResponse;
         setRun({
@@ -64,7 +72,7 @@ export function useRunProgram() {
         });
         syncRunParam(runParamFor(target));
       } catch {
-        setError(true);
+        setError("generic");
       } finally {
         setRunning(false);
       }

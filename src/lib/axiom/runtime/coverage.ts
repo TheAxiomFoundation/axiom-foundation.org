@@ -142,6 +142,9 @@ export async function getProvisionCoverage(
   packages.forEach((pkg, index) => {
     const graph = graphs[index];
     if (!graph) return;
+    // Certified serving can answer 200 with an empty rules array
+    // (artifact exists, nothing certified yet) — that simply yields
+    // no coverage below, same as any graph with no matching rules.
     const matched = coverageFromRules(graph.rules, citationPath);
     if (!matched) return;
     coverage.push({

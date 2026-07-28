@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArchitectureStrip } from "@/components/docs/architecture-strip";
 import { Reveal } from "@/components/landing/reveal";
-import { axiomAppHref } from "@/lib/urls";
 
 export const metadata: Metadata = {
   title: "Documentation — Axiom Foundation",
@@ -31,11 +29,6 @@ const repoMap = [
     repo: "axiom-foundation.org",
     owns: "Public site, Axiom app shell, docs index, and cross-system presentation.",
   },
-];
-
-const RELATED = [
-  { href: "/stack", label: "Technical stack", internal: true },
-  { href: "/encoder", label: "Encoder system map", internal: true },
 ];
 
 export default function DocsPage() {
@@ -67,21 +60,6 @@ export default function DocsPage() {
             &ldquo;30 per centum&rdquo;, runs the whole way.
           </p>
           <ArchitectureStrip />
-        </Reveal>
-
-        {/* Related maps — a simple row, not an aside */}
-        <Reveal as="section" className="mb-20">
-          <h2 className="heading-section mb-8">Related maps</h2>
-          <div className="flex flex-wrap gap-4">
-            {RELATED.map((link) => (
-              <Link key={link.href} href={link.href} className="btn-outline">
-                {link.label}
-              </Link>
-            ))}
-            <a href={axiomAppHref()} className="btn-outline">
-              Open Axiom
-            </a>
-          </div>
         </Reveal>
 
         {/* Repo ownership */}

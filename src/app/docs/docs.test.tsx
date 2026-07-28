@@ -54,14 +54,17 @@ describe("DocsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("links to related maps", () => {
+  it("no longer shows the Related maps row (held back for now)", () => {
     render(<DocsPage />);
-
     expect(
-      screen.getByRole("link", { name: /technical stack/i })
-    ).toHaveAttribute("href", "/stack");
+      screen.queryByRole("heading", { name: /related maps/i })
+    ).toBeNull();
     expect(
-      screen.getByRole("link", { name: /encoder system map/i })
-    ).toHaveAttribute("href", "/encoder");
+      screen.queryByRole("link", { name: /technical stack/i })
+    ).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /encoder system map/i })
+    ).toBeNull();
+    expect(screen.queryByRole("link", { name: /open axiom/i })).toBeNull();
   });
 });

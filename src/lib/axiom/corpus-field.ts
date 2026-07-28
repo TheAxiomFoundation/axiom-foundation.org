@@ -345,15 +345,60 @@ export function corpusFieldStats(modules: CorpusModule[]): CorpusFieldStats {
   };
 }
 
+/** Where the field's subtree list came from: the live rulespec
+ *  mirror, or the committed census snapshot (fallback). */
+export type CorpusSource = "live" | "snapshot";
+
 /**
- * The one honest sentence under the field. Counts come from the
- * census file, never hardcoded; rules round to the nearest hundred
- * because the census moves faster than the copy.
+ * The one honest sentence under the field. Counts come from the data
+ * actually shown, never hardcoded — and the line names its source:
+ * the live mirror, or the committed snapshot when the mirror is
+ * unreachable. Rule totals only appear for the snapshot (the live
+ * list carries no per-subtree rule counts; merged sizes are partly
+ * defaults, so quoting a total would be dishonest).
  */
-export function fieldStatLine(stats: CorpusFieldStats): string {
+export function fieldStatLine(
+  stats: CorpusFieldStats,
+  source: CorpusSource = "snapshot",
+): string {
   const subtrees = stats.subtrees.toLocaleString("en-US");
+  if (source === "live") {
+    return `${subtrees} provision-rooted subtrees · live mirror · every node cites its law`;
+  }
   const rules = (Math.round(stats.rules / 100) * 100).toLocaleString("en-US");
-  return `${subtrees} provision-rooted subtrees · ~${rules} encoded rules · every node cites its law`;
+  return `${subtrees} provision-rooted subtrees · ~${rules} encoded rules · census snapshot`;
+}
+
+/* ── Live mirror merge ──
+ * GET /v1/corpus/subtrees serves the live list (target, jurisdiction,
+ * bucket — no sizes). The committed snapshot supplies ruleCount /
+ * importCount for targets it knows; new targets get a modest default
+ * dot so fresh law appears immediately without pretending to a size
+ * we don't know. */
+
+export interface LiveSubtree {
+  target: string;
+  jurisdiction: string;
+  bucket: string;
+}
+
+export const DEFAULT_LIVE_RULE_COUNT = 3;
+
+export function mergeLiveSubtrees(
+  snapshot: CorpusModule[],
+  live: LiveSubtree[],
+): CorpusModule[] {
+  const byTarget = new Map(snapshot.map((module) => [module.target, module]));
+  return live.map(
+    (subtree) =>
+      byTarget.get(subtree.target) ?? {
+        target: subtree.target,
+        jurisdiction: subtree.jurisdiction,
+        bucket: subtree.bucket,
+        ruleCount: DEFAULT_LIVE_RULE_COUNT,
+        importCount: 0,
+      },
+  );
 }
 
 /** The in-app compose viewer link for one subtree. */

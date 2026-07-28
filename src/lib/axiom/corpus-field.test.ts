@@ -6,7 +6,9 @@ import {
   clampFieldTransform,
   computeFieldHighlights,
   corpusFieldStats,
+  DEFAULT_LIVE_RULE_COUNT,
   dotRadius,
+  mergeLiveSubtrees,
   FIELD_HEIGHT,
   FIELD_WIDTH,
   fieldComposeHref,
@@ -328,16 +330,68 @@ describe("corpusFieldStats + fieldStatLine", () => {
     expect(stats).toEqual({ subtrees: 2, rules: 10 });
   });
 
-  it("renders the honest stat line for the real census", () => {
+  it("renders the honest snapshot stat line for the real census", () => {
     const stats = corpusFieldStats(corpusSubtrees.modules);
     expect(stats.subtrees).toBe(corpusSubtrees.clean_subtrees);
     const line = fieldStatLine(stats);
     expect(line).toContain(stats.subtrees.toLocaleString("en-US"));
     expect(line).toContain("provision-rooted subtrees");
-    expect(line).toContain("encoded rules");
-    expect(line).toContain("every node cites its law");
+    // The fallback names itself honestly.
+    expect(line).toContain("census snapshot");
     // ~20,100 today: rounded to the nearest hundred with a tilde.
     expect(line).toMatch(/~\d{1,3}(,\d{3})* encoded rules/);
+  });
+
+  it("names the live mirror — and quotes no rule total it can't know", () => {
+    const line = fieldStatLine({ subtrees: 5026, rules: 12345 }, "live");
+    expect(line).toContain("5,026 provision-rooted subtrees");
+    expect(line).toContain("live mirror");
+    expect(line).not.toContain("encoded rules");
+  });
+});
+
+describe("mergeLiveSubtrees", () => {
+  const snapshot = [
+    module({ target: "us:statutes/7/2014", ruleCount: 22, importCount: 4 }),
+    module({ target: "us:regulations/7-cfr/273/10", ruleCount: 40 }),
+  ];
+
+  it("keeps snapshot sizes for known targets", () => {
+    const merged = mergeLiveSubtrees(snapshot, [
+      { target: "us:statutes/7/2014", jurisdiction: "us", bucket: "statutes" },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toEqual(snapshot[0]);
+  });
+
+  it("gives unknown (new) targets a default size instead of dropping them", () => {
+    const merged = mergeLiveSubtrees(snapshot, [
+      {
+        target: "be:policies/euromod_benefit_income_list",
+        jurisdiction: "be",
+        bucket: "policies",
+      },
+    ]);
+    expect(merged[0]).toEqual({
+      target: "be:policies/euromod_benefit_income_list",
+      jurisdiction: "be",
+      bucket: "policies",
+      ruleCount: DEFAULT_LIVE_RULE_COUNT,
+      importCount: 0,
+    });
+  });
+
+  it("the live list is authoritative: snapshot-only targets drop out", () => {
+    const merged = mergeLiveSubtrees(snapshot, [
+      {
+        target: "us:regulations/7-cfr/273/10",
+        jurisdiction: "us",
+        bucket: "regulations",
+      },
+    ]);
+    expect(merged.map((m) => m.target)).toEqual([
+      "us:regulations/7-cfr/273/10",
+    ]);
   });
 });
 

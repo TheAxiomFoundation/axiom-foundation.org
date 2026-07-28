@@ -3427,3 +3427,122 @@
 .graph-viewer-root .plane-fresh .irg-wrap[data-lod="mid"] .react-flow__edge path {
   animation: none;
 }
+
+/* ── The subtree picker: one verb — pick a node, its subgraph opens ── */
+.graph-viewer-root .subtree-picker {
+  margin-top: 26px;
+  text-align: left;
+}
+.graph-viewer-root .picker-search {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-paper-elevated);
+  font-size: 14px;
+  color: var(--color-ink);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.graph-viewer-root .picker-search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.graph-viewer-root .picker-results {
+  margin-top: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-paper-elevated);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05);
+}
+.graph-viewer-root .picker-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--color-rule-subtle, var(--color-rule));
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.graph-viewer-root .picker-result:last-child {
+  border-bottom: 0;
+}
+.graph-viewer-root .picker-result:hover {
+  background: var(--color-accent-light);
+}
+.graph-viewer-root .picker-result strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.graph-viewer-root .picker-result-target {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .picker-empty {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .picker-doors-label {
+  margin: 22px 0 0;
+  text-align: center;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .picker-doors {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+.graph-viewer-root .picker-door {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-paper-elevated);
+  padding: 13px 14px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05);
+  transition:
+    transform 0.15s var(--ease-out, ease),
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  animation: launcher-card-in 0.45s var(--ease-out, ease) both;
+}
+.graph-viewer-root .picker-door:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.06),
+    0 12px 28px -14px rgba(217, 119, 6, 0.45);
+}
+.graph-viewer-root .picker-door strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-viewer-root .plane-launcher-inner.has-picker {
+  width: min(880px, calc(100% - 48px));
+}

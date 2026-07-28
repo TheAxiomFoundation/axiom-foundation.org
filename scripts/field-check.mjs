@@ -180,6 +180,70 @@ await page.waitForFunction(
 );
 console.log("BACK returned to the field at:", backUrl, "(camera zoomed out)");
 
+// 9) The field mirrors the corpus, live: with the API on :8787 up,
+//    the dot count exceeds the committed snapshot (4,397) and the
+//    stat line names the live mirror.
+const liveField =
+  dotCount > 4397 && /live mirror/.test(statLine);
+console.log(
+  "live mirror:",
+  liveField ? `yes (${dotCount} subtrees)` : "NO — snapshot fallback?",
+);
+
+// 10) The viewer's picker: a single verb. Cold /axiom/graph shows a
+//     search over all subtrees + computed doors — no program cards.
+const picker = await browser.newPage();
+picker.on("pageerror", (e) => console.log("PICKER PAGE ERROR:", e.message));
+await picker.setViewport({ width: 1500, height: 950 });
+await picker.goto("http://localhost:3742/axiom/graph", {
+  waitUntil: "networkidle2",
+  timeout: 60000,
+});
+await picker.waitForSelector('[data-testid="picker-search"]', {
+  timeout: 60000,
+});
+const pickerState = await picker.evaluate(() => ({
+  programCards: document.querySelectorAll(
+    ".plane-launcher-card, .plane-launcher-grid, .constellation, .constellation-summit",
+  ).length,
+  doors: document.querySelectorAll('[data-testid="picker-door"]').length,
+  copy:
+    document.querySelector(".plane-launcher-sub")?.textContent ?? "",
+}));
+console.log(
+  "picker: program cards:",
+  pickerState.programCards,
+  "· doors:",
+  pickerState.doors,
+);
+console.log("picker copy:", pickerState.copy.trim().slice(0, 80) + "…");
+
+// Search "273.10" → pick → the compose viewer opens for that root.
+await picker.type('[data-testid="picker-search"]', "273.10");
+await picker.waitForSelector('[data-testid="picker-result"]', {
+  timeout: 15000,
+});
+const pickedLabel = await picker.evaluate(() => {
+  const result = document.querySelector('[data-testid="picker-result"]');
+  const label = result?.textContent ?? null;
+  result?.click();
+  return label;
+});
+console.log("picked:", pickedLabel?.slice(0, 60));
+await picker.waitForFunction(
+  () => window.location.search.includes("compose="),
+  { timeout: 30000 },
+);
+await picker.waitForFunction(
+  () =>
+    document
+      .querySelector(".top-meta")
+      ?.textContent?.includes("composed view"),
+  { timeout: 60000 },
+);
+const pickerComposeUrl = await picker.evaluate(() => window.location.href);
+console.log("picker → compose viewer:", pickerComposeUrl);
+
 const pass =
   dotCount > 100 &&
   clusterCount > 5 &&
@@ -191,7 +255,11 @@ const pass =
   Boolean(clickedHref) &&
   composeUrl.includes("compose=") &&
   zoomAtEnter > 1 &&
-  backUrl.endsWith("/axiom");
-console.log(pass ? "PASS: corpus field open world verified" : "FAIL");
+  backUrl.endsWith("/axiom") &&
+  liveField &&
+  pickerState.programCards === 0 &&
+  pickerState.doors >= 10 &&
+  pickerComposeUrl.includes("compose=");
+console.log(pass ? "PASS: corpus field + picker mirror the live corpus" : "FAIL");
 await browser.close();
 process.exit(pass ? 0 : 1);

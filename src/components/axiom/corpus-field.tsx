@@ -28,22 +28,25 @@ import {
   zoomFieldAt,
   zoomTransformForDot,
   type CorpusModule,
+  type CorpusSource,
   type FieldDot,
   type FieldTransform,
 } from "@/lib/axiom/corpus-field";
+import { loadCorpusModules } from "@/lib/axiom/corpus-live";
 
 /**
- * The corpus field: an open world of every subgraph we serve. All
- * 4,397 provision-rooted subtrees render as dots on one canvas —
- * pan it, zoom it (wheel / pinch / drag), hover any dot for its
- * citation. Clicking a dot (or a computed door) zooms the camera
- * into its territory and then mounts the compose viewer IN PLACE
- * over the field, with the URL pushed to the real compose deep link
- * so reload and BACK stay honest; BACK unmounts the viewer and the
- * camera pulls back out.
+ * The corpus field: an open world of every subgraph we serve. Every
+ * provision-rooted subtree the live mirror lists renders as a dot on
+ * one canvas (the committed snapshot supplies sizes, and IS the
+ * corpus when the mirror is unreachable) — pan it, zoom it (wheel /
+ * pinch / drag), hover any dot for its citation. Clicking a dot (or
+ * a computed door) zooms the camera into its territory and then
+ * mounts the compose viewer IN PLACE over the field, with the URL
+ * pushed to the real compose deep link so reload and BACK stay
+ * honest; BACK unmounts the viewer and the camera pulls back out.
  *
- * The census (~590 KB) loads through a dynamic import so it ships as
- * its own cached chunk, never inline HTML.
+ * The snapshot (~590 KB) loads through a dynamic import so it ships
+ * as its own cached chunk, never inline HTML.
  */
 
 /** The compose viewer, loaded only when a subtree is opened. */
@@ -99,6 +102,7 @@ export function CorpusField() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [modules, setModules] = useState<CorpusModule[] | null>(null);
+  const [source, setSource] = useState<CorpusSource>("snapshot");
   const [hovered, setHovered] = useState<FieldDot | null>(null);
   // The camera. A ref mirrors the state so rAF animation frames and
   // native listeners never read a stale closure.
@@ -121,17 +125,17 @@ export function CorpusField() {
 
   useEffect(() => {
     let cancelled = false;
-    import("@/lib/axiom/corpus-subtrees.json").then(
-      (mod) => {
-        if (!cancelled) {
-          setModules(
-            (mod.default as { modules: CorpusModule[] }).modules
-          );
-        }
+    // Live mirror first, committed snapshot as ballast — the field is
+    // never empty just because the API is down.
+    loadCorpusModules().then(
+      ({ modules: loaded, source: loadedSource }) => {
+        if (cancelled) return;
+        setModules(loaded);
+        setSource(loadedSource);
       },
       () => {
-        // Census chunk failed to load — the landing page still works
-        // (search + browse); the field just stays a quiet panel.
+        // Even the snapshot chunk failed — the landing page still
+        // works (search + browse); the field just stays a quiet panel.
         if (!cancelled) setModules([]);
       }
     );
@@ -533,6 +537,7 @@ export function CorpusField() {
         ref={containerRef}
         data-testid="corpus-field"
         data-dot-count={layout?.dots.length ?? 0}
+        data-corpus-source={source}
         data-zoom={transform.k.toFixed(3)}
         data-tx={transform.tx.toFixed(1)}
         data-ty={transform.ty.toFixed(1)}
@@ -670,7 +675,7 @@ export function CorpusField() {
           data-testid="corpus-field-stats"
           className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-secondary)]"
         >
-          {stats ? fieldStatLine(stats) : "counting the corpus…"}
+          {stats ? fieldStatLine(stats, source) : "counting the corpus…"}
         </p>
         <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
           {(["statutes", "regulations", "policies"] as const).map((bucket) => (

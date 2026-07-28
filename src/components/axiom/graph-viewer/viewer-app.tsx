@@ -30,25 +30,18 @@ import {
   summaryForProgram,
 } from "./api";
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
+import { SubtreePicker } from "./subtree-picker";
+import { loadCorpusModules } from "@/lib/axiom/corpus-live";
+import type { CorpusModule } from "@/lib/axiom/corpus-field";
 
 export function GraphViewerApp() {
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
-  // The constellation: real interconnection weights for the launcher —
-  // how much of each program is shared federal law.
-  const [constellation, setConstellation] = useState<{
-    programs: Array<{
-      jurisdiction: string;
-      program_id: string;
-      family: string | null;
-      federal_rules: number;
-      total_rules: number;
-      headline: string | null;
-      outline?: Array<{ x: number; y: number; shared: boolean }>;
-      touchpoints?: string[];
-    }>;
-  } | null>(null);
-  const [launchingKey, setLaunchingKey] = useState<string | null>(null);
-  const [hotKey, setHotKey] = useState<string | null>(null);
+  // The launcher's corpus: every subtree the mirror serves (live,
+  // with the committed snapshot as ballast) — the picker searches
+  // this; there is no program registry on that screen.
+  const [corpusModules, setCorpusModules] = useState<CorpusModule[] | null>(
+    null,
+  );
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -519,12 +512,6 @@ export function GraphViewerApp() {
   useEffect(() => {
     let cancelled = false;
     setProgramsLoading(true);
-    fetch("/api/axiom/runtime/constellation")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.programs) setConstellation(data);
-      })
-      .catch(() => {});
     fetchAllPrograms()
       .then((programs) => {
         if (!cancelled)
@@ -546,6 +533,42 @@ export function GraphViewerApp() {
       cancelled = true;
     };
   }, []);
+
+  // The picker's corpus loads only when the launcher is actually up —
+  // a ?program= / ?compose= deep link never pays for it.
+  useEffect(() => {
+    if (launcher === "closed" || corpusModules) return;
+    let cancelled = false;
+    loadCorpusModules().then(({ modules }) => {
+      if (!cancelled) setCorpusModules(modules);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launcher]);
+
+  // The launcher's single verb: pick a node → its subgraph opens.
+  // Compose mode for exactly that root, the URL rewritten to the
+  // canonical ?compose= deep link (replaceState — the viewer never
+  // grows its own history entries).
+  const enterComposeMode = (target: string) => {
+    setProgram(null);
+    setGraph(null);
+    setSelectedOutputs([]);
+    setComposedFiles([]);
+    setComposedTruncated(false);
+    setComposeFocus(target);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("compose", target);
+      url.searchParams.delete("program");
+      url.searchParams.delete("focus");
+      window.history.replaceState({}, "", url.toString());
+    }
+    veilFor(1800);
+    dismissLauncher();
+  };
 
   const composedProgram = useMemo<ProgramRef | null>(() => {
     if (!composeFocus) return null;
@@ -1573,117 +1596,6 @@ export function GraphViewerApp() {
     if (!running) void runScenario();
   };
 
-  // The constellation layout: hubs for each family of shared federal
-  // law, programs on orbits around them, standalone programs afloat.
-  // Percent coordinates in a 100×60 field.
-  const constellationLayout = useMemo(() => {
-    if (!constellation) return null;
-    const byKey = new Map(
-      constellation.programs.map((entry) => [
-        `${entry.jurisdiction}/${entry.program_id}`,
-        entry,
-      ]),
-    );
-    const visible = allPrograms.filter((item) =>
-      byKey.has(programKey(item)),
-    );
-    if (visible.length === 0) return null;
-    const families: Record<string, typeof visible> = {};
-    const standalone: typeof visible = [];
-    for (const item of visible) {
-      const family = byKey.get(programKey(item))!.family;
-      if (family) (families[family] ??= []).push(item);
-      else standalone.push(item);
-    }
-    const hubs: Array<{ id: string; label: string; x: number; y: number }> =
-      [];
-    const hubSpots: Record<string, { x: number; y: number }> = {
-      snap: { x: 33, y: 26 },
-      tanf: { x: 81, y: 40 },
-    };
-    const hubLabels: Record<string, string> = {
-      snap: "Federal SNAP law · 7 USC 2014 · 7 CFR 273",
-      tanf: "Federal TANF law",
-    };
-    const nodes: Array<{
-      key: string;
-      item: (typeof visible)[number];
-      x: number;
-      y: number;
-      hub: string | null;
-      weight: number;
-      headline: string | null;
-      outline: Array<{ x: number; y: number; shared: boolean }>;
-      touchpoints: string[];
-    }> = [];
-    const maxFederal = Math.max(
-      1,
-      ...constellation.programs.map((entry) => entry.federal_rules),
-    );
-    for (const [family, members] of Object.entries(families)) {
-      const spot = hubSpots[family] ?? { x: 50, y: 30 };
-      hubs.push({
-        id: family,
-        label: hubLabels[family] ?? `Federal ${family} law`,
-        ...spot,
-      });
-      const rx = family === "snap" ? 26 : 13;
-      const ry = family === "snap" ? 20 : 12;
-      members.forEach((item, index) => {
-        const angle =
-          -Math.PI / 2 + (index / members.length) * Math.PI * 2;
-        const entry = byKey.get(programKey(item))!;
-        nodes.push({
-          key: programKey(item),
-          item,
-          x: Math.min(93, Math.max(7, spot.x + Math.cos(angle) * rx)),
-          y: Math.min(54, Math.max(6, spot.y + Math.sin(angle) * ry)),
-          hub: family,
-          weight: entry.federal_rules / maxFederal,
-          headline: entry.headline,
-          outline: entry.outline ?? [],
-          touchpoints: entry.touchpoints ?? [],
-        });
-      });
-    }
-    const soloSpots = [
-      { x: 50, y: 55 },
-      { x: 12, y: 50 },
-      { x: 90, y: 8 },
-      { x: 50, y: 5 },
-    ];
-    standalone.forEach((item, index) => {
-      const spot = soloSpots[index % soloSpots.length]!;
-      const entry = byKey.get(programKey(item))!;
-      nodes.push({
-        key: programKey(item),
-        item,
-        x: spot.x,
-        y: spot.y,
-        hub: null,
-        weight: entry.federal_rules / maxFederal,
-        headline: entry.headline,
-        outline: entry.outline ?? [],
-        touchpoints: entry.touchpoints ?? [],
-      });
-    });
-    return { hubs, nodes };
-  }, [constellation, allPrograms]);
-  // Picking a node zooms it forward while the constellation recedes,
-  // then hands off to the canvas's summit landing — one motion from
-  // the system into the law.
-  const launchProgram = (key: string) => {
-    if (launchingKey) return;
-    setLaunchingKey(key);
-    window.setTimeout(() => {
-      surveyPendingRef.current = true;
-      veilFor(2600);
-      selectProgram(key);
-      dismissLauncher();
-      setLaunchingKey(null);
-    }, 380);
-  };
-
   // One scenario flow, two homes: the launcher's middle screen and
   // the sidebar panel render the same staged UI.
   const scenarioFlowUI = (() => {
@@ -1891,133 +1803,20 @@ export function GraphViewerApp() {
       <div
         className={`plane-launcher ${launcher === "leaving" ? "is-leaving" : ""}`}
         role="dialog"
-        aria-label="Choose a program to run"
+        aria-label="Pick a provision to open"
       >
-        <div
-          className={`plane-launcher-inner ${constellationLayout ? "has-constellation" : ""}`}
-        >
+        <div className="plane-launcher-inner has-picker">
           <h1 className="plane-launcher-title">
             What law do you want to run?
           </h1>
           <p className="plane-launcher-sub">
-            Pick a program — the whole law opens on the canvas: search it,
-            isolate any rule, answer questions, and run.
+            Pick any provision — its subgraph opens on the canvas: search
+            it, isolate any rule, answer its questions, and run.
           </p>
-          {programsLoading ? (
-            <p className="plane-launcher-loading">Loading programs…</p>
-          ) : constellationLayout ? (
-            <div
-              className={`constellation ${launchingKey ? "is-launching" : ""}`}
-            >
-              <svg
-                className="constellation-wires"
-                viewBox="0 0 100 60"
-                preserveAspectRatio="none"
-                aria-hidden
-              >
-                {constellationLayout.nodes.map((node) =>
-                  node.outline.map((dot, dotIndex) => (
-                    <circle
-                      key={`${node.key}-${dotIndex}`}
-                      cx={node.x + (dot.x - 0.5) * 13}
-                      cy={node.y + (dot.y - 0.5) * 10}
-                      r={dot.shared ? 0.42 : 0.3}
-                      className={`constellation-dot ${dot.shared ? "is-shared" : ""} ${hotKey === node.key ? "is-hot" : ""}`}
-                    />
-                  )),
-                )}
-                {constellationLayout.nodes
-                  .filter((node) => node.hub)
-                  .map((node) => {
-                    const hub = constellationLayout.hubs.find(
-                      (item) => item.id === node.hub,
-                    )!;
-                    const mx =
-                      (node.x + hub.x) / 2 + (hub.y - node.y) * 0.12;
-                    const my =
-                      (node.y + hub.y) / 2 + (node.x - hub.x) * 0.12;
-                    return (
-                      <path
-                        key={node.key}
-                        d={`M ${node.x} ${node.y} Q ${mx} ${my} ${hub.x} ${hub.y}`}
-                        className={`constellation-wire ${hotKey === node.key ? "is-hot" : ""}`}
-                        strokeWidth={0.22 + node.weight * 0.75}
-                      />
-                    );
-                  })}
-              </svg>
-              {constellationLayout.hubs.map((hub) => (
-                <div
-                  key={hub.id}
-                  className="constellation-hub"
-                  style={{
-                    left: `${hub.x}%`,
-                    top: `${(hub.y / 60) * 100}%`,
-                  }}
-                >
-                  {hub.label}
-                </div>
-              ))}
-              {constellationLayout.nodes.map((node, index) => (
-                <button
-                  key={node.key}
-                  type="button"
-                  className={`constellation-summit ${launchingKey === node.key ? "is-picked" : ""}`}
-                  style={{
-                    left: `${node.x}%`,
-                    top: `${(node.y / 60) * 100}%`,
-                    animationDelay: `${(index % 7) * 0.9}s`,
-                  }}
-                  onMouseEnter={() => setHotKey(node.key)}
-                  onMouseLeave={() => setHotKey(null)}
-                  onFocus={() => setHotKey(node.key)}
-                  onBlur={() => setHotKey(null)}
-                  onClick={() => launchProgram(node.key)}
-                >
-                  <span className="constellation-summit-chip">
-                    {countryShortLabel(countryOf(node.item.jurisdiction))}
-                    {node.item.jurisdiction.includes("-")
-                      ? ` · ${node.item.jurisdiction.split("-")[1].toUpperCase()}`
-                      : ""}
-                  </span>
-                  <strong>{displayNameForProgram(node.item)}</strong>
-                </button>
-              ))}
-            </div>
+          {corpusModules ? (
+            <SubtreePicker modules={corpusModules} onPick={enterComposeMode} />
           ) : (
-            <div className="plane-launcher-grid">
-              {allPrograms.map((item, index) => (
-                <button
-                  key={programKey(item)}
-                  type="button"
-                  className="plane-launcher-card"
-                  style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
-                  onClick={() => {
-                    // The one entry point: pick the law, land on the
-                    // whole graph at its summit. Everything else lives
-                    // on the canvas.
-                    surveyPendingRef.current = true;
-                    veilFor(2600);
-                    selectProgram(programKey(item));
-                    dismissLauncher();
-                  }}
-                >
-                  <span className="plane-launcher-chip">
-                    {countryShortLabel(countryOf(item.jurisdiction))}
-                    {item.jurisdiction.includes("-")
-                      ? ` · ${item.jurisdiction.split("-")[1].toUpperCase()}`
-                      : ""}
-                  </span>
-                  <strong>{displayNameForProgram(item)}</strong>
-                  <span className="plane-launcher-meta">
-                    {item.outputCount
-                      ? `${item.outputCount} outputs`
-                      : "compiled program"}
-                    {item.inputCount ? ` · ${item.inputCount} inputs` : ""}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <p className="plane-launcher-loading">Loading the corpus…</p>
           )}
         </div>
       </div>

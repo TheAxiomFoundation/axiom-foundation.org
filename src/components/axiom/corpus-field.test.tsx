@@ -131,14 +131,63 @@ describe("CorpusField", () => {
     expect(labels.length).toBeGreaterThan(5);
   });
 
-  it("computes the stat line from the census", async () => {
+  it("computes the stat line from the census and names the snapshot fallback", async () => {
+    // No live endpoint in jsdom — the loader falls back to the snapshot.
     await renderField();
     const line = screen.getByTestId("corpus-field-stats").textContent!;
     expect(line).toContain(
       corpusSubtrees.modules.length.toLocaleString("en-US")
     );
     expect(line).toContain("encoded rules");
-    expect(line).toContain("every node cites its law");
+    expect(line).toContain("census snapshot");
+    expect(
+      screen.getByTestId("corpus-field").getAttribute("data-corpus-source")
+    ).toBe("snapshot");
+  });
+
+  it("mirrors the live corpus when the endpoint answers — new jurisdictions included", async () => {
+    const live = [
+      ...corpusSubtrees.modules.map((m) => ({
+        target: m.target,
+        jurisdiction: m.jurisdiction,
+        bucket: m.bucket,
+      })),
+      {
+        target: "be:policies/euromod_benefit_income_list",
+        jurisdiction: "be",
+        bucket: "policies",
+      },
+      {
+        target: "be-dg:statutes/family_benefits/amounts",
+        jurisdiction: "be-dg",
+        bucket: "statutes",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "ok",
+          data: { count: live.length, subtrees: live },
+        }),
+      })
+    );
+    try {
+      render(<CorpusField />);
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("corpus-field").getAttribute("data-corpus-source")
+        ).toBe("live")
+      );
+      const field = screen.getByTestId("corpus-field");
+      expect(Number(field.getAttribute("data-dot-count"))).toBe(live.length);
+      const line = screen.getByTestId("corpus-field-stats").textContent!;
+      expect(line).toContain(live.length.toLocaleString("en-US"));
+      expect(line).toContain("live mirror");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("zooms on wheel, anchored under the pointer, and offers a reset", async () => {

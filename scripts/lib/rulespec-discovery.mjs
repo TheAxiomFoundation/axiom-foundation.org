@@ -77,7 +77,9 @@ async function fetchAppVisibility(repo) {
  * monorepos with per-jurisdiction directories (rulespec-us → us/,
  * us-co/, …) and standalone repos with buckets at top level
  * (rulespec-ca). Repos gated `app_visibility = "experimental"` are
- * skipped.
+ * skipped, as are archived repos — an archived repo is read-only, so
+ * it can never flip its own visibility marker, and a parked lane's
+ * encodings don't belong on app surfaces (rulespec-tz-znz).
  */
 export async function discoverRoots() {
   const repos = await githubJson(
@@ -86,6 +88,10 @@ export async function discoverRoots() {
   const roots = [];
   for (const repo of repos) {
     if (!repo.name.startsWith("rulespec-")) continue;
+    if (repo.archived) {
+      console.log(`skip ${repo.name}: archived`);
+      continue;
+    }
     if ((await fetchAppVisibility(repo)) === "experimental") {
       console.log(`skip ${repo.name}: app_visibility=experimental`);
       continue;

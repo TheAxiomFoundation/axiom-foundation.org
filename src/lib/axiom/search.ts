@@ -73,6 +73,7 @@ export interface AxiomSearchResults {
 interface GitHubRepo {
   name: string;
   default_branch: string;
+  archived?: boolean;
 }
 
 interface GitHubTreeEntry {
@@ -820,6 +821,9 @@ async function discoverRuleSpecSearchRoots(): Promise<RuleSpecSearchRoot[]> {
 }
 
 async function rootsFromRepo(repo: GitHubRepo): Promise<RuleSpecSearchRoot[]> {
+  // Archived repos are read-only parked lanes, never app surfaces —
+  // same skip the index sync applies (scripts/lib/rulespec-discovery.mjs).
+  if (repo.archived) return [];
   if ((await fetchAppVisibility(repo)) === "experimental") return [];
   const tree = await githubJson<GitHubTreeResponse>(
     `https://api.github.com/repos/${GITHUB_ORG}/${repo.name}/git/trees/${repo.default_branch}`

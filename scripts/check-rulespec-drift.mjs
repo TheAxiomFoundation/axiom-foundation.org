@@ -41,7 +41,9 @@ for (const root of roots) {
   if (getRuleSpecRepoForJurisdiction(root.jurisdiction) === null) {
     problems.push(
       `${root.repo} holds "${root.jurisdiction}" encodings but repo-map.ts has no family for it — ` +
-        `add it to repoForJurisdiction and RULESPEC_REPOS (see the axiom promotion playbook)`
+        `either gate the repo (app_visibility = "experimental" in .axiom/registry.toml, the scaffold ` +
+        `form in the gated rulespec repos) until its listing gates hold, or promote it: add it to ` +
+        `repoForJurisdiction and RULESPEC_REPOS plus a jurisdictions-seed.ts entry`
     );
   }
 }
@@ -79,7 +81,7 @@ for (const repo of RULESPEC_REPOS) {
   if (!discoveredRepos.has(repo)) {
     problems.push(
       `${repo} is listed in RULESPEC_REPOS but discovery found no encodings — renamed, emptied, ` +
-        `or gated app_visibility=experimental?`
+        `archived, or gated app_visibility=experimental?`
     );
   }
 }

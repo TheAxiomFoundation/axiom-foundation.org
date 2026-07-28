@@ -133,6 +133,31 @@ describe("demo zone rewrites", () => {
     );
   });
 
+  it("redirects the bare receipt API reference path and rewrites only the tree", () => {
+    expect(config.redirects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/receipt/api",
+          destination: "/receipt/api/",
+          permanent: false,
+        }),
+      ]),
+    );
+    expect(config.rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/receipt/api/:path(.*)",
+          destination: "https://theaxiomfoundation.github.io/receipt/:path(.*)",
+        }),
+      ]),
+    );
+    expect(config.rewrites).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: "/receipt/api" }),
+      ]),
+    );
+  });
+
   it("never claims a two-letter jurisdiction path or an existing app route", () => {
     const reserved =
       /^\/(?:[a-z]{2}(?:-[a-z]{2})?|canada|axiom|graph|start|about|team|privacy|docs|format|stack|reports|preview|proposal|pbif-proposal)$/;

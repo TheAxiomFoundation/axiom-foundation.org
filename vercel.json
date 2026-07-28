@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/receipt/api/:path(.*)",
+      "destination": "https://theaxiomfoundation.github.io/receipt/:path(.*)"
+    },
+    {
       "source": "/proposal/:path*",
       "destination": "https://proposal.axiom-foundation.org/:path*"
     },
@@ -106,6 +110,11 @@
     }
   ],
   "redirects": [
+    {
+      "source": "/receipt/api",
+      "destination": "/receipt/api/",
+      "permanent": false
+    },
     {
       "source": "/chatbot",
       "destination": "/gallery/chatbot",

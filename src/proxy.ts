@@ -127,6 +127,18 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(target);
   }
 
+  // The site skips Next's trailing-slash normalization, but the
+  // proxied API reference only resolves its relative links under
+  // /receipt/api/ — give this one path its slash. Exact match only,
+  // so the slash form can never re-match (no redirect loop). Plain
+  // URL, not nextUrl.clone(): NextURL normalizes a trailing slash
+  // away on pathname assignment, which would point the redirect at
+  // itself. Mirrors the vercel.json redirect for environments the
+  // proxy doesn't front.
+  if (pathname === "/receipt/api") {
+    return NextResponse.redirect(new URL("/receipt/api/", request.url), 307);
+  }
+
   if (host === SITE_HOST && isInternalAxiomPath(pathname)) {
     const target = request.nextUrl.clone();
     target.hostname = APP_HOST;

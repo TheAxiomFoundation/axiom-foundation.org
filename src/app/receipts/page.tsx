@@ -60,6 +60,13 @@ export default function ReceiptsPage() {
             <span className="kicker-mark">&sect;</span>
             Receipts
           </span>
+          <p className="m-0 mb-4 font-mono text-[0.72rem] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            These are Axiom&apos;s records. Looking for the receipt software
+            package?{" "}
+            <a href="/receipt" className="text-[var(--color-accent)] hover:underline">
+              axiom.org/receipt
+            </a>
+          </p>
           <h1 className="heading-page mb-6 mt-2">We show our receipts</h1>
           <p className="font-body text-[1.2rem] leading-relaxed text-[var(--color-ink-secondary)] text-pretty">
             A receipt is the record you keep so anyone can check it later.

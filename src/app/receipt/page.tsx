@@ -50,6 +50,13 @@ export default function ReceiptPage() {
             <span className="kicker-mark">&sect;</span>
             receipt
           </span>
+          <p className="m-0 mb-4 font-mono text-[0.72rem] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            This is the software package. Looking for Axiom&apos;s own
+            receipts?{" "}
+            <a href="/receipts" className="text-[var(--color-accent)] hover:underline">
+              axiom.org/receipts
+            </a>
+          </p>
           <h1 className="heading-page mb-6 mt-2">
             Verifiable custody of agent-produced records
           </h1>

@@ -34,6 +34,21 @@ import corpusSubtrees from "@/lib/axiom/corpus-subtrees.json";
 
 const VIEW_MODULES = filterViewModules(corpusSubtrees.modules);
 
+/** The component's own layout: door labels included — with the hard
+ *  no-overlap pass, positions depend on door floor radii, so tests
+ *  must aim at the SAME layout the canvas draws. */
+function componentLayout() {
+  const labels = new Map(
+    computeFieldHighlights(VIEW_MODULES).map((module) => [
+      module.target,
+      module.headlineRule
+        ? `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`
+        : humanizeCitation(module.target),
+    ])
+  );
+  return buildFieldLayout(VIEW_MODULES, labels);
+}
+
 async function renderField() {
   const view = render(<CorpusField />);
   // The census loads through a dynamic import — wait for the field.
@@ -226,7 +241,7 @@ describe("CorpusField", () => {
       ).not.toBe("0")
     );
     stubFieldRect();
-    const layout = buildFieldLayout(VIEW_MODULES);
+    const layout = componentLayout();
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
     )!;
@@ -275,7 +290,7 @@ describe("CorpusField", () => {
   it("hover shows a humanized tooltip through the transform", async () => {
     await renderField();
     stubFieldRect();
-    const layout = buildFieldLayout(VIEW_MODULES);
+    const layout = componentLayout();
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5 && d.headlineRule
     )!;
@@ -294,7 +309,7 @@ describe("CorpusField", () => {
   it("click zooms into the subtree and mounts the compose viewer in place; BACK returns and zooms out", async () => {
     await renderField();
     stubFieldRect();
-    const layout = buildFieldLayout(VIEW_MODULES);
+    const layout = componentLayout();
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
     )!;

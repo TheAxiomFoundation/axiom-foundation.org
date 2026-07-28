@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   buildListEntries,
   filterListEntries,
+  filterModulesByScope,
+  JURISDICTION_SCOPES,
   LIST_SLAB_SIZE,
+  matchesScope,
 } from "./list-entries";
 import { filterViewModules, type CorpusModule } from "@/lib/axiom/corpus-field";
 import corpusSubtreesJson from "@/lib/axiom/corpus-subtrees.json";
@@ -112,5 +115,71 @@ describe("filterListEntries", () => {
       filterListEntries(entries, "eitc 26").map((e) => e.target),
     ).toEqual(["us:statutes/26/32"]);
     expect(filterListEntries(entries, "eitc 273")).toEqual([]);
+  });
+});
+
+describe("jurisdiction scope (All · Nationwide · States)", () => {
+  it("offers exactly the three scopes, All first", () => {
+    expect(JURISDICTION_SCOPES.map((s) => s.id)).toEqual([
+      "all",
+      "nationwide",
+      "states",
+    ]);
+    expect(JURISDICTION_SCOPES.map((s) => s.label)).toEqual([
+      "All",
+      "Nationwide",
+      "States",
+    ]);
+  });
+
+  it("Nationwide is the federal corpus, States is every us-XX", () => {
+    expect(matchesScope("us", "nationwide")).toBe(true);
+    expect(matchesScope("us-co", "nationwide")).toBe(false);
+    expect(matchesScope("us", "states")).toBe(false);
+    expect(matchesScope("us-co", "states")).toBe(true);
+    expect(matchesScope("us-ny", "states")).toBe(true);
+    expect(matchesScope("us", "all")).toBe(true);
+    expect(matchesScope("us-co", "all")).toBe(true);
+  });
+
+  it("filterModulesByScope cuts modules for the doors band", () => {
+    const modules = [
+      module({ target: "us:statutes/7/2014", jurisdiction: "us" }),
+      module({ target: "us-co:statutes/1", jurisdiction: "us-co" }),
+      module({ target: "us-ny:statutes/1", jurisdiction: "us-ny" }),
+    ];
+    expect(filterModulesByScope(modules, "all")).toEqual(modules);
+    expect(
+      filterModulesByScope(modules, "nationwide").map((m) => m.jurisdiction),
+    ).toEqual(["us"]);
+    expect(
+      filterModulesByScope(modules, "states").map((m) => m.jurisdiction),
+    ).toEqual(["us-co", "us-ny"]);
+  });
+
+  it("the scope COMPOSES with the text search over the same list", () => {
+    const entries = buildListEntries([
+      module({ target: "us:statutes/26/32", headlineRule: "eitc" }),
+      module({
+        target: "us-co:policies/income_tax/eitc_rate",
+        jurisdiction: "us-co",
+        bucket: "policies",
+        headlineRule: "co_eitc",
+      }),
+      module({ target: "us-co:statutes/1", jurisdiction: "us-co" }),
+    ]);
+    // Text alone: both EITC entries.
+    expect(filterListEntries(entries, "eitc")).toHaveLength(2);
+    // Text × scope: one each side.
+    expect(
+      filterListEntries(entries, "eitc", "nationwide").map((e) => e.target),
+    ).toEqual(["us:statutes/26/32"]);
+    expect(
+      filterListEntries(entries, "eitc", "states").map((e) => e.target),
+    ).toEqual(["us-co:policies/income_tax/eitc_rate"]);
+    // Scope alone: empty query keeps everything in scope.
+    expect(filterListEntries(entries, "", "states")).toHaveLength(2);
+    // Every entry carries its jurisdiction for the row attribute.
+    expect(entries.every((e) => e.jurisdiction.startsWith("us"))).toBe(true);
   });
 });

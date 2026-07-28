@@ -26,6 +26,7 @@ import {
   shapeRendersNodes,
   buildFieldLayout,
   computeFieldHighlights,
+  countFootprintCollisions,
   fieldComposeHref,
   fieldToView,
   hitTestDot,
@@ -198,6 +199,12 @@ export function CorpusField({
         ? buildFieldLayout(modules, highlightLabels ?? undefined)
         : null,
     [modules, highlightLabels]
+  );
+  // The hard invariant, surfaced: zero intersecting footprint pairs
+  // (checked once per layout, never per frame).
+  const overlapPairs = useMemo(
+    () => (layout ? countFootprintCollisions(layout.dots) : 0),
+    [layout]
   );
   const stopAnimation = useCallback(() => {
     if (rafRef.current != null) {
@@ -804,6 +811,7 @@ export function CorpusField({
         ref={containerRef}
         data-testid="corpus-field"
         data-dot-count={layout?.dots.length ?? 0}
+        data-overlap-pairs={overlapPairs}
         data-corpus-source={source}
         data-lod={
           transform.k >= MOTIF_ZOOM

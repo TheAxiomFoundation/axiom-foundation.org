@@ -81,14 +81,36 @@ export function filterUsModules(modules: CorpusModule[]): CorpusModule[] {
  *  surface (not dust: gone). */
 export const MIN_VIEW_RULE_COUNT = 2;
 
+/**
+ * Composition / pipeline modules are encoding plumbing, not law —
+ * the API already excludes them from the live mirror
+ * (isCompositionPath in axiom-api-runtime-sync); the committed
+ * census still carries 23, so the app applies the same exclusion at
+ * its one view choke point. Targets are `jur:bucket/…`; the
+ * "composition" patterns bite only inside policy buckets, so real
+ * manual pages ("fns-210-household-composition/page-2") stay.
+ */
+export function isCompositionTarget(target: string): boolean {
+  const path = target.replace(":", "/");
+  if (path.endsWith("_pipeline")) return true;
+  if (!/\/(policy|policies)\//.test(`/${path}/`)) return false;
+  return (
+    path.includes("state-plan-composition") ||
+    path.includes("fy-2026-benefit-calculation") ||
+    path.endsWith("composition") ||
+    path.includes("/composition")
+  );
+}
+
 /** The app's full view filter, applied once in the shared loader so
  *  every surface (field, picker, doors, clusters, counts) agrees:
- *  US-only, and no single-node subtrees. */
+ *  US-only, no single-node subtrees, no composition pipelines. */
 export function filterViewModules(modules: CorpusModule[]): CorpusModule[] {
   return modules.filter(
     (module) =>
       isUsJurisdiction(module.jurisdiction) &&
-      module.ruleCount >= MIN_VIEW_RULE_COUNT,
+      module.ruleCount >= MIN_VIEW_RULE_COUNT &&
+      !isCompositionTarget(module.target),
   );
 }
 
@@ -470,6 +492,23 @@ export function buildFieldLayout(
 
   const links = buildFieldLinks(dots, moduleByDotIndex);
   applyImportAttraction(dots, clusters, links);
+  // Hard invariant, resolved LAST so it survives every earlier pass:
+  // no two footprints intersect, label space included.
+  resolveFootprintCollisions(dots);
+  // Clusters own their dots' final positions: grow each territory to
+  // the enclosing circle so identity (labels, containment framing)
+  // stays honest after the relaxation.
+  for (const cluster of clusters) {
+    let enclosing = cluster.r;
+    for (const dot of dots) {
+      if (dot.jurisdiction !== cluster.jurisdiction) continue;
+      enclosing = Math.max(
+        enclosing,
+        Math.hypot(dot.x - cluster.x, dot.y - cluster.y) + dot.r,
+      );
+    }
+    cluster.r = enclosing;
+  }
 
   return { width: FIELD_WIDTH, height: FIELD_HEIGHT, dots, clusters, links };
 }
@@ -544,6 +583,163 @@ function applyImportAttraction(
       }
     }
   }
+}
+
+/* ── Hard no-overlap: footprints never intersect ──
+ * Layout passes (phyllotaxis, import attraction, highlight floors)
+ * are heuristics; this is the guarantee. After everything else, a
+ * deterministic relaxation separates every colliding footprint pair
+ * along its own axis — both axes, not just radially — until no two
+ * circles intersect, with a real margin. Dots that draw a title get
+ * extra clearance so the label band doesn't sit on a neighbor. */
+
+/** Minimum clear gap between two footprints, as a fraction of the
+ *  SMALLER footprint's radius. */
+export const FOOTPRINT_MARGIN_RATIO = 0.15;
+/** Extra field-unit clearance around dots that draw a subtree title
+ *  (dotEarnsLabel), reserving room for the label band. */
+export const LABEL_CLEARANCE = 0.6;
+const MAX_RESOLUTION_PASSES = 200;
+
+export function collisionRadius(
+  dot: Pick<FieldDot, "r" | "dust" | "headlineRule" | "sourceOutline">,
+): number {
+  return dot.r + (dotEarnsLabel(dot) ? LABEL_CLEARANCE : 0);
+}
+
+/** The center distance two dots must keep: both collision radii plus
+ *  the margin on the smaller footprint. */
+export function requiredFootprintGap(a: FieldDot, b: FieldDot): number {
+  return (
+    collisionRadius(a) +
+    collisionRadius(b) +
+    FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r)
+  );
+}
+
+/** Spatial-grid pair walk: calls fn for every (i, j>i) pair whose
+ *  centers sit within `reach` of each other (cell size = reach, 3×3
+ *  neighborhood). Deterministic: ascending i, then ascending j.
+ *  Numeric keys — this runs hot inside the relaxation. */
+const GRID_STRIDE = 1 << 16;
+function forEachClosePair(
+  dots: FieldDot[],
+  reach: number,
+  fn: (i: number, j: number) => void,
+): void {
+  const cell = Math.max(reach, 1);
+  const grid = new Map<number, number[]>();
+  for (let index = 0; index < dots.length; index += 1) {
+    const dot = dots[index]!;
+    const key =
+      Math.floor(dot.x / cell) * GRID_STRIDE + Math.floor(dot.y / cell);
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(index);
+    else grid.set(key, [index]);
+  }
+  for (let i = 0; i < dots.length; i += 1) {
+    const dot = dots[i]!;
+    const gx = Math.floor(dot.x / cell);
+    const gy = Math.floor(dot.y / cell);
+    for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        const bucket = grid.get((gx + dx) * GRID_STRIDE + (gy + dy));
+        if (!bucket) continue;
+        for (const j of bucket) {
+          if (j > i) fn(i, j);
+        }
+      }
+    }
+  }
+}
+
+function resolveFootprintCollisions(dots: FieldDot[]): void {
+  if (dots.length < 2) return;
+  let maxCollision = 0;
+  for (const dot of dots) {
+    maxCollision = Math.max(maxCollision, collisionRadius(dot));
+  }
+  const reach = maxCollision * (2 + FOOTPRINT_MARGIN_RATIO);
+  // Precompute per-dot collision radii once — they never change.
+  const cr = dots.map((dot) => collisionRadius(dot));
+  for (let pass = 0; pass < MAX_RESOLUTION_PASSES; pass += 1) {
+    // Collect, then push: the pair set is fixed per pass (grid walk
+    // is already (i asc, j asc) deterministic).
+    const pairs: number[] = [];
+    forEachClosePair(dots, reach, (i, j) => {
+      const a = dots[i]!;
+      const b = dots[j]!;
+      const need =
+        cr[i]! + cr[j]! + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      if (dx * dx + dy * dy < need * need - 1e-9) {
+        pairs.push(i, j);
+      }
+    });
+    if (pairs.length === 0) return;
+    for (let p = 0; p < pairs.length; p += 2) {
+      const i = pairs[p]!;
+      const j = pairs[p + 1]!;
+      const a = dots[i]!;
+      const b = dots[j]!;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const need =
+        cr[i]! + cr[j]! + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+      if (dist >= need) continue; // an earlier push already fixed it
+      let ux: number;
+      let uy: number;
+      if (dist > 1e-9) {
+        ux = dx / dist;
+        uy = dy / dist;
+      } else {
+        // Coincident centers: a stable hashed direction, so the tie
+        // breaks the same way every build.
+        const angle =
+          ((targetHash(a.target + b.target) % 360) / 360) * Math.PI * 2;
+        ux = Math.cos(angle);
+        uy = Math.sin(angle);
+      }
+      // Slight overshoot converges in far fewer passes than exact
+      // separation, at no visible cost.
+      const push = (need - dist) * 0.6 + 0.01;
+      a.x -= ux * push;
+      a.y -= uy * push;
+      b.x += ux * push;
+      b.y += uy * push;
+    }
+    // The field's edges are walls — nothing leaves the world.
+    for (const dot of dots) {
+      dot.x = clampNumber(dot.x, dot.r, FIELD_WIDTH - dot.r);
+      dot.y = clampNumber(dot.y, dot.r, FIELD_HEIGHT - dot.r);
+    }
+  }
+}
+
+/**
+ * The invariant, countable: footprint pairs that intersect (or sit
+ * closer than the margin). Grid-accelerated — the renderer stamps
+ * the count on the host once per layout, tests assert zero over the
+ * committed census.
+ */
+export function countFootprintCollisions(dots: FieldDot[]): number {
+  if (dots.length < 2) return 0;
+  let maxR = 0;
+  for (const dot of dots) maxR = Math.max(maxR, dot.r);
+  const reach = maxR * (2 + FOOTPRINT_MARGIN_RATIO);
+  let collisions = 0;
+  forEachClosePair(dots, reach, (i, j) => {
+    const a = dots[i]!;
+    const b = dots[j]!;
+    const need =
+      a.r + b.r + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+    if (Math.hypot(b.x - a.x, b.y - a.y) < need - 1e-6) {
+      collisions += 1;
+    }
+  });
+  return collisions;
 }
 
 /**

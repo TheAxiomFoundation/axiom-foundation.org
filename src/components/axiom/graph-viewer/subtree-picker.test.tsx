@@ -117,6 +117,44 @@ describe("SubtreeDoors", () => {
     expect(screen.queryAllByTestId("picker-list-row")).toHaveLength(0);
     expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
   });
+
+  it("the jurisdiction scope cuts the list AND the doors band", () => {
+    const { rerender } = render(
+      <SubtreeDoors modules={MODULES} onPick={vi.fn()} scope="states" />
+    );
+    // MODULES: two federal, one us-ny, one us-fl.
+    let rows = screen.getAllByTestId("picker-list-row");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.getAttribute("data-jurisdiction")).toMatch(/^us-/);
+    }
+    expect(screen.getAllByTestId("picker-door")).toHaveLength(2);
+    rerender(
+      <SubtreeDoors modules={MODULES} onPick={vi.fn()} scope="nationwide" />
+    );
+    rows = screen.getAllByTestId("picker-list-row");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.getAttribute("data-jurisdiction")).toBe("us");
+    }
+    expect(
+      screen.getByTestId("picker-list").getAttribute("data-list-total")
+    ).toBe("2");
+  });
+
+  it("scope composes with the query", () => {
+    render(
+      <SubtreeDoors
+        modules={MODULES}
+        onPick={vi.fn()}
+        query="273.10"
+        scope="states"
+      />
+    );
+    // 273.10 is federal — out of scope, so the list is honest-empty.
+    expect(screen.queryAllByTestId("picker-list-row")).toHaveLength(0);
+    expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
+  });
 });
 
 describe("SubtreeSearch", () => {

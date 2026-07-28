@@ -133,6 +133,18 @@ console.log(
 await page.screenshot({ path: "/tmp/shape-field.png" });
 // The spaced-out overview: footprints breathe, whole US field fitted.
 await page.screenshot({ path: "/tmp/field-spaced.png" });
+await page.screenshot({ path: "/tmp/field-no-overlap.png" });
+
+// Hard invariant: the layout resolves to ZERO intersecting footprint
+// pairs (stamped once per layout by the renderer).
+const overlapPairs = await page.evaluate(() =>
+  Number(
+    document
+      .querySelector('[data-testid="corpus-field"]')
+      ?.getAttribute("data-overlap-pairs") ?? NaN,
+  ),
+);
+console.log("intersecting footprint pairs:", overlapPairs);
 
 // Frame-time storm: alternate small wheel zooms so every sample is a
 // fresh full redraw, then report the median/p95.
@@ -455,6 +467,19 @@ const launcherFieldState = await picker.evaluate(() => {
     copyGone: !document.querySelector(
       ".plane-launcher-title, .plane-launcher-sub",
     ),
+    // The instruction line is gone — the launcher needs no verb.
+    eyebrowGone:
+      !document.querySelector(".launcher-eyebrow") &&
+      !(document.body.innerText ?? "").includes(
+        "it opens as a graph",
+      ),
+    overlapPairs: Number(
+      document
+        .querySelector(
+          '[data-testid="launcher-field"] [data-testid="corpus-field"]',
+        )
+        ?.getAttribute("data-overlap-pairs") ?? NaN,
+    ),
     fieldChipActive:
       document
         .querySelector('[data-testid="launcher-mode-field"]')
@@ -532,6 +557,83 @@ console.log(
   listAfterScroll,
 );
 await picker.screenshot({ path: "/tmp/list-complete.png" });
+
+// Nationwide / States scope: the segmented control cuts the list to
+// the federal corpus or the us-XX corpora, composing with search.
+await picker.evaluate(() => {
+  const scroller = document.querySelector(".plane-launcher");
+  if (scroller) scroller.scrollTop = 0;
+});
+await picker.click('[data-testid="list-scope-states"]');
+await new Promise((r) => setTimeout(r, 400));
+const statesScope = await picker.evaluate(() => {
+  const rows = [
+    ...document.querySelectorAll('[data-testid="picker-list-row"]'),
+  ];
+  return {
+    total: Number(
+      document
+        .querySelector('[data-testid="picker-list"]')
+        ?.getAttribute("data-list-total") ?? 0,
+    ),
+    rows: rows.length,
+    nonState: rows.filter(
+      (row) => !/^us-/.test(row.getAttribute("data-jurisdiction") ?? ""),
+    ).length,
+  };
+});
+await picker.screenshot({ path: "/tmp/list-filter.png" });
+await picker.click('[data-testid="list-scope-nationwide"]');
+await new Promise((r) => setTimeout(r, 400));
+const nationwideScope = await picker.evaluate(() => {
+  const rows = [
+    ...document.querySelectorAll('[data-testid="picker-list-row"]'),
+  ];
+  return {
+    total: Number(
+      document
+        .querySelector('[data-testid="picker-list"]')
+        ?.getAttribute("data-list-total") ?? 0,
+    ),
+    rows: rows.length,
+    nonFederal: rows.filter(
+      (row) => row.getAttribute("data-jurisdiction") !== "us",
+    ).length,
+  };
+});
+await picker.click('[data-testid="list-scope-all"]');
+await new Promise((r) => setTimeout(r, 400));
+console.log(
+  "scope — states:",
+  JSON.stringify(statesScope),
+  "· nationwide:",
+  JSON.stringify(nationwideScope),
+  "· sums to all:",
+  statesScope.total + nationwideScope.total === listStats.total,
+);
+
+// Pipeline / composition modules are excluded app-side: searching
+// for one finds nothing in the complete list.
+await picker.type('[data-testid="picker-search"]', "pilot_liability_pipeline");
+await new Promise((r) => setTimeout(r, 500));
+const pipelineTotal = await picker.evaluate(() =>
+  Number(
+    document
+      .querySelector('[data-testid="picker-list"]')
+      ?.getAttribute("data-list-total") ?? NaN,
+  ),
+);
+console.log("pipeline targets in the list:", pipelineTotal);
+await picker.evaluate(() => {
+  const input = document.querySelector('[data-testid="picker-search"]');
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  ).set;
+  setter.call(input, "");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+});
+await new Promise((r) => setTimeout(r, 300));
 
 // Search "273.10" → pick → the compose viewer opens for that root.
 await picker.type('[data-testid="picker-search"]', "273.10");
@@ -719,11 +821,26 @@ const pass =
   eitcDoor &&
   labelsAtMid > 10 &&
   farFrames.median < 8 &&
+  // Hard no-overlap: zero intersecting footprint pairs, both hosts.
+  overlapPairs === 0 &&
+  launcherFieldState.overlapPairs === 0 &&
+  // The instruction line is gone.
+  launcherFieldState.eyebrowGone &&
   // The overview chip sits above the plane, left-edge aligned.
   chipAboveStage &&
   // The complete list: > 1000 subtrees, slabs append on scroll.
   listStats.total > 1000 &&
   listAfterScroll > listStats.rendered &&
+  // Nationwide / States scope: clean cuts that sum to the whole.
+  statesScope.total > 0 &&
+  statesScope.nonState === 0 &&
+  statesScope.rows > 0 &&
+  nationwideScope.total > 0 &&
+  nationwideScope.nonFederal === 0 &&
+  nationwideScope.rows > 0 &&
+  statesScope.total + nationwideScope.total === listStats.total &&
+  // App-side pipeline exclusion: none reachable in the list.
+  pipelineTotal === 0 &&
   txAfterDrag !== txBefore &&
   Boolean(clickedHref) &&
   composeUrl.includes("compose=") &&
@@ -759,7 +876,7 @@ const pass =
   blockedHonest;
 console.log(
   pass
-    ? "PASS: spaced field with subtree titles, pinned EITC door, framed overview chip, complete list"
+    ? "PASS: no-overlap field, scope filter, pipeline exclusion, no instruction copy"
     : "FAIL",
 );
 await browser.close();

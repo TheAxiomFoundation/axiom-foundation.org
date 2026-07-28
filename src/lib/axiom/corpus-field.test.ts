@@ -20,7 +20,12 @@ import {
   PHYLLOTAXIS_SPACING,
   PINNED_HIGHLIGHT_TARGETS,
   SUBTREE_LABEL_MIN_PX,
+  FOOTPRINT_MARGIN_RATIO,
+  LABEL_CLEARANCE,
+  collisionRadius,
+  countFootprintCollisions,
   dotEarnsLabel,
+  isCompositionTarget,
   fieldComposeHref,
   fieldStatLine,
   fieldToView,
@@ -862,8 +867,9 @@ describe("dotShapeSpec (the shape IS the module, at every LOD)", () => {
       else dust += 1;
     }
     expect(trueShapes + schematics + dust).toBe(fieldLayout.dots.length);
-    // The census facts: 1,814 graph-bearing modules, all US-viewable.
-    expect(trueShapes).toBe(1814);
+    // The census facts: 1,792 graph-bearing VIEW modules (1,814
+    // minus the 22 composition pipelines the app now excludes).
+    expect(trueShapes).toBe(1792);
     expect(schematics).toBeGreaterThan(0);
   });
 });
@@ -897,6 +903,119 @@ describe("spaced-out field (footprints breathe)", () => {
       }
     }
     expect(minRatio).toBeGreaterThan(1.05);
+  });
+});
+
+describe("hard no-overlap (footprints never intersect)", () => {
+  const withDoorLabels = (modules: CorpusModule[]) => {
+    const labels = new Map(
+      computeFieldHighlights(modules).map((m) => [m.target, "door"]),
+    );
+    return buildFieldLayout(modules, labels);
+  };
+
+  it("the margin is real: ≥ 15% of the smaller footprint", () => {
+    expect(FOOTPRINT_MARGIN_RATIO).toBeGreaterThanOrEqual(0.15);
+    expect(LABEL_CLEARANCE).toBeGreaterThan(0);
+  });
+
+  it("labeled dots reserve extra clearance for their title band", () => {
+    const plain = {
+      r: 3,
+      dust: false,
+      headlineRule: null,
+      sourceOutline: false,
+    };
+    expect(collisionRadius(plain)).toBe(3);
+    expect(
+      collisionRadius({ ...plain, headlineRule: "eitc" }),
+    ).toBe(3 + LABEL_CLEARANCE);
+    expect(
+      collisionRadius({ ...plain, sourceOutline: true }),
+    ).toBe(3 + LABEL_CLEARANCE);
+    // Dust never labels — no clearance either.
+    expect(
+      collisionRadius({ ...plain, dust: true, headlineRule: "x" }),
+    ).toBe(3);
+  });
+
+  it("ZERO intersecting footprint pairs over the committed census view set", () => {
+    // The exact layout the field renders: door labels included (the
+    // floor radius on doors is part of the constraint set).
+    const layout = withDoorLabels(filterViewModules(corpusSubtrees.modules));
+    expect(layout.dots.length).toBeGreaterThan(2500);
+    expect(countFootprintCollisions(layout.dots)).toBe(0);
+    // And without labels — every caller's layout holds the invariant.
+    const bare = buildFieldLayout(filterViewModules(corpusSubtrees.modules));
+    expect(countFootprintCollisions(bare.dots)).toBe(0);
+  });
+
+  it("spreads in both axes: coincident dots separate deterministically", () => {
+    // Two identical modules land on distinct spiral slots, but the
+    // invariant holds pairwise everywhere — including a dense pile
+    // of same-size modules in one jurisdiction.
+    const pile = Array.from({ length: 40 }, (_, i) =>
+      module({ target: `us:statutes/7/${i}`, linkedRuleCount: 30 }),
+    );
+    const layout = buildFieldLayout(pile);
+    expect(countFootprintCollisions(layout.dots)).toBe(0);
+    // Both axes moved: the resolved dots span x AND y.
+    const xs = layout.dots.map((d) => d.x);
+    const ys = layout.dots.map((d) => d.y);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(10);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(10);
+    // Deterministic under repetition.
+    expect(buildFieldLayout(pile)).toEqual(layout);
+  });
+
+  it("the whole field still fits the world after resolution", () => {
+    const layout = withDoorLabels(filterViewModules(corpusSubtrees.modules));
+    for (const dot of layout.dots) {
+      expect(dot.x).toBeGreaterThanOrEqual(0);
+      expect(dot.x).toBeLessThanOrEqual(FIELD_WIDTH);
+      expect(dot.y).toBeGreaterThanOrEqual(0);
+      expect(dot.y).toBeLessThanOrEqual(FIELD_HEIGHT);
+    }
+  });
+});
+
+describe("composition / pipeline exclusion (app-side isCompositionPath)", () => {
+  it("recognizes pipeline and policy-composition targets, keeps real law", () => {
+    expect(
+      isCompositionTarget("us-al:policies/income_tax/pilot_liability_pipeline"),
+    ).toBe(true);
+    expect(
+      isCompositionTarget(
+        "us-ny:policies/income_tax/nyc_composed_liability_pipeline",
+      ),
+    ).toBe(true);
+    expect(
+      isCompositionTarget("us:policies/snap/state-plan-composition/page-1"),
+    ).toBe(true);
+    expect(
+      isCompositionTarget("us:policies/fy-2026-benefit-calculation/summary"),
+    ).toBe(true);
+    expect(isCompositionTarget("us:policies/snap/composition")).toBe(true);
+    // The "composition" patterns bite ONLY in policy buckets…
+    expect(isCompositionTarget("us:statutes/26/composition")).toBe(false);
+    // …and real manual pages that merely CONTAIN the word stay.
+    expect(
+      isCompositionTarget(
+        "us-nc:policies/dhhs/fns/fns-210-household-composition/page-2",
+      ),
+    ).toBe(false);
+    expect(isCompositionTarget("us:statutes/7/2014")).toBe(false);
+  });
+
+  it("the census-built view set contains zero pipeline targets", () => {
+    const view = filterViewModules(corpusSubtrees.modules);
+    expect(view.some((m) => isCompositionTarget(m.target))).toBe(false);
+    expect(view.some((m) => m.target.endsWith("_pipeline"))).toBe(false);
+    // The exclusion bites: the raw census still carries them.
+    const raw = corpusSubtrees.modules.filter((m) =>
+      isCompositionTarget(m.target),
+    );
+    expect(raw.length).toBe(23);
   });
 });
 

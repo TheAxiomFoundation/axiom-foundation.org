@@ -34,6 +34,10 @@ import {
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreeDoors, SubtreeSearch } from "./subtree-picker";
 import {
+  JURISDICTION_SCOPES,
+  type JurisdictionScope,
+} from "./list-entries";
+import {
   composeRootOutput,
   filterStandaloneRules,
 } from "./compose-filter";
@@ -76,6 +80,9 @@ export function GraphViewerApp({
   // One query, two surfaces: the top-right search's dropdown AND the
   // list mode's full corpus list filter live on the same string.
   const [launcherQuery, setLauncherQuery] = useState("");
+  // List mode's jurisdiction scope: All · Nationwide (us) · States
+  // (us-XX). Composes with the text search.
+  const [listScope, setListScope] = useState<JurisdictionScope>("all");
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -1902,13 +1909,10 @@ export function GraphViewerApp({
                   modules={corpusModules}
                   onPick={enterComposeMode}
                   query={launcherQuery}
+                  scope={listScope}
                 />
               </div>
             )}
-            {/* Unobtrusive: the verb, not a headline. */}
-            <span className="launcher-eyebrow" aria-hidden>
-              Pick a provision — it opens as a graph
-            </span>
             {/* Compact control cluster, top right: search + mode. */}
             <div className="launcher-controls" data-testid="launcher-controls">
               <SubtreeSearch
@@ -1918,6 +1922,29 @@ export function GraphViewerApp({
                 query={launcherQuery}
                 onQueryChange={setLauncherQuery}
               />
+              {/* Nationwide / State scope, list mode only — composes
+                  with the text search over the same list. */}
+              {launcherMode === "list" && (
+                <div
+                  className="picker-mode-toggle picker-scope-toggle"
+                  role="tablist"
+                  aria-label="Which corpora to list"
+                >
+                  {JURISDICTION_SCOPES.map((scope) => (
+                    <button
+                      key={scope.id}
+                      type="button"
+                      role="tab"
+                      data-testid={`list-scope-${scope.id}`}
+                      aria-selected={listScope === scope.id}
+                      className={listScope === scope.id ? "is-active" : ""}
+                      onClick={() => setListScope(scope.id)}
+                    >
+                      {scope.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div
                 className="picker-mode-toggle"
                 role="tablist"

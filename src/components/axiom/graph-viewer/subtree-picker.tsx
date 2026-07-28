@@ -5,7 +5,9 @@ import { humanizeCitation, humanizeRuleName } from "./citations";
 import {
   buildListEntries,
   filterListEntries,
+  filterModulesByScope,
   LIST_SLAB_SIZE,
+  type JurisdictionScope,
 } from "./list-entries";
 import {
   computeFieldHighlights,
@@ -139,27 +141,34 @@ export function SubtreeDoors({
   modules,
   onPick,
   query = "",
+  scope = "all",
 }: {
   modules: CorpusModule[];
   onPick: (target: string) => void;
   /** The launcher's shared search query — filters the full list
    *  live (the doors stay put; they are the "start here" band). */
   query?: string;
+  /** All · Nationwide (us) · States (us-XX) — applies to the doors
+   *  band AND the complete list, composed with the query. */
+  scope?: JurisdictionScope;
 }) {
-  const doors = useMemo(() => computeFieldHighlights(modules), [modules]);
+  const doors = useMemo(
+    () => computeFieldHighlights(filterModulesByScope(modules, scope)),
+    [modules, scope],
+  );
   const entries = useMemo(() => buildListEntries(modules), [modules]);
   const filtered = useMemo(
-    () => filterListEntries(entries, query),
-    [entries, query],
+    () => filterListEntries(entries, query, scope),
+    [entries, query, scope],
   );
   // Slab rendering: 2,900 rows of DOM at once is a jank tax — the
   // sentinel at the list's tail appends the next slab on scroll.
   const [slabs, setSlabs] = useState(1);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    // A new search restarts the window.
+    // A new search or scope restarts the window.
     setSlabs(1);
-  }, [query]);
+  }, [query, scope]);
   const visible = filtered.slice(0, slabs * LIST_SLAB_SIZE);
   const exhausted = visible.length >= filtered.length;
   useEffect(() => {
@@ -226,6 +235,8 @@ export function SubtreeDoors({
             key={entry.target}
             className="picker-list-row"
             data-testid="picker-list-row"
+            data-jurisdiction={entry.jurisdiction}
+            data-target={entry.target}
             title={entry.subtitle ?? entry.title}
             onClick={() => onPick(entry.target)}
           >

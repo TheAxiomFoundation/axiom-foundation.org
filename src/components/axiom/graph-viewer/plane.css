@@ -3627,19 +3627,6 @@
   position: absolute;
   inset: 0;
 }
-/* The verb, unobtrusive, bottom left — never a headline. */
-.graph-viewer-root .launcher-eyebrow {
-  position: absolute;
-  left: 18px;
-  bottom: 14px;
-  z-index: 40;
-  font-family: var(--f-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  pointer-events: none;
-}
 /* Compact control cluster over the field, top right (clear of the
    fixed site nav). */
 .graph-viewer-root .launcher-controls {

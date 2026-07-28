@@ -113,6 +113,17 @@ describe("proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("bypasses the PostHog ingest proxy on the app host", () => {
+    // Without the bypass, the catch-all rewrote /ingest/* to
+    // /axiom/ingest/* — an HTML page answering capture requests
+    // with 200, silently swallowing every analytics event.
+    const response = proxy(
+      request("https://app.axiom-foundation.org/ingest/e/?v=1", "app.axiom-foundation.org")
+    );
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("rewrites the app host root into the graph (the Plane is the app)", () => {
     const response = proxy(
       request("https://app.axiom-foundation.org/", "app.axiom-foundation.org")

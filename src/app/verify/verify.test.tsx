@@ -35,7 +35,7 @@ describe("Verify page", () => {
       screen.getByText("856 real FY 2024 administrative cases"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("3,997,401 distinct comparisons"),
+      screen.getByText("3,881,635 distinct comparisons"),
     ).toBeInTheDocument();
 
     expect(screen.queryByText(/Belgium/i)).not.toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("Verify page", () => {
     expect(screen.getByText("226")).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Certificate — certified: unavailable — two of four verdicts are attested rather than computed\./,
+        /Certificate — certified: 0 — certification is automatic when the harness computes completeness and fidelity green; we expect no current encoding passes yet\./,
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Certified")).not.toBeInTheDocument();
@@ -104,11 +104,9 @@ describe("Verify page", () => {
     expect(screen.getByRole("heading", { name: "7 CFR 273" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "7 USC ch. 51" })).toBeInTheDocument();
     expect(screen.getAllByText("Published debt")).toHaveLength(2);
-    expect(
-      screen.getAllByText(
-        "Placeholder — exact counts pending from axiom-oracles closure/summary.json",
-      ),
-    ).toHaveLength(2);
+    expect(screen.getByText("23")).toBeInTheDocument();
+    expect(screen.getByText("267")).toBeInTheDocument();
+    expect(screen.getByText("544")).toBeInTheDocument();
     expect(
       screen.getByText("acknowledged_incomplete: snap_eligible"),
     ).toBeInTheDocument();

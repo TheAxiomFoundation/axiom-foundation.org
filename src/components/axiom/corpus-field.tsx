@@ -27,6 +27,7 @@ import {
   buildFieldLayout,
   computeFieldHighlights,
   countFootprintCollisions,
+  groupSeparationStats,
   fieldComposeHref,
   fieldToView,
   hitTestDot,
@@ -193,17 +194,25 @@ export function CorpusField({
       ])
     );
   }, [modules]);
-  const layout = useMemo(
-    () =>
-      modules
-        ? buildFieldLayout(modules, highlightLabels ?? undefined)
-        : null,
-    [modules, highlightLabels]
-  );
+  const [layout, layoutMs] = useMemo(() => {
+    if (!modules) return [null, 0] as const;
+    const startedAt = performance.now();
+    const built = buildFieldLayout(modules, highlightLabels ?? undefined);
+    return [built, performance.now() - startedAt] as const;
+  }, [modules, highlightLabels]);
   // The hard invariant, surfaced: zero intersecting footprint pairs
-  // (checked once per layout, never per frame).
+  // (checked once per layout, never per frame) — and the document
+  // grouping, measurable: median inter-family vs intra-family
+  // nearest-neighbor gaps.
   const overlapPairs = useMemo(
     () => (layout ? countFootprintCollisions(layout.dots) : 0),
+    [layout]
+  );
+  const groupStats = useMemo(
+    () =>
+      layout
+        ? groupSeparationStats(layout.dots)
+        : { intraMedian: 0, interMedian: 0 },
     [layout]
   );
   const stopAnimation = useCallback(() => {
@@ -305,11 +314,18 @@ export function CorpusField({
       ctx.setLineDash([]);
     }
 
-    // Import filaments fade in at mid zoom — the ties between
-    // related subtrees, drawn under the dots.
-    if (k >= FILAMENT_ZOOM) {
-      const filamentAlpha = Math.min((k - FILAMENT_ZOOM) / 1.2, 1) * 0.3;
-      ctx.lineWidth = 0.7 / k;
+    // Import filaments: background texture, never a statement.
+    // Barely-there at the fitted view, a whisper stronger at mid
+    // zoom, fading again as the camera closes in on shapes (they
+    // matter least when inspecting structure). Drawn under the dots.
+    {
+      const rise = Math.min(Math.max((k - 1) / 1.2, 0), 1);
+      const nearFade = Math.max(
+        1 - Math.max(k - MOTIF_ZOOM, 0) / 6,
+        0.3
+      );
+      const filamentAlpha = (0.04 + 0.11 * rise) * nearFade;
+      ctx.lineWidth = 0.35 / k;
       for (const link of layout.links) {
         const a = layout.dots[link.a]!;
         const b = layout.dots[link.b]!;
@@ -812,6 +828,9 @@ export function CorpusField({
         data-testid="corpus-field"
         data-dot-count={layout?.dots.length ?? 0}
         data-overlap-pairs={overlapPairs}
+        data-layout-ms={layoutMs.toFixed(1)}
+        data-group-intra-gap={groupStats.intraMedian.toFixed(2)}
+        data-group-inter-gap={groupStats.interMedian.toFixed(2)}
         data-corpus-source={source}
         data-lod={
           transform.k >= MOTIF_ZOOM

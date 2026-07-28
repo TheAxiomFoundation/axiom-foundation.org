@@ -134,17 +134,34 @@ await page.screenshot({ path: "/tmp/shape-field.png" });
 // The spaced-out overview: footprints breathe, whole US field fitted.
 await page.screenshot({ path: "/tmp/field-spaced.png" });
 await page.screenshot({ path: "/tmp/field-no-overlap.png" });
+await page.screenshot({ path: "/tmp/field-final-fitted.png" });
 
 // Hard invariant: the layout resolves to ZERO intersecting footprint
-// pairs (stamped once per layout by the renderer).
-const overlapPairs = await page.evaluate(() =>
-  Number(
-    document
-      .querySelector('[data-testid="corpus-field"]')
-      ?.getAttribute("data-overlap-pairs") ?? NaN,
-  ),
+// pairs (stamped once per layout by the renderer) — plus the
+// document-grouping read (median inter-family gap > intra-family
+// gap) and the layout build budget.
+const layoutHealth = await page.evaluate(() => {
+  const field = document.querySelector('[data-testid="corpus-field"]');
+  return {
+    overlapPairs: Number(field?.getAttribute("data-overlap-pairs") ?? NaN),
+    layoutMs: Number(field?.getAttribute("data-layout-ms") ?? NaN),
+    intraGap: Number(field?.getAttribute("data-group-intra-gap") ?? NaN),
+    interGap: Number(field?.getAttribute("data-group-inter-gap") ?? NaN),
+  };
+});
+const overlapPairs = layoutHealth.overlapPairs;
+const groupsSeparated =
+  layoutHealth.interGap > layoutHealth.intraGap && layoutHealth.interGap > 0;
+console.log(
+  "intersecting footprint pairs:",
+  overlapPairs,
+  "· layout build:",
+  layoutHealth.layoutMs.toFixed(1),
+  "ms · group gaps (intra → inter):",
+  layoutHealth.intraGap,
+  "→",
+  layoutHealth.interGap,
 );
-console.log("intersecting footprint pairs:", overlapPairs);
 
 // Frame-time storm: alternate small wheel zooms so every sample is a
 // fresh full redraw, then report the median/p95.
@@ -249,6 +266,7 @@ await page.screenshot({ path: "/tmp/shape-field-near.png" });
 const labelsAtMid = (await readFieldMetrics()).labels;
 console.log("subtree labels drawn at mid zoom:", labelsAtMid);
 await page.screenshot({ path: "/tmp/field-labels.png" });
+await page.screenshot({ path: "/tmp/field-final-mid.png" });
 const motifFrames = await frameStorm("motif zoom", 30, 200);
 
 // 5b) Drag pans the camera.
@@ -824,6 +842,10 @@ const pass =
   // Hard no-overlap: zero intersecting footprint pairs, both hosts.
   overlapPairs === 0 &&
   launcherFieldState.overlapPairs === 0 &&
+  // Document constellations: families sit clearly apart, and the
+  // grouped layout still builds inside its budget.
+  groupsSeparated &&
+  layoutHealth.layoutMs < 800 &&
   // The instruction line is gone.
   launcherFieldState.eyebrowGone &&
   // The overview chip sits above the plane, left-edge aligned.

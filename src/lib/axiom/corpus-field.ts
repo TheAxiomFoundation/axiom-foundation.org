@@ -247,6 +247,9 @@ export interface FieldDot {
   dust: boolean;
   /** Census-known linked rules → the source-backed outline ring. */
   sourceOutline: boolean;
+  /** The source document family (documentStem) — same-stem dots sit
+   *  snug, different-stem dots keep GROUP_CLEARANCE. */
+  docStem: string;
   x: number;
   y: number;
   r: number;
@@ -317,29 +320,142 @@ function clusterSort(a: CorpusModule, b: CorpusModule): number {
   );
 }
 
-/** Phyllotaxis ring spacing as a multiple of the cluster's mean dot
- *  radius. 2.05 packed footprints edge-to-edge; 2.6 lets each
- *  subtree's true shape breathe (the fit-transform absorbs the
- *  larger extent — the whole field still lands in the same frame). */
-export const PHYLLOTAXIS_SPACING = 2.6;
+/* ── Document grouping ──
+ * Subtrees that share a source document family read as one
+ * constellation: snug together, clearly separated from other
+ * groups. The stem names the family:
+ * - statutes: title/section ("us:statutes/26/32" — one section, one
+ *   family, subsections included).
+ * - regulations: slug + integer part ("us:regulations/7-cfr/273";
+ *   dotted state sections group by their part — "4.410" → part 4).
+ * - policies / guidance / manual (and strays): three segments —
+ *   agency/program/document ("us-nc:policies/dhhs/fns/fns-340-…"). */
+export function documentStem(target: string): string {
+  const colon = target.indexOf(":");
+  if (colon < 0) return target;
+  const jurisdiction = target.slice(0, colon);
+  const [bucket, ...rest] = target
+    .slice(colon + 1)
+    .split("/")
+    .filter(Boolean);
+  if (!bucket || rest.length === 0) return target;
+  if (bucket === "statutes") {
+    return `${jurisdiction}:${bucket}/${rest.slice(0, 2).join("/")}`;
+  }
+  if (bucket === "regulations") {
+    const slug = rest[0]!;
+    const part = rest[1] ? rest[1].split(".")[0]! : null;
+    return `${jurisdiction}:${bucket}/${[slug, part]
+      .filter(Boolean)
+      .join("/")}`;
+  }
+  return `${jurisdiction}:${bucket}/${rest.slice(0, 3).join("/")}`;
+}
 
-function placeClusterDots(
-  modules: CorpusModule[],
-): { offsets: Array<{ dx: number; dy: number }>; radius: number } {
-  const sorted = [...modules].sort(clusterSort);
+/** Phyllotaxis spacing WITHIN a document group — snug relative to
+ *  the inter-group water, but already close to the enforced margin
+ *  floor so the relaxation barely has to move anyone. */
+export const GROUP_SPACING = 2.55;
+/** Rim allowance around a group's members, × the group's mean dot
+ *  radius — pre-reserves the inter-group clearance the relaxation
+ *  enforces, so groups rarely inflate past their declared circle.
+ *  Singleton "groups" (one lone document section) carry a slimmer
+ *  rim: over a thousand of them, a full rim each would shrink the
+ *  whole field's fit scale for nothing. */
+const GROUP_RIM = 1.7;
+const GROUP_RIM_SINGLETON = 1.1;
+/** How far apart the group spiral spreads, × the area-faithful
+ *  radius (1 = groups touch; more = clear water between families). */
+const GROUP_SPREAD = 1.25;
+
+interface PlacedClusterDots {
+  /** Emission order — offsets are index-aligned with this list. */
+  modules: CorpusModule[];
+  offsets: Array<{ dx: number; dy: number }>;
+  radius: number;
+}
+
+/** One group's own snug phyllotaxis. */
+function placeGroupMembers(members: CorpusModule[]): {
+  offsets: Array<{ dx: number; dy: number }>;
+  radius: number;
+} {
   const meanR =
-    sorted.reduce((sum, m) => sum + moduleRadius(m), 0) /
-    Math.max(sorted.length, 1);
-  const spacing = meanR * PHYLLOTAXIS_SPACING;
+    members.reduce((sum, m) => sum + moduleRadius(m), 0) /
+    Math.max(members.length, 1);
+  const spacing = meanR * GROUP_SPACING;
   const offsets: Array<{ dx: number; dy: number }> = [];
   let radius = 0;
-  sorted.forEach((_, index) => {
+  members.forEach((_, index) => {
     const r = spacing * Math.sqrt(index + 0.4);
     const theta = index * GOLDEN_ANGLE;
     offsets.push({ dx: Math.cos(theta) * r, dy: Math.sin(theta) * r });
     radius = Math.max(radius, r);
   });
-  return { offsets, radius: radius + meanR * 1.9 };
+  const rim = members.length === 1 ? GROUP_RIM_SINGLETON : GROUP_RIM;
+  return { offsets, radius: radius + meanR * rim };
+}
+
+/**
+ * Two-level placement: document groups on an area-faithful spiral
+ * (each group a mini-cluster of its members), so families read as
+ * distinct constellations inside the jurisdiction. The collision
+ * relaxation downstream guarantees the hard gaps; this pass gives it
+ * a start that already looks grouped. Deterministic.
+ */
+function placeClusterDots(modules: CorpusModule[]): PlacedClusterDots {
+  const byStem = new Map<string, CorpusModule[]>();
+  for (const module of modules) {
+    const stem = documentStem(module.target);
+    const list = byStem.get(stem);
+    if (list) list.push(module);
+    else byStem.set(stem, [module]);
+  }
+  const groups = [...byStem.entries()].map(([stem, members]) => {
+    const sorted = [...members].sort(clusterSort);
+    const placed = placeGroupMembers(sorted);
+    return {
+      stem,
+      members: sorted,
+      offsets: placed.offsets,
+      radius: placed.radius,
+      bucket: sorted[0]!.bucket,
+      linked: sorted.reduce((sum, m) => sum + m.linkedRuleCount, 0),
+    };
+  });
+  // Statutes core → policies rim (the field's reading order), then
+  // the most intricate families first, then stable.
+  groups.sort(
+    (a, b) =>
+      bucketRank(a.bucket) - bucketRank(b.bucket) ||
+      b.linked - a.linked ||
+      b.members.length - a.members.length ||
+      a.stem.localeCompare(b.stem),
+  );
+  // Area-faithful spiral for group centers: each next group lands at
+  // the radius its cumulative area earns, spread for clear water.
+  const orderedModules: CorpusModule[] = [];
+  const offsets: Array<{ dx: number; dy: number }> = [];
+  let radius = 0;
+  let cumArea = 0;
+  groups.forEach((group, index) => {
+    const rho =
+      index === 0
+        ? 0
+        : GROUP_SPREAD *
+          Math.sqrt(cumArea + 0.5 * group.radius * group.radius);
+    cumArea += group.radius * group.radius;
+    const theta = index * GOLDEN_ANGLE;
+    const cx = Math.cos(theta) * rho;
+    const cy = Math.sin(theta) * rho;
+    group.members.forEach((member, memberIndex) => {
+      const offset = group.offsets[memberIndex]!;
+      orderedModules.push(member);
+      offsets.push({ dx: cx + offset.dx, dy: cy + offset.dy });
+    });
+    radius = Math.max(radius, rho + group.radius);
+  });
+  return { modules: orderedModules, offsets, radius };
 }
 
 /**
@@ -370,7 +486,7 @@ function packClusters(
       const angle = step * GOLDEN_ANGLE;
       const x = Math.cos(angle) * t * aspect * 0.55;
       const y = Math.sin(angle) * t * 0.55;
-      const pad = 10;
+      const pad = 14;
       const collides = placed.some(
         (other) =>
           Math.hypot(other.x - x, other.y - y) <
@@ -449,11 +565,14 @@ export function buildFieldLayout(
   const clusters: FieldCluster[] = [];
   const moduleByDotIndex: CorpusModule[] = [];
   for (const cluster of packed) {
-    const { offsets } = placeClusterDots(cluster.modules);
-    const sortedModules = [...cluster.modules].sort(clusterSort);
+    // One placement, one order: the group-aware layout returns its
+    // own emission order, offsets index-aligned.
+    const { modules: orderedModules, offsets } = placeClusterDots(
+      cluster.modules,
+    );
     const cx = cluster.x * scale + offsetX;
     const cy = cluster.y * scale + offsetY;
-    sortedModules.forEach((module, index) => {
+    orderedModules.forEach((module, index) => {
       const offset = offsets[index]!;
       const highlightLabel = highlightByTarget.get(module.target) ?? null;
       const dust = isDustModule(module);
@@ -470,6 +589,7 @@ export function buildFieldLayout(
         structure: module.graph ?? null,
         dust,
         sourceOutline: hasSourceOutline(module),
+        docStem: documentStem(module.target),
         x: cx + offset.dx * scale,
         y: cy + offset.dy * scale,
         // Every dot survives the fit-shrink; highlighted doors get a
@@ -596,10 +716,22 @@ function applyImportAttraction(
 /** Minimum clear gap between two footprints, as a fraction of the
  *  SMALLER footprint's radius. */
 export const FOOTPRINT_MARGIN_RATIO = 0.15;
+/** …and as a fraction of the LARGER footprint: big, intricate
+ *  subtrees command clearance proportional to their own size, not
+ *  their smallest neighbor's. The margin is the max of the two. */
+export const FOOTPRINT_MARGIN_RATIO_MAX = 0.35;
 /** Extra field-unit clearance around dots that draw a subtree title
  *  (dotEarnsLabel), reserving room for the label band. */
 export const LABEL_CLEARANCE = 0.6;
+/** Extra clearance between dots of DIFFERENT document families —
+ *  same-stem dots stay snug; the space lives between groups. */
+export const GROUP_CLEARANCE = 1.2;
 const MAX_RESOLUTION_PASSES = 200;
+/** Group clearance is a PREFERENCE, enforced for this many passes —
+ *  in a wall-clamped dense cluster full clearance can be
+ *  unsatisfiable, and it must never stop the hard footprint
+ *  invariant from converging (or burn the whole pass budget). */
+const GROUP_CLEARANCE_PASSES = 40;
 
 export function collisionRadius(
   dot: Pick<FieldDot, "r" | "dust" | "headlineRule" | "sourceOutline">,
@@ -607,13 +739,23 @@ export function collisionRadius(
   return dot.r + (dotEarnsLabel(dot) ? LABEL_CLEARANCE : 0);
 }
 
-/** The center distance two dots must keep: both collision radii plus
- *  the margin on the smaller footprint. */
+/** The size-scaled margin between two footprints. */
+export function footprintMargin(ra: number, rb: number): number {
+  return Math.max(
+    FOOTPRINT_MARGIN_RATIO * Math.min(ra, rb),
+    FOOTPRINT_MARGIN_RATIO_MAX * Math.max(ra, rb),
+  );
+}
+
+/** The center distance two dots must keep: both collision radii,
+ *  the size-scaled margin, and — across document families — the
+ *  inter-group clearance. */
 export function requiredFootprintGap(a: FieldDot, b: FieldDot): number {
   return (
     collisionRadius(a) +
     collisionRadius(b) +
-    FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r)
+    footprintMargin(a.r, b.r) +
+    (a.docStem === b.docStem ? 0 : GROUP_CLEARANCE)
   );
 }
 
@@ -659,18 +801,31 @@ function resolveFootprintCollisions(dots: FieldDot[]): void {
   for (const dot of dots) {
     maxCollision = Math.max(maxCollision, collisionRadius(dot));
   }
-  const reach = maxCollision * (2 + FOOTPRINT_MARGIN_RATIO);
+  const reach =
+    maxCollision * (2 + FOOTPRINT_MARGIN_RATIO_MAX) + GROUP_CLEARANCE;
   // Precompute per-dot collision radii once — they never change.
   const cr = dots.map((dot) => collisionRadius(dot));
+  const stems = dots.map((dot) => dot.docStem);
+  let clearance = GROUP_CLEARANCE;
+  const needFor = (i: number, j: number): number => {
+    const a = dots[i]!;
+    const b = dots[j]!;
+    return (
+      cr[i]! +
+      cr[j]! +
+      footprintMargin(a.r, b.r) +
+      (stems[i] === stems[j] ? 0 : clearance)
+    );
+  };
   for (let pass = 0; pass < MAX_RESOLUTION_PASSES; pass += 1) {
+    if (pass === GROUP_CLEARANCE_PASSES) clearance = 0;
     // Collect, then push: the pair set is fixed per pass (grid walk
     // is already (i asc, j asc) deterministic).
     const pairs: number[] = [];
     forEachClosePair(dots, reach, (i, j) => {
       const a = dots[i]!;
       const b = dots[j]!;
-      const need =
-        cr[i]! + cr[j]! + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+      const need = needFor(i, j);
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       if (dx * dx + dy * dy < need * need - 1e-9) {
@@ -686,8 +841,7 @@ function resolveFootprintCollisions(dots: FieldDot[]): void {
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const dist = Math.hypot(dx, dy);
-      const need =
-        cr[i]! + cr[j]! + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+      const need = needFor(i, j);
       if (dist >= need) continue; // an earlier push already fixed it
       let ux: number;
       let uy: number;
@@ -728,18 +882,63 @@ export function countFootprintCollisions(dots: FieldDot[]): number {
   if (dots.length < 2) return 0;
   let maxR = 0;
   for (const dot of dots) maxR = Math.max(maxR, dot.r);
-  const reach = maxR * (2 + FOOTPRINT_MARGIN_RATIO);
+  const reach = maxR * (2 + FOOTPRINT_MARGIN_RATIO_MAX);
   let collisions = 0;
   forEachClosePair(dots, reach, (i, j) => {
     const a = dots[i]!;
     const b = dots[j]!;
-    const need =
-      a.r + b.r + FOOTPRINT_MARGIN_RATIO * Math.min(a.r, b.r);
+    const need = a.r + b.r + footprintMargin(a.r, b.r);
     if (Math.hypot(b.x - a.x, b.y - a.y) < need - 1e-6) {
       collisions += 1;
     }
   });
   return collisions;
+}
+
+/**
+ * The grouping, measurable: per dot, the edge-to-edge gap to its
+ * nearest SAME-family neighbor and its nearest OTHER-family neighbor
+ * (within the jurisdiction). Distinct constellations mean the median
+ * inter-group gap clearly exceeds the median intra-group gap.
+ * O(Σ cluster²) once per layout — cheap at census scale.
+ */
+export function groupSeparationStats(dots: FieldDot[]): {
+  intraMedian: number;
+  interMedian: number;
+} {
+  const byJurisdiction = new Map<string, FieldDot[]>();
+  for (const dot of dots) {
+    const list = byJurisdiction.get(dot.jurisdiction);
+    if (list) list.push(dot);
+    else byJurisdiction.set(dot.jurisdiction, [dot]);
+  }
+  const intra: number[] = [];
+  const inter: number[] = [];
+  for (const members of byJurisdiction.values()) {
+    for (let i = 0; i < members.length; i += 1) {
+      const a = members[i]!;
+      let nearestSame = Infinity;
+      let nearestOther = Infinity;
+      for (let j = 0; j < members.length; j += 1) {
+        if (j === i) continue;
+        const b = members[j]!;
+        const gap = Math.hypot(b.x - a.x, b.y - a.y) - a.r - b.r;
+        if (a.docStem === b.docStem) {
+          nearestSame = Math.min(nearestSame, gap);
+        } else {
+          nearestOther = Math.min(nearestOther, gap);
+        }
+      }
+      if (Number.isFinite(nearestSame)) intra.push(nearestSame);
+      if (Number.isFinite(nearestOther)) inter.push(nearestOther);
+    }
+  }
+  const median = (values: number[]): number => {
+    if (values.length === 0) return NaN;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)]!;
+  };
+  return { intraMedian: median(intra), interMedian: median(inter) };
 }
 
 /**
@@ -887,8 +1086,10 @@ export function shapeRendersNodes(pxRadius: number): boolean {
  * only the WHO and the WHEN. */
 
 /** On-screen footprint radius (CSS px) below which a subtree stays
- *  unlabeled — at far zoom, unlabeled is fine. */
-export const SUBTREE_LABEL_MIN_PX = 10;
+ *  unlabeled — at far zoom, unlabeled is fine. (8: the grouped
+ *  layout trades fit scale for clearance, so footprints run a shade
+ *  smaller at every zoom.) */
+export const SUBTREE_LABEL_MIN_PX = 8;
 
 export function dotEarnsLabel(
   dot: Pick<FieldDot, "dust" | "headlineRule" | "sourceOutline">,

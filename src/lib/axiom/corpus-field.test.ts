@@ -17,14 +17,19 @@ import {
   motifSpec,
   trueMotifSpec,
   NON_COMPILING_ROOTS,
-  PHYLLOTAXIS_SPACING,
+  GROUP_SPACING,
+  GROUP_CLEARANCE,
   PINNED_HIGHLIGHT_TARGETS,
   SUBTREE_LABEL_MIN_PX,
   FOOTPRINT_MARGIN_RATIO,
+  FOOTPRINT_MARGIN_RATIO_MAX,
   LABEL_CLEARANCE,
   collisionRadius,
   countFootprintCollisions,
+  documentStem,
   dotEarnsLabel,
+  footprintMargin,
+  groupSeparationStats,
   isCompositionTarget,
   fieldComposeHref,
   fieldStatLine,
@@ -886,7 +891,7 @@ describe("shapeRendersNodes (zoom-scaled simplification)", () => {
 describe("spaced-out field (footprints breathe)", () => {
   it("phyllotaxis spacing gives footprints clear separation", () => {
     // The constant itself: dots sit farther apart than edge-to-edge.
-    expect(PHYLLOTAXIS_SPACING).toBeGreaterThanOrEqual(2.5);
+    expect(GROUP_SPACING).toBeGreaterThanOrEqual(2.5);
     // Functionally: in a uniform cluster, nearest neighbors keep a
     // gap beyond their combined footprints (scale-invariant ratio).
     const uniform = Array.from({ length: 16 }, (_, i) =>
@@ -917,6 +922,18 @@ describe("hard no-overlap (footprints never intersect)", () => {
   it("the margin is real: ≥ 15% of the smaller footprint", () => {
     expect(FOOTPRINT_MARGIN_RATIO).toBeGreaterThanOrEqual(0.15);
     expect(LABEL_CLEARANCE).toBeGreaterThan(0);
+  });
+
+  it("big footprints command clearance proportional to THEIR size", () => {
+    expect(FOOTPRINT_MARGIN_RATIO_MAX).toBeGreaterThanOrEqual(0.35);
+    // A door (r 5) beside a speck (r 0.8): the margin scales with
+    // the door, not the speck.
+    expect(footprintMargin(5, 0.8)).toBeCloseTo(0.35 * 5);
+    expect(footprintMargin(0.8, 5)).toBeCloseTo(0.35 * 5);
+    // Two specks still get the small-side floor.
+    expect(footprintMargin(0.8, 0.8)).toBeCloseTo(0.35 * 0.8);
+    // The margin never drops below the 15%-of-smaller floor.
+    expect(footprintMargin(1, 1)).toBeGreaterThanOrEqual(0.15);
   });
 
   it("labeled dots reserve extra clearance for their title band", () => {
@@ -1053,6 +1070,94 @@ describe("subtree titles (labels under document-grouped subtrees)", () => {
     const eligible = layout.dots.filter((dot) => dotEarnsLabel(dot));
     expect(eligible.length).toBeGreaterThan(1000);
     expect(eligible.length).toBeLessThan(layout.dots.length);
+  });
+});
+
+describe("documentStem (source document families)", () => {
+  it("statutes group by title/section, subsections included", () => {
+    expect(documentStem("us:statutes/26/32")).toBe("us:statutes/26/32");
+    expect(documentStem("us:statutes/26/32/c/2")).toBe(
+      "us:statutes/26/32",
+    );
+    expect(documentStem("us:statutes/7/2014/e/6/A")).toBe(
+      "us:statutes/7/2014",
+    );
+    // A bare title stays itself.
+    expect(documentStem("us:statutes/26")).toBe("us:statutes/26");
+  });
+
+  it("regulations group by slug + integer part (dotted state sections too)", () => {
+    expect(documentStem("us:regulations/7-cfr/273/10/e/2")).toBe(
+      "us:regulations/7-cfr/273",
+    );
+    expect(documentStem("us-co:regulations/10-ccr-2506-1/4.410")).toBe(
+      "us-co:regulations/10-ccr-2506-1/4",
+    );
+    expect(documentStem("us-co:regulations/10-ccr-2506-1/4.207.2")).toBe(
+      "us-co:regulations/10-ccr-2506-1/4",
+    );
+    expect(documentStem("us:regulations/42-cfr/435/552")).toBe(
+      "us:regulations/42-cfr/435",
+    );
+  });
+
+  it("policies and manuals group by agency/program/document", () => {
+    expect(
+      documentStem(
+        "us-nc:policies/dhhs/fns/fns-340-deductions/page-2",
+      ),
+    ).toBe("us-nc:policies/dhhs/fns/fns-340-deductions");
+    expect(
+      documentStem(
+        "us-mo:manual/dss/snap/1115-000-00/1115-035-00/1115-035-25/block-1",
+      ),
+    ).toBe("us-mo:manual/dss/snap/1115-000-00");
+    expect(
+      documentStem(
+        "us-fl:policies/dcf/ess-program-policy-manual/appendix-a-1-x/page-1",
+      ),
+    ).toBe("us-fl:policies/dcf/ess-program-policy-manual/appendix-a-1-x");
+  });
+
+  it("malformed targets fall through unchanged", () => {
+    expect(documentStem("not-a-target")).toBe("not-a-target");
+    expect(documentStem("us:statutes")).toBe("us:statutes");
+  });
+
+  it("every laid-out dot carries its family stem", () => {
+    const layout = buildFieldLayout([
+      module({ target: "us:statutes/26/32/c" }),
+      module({ target: "us:statutes/26/32/j" }),
+    ]);
+    expect(
+      layout.dots.every((dot) => dot.docStem === "us:statutes/26/32"),
+    ).toBe(true);
+  });
+});
+
+describe("document constellations (inter-group spacing)", () => {
+  it("clearance and snugness are both real constants", () => {
+    expect(GROUP_CLEARANCE).toBeGreaterThan(0);
+    expect(GROUP_SPACING).toBeGreaterThan(2);
+  });
+
+  it("on the census, families sit clearly apart: median inter-group gap > median intra-group gap", () => {
+    const layout = buildFieldLayout(
+      filterViewModules(corpusSubtrees.modules),
+    );
+    const stats = groupSeparationStats(layout.dots);
+    expect(Number.isFinite(stats.intraMedian)).toBe(true);
+    expect(Number.isFinite(stats.interMedian)).toBe(true);
+    // Same-family dots stay snug; the space lives between families.
+    expect(stats.interMedian).toBeGreaterThan(stats.intraMedian);
+    // Meaningfully so — not a rounding artifact.
+    expect(stats.interMedian).toBeGreaterThan(stats.intraMedian * 1.5);
+  });
+
+  it("groupSeparationStats handles a family-less field", () => {
+    const stats = groupSeparationStats([]);
+    expect(Number.isNaN(stats.intraMedian)).toBe(true);
+    expect(Number.isNaN(stats.interMedian)).toBe(true);
   });
 });
 

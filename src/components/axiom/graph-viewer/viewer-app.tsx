@@ -850,16 +850,24 @@ export function GraphViewerApp({
             // the API's own message as the run-blocked state.
             let payload: { error?: string; message?: string | null } = {};
             try {
-              payload = await response.json();
+              payload = await response.clone().json();
             } catch {
               // Anonymous refusal — the styled state still shows.
             }
-            const blocked = new Error(
-              payload.message ??
-                "the engine declined this computation without a message.",
-            );
-            blocked.name = "RunBlockedError";
-            throw blocked;
+            // EXCEPT runtime_error: usually one poisoned trace name
+            // ("unknown derived output: …"), which chunk recovery can
+            // shed — return non-ok instead of blocking the whole run.
+            // If even the bare run refuses, the caller styles the
+            // blocked state from this same payload.
+            if (payload.error !== "runtime_error") {
+              const blocked = new Error(
+                payload.message ??
+                  "the engine declined this computation without a message.",
+              );
+              blocked.name = "RunBlockedError";
+              throw blocked;
+            }
+            return response;
           }
           // Certified serving refused the run (422 uncertified_node).
           // Probing chunks can't help — the ledger, not a bad name, is
@@ -928,6 +936,22 @@ export function GraphViewerApp({
         lastRunRequest.current = requestBody([]);
         const bare = await attempt([]);
         if (!bare.ok) {
+          if (bare.status === 422) {
+            // A runtime_error refusal that survived even the bare run:
+            // subtree-level after all — style it as the blocked state.
+            let payload: { message?: string | null } = {};
+            try {
+              payload = await bare.json();
+            } catch {
+              // Anonymous refusal.
+            }
+            const blocked = new Error(
+              payload.message ??
+                "the engine declined this computation without a message.",
+            );
+            blocked.name = "RunBlockedError";
+            throw blocked;
+          }
           throw new Error(
             bare.status === 502
               ? "The engine can't run this program right now — its compiled package is unavailable upstream."

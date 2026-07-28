@@ -130,7 +130,9 @@ export interface ComposedGraph {
 // package required). `focus` is a file or rule legal id, e.g.
 // "us:regulations/47-cfr/54/403" or "…#basic_lifeline_support_amount".
 export async function fetchComposedGraph(focus: string): Promise<ComposedGraph> {
-  const url = `${trimSlash(API_BASE)}/graph/compose?focus=${encodeURIComponent(focus)}`;
+  // `v` versions the browser cache: bump when the graph SHAPE changes
+  // (relation kinds, v2) so stale cached graphs can't poison runs.
+  const url = `${trimSlash(API_BASE)}/graph/compose?focus=${encodeURIComponent(focus)}&v=2`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`compose request failed (${response.status}): ${await response.text()}`);

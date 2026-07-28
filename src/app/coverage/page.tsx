@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
 import { CoverageHeader } from "@/components/coverage/header";
 import { StackHero } from "@/components/coverage/stack-hero";
-import { CoverageViews } from "@/components/coverage/coverage-views";
-import {
-  getProgramCoverage,
-  getRegistryStats,
-  type ProgramCoverage,
-  type RegistryStats,
-} from "@/lib/axiom/program-coverage";
+import { JurisdictionBreakdown } from "@/components/coverage/jurisdiction-breakdown";
 import {
   getCoverageData,
   type CoverageData,
@@ -25,11 +19,7 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 export default async function CoveragePage() {
-  const [data, programs, registry] = await Promise.all([
-    getCoverageData(),
-    getProgramCoverage(),
-    getRegistryStats(),
-  ]);
+  const data = await getCoverageData();
 
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">
@@ -45,24 +35,14 @@ export default async function CoveragePage() {
             Live counts are temporarily unavailable. Reload to try again.
           </Reveal>
         ) : (
-          <CoverageBody data={data} programs={programs} registry={registry} />
+          <CoverageBody data={data} />
         )}
       </div>
     </div>
   );
 }
 
-const numberFormat = new Intl.NumberFormat("en-US");
-
-function CoverageBody({
-  data,
-  programs,
-  registry,
-}: {
-  data: CoverageData;
-  programs: ProgramCoverage[];
-  registry: RegistryStats | null;
-}) {
+function CoverageBody({ data }: { data: CoverageData }) {
   return (
     <>
       {/* No Reveal wrapper here: its transform would break the
@@ -71,33 +51,8 @@ function CoverageBody({
         <StackHero data={data} />
       </div>
 
-      {/* The certified layer: only compiled packages carry the
-          signature — fixture previews don't count here. */}
-      {registry && (
-        <Reveal className="-mt-6 mb-20 text-center">
-          <p className="m-0 mx-auto max-w-[640px] font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            Of these,{" "}
-            <span className="font-mono text-[var(--color-accent)]">
-              {numberFormat.format(registry.compiledPrograms)}
-            </span>{" "}
-            programs are compiled into the signed runtime registry &mdash;{" "}
-            <span className="font-mono text-[var(--color-accent)]">
-              {numberFormat.format(registry.certifiedRules)}
-            </span>{" "}
-            certified rules,{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              executable today
-            </span>
-            .
-          </p>
-        </Reveal>
-      )}
-
       <Reveal as="section" className="mb-16">
-        <CoverageViews
-          jurisdictions={data.jurisdictions}
-          programs={programs}
-        />
+        <JurisdictionBreakdown jurisdictions={data.jurisdictions} />
       </Reveal>
     </>
   );

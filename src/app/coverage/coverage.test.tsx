@@ -1,21 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetCoverageData, mockGetProgramCoverage, mockGetRegistryStats } =
-  vi.hoisted(() => ({
-    mockGetCoverageData: vi.fn(),
-    mockGetProgramCoverage: vi.fn(),
-    mockGetRegistryStats: vi.fn(),
-  }));
+const { mockGetCoverageData } = vi.hoisted(() => ({
+  mockGetCoverageData: vi.fn(),
+}));
 
 vi.mock("@/lib/axiom/coverage-page", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getCoverageData: mockGetCoverageData,
-}));
-
-vi.mock("@/lib/axiom/program-coverage", () => ({
-  getProgramCoverage: mockGetProgramCoverage,
-  getRegistryStats: mockGetRegistryStats,
 }));
 
 import CoveragePage from "./page";
@@ -62,21 +54,9 @@ const DATA: CoverageData = {
   ],
 };
 
-const PROGRAMS = [
-  { family: "snap", jurisdictions: ["us-al", "us-co"] },
-  { family: "medicaid", jurisdictions: ["us-co"] },
-];
-
 describe("CoveragePage", () => {
   beforeEach(() => {
     mockGetCoverageData.mockReset();
-    mockGetProgramCoverage.mockReset();
-    mockGetProgramCoverage.mockResolvedValue(PROGRAMS);
-    mockGetRegistryStats.mockReset();
-    mockGetRegistryStats.mockResolvedValue({
-      compiledPrograms: 16,
-      certifiedRules: 3323,
-    });
   });
 
   it("renders an explicit unavailable state when data cannot load", async () => {
@@ -87,14 +67,13 @@ describe("CoveragePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the stack hero layers and the jurisdiction cards", async () => {
+  it("renders the stack hero layers and the jurisdiction breakdown", async () => {
     mockGetCoverageData.mockResolvedValue(DATA);
     render(await CoveragePage());
 
-    // The three pipeline layers with their live totals ("Provisions"
-    // also names a table column in the details fold).
+    // The three pipeline layers with their live totals.
     expect(screen.getByText("Source documents")).toBeInTheDocument();
-    expect(screen.getAllByText("Provisions").length).toBeGreaterThan(0);
+    expect(screen.getByText("Provisions")).toBeInTheDocument();
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
     // Hero totals come straight from the data layer — all
     // jurisdictions included.
@@ -109,26 +88,31 @@ describe("CoveragePage", () => {
       screen.getByText(/Machine-readable rules, each linked back/)
     ).toBeInTheDocument();
 
-    // Default view: by program — family rows with jurisdiction lists.
+    // Jurisdiction rows: full breakdown — documents by type,
+    // provisions, encodings. Corpus rows link to the browse tree.
+    const usRow = screen.getByText("US Federal").closest("a");
+    expect(usRow).toHaveAttribute("href", "/us");
     expect(
-      screen.getByRole("group", { name: /coverage view/i })
+      screen.getByText(
+        "331 documents — 225 statutes · 80 regulations · 24 guidance · 2 forms"
+      )
     ).toBeInTheDocument();
-    expect(screen.getByText("SNAP")).toBeInTheDocument();
-    expect(
-      screen.getByText("Supplemental Nutrition Assistance Program")
-    ).toBeInTheDocument();
-    // Real jurisdiction names, not slugs; unknown families humanize.
-    expect(screen.getByText("Alabama · Colorado")).toBeInTheDocument();
-    expect(screen.getByText("Medicaid")).toBeInTheDocument();
+    expect(screen.getByText("9,897 provisions")).toBeInTheDocument();
+    expect(screen.getByText("1,200 encodings")).toBeInTheDocument();
 
-    // Toggle to by jurisdiction: dense tiles, corpus rows linked,
-    // encodings-only rows unlinked and amber.
-    fireEvent.click(screen.getByRole("button", { name: /by jurisdiction/i }));
-    const usTile = screen.getByText("US Federal").closest("a");
-    expect(usTile).toHaveAttribute("href", "/us");
+    // Encodings-only rows: unlinked, amber, ingestion pending.
     expect(screen.getByText("Mississippi").closest("a")).toBeNull();
-    expect(screen.getAllByText("United Kingdom").length).toBeGreaterThan(0);
-    expect(screen.getByText(/figures are provisions/)).toBeInTheDocument();
+    expect(screen.getByText("300 encodings")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/corpus ingestion pending/).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/amber counts are encodings/)
+    ).toBeInTheDocument();
+
+    // No program concepts anywhere on the page.
+    expect(screen.queryByText(/by program/i)).toBeNull();
+    expect(screen.queryByText(/programs?\b/i)).toBeNull();
   });
 });
 

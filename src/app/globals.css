@@ -327,168 +327,85 @@ canvas[aria-hidden] {
   }
 }
 
-/* ── /coverage views: one toggle (by program / by jurisdiction),
-   two dense listings — everything observable without scrolling. */
-.cov-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 9px;
-  border: 1px solid var(--color-rule);
-  background: rgba(28, 25, 23, 0.05);
-}
-.cov-seg-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--f-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  padding: 0.36rem 0.72rem;
-  cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-}
-.cov-seg-btn:hover {
-  color: var(--color-ink);
-}
-.cov-seg-btn:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-.cov-seg-on,
-.cov-seg-on:hover {
-  color: var(--color-ink);
-  background: var(--color-paper-elevated);
-  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.14), 0 0 0 1px rgba(28, 25, 23, 0.04);
-}
-.cov-note,
+/* ── /coverage listing: one row per jurisdiction with its full
+   breakdown — documents by type, provisions, encodings. */
 .cov-legend {
+  margin-top: 0.9rem;
   font-family: var(--f-mono);
   font-size: 0.66rem;
   letter-spacing: 0.06em;
   color: var(--color-ink-muted);
 }
-.cov-legend {
-  margin-top: 0.9rem;
-}
-/* By program: typography-led cards — program name, its full title,
-   the jurisdiction count as a figure, and real jurisdiction names. */
-.cov-prog-grid {
+.cov-rows {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 0.6rem;
 }
-.cov-progcard {
+@media (max-width: 560px) {
+  .cov-rows {
+    grid-template-columns: 1fr;
+  }
+}
+.cov-row {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  height: 100%;
   border: 1px solid var(--color-rule);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--color-paper-elevated);
-  padding: 1.05rem 1.15rem 1rem;
-  transition: border-color 160ms ease;
+  padding: 0.7rem 0.9rem 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 150ms ease;
 }
-.cov-progcard:hover {
-  border-color: var(--color-rule-strong);
+a.cov-row:hover,
+a.cov-row:focus-visible {
+  border-color: var(--color-accent);
 }
-.cov-progcard-head {
+a.cov-row:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.cov-row-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
 }
-.cov-progcard-name {
+.cov-row-name {
   font-family: var(--f-body);
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   letter-spacing: -0.01em;
   color: var(--color-ink);
 }
-.cov-progcard-count {
+.cov-row-nums {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
-  font-family: var(--f-body);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  font-size: 1.05rem;
-  color: var(--color-accent);
-}
-.cov-progcard-count-label {
-  font-family: var(--f-mono);
-  font-weight: 400;
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
-.cov-progcard-full {
-  font-family: var(--f-serif);
-  font-style: italic;
-  font-size: 0.88rem;
-  color: var(--color-ink-muted);
-}
-.cov-progcard-where {
-  margin-top: 0.45rem;
-  font-family: var(--f-body);
-  font-size: 0.8rem;
-  line-height: 1.55;
-  color: var(--color-ink-secondary);
-}
-/* By jurisdiction: dense one-line tiles. */
-.cov-mini-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
-  gap: 6px;
-}
-.cov-mini {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border: 1px solid var(--color-rule);
-  border-radius: 6px;
-  background: var(--color-paper-elevated);
-  padding: 0.42rem 0.6rem;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 150ms ease;
-}
-a.cov-mini:hover,
-a.cov-mini:focus-visible {
-  border-color: var(--color-accent);
-}
-a.cov-mini:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-.cov-mini-name {
-  font-family: var(--f-body);
-  font-size: 0.78rem;
-  color: var(--color-ink);
+  gap: 0.9rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.cov-mini-num {
+.cov-row-num {
   font-family: var(--f-mono);
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   color: var(--color-ink-secondary);
 }
-.cov-mini-enc {
+.cov-row-num-enc {
   color: var(--color-accent);
+}
+.cov-row-docs {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  color: var(--color-ink-muted);
 }
 
 /* ── /coverage scrollytelling: the stack assembles on scroll.

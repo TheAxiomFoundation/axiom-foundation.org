@@ -22,6 +22,10 @@ import {
   fieldToView,
   filterUsModules,
   filterViewModules,
+  dotShapeSpec,
+  hasSourceOutline,
+  NODE_DETAIL_MIN_PX,
+  shapeRendersNodes,
   fitFieldTransform,
   highlightScore,
   isUsJurisdiction,
@@ -665,6 +669,8 @@ describe("mergeLiveSubtrees", () => {
       linkedRuleCount: DEFAULT_LIVE_LINKED_COUNT,
       importCount: 0,
       imports: [],
+      // Default sizes are presumption, not census knowledge.
+      presumed: true,
     });
   });
 
@@ -679,6 +685,121 @@ describe("mergeLiveSubtrees", () => {
     expect(merged.map((m) => m.target)).toEqual([
       "us:regulations/7-cfr/273/10",
     ]);
+  });
+});
+
+describe("hasSourceOutline (source-backed subtrees)", () => {
+  it("outlines census-linked modules only", () => {
+    expect(hasSourceOutline(module({ linkedRuleCount: 5 }))).toBe(true);
+    expect(hasSourceOutline(module({ linkedRuleCount: 0 }))).toBe(false);
+  });
+
+  it("treats an unknown linkage count as 0 — no outline", () => {
+    expect(hasSourceOutline({})).toBe(false);
+    expect(hasSourceOutline({ linkedRuleCount: undefined })).toBe(false);
+  });
+
+  it("live-merged presumed sizes never earn an outline", () => {
+    const merged = mergeLiveSubtrees(
+      [],
+      [{ target: "us:statutes/1/1", jurisdiction: "us", bucket: "statutes" }],
+    );
+    expect(merged[0]!.presumed).toBe(true);
+    expect(merged[0]!.linkedRuleCount).toBe(DEFAULT_LIVE_LINKED_COUNT);
+    expect(hasSourceOutline(merged[0]!)).toBe(false);
+    // Snapshot-known targets keep their census truth.
+    const known = mergeLiveSubtrees(
+      [module({ target: "us:statutes/1/1", linkedRuleCount: 7 })],
+      [{ target: "us:statutes/1/1", jurisdiction: "us", bucket: "statutes" }],
+    );
+    expect(hasSourceOutline(known[0]!)).toBe(true);
+  });
+
+  it("buildFieldLayout stamps the predicate onto every dot", () => {
+    const layout = buildFieldLayout([
+      module({ target: "linked", linkedRuleCount: 3 }),
+      module({ target: "bare", linkedRuleCount: 0 }),
+    ]);
+    const byTarget = new Map(layout.dots.map((d) => [d.target, d]));
+    expect(byTarget.get("linked")!.sourceOutline).toBe(true);
+    expect(byTarget.get("bare")!.sourceOutline).toBe(false);
+  });
+
+  it("discriminates on the real census: many outlined, never all", () => {
+    const kept = filterViewModules(corpusSubtrees.modules);
+    const outlined = kept.filter((m) => hasSourceOutline(m)).length;
+    expect(outlined).toBeGreaterThan(2000);
+    expect(outlined).toBeLessThan(kept.length);
+  });
+});
+
+describe("dotShapeSpec (the shape IS the module, at every LOD)", () => {
+  const cdcc = corpusSubtrees.modules.find(
+    (m) => m.target === "us:statutes/26/21",
+  )!;
+  const layout = buildFieldLayout([
+    cdcc,
+    module({ target: "plain", linkedRuleCount: 6 }),
+    module({ target: "dusty", linkedRuleCount: 0 }),
+  ]);
+  const dotOf = (target: string) =>
+    layout.dots.find((d) => d.target === target)!;
+
+  it("census-graph modules render their TRUE structure", () => {
+    const shape = dotShapeSpec(dotOf(cdcc.target));
+    expect(shape.kind).toBe("true");
+    if (shape.kind === "true") {
+      expect(shape.motif.nodes).toHaveLength(cdcc.graph!.n);
+      expect(shape.motif.edges.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("modules without census structure get the schematic — never a disc", () => {
+    const shape = dotShapeSpec(dotOf("plain"));
+    expect(shape.kind).toBe("schematic");
+    if (shape.kind === "schematic") {
+      expect(shape.nodes.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("dust stays dust", () => {
+    expect(dotShapeSpec(dotOf("dusty"))).toEqual({ kind: "dust" });
+  });
+
+  it("is zoom-free: the spec takes no camera input and is deterministic", () => {
+    // The signature admits no transform — the same dot yields the
+    // same shape whatever the camera does (far, mid, or motif zoom).
+    expect(dotShapeSpec(dotOf(cdcc.target))).toEqual(
+      dotShapeSpec(dotOf(cdcc.target)),
+    );
+    expect(dotShapeSpec(dotOf("plain"))).toEqual(dotShapeSpec(dotOf("plain")));
+  });
+
+  it("covers the whole view census without ever yielding a bare disc", () => {
+    const kept = filterViewModules(corpusSubtrees.modules);
+    const fieldLayout = buildFieldLayout(kept);
+    let trueShapes = 0;
+    let schematics = 0;
+    let dust = 0;
+    for (const dot of fieldLayout.dots) {
+      const shape = dotShapeSpec(dot);
+      if (shape.kind === "true") trueShapes += 1;
+      else if (shape.kind === "schematic") schematics += 1;
+      else dust += 1;
+    }
+    expect(trueShapes + schematics + dust).toBe(fieldLayout.dots.length);
+    // The census facts: 1,814 graph-bearing modules, all US-viewable.
+    expect(trueShapes).toBe(1814);
+    expect(schematics).toBeGreaterThan(0);
+  });
+});
+
+describe("shapeRendersNodes (zoom-scaled simplification)", () => {
+  it("draws node detail only at readable pixel sizes", () => {
+    expect(shapeRendersNodes(NODE_DETAIL_MIN_PX)).toBe(true);
+    expect(shapeRendersNodes(NODE_DETAIL_MIN_PX * 3)).toBe(true);
+    expect(shapeRendersNodes(NODE_DETAIL_MIN_PX - 0.01)).toBe(false);
+    expect(shapeRendersNodes(0)).toBe(false);
   });
 });
 

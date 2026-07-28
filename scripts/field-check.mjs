@@ -97,6 +97,71 @@ const hasSearch = await page.evaluate(() =>
 );
 console.log("hero search present:", hasSearch);
 
+// 4a) Shapes, not circles — at the FITTED overview every module is
+//     its graph shape: true census edges are on screen at far zoom,
+//     and only source-backed subtrees wear the outline ring (the
+//     count must discriminate: more than 500, fewer than all dots).
+const readFieldMetrics = () =>
+  page.evaluate(() => {
+    const field = document.querySelector('[data-testid="corpus-field"]');
+    return {
+      trueEdges: Number(field?.getAttribute("data-true-edges-drawn") ?? 0),
+      outlines: Number(field?.getAttribute("data-outlines-drawn") ?? 0),
+      dots: Number(field?.getAttribute("data-dots-drawn") ?? 0),
+      frameMs: Number(field?.getAttribute("data-frame-ms") ?? NaN),
+    };
+  });
+const farView = await readFieldMetrics();
+console.log(
+  "fitted view: true edges:",
+  farView.trueEdges,
+  "· outlines:",
+  farView.outlines,
+  "· dots drawn:",
+  farView.dots,
+);
+await page.screenshot({ path: "/tmp/shape-field.png" });
+
+// Frame-time storm: alternate small wheel zooms so every sample is a
+// fresh full redraw, then report the median/p95.
+const frameStorm = async (label, steps = 30, delta = 120) => {
+  const samples = [];
+  for (let i = 0; i < steps; i += 1) {
+    await page.mouse.wheel({ deltaY: i % 2 === 0 ? -delta : delta });
+    await new Promise((r) => setTimeout(r, 45));
+    const { frameMs } = await readFieldMetrics();
+    if (Number.isFinite(frameMs)) samples.push(frameMs);
+  }
+  samples.sort((a, b) => a - b);
+  const median = samples[Math.floor(samples.length / 2)] ?? NaN;
+  const p95 = samples[Math.min(Math.floor(samples.length * 0.95), samples.length - 1)] ?? NaN;
+  console.log(
+    `${label} frame ms — median: ${median?.toFixed(2)} · p95: ${p95?.toFixed(2)} (${samples.length} samples)`,
+  );
+  return { median, p95 };
+};
+const fieldBoxEarly = await (
+  await page.$('[data-testid="corpus-field"]')
+).boundingBox();
+await page.mouse.move(
+  fieldBoxEarly.x + fieldBoxEarly.width / 2,
+  fieldBoxEarly.y + fieldBoxEarly.height / 2,
+);
+const farFrames = await frameStorm("far zoom");
+// Pull the camera back to the fitted overview for the next checks.
+await page.evaluate(() =>
+  document.querySelector('[data-testid="corpus-field-reset"]')?.click(),
+);
+await page.waitForFunction(
+  () =>
+    Number(
+      document
+        .querySelector('[data-testid="corpus-field"]')
+        ?.getAttribute("data-zoom"),
+    ) === 1,
+  { timeout: 10000 },
+);
+
 // 5) Open world: wheel-zoom over the field changes the camera.
 const fieldBox = await (await page.$('[data-testid="corpus-field"]')).boundingBox();
 const zoomBefore = await page.evaluate(() =>
@@ -154,6 +219,8 @@ console.log(
   "· true edges drawn:",
   lodNear.trueEdges,
 );
+await page.screenshot({ path: "/tmp/shape-field-near.png" });
+const motifFrames = await frameStorm("motif zoom", 30, 200);
 
 // 5b) Drag pans the camera.
 const txBefore = await page.evaluate(() =>
@@ -230,9 +297,13 @@ console.log(
   runToggle ? "LIVE (root calculate supported)" : "feature-detected off",
 );
 
-// 8) Browser BACK returns to the field (viewer unmounts, camera
-//    pulls back out).
-await page.goBack();
+// 8) The viewer's own way back: the always-visible "← Overview"
+//    control returns to the field (viewer unmounts, camera pulls
+//    back out) — no browser chrome needed.
+await page.waitForSelector('[data-testid="back-to-overview"]', {
+  timeout: 30000,
+});
+await page.click('[data-testid="back-to-overview"]');
 await page.waitForFunction(
   () =>
     !document.querySelector(".graph-viewer-root") &&
@@ -249,7 +320,11 @@ await page.waitForFunction(
     ) === 1,
   { timeout: 10000 },
 );
-console.log("BACK returned to the field at:", backUrl, "(camera zoomed out)");
+console.log(
+  "← Overview returned to the field at:",
+  backUrl,
+  "(camera zoomed out)",
+);
 
 // 9) The field mirrors the corpus, live, US-only, one-node-filtered:
 //    with :8787 up the count sits above the filtered snapshot (2,892)
@@ -503,10 +578,28 @@ try {
 } catch {
   appRunToggle = false;
 }
+// The parity surface carries the same way back to the overview.
+const appBackButton = await appPage.evaluate(() =>
+  Boolean(document.querySelector('[data-testid="back-to-overview"]')),
+);
 console.log(
   "/app compose parity: viewer mounted · run affordance:",
   appRunToggle ? "LIVE" : "absent",
+  "· back-to-overview:",
+  appBackButton,
 );
+// Clicking it lands on the /app field launcher in place (the /app
+// route IS the launcher), with the deep-link param stripped.
+await appPage.click('[data-testid="back-to-overview"]');
+await appPage.waitForSelector(
+  '[data-testid="launcher-field"] [data-testid="corpus-field"]',
+  { timeout: 30000 },
+);
+const appBackState = await appPage.evaluate(() => ({
+  path: window.location.pathname,
+  composeGone: !new URL(window.location.href).searchParams.get("compose"),
+}));
+console.log("/app ← Overview:", JSON.stringify(appBackState));
 
 // 12) Honest run refusal: 42/1396a/a/10 compiles to nothing (engine
 //     #133) — the viewer must show the API's message, not silence.
@@ -524,6 +617,14 @@ console.log("run-blocked state:", blockedText.slice(0, 110) + "…");
 const blockedHonest =
   /execute yet/.test(blockedText) && blockedText.length > 60;
 
+console.log(
+  "frame-time report — far zoom median:",
+  farFrames.median?.toFixed(2),
+  "ms · motif zoom median:",
+  motifFrames.median?.toFixed(2),
+  "ms",
+);
+
 const pass =
   dotCount > 100 &&
   clusterCount > 5 &&
@@ -532,6 +633,11 @@ const pass =
   statAbsent &&
   legendAbsent &&
   hasSearch &&
+  // Shapes at far zoom: the fitted overview draws real structure,
+  // and the source outline discriminates.
+  farView.trueEdges > 200 &&
+  farView.outlines > 500 &&
+  farView.outlines < farView.dots &&
   zoomAfterWheel > zoomBefore &&
   lodNear.lod === "motif" &&
   lodNear.trueEdges >= 20 &&
@@ -565,9 +671,14 @@ const pass =
   factEchoed &&
   answeredLine &&
   appRunToggle &&
+  appBackButton &&
+  appBackState.path === "/app" &&
+  appBackState.composeGone &&
   blockedHonest;
 console.log(
-  pass ? "PASS: true mini-graphs, root-first compose, editable facts" : "FAIL",
+  pass
+    ? "PASS: true shapes with source outlines, overview button, editable facts"
+    : "FAIL",
 );
 await browser.close();
 process.exit(pass ? 0 : 1);

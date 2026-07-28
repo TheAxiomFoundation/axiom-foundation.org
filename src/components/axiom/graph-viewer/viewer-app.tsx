@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   InputEditContext,
   InteractiveRuleGraph,
@@ -42,7 +43,15 @@ import { CorpusField } from "@/components/axiom/corpus-field";
 import { loadCorpusModules } from "@/lib/axiom/corpus-live";
 import type { CorpusModule } from "@/lib/axiom/corpus-field";
 
-export function GraphViewerApp() {
+export function GraphViewerApp({
+  onBackToOverview,
+}: {
+  /** The landing field mounts the viewer in place over the zoomed
+   *  field — its Back-to-overview replays the host's own history
+   *  journey instead of navigating. Omitted on standalone routes. */
+  onBackToOverview?: () => void;
+} = {}) {
+  const router = useRouter();
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
   // The launcher's corpus: every subtree the mirror serves (live,
   // with the committed snapshot as ballast) — the picker searches
@@ -593,6 +602,61 @@ export function GraphViewerApp() {
     }
     veilFor(1800);
     dismissLauncher();
+  };
+
+  // ── Back to the overview ──
+  // /app IS the launcher's own route: "back to the overview" reopens
+  // the field launcher in place, deep-link params stripped so reload
+  // lands on the launcher too. (The graph state resets; the backdrop
+  // program re-defaults exactly like a cold arrival.)
+  const exitToLauncher = () => {
+    pendingOpeningRef.current = null;
+    setProgram(null);
+    setGraph(null);
+    setSelectedOutputs([]);
+    setComposeFocus(null);
+    setComposedFiles([]);
+    setComposedTruncated(false);
+    setComposedHiddenCount(0);
+    setComposeRunReady(null);
+    setRunBlocked(null);
+    setRunResult(null);
+    setRunError(null);
+    setRunPanelOpen(false);
+    setRequestedProgramKey(null);
+    setLensTrail([]);
+    setInspected(null);
+    setError(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("compose");
+      url.searchParams.delete("program");
+      url.searchParams.delete("focus");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // "Overview" IS the field — land there even if the visitor's
+    // persisted launcher preference is the list (their stored
+    // preference is untouched; the next cold arrival honors it).
+    setLauncherMode("field");
+    setLauncher("open");
+    launcherRef.current = "open";
+  };
+
+  // One control, three surfaces: the landing's in-place overlay pops
+  // its own history entry (the host passed the handler); standalone
+  // /axiom/graph client-navigates to the /axiom landing (the field);
+  // /app reopens its launcher in place.
+  const backToOverview = () => {
+    if (onBackToOverview) {
+      onBackToOverview();
+      return;
+    }
+    if (typeof window === "undefined") return;
+    if (/\/axiom\/graph$/.test(window.location.pathname)) {
+      router.push("/axiom");
+      return;
+    }
+    exitToLauncher();
   };
 
   const composedProgram = useMemo<ProgramRef | null>(() => {
@@ -1900,6 +1964,20 @@ export function GraphViewerApp() {
             planeFresh ? "plane-fresh" : ""
           }`}
         >
+          {/* Always-visible way back to the field overview — compose
+              AND program views (neither had one). Muted chrome, top
+              left so it never fights the top-right run controls. */}
+          {launcher === "closed" && (
+            <button
+              type="button"
+              className="back-to-overview"
+              data-testid="back-to-overview"
+              onClick={backToOverview}
+              title="Back to the corpus overview"
+            >
+              ← Overview
+            </button>
+          )}
           {running && (
             <div className="run-spinner" role="status" aria-label="Computing">
               <span className="run-spinner-ring" />

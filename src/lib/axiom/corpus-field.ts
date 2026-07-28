@@ -30,8 +30,13 @@ export interface CorpusModule {
   imports?: string[];
   /** The deepest root the subtree computes ("cdcc"). */
   headlineRule?: string;
-  /** Real structure for the motif LOD; absent → schematic fallback. */
+  /** Real structure for the module's shape; absent → schematic
+   *  fallback. */
   graph?: ModuleGraph;
+  /** True for live-mirror-merged modules the census hasn't sized yet:
+   *  their counts are defaults, not knowledge — they get no
+   *  source-backed outline. */
+  presumed?: boolean;
 }
 
 export interface CorpusSubtreesFile {
@@ -118,6 +123,18 @@ export function isDustModule(module: CorpusModule): boolean {
   return module.linkedRuleCount <= 0;
 }
 
+/**
+ * Does this module earn the enclosing outline that marks "this
+ * subtree has its source document"? Only census-KNOWN linkage counts:
+ * live-merged modules carry presumed default sizes (and a missing
+ * count reads as 0) — presumption is not source-backed knowledge.
+ */
+export function hasSourceOutline(
+  module: Partial<Pick<CorpusModule, "linkedRuleCount" | "presumed">>,
+): boolean {
+  return !module.presumed && (module.linkedRuleCount ?? 0) > 0;
+}
+
 /** ── Computed doors ──
  * The always-visible entry points are the corpus's own largest /
  * most intricate subtrees, computed from the census — never a
@@ -181,6 +198,8 @@ export interface FieldDot {
   structure: ModuleGraph | null;
   /** All-standalone module — rendered as faint dust. */
   dust: boolean;
+  /** Census-known linked rules → the source-backed outline ring. */
+  sourceOutline: boolean;
   x: number;
   y: number;
   r: number;
@@ -397,6 +416,7 @@ export function buildFieldLayout(
         headlineRule: module.headlineRule ?? null,
         structure: module.graph ?? null,
         dust,
+        sourceOutline: hasSourceOutline(module),
         x: cx + offset.dx * scale,
         y: cy + offset.dy * scale,
         // Every dot survives the fit-shrink; highlighted doors get a
@@ -520,11 +540,14 @@ export function hitTestDot(
   return best;
 }
 
-/* ── LOD: from dots to a plane of graphs ──
- * Far out the field stays dots; past FILAMENT_ZOOM the import
- * filaments fade in; past MOTIF_ZOOM each subtree renders as a small
- * schematic node-and-edge motif derived from its census counts.
- * (The REAL graph still loads only on entry.) */
+/* ── LOD: a plane of graphs at every zoom ──
+ * Every module renders as its graph SHAPE at every zoom — its true
+ * census structure where the census carries one, the schematic
+ * hub-and-satellites otherwise. There is no filled disc body at any
+ * LOD. Past FILAMENT_ZOOM the import filaments fade in; MOTIF_ZOOM
+ * remains as the "you can read individual structures now" label
+ * threshold (data-lod). (The REAL interactive graph still loads only
+ * on entry.) */
 export const FILAMENT_ZOOM = 1.5;
 export const MOTIF_ZOOM = 3.2;
 
@@ -601,6 +624,33 @@ export function trueMotifSpec(dot: FieldDot): TrueMotif | null {
   };
 }
 
+/* ── The one shape decision ──
+ * What a dot IS on the canvas, decided once for every zoom level:
+ * dust stays dust, a census graph is the module's true shape, and
+ * everything else gets the schematic. Deliberately zoom-free — the
+ * representation never changes with the camera, only how much node
+ * detail the renderer can afford to draw (shapeRendersNodes). */
+export type DotShape =
+  | { kind: "dust" }
+  | { kind: "true"; motif: TrueMotif }
+  | { kind: "schematic"; nodes: MotifNode[] };
+
+export function dotShapeSpec(dot: FieldDot): DotShape {
+  if (dot.dust) return { kind: "dust" };
+  const trueMotif = trueMotifSpec(dot);
+  if (trueMotif) return { kind: "true", motif: trueMotif };
+  return { kind: "schematic", nodes: motifSpec(dot) };
+}
+
+/** Below this on-screen radius (CSS px) a shape draws as edges only —
+ *  per-node dots would be sub-pixel noise AND a perf tax with ~2,900
+ *  shapes on screen. Never a filled circle either way. */
+export const NODE_DETAIL_MIN_PX = 5;
+
+export function shapeRendersNodes(pxRadius: number): boolean {
+  return pxRadius >= NODE_DETAIL_MIN_PX;
+}
+
 export interface CorpusFieldStats {
   subtrees: number;
   rules: number;
@@ -670,6 +720,9 @@ export function mergeLiveSubtrees(
         linkedRuleCount: DEFAULT_LIVE_LINKED_COUNT,
         importCount: 0,
         imports: [],
+        // Sizes above are defaults, not census knowledge — the dot is
+        // visible but earns no source-backed outline.
+        presumed: true,
       },
   );
 }

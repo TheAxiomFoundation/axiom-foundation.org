@@ -20,8 +20,8 @@ import {
   fitFieldTransform,
   IDENTITY_TRANSFORM,
   MOTIF_ZOOM,
-  motifSpec,
-  trueMotifSpec,
+  dotShapeSpec,
+  shapeRendersNodes,
   buildFieldLayout,
   computeFieldHighlights,
   fieldComposeHref,
@@ -237,6 +237,7 @@ export function CorpusField({
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !layout) return;
+    const frameStartedAt = performance.now();
     const parent = canvas.parentElement;
     const cssWidth = parent?.clientWidth ?? 0;
     const cssHeight = parent?.clientHeight ?? 0;
@@ -320,11 +321,18 @@ export function CorpusField({
       }
     }
 
-    // Past MOTIF_ZOOM each subtree renders as a mini graph — its
-    // TRUE census structure where available.
-    const motifStrength =
-      k >= MOTIF_ZOOM ? Math.min((k - MOTIF_ZOOM) / 1.2, 1) : 0;
+    // Every module IS its graph shape, at every LOD — the true census
+    // structure where the census carries it, the schematic
+    // hub-and-satellites otherwise. No filled circle bodies anywhere;
+    // a thin low-alpha ring outlines source-backed subtrees only.
+    // Below the node-detail pixel threshold a shape draws as a single
+    // stroked edge path (structure, never a disc).
     let trueEdgesDrawn = 0;
+    let outlinesDrawn = 0;
+    let dotsDrawn = 0;
+    // On-screen CSS px per field unit (dpr already lives in the
+    // canvas transform) — the node-detail switch is perceptual.
+    const pxPerUnit = (cssWidth / FIELD_WIDTH) * k;
 
     const margin = 10;
     for (const dot of layout.dots) {
@@ -336,6 +344,7 @@ export function CorpusField({
       ) {
         continue;
       }
+      dotsDrawn += 1;
       if (dot.dust) {
         // All-standalone modules: minimal faint dust, at every LOD.
         ctx.beginPath();
@@ -346,63 +355,74 @@ export function CorpusField({
         ctx.globalAlpha = 1;
         continue;
       }
-      // Past the motif threshold: the module's TRUE structure when
-      // the census carries it (precomputed layered layout — a draw
-      // swap, not layout work); the schematic hub-and-satellites
-      // only as fallback.
-      const trueMotif = motifStrength > 0 ? trueMotifSpec(dot) : null;
-      const motif =
-        motifStrength > 0 && !trueMotif ? motifSpec(dot) : [];
-      ctx.beginPath();
-      ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-      // The disc recedes as its motif takes over.
-      ctx.globalAlpha =
-        (dot.highlightLabel ? 0.95 : 0.72) * (1 - motifStrength * 0.72);
-      ctx.fillStyle = dot.color;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      if (trueMotif) {
-        ctx.globalAlpha = motifStrength;
-        ctx.lineWidth = 0.4 / k;
+      const shape = dotShapeSpec(dot);
+      const detailed = shapeRendersNodes(dot.r * pxPerUnit);
+      const alpha = dot.highlightLabel ? 0.95 : 0.8;
+      if (shape.kind === "true") {
+        const { nodes, edges } = shape.motif;
+        ctx.globalAlpha = alpha;
         ctx.strokeStyle = dot.color;
-        for (const [from, to] of trueMotif.edges) {
-          const a = trueMotif.nodes[from];
-          const b = trueMotif.nodes[to];
-          if (!a || !b) continue;
+        ctx.lineWidth = 0.4 / k;
+        if (edges.length > 0) {
+          // One path per module — a single stroke call keeps ~7.4k
+          // edges cheap at far zoom.
           ctx.beginPath();
-          ctx.moveTo(dot.x + a.dx, dot.y + a.dy);
-          ctx.lineTo(dot.x + b.dx, dot.y + b.dy);
+          for (const [from, to] of edges) {
+            const a = nodes[from];
+            const b = nodes[to];
+            if (!a || !b) continue;
+            ctx.moveTo(dot.x + a.dx, dot.y + a.dy);
+            ctx.lineTo(dot.x + b.dx, dot.y + b.dy);
+            trueEdgesDrawn += 1;
+          }
           ctx.stroke();
-          trueEdgesDrawn += 1;
         }
-        ctx.fillStyle = dot.color;
-        for (const node of trueMotif.nodes) {
-          ctx.beginPath();
-          ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
-          ctx.fill();
+        // Node dots only when they'd be real pixels — an edgeless
+        // graph keeps its nodes at any size (else it would vanish).
+        if (detailed || edges.length === 0) {
+          ctx.fillStyle = dot.color;
+          for (const node of nodes) {
+            ctx.beginPath();
+            ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         ctx.globalAlpha = 1;
-      } else if (motif.length > 0) {
-        const hubR = Math.max(dot.r * 0.2, 0.4);
-        ctx.globalAlpha = motifStrength;
-        ctx.lineWidth = 0.5 / k;
+      } else if (shape.kind === "schematic") {
+        ctx.globalAlpha = alpha * 0.9;
         ctx.strokeStyle = dot.color;
-        for (const node of motif) {
-          ctx.beginPath();
+        ctx.lineWidth = 0.5 / k;
+        ctx.beginPath();
+        for (const node of shape.nodes) {
           ctx.moveTo(dot.x, dot.y);
           ctx.lineTo(dot.x + node.dx, dot.y + node.dy);
-          ctx.stroke();
         }
-        ctx.fillStyle = dot.color;
-        for (const node of motif) {
+        ctx.stroke();
+        if (detailed) {
+          ctx.fillStyle = dot.color;
+          for (const node of shape.nodes) {
+            ctx.beginPath();
+            ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.beginPath();
-          ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
+          ctx.arc(dot.x, dot.y, Math.max(dot.r * 0.2, 0.4), 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.beginPath();
-        ctx.arc(dot.x, dot.y, hubR, 0, Math.PI * 2);
-        ctx.fill();
         ctx.globalAlpha = 1;
+      }
+      // The source-backed outline: census-linked subtrees wear a
+      // subtle enclosing ring at their footprint; presumed/unlinked
+      // modules stay bare shapes.
+      if (dot.sourceOutline) {
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 0.5 / k;
+        ctx.strokeStyle = dot.color;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        outlinesDrawn += 1;
       }
       if (dot.highlightLabel) {
         ctx.beginPath();
@@ -421,10 +441,15 @@ export function CorpusField({
       ctx.stroke();
     }
 
-    // Instrumentation: how many REAL structure edges this frame drew
-    // (the headless checks read it; humans read the pixels).
+    // Instrumentation: what this frame actually drew and how long it
+    // took (the headless checks read it; humans read the pixels).
     const host = containerRef.current;
-    if (host) host.dataset.trueEdgesDrawn = String(trueEdgesDrawn);
+    if (host) {
+      host.dataset.trueEdgesDrawn = String(trueEdgesDrawn);
+      host.dataset.outlinesDrawn = String(outlinesDrawn);
+      host.dataset.dotsDrawn = String(dotsDrawn);
+      host.dataset.frameMs = (performance.now() - frameStartedAt).toFixed(2);
+    }
   }, [layout, hovered, transform]);
 
   useEffect(() => {
@@ -875,9 +900,14 @@ export function CorpusField({
           style={{ opacity: overlayShown ? 1 : 0 }}
         >
           {/* No extra top padding: the viewer spaces itself below the
-              fixed nav exactly like the standalone /axiom/graph page. */}
+              fixed nav exactly like the standalone /axiom/graph page.
+              Back-to-overview replays the field's own BACK journey —
+              the pushState above owns this history entry. */}
           <div className="h-full">
-            <ComposeViewer key={openTarget} />
+            <ComposeViewer
+              key={openTarget}
+              onBackToOverview={() => window.history.back()}
+            />
           </div>
         </div>
       )}

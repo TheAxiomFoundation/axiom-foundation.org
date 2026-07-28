@@ -3714,6 +3714,30 @@
   color: var(--color-ink);
 }
 
+/* Back to the field overview — muted chip, stage top-left (the
+   run controls own the top-right). */
+.graph-viewer-root .back-to-overview {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 16;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
+  padding: 5px 12px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(28, 25, 23, 0.35);
+}
+.graph-viewer-root .back-to-overview:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover, #b45309);
+}
+
 /* The isolated-node filter's honesty note, stage corner. */
 .graph-viewer-root .standalone-note {
   position: absolute;

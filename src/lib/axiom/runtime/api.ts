@@ -319,6 +319,26 @@ export async function runCalculateRoot(request: {
           return { kind: "refused", code: "refused", message: null };
         }
       }
+      // A structured engine error (5xx with the API's envelope, e.g.
+      // runtime_error "missing input …") is a state to present with the
+      // API's own words — hiding the run affordance behind a bare 502
+      // buried exactly the message that explains the blocked run.
+      try {
+        const failure = (await response.json()) as {
+          status?: string;
+          error?: { code?: string; message?: string };
+        };
+        if (failure.status === "error" && failure.error?.code) {
+          return {
+            kind: "refused",
+            code: failure.error.code,
+            message: failure.error.message ?? null,
+          };
+        }
+      } catch {
+        // Not the API's envelope (gateway HTML, truncation) — a real
+        // transport failure.
+      }
       return { kind: "failed" };
     }
     const envelope = (await response.json()) as {

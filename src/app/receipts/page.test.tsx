@@ -1,0 +1,42 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import ReceiptsPage from "./page";
+
+describe("receipts evidence page", () => {
+  it("renders the receipts headline and the package cross-link", () => {
+    render(<ReceiptsPage />);
+
+    expect(
+      screen.getByRole("heading", { name: /we show our receipts/i })
+    ).toBeInTheDocument();
+
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("/receipt");
+  });
+
+  it("links every receipt row to a public surface", () => {
+    render(<ReceiptsPage />);
+
+    for (const name of [
+      "The receipt package",
+      "Releases",
+      "Encodings",
+      "Validation",
+      "Certification",
+    ]) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
+
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain(
+      "https://github.com/TheAxiomFoundation/axiom-rules-engine/releases"
+    );
+    expect(hrefs).toContain("https://github.com/TheAxiomFoundation/rulespec-us");
+    expect(hrefs).toContain("https://github.com/TheAxiomFoundation/axiom-oracles");
+  });
+});

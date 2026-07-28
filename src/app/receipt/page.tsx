@@ -14,10 +14,18 @@ export const metadata: Metadata = {
 // own usage appears once, as provenance. Copy stays close to the package
 // README (the claims are its claims); no version numbers on the page so
 // nothing drifts between releases.
-const provides = [
+const provides: { mod: string; what: string; pending?: boolean }[] = [
   {
-    mod: "receipt.chain",
+    mod: "receipt.release_chain",
     what: "Append-only hash-chained manifests over record sets: enumerated genesis, content-addressed links, immutable-prefix verification.",
+  },
+  {
+    mod: "receipt.canonical",
+    what: "ECMAScript-compatible canonical JSON: one byte stream per record, so producer and verifier hash and sign identical bytes.",
+  },
+  {
+    mod: "receipt.append_gate",
+    what: "Append-only enforcement for governed record trees: a candidate state must extend committed history exactly, verified against trust anchors in the consumer's own code.",
   },
   {
     mod: "receipt.tsa",
@@ -33,10 +41,12 @@ const provides = [
   },
   {
     mod: "receipt.ratchet",
+    pending: true,
     what: "Shrink-only exception registries recomputed from live state; an excused failure that starts passing is an error until removed.",
   },
   {
     mod: "receipt.chronology",
+    pending: true,
     what: "Record-vs-event ordering tiers: does witnessed time prove the record existed before the event it predicts or observes?",
   },
 ];
@@ -89,7 +99,8 @@ export default function ReceiptPage() {
               className="text-[var(--color-accent)] hover:underline"
             >
               github.com/TheAxiomFoundation/receipt
-            </a>
+            </a>{" "}
+            · <code>receipt verify</code> lands with the corpus adoption
           </p>
         </Reveal>
 
@@ -103,6 +114,11 @@ export default function ReceiptPage() {
               >
                 <p className="m-0 font-mono text-[0.85rem] text-[var(--color-ink)]">
                   {item.mod}
+                  {item.pending && (
+                    <span className="ml-2 font-mono text-[0.62rem] uppercase tracking-wider text-[var(--color-ink-muted)]">
+                      pending extraction
+                    </span>
+                  )}
                 </p>
                 <p className="m-0 font-body text-[0.92rem] leading-relaxed text-[var(--color-ink-secondary)]">
                   {item.what}

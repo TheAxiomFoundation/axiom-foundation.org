@@ -23,7 +23,7 @@ function chainFor(
   mock.mockImplementation(() => {
     const result = perCall(call++);
     const self: Record<string, unknown> = {};
-    for (const method of ["select", "is", "eq", "order", "range", "limit"]) {
+    for (const method of ["select", "is", "eq", "not", "order", "range", "limit"]) {
       self[method] = () => self;
     }
     self.then = (

@@ -132,13 +132,29 @@ async function loadRootDocCounts(
   return counts;
 }
 
-/** Encoding-file counts per jurisdiction from the mirror. */
+/** Encoding-file counts per jurisdiction from the mirror. Two classes
+ *  are excluded from the census:
+ *  - Composed pipeline files ("*_pipeline.yaml", snake_case vs the
+ *    kebab-case corpus-derived names): they stitch existing rules into
+ *    end-to-end oracle-comparison pipelines rather than encode
+ *    provisions.
+ *  - Deferred files ("status: deferred"): grounded placeholders that
+ *    declare outputs they could NOT encode yet — real files, but not
+ *    finished encodings, so they'd inflate the count.
+ *  - Program packages (bucket "programs") and EUROMOD bridges:
+ *    assemblies over encoded rules for runtime/oracle surfaces, not
+ *    provision encodings themselves. */
 async function loadEncodingCounts(): Promise<Map<string, number> | null> {
   const counts = new Map<string, number>();
   for (let page = 0; page < MAX_SWEEP_PAGES; page++) {
     const { data, error } = await supabaseEncodings
       .from("rulespec_files")
       .select("jurisdiction")
+      // \_ keeps the underscore literal (LIKE treats bare _ as "any").
+      .not("file_path", "ilike", "%\\_pipeline.yaml")
+      .not("raw_yaml", "ilike", "%status: deferred%")
+      .not("bucket", "eq", "programs")
+      .not("file_path", "ilike", "%euromod%")
       .order("jurisdiction", { ascending: true })
       .range(page * SWEEP_PAGE_SIZE, (page + 1) * SWEEP_PAGE_SIZE - 1);
     if (error) return null;

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockGetCoverageData } = vi.hoisted(() => ({
@@ -83,11 +83,13 @@ describe("CoveragePage", () => {
     expect(screen.getByText("Source documents")).toBeInTheDocument();
     expect(screen.getByText("Provisions")).toBeInTheDocument();
     expect(screen.getByText("RuleSpec encodings")).toBeInTheDocument();
-    // Hero totals come straight from the data layer — all
-    // jurisdictions included.
-    expect(screen.getByText("405")).toBeInTheDocument();
-    expect(screen.getByText("58,624")).toBeInTheDocument();
-    expect(screen.getByText("4,875")).toBeInTheDocument();
+    // Hero totals are recomputed over the US scope — sums of the US
+    // rows, not the data layer's global figures.
+    expect(screen.getByText("332")).toBeInTheDocument();
+    expect(screen.getByText("10,109")).toBeInTheDocument();
+    expect(screen.getByText("1,500")).toBeInTheDocument();
+    expect(screen.queryByText("405")).toBeNull();
+    expect(screen.queryByText("58,624")).toBeNull();
     // Each layer carries its serif support line.
     expect(
       screen.getByText(/Statutes, regulations, and agency guidance/)
@@ -110,33 +112,16 @@ describe("CoveragePage", () => {
     expect(screen.getByText("Mississippi").closest("a")).toBeNull();
     expect(screen.getByText("300 encodings")).toBeInTheDocument();
 
-    // Rows sort alphabetically regardless of the data-layer order.
-    // (Scoped to row names — the filter buttons repeat country text.)
+    // Only US jurisdictions are public for now — non-US rows are held
+    // back, and a single shown country means no filter row at all.
     const names = Array.from(
       document.querySelectorAll<HTMLElement>(".cov-rows .cov-row-name")
     ).map((el) => el.textContent);
-    expect(names).toEqual([
-      "Mississippi",
-      "Oklahoma",
-      "United Kingdom",
-      "US Federal",
-    ]);
-
-    // The country filter narrows the listing; All restores it.
+    expect(names).toEqual(["Mississippi", "Oklahoma", "US Federal"]);
+    expect(screen.queryByText("United Kingdom")).toBeNull();
     expect(
-      screen.getByRole("group", { name: /filter by country/i })
-    ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: "United Kingdom" })
-    );
-    expect(screen.queryByText("US Federal")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "United States" }));
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
-    expect(
-      document.querySelector(".cov-rows .cov-row-name")?.textContent
-    ).toBe("Mississippi");
-    fireEvent.click(screen.getByRole("button", { name: "All" }));
-    expect(screen.getByText("US Federal")).toBeInTheDocument();
+      screen.queryByRole("group", { name: /filter by country/i })
+    ).toBeNull();
 
     // No program concepts anywhere on the page.
     expect(screen.queryByText(/by program/i)).toBeNull();

@@ -18,8 +18,40 @@ export const metadata: Metadata = {
 // when a release is activated or the encodings mirror syncs.
 export const revalidate = 600;
 
+/** The public census is US-scoped for now. The data layer keeps
+ *  counting everything, so widening back is deleting this function.
+ *  Totals are recomputed from the scoped rows — the hero figures and
+ *  the listing beneath can never disagree. */
+function scopeToUs(data: CoverageData): CoverageData {
+  const jurisdictions = data.jurisdictions.filter(
+    (j) => j.slug === "us" || j.slug.startsWith("us-")
+  );
+  const docTypeTotals = new Map<string, number>();
+  for (const j of jurisdictions) {
+    for (const [type, count] of Object.entries(j.documents)) {
+      docTypeTotals.set(type, (docTypeTotals.get(type) ?? 0) + count);
+    }
+  }
+  return {
+    totals: {
+      jurisdictions: jurisdictions.length,
+      documents: jurisdictions.reduce((s, j) => s + j.documentTotal, 0),
+      provisions: jurisdictions.reduce((s, j) => s + j.provisionCount, 0),
+      encodingFiles: jurisdictions.reduce(
+        (s, j) => s + j.encodingFileCount,
+        0
+      ),
+    },
+    docTypeTotals: [...docTypeTotals.entries()]
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count),
+    jurisdictions,
+  };
+}
+
 export default async function CoveragePage() {
-  const data = await getCoverageData();
+  const global = await getCoverageData();
+  const data = global === null ? null : scopeToUs(global);
 
   return (
     <div className="relative z-1 pt-32 pb-24 px-8">

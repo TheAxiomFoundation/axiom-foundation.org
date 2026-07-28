@@ -93,6 +93,18 @@ export default async function DemosPage({ searchParams }: PageProps) {
               <ArrowRightIcon className="w-4 h-4" />
             </a>
           </div>
+          {/* Axiom local lives on its own surface, outside the shell. */}
+          <p className="m-0 mt-5 text-center font-body text-[0.95rem] text-[var(--color-ink-muted)] leading-relaxed">
+            Also running:{" "}
+            <a
+              href="https://axiom.org/local"
+              className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] no-underline"
+            >
+              Axiom local
+            </a>{" "}
+            &mdash; statutes compiled to WebAssembly, determinations rendered
+            in your browser.
+          </p>
         </Reveal>
 
         <Reveal className="mt-20 pt-10 border-t border-[var(--color-rule-subtle)] text-center">

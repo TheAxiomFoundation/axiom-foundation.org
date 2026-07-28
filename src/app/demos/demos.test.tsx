@@ -20,6 +20,10 @@ describe('DemosPage', () => {
       'href',
       'https://app.axiom-foundation.org',
     )
+    // Axiom local link rides below the gallery.
+    expect(
+      screen.getByRole('link', { name: /axiom local/i }),
+    ).toHaveAttribute('href', 'https://axiom.org/local')
   })
 
   it('passes valid ?d= deep links through to the shell', async () => {

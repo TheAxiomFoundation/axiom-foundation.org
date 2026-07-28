@@ -54,37 +54,43 @@ export function JurisdictionBreakdown({
 
   return (
     <div>
-      <div
-        className="cov-filter mb-6"
-        role="group"
-        aria-label="Filter by country"
-      >
-        <button
-          type="button"
-          onClick={() => setCountry(null)}
-          className={
-            country === null ? "cov-filter-btn cov-filter-on" : "cov-filter-btn"
-          }
-          aria-pressed={country === null}
+      {/* One country needs no filter — the row returns by itself when
+          more countries are shown again. */}
+      {countries.length > 1 && (
+        <div
+          className="cov-filter mb-6"
+          role="group"
+          aria-label="Filter by country"
         >
-          All
-        </button>
-        {countries.map(([code, label]) => (
           <button
-            key={code}
             type="button"
-            onClick={() => setCountry(code)}
+            onClick={() => setCountry(null)}
             className={
-              country === code
+              country === null
                 ? "cov-filter-btn cov-filter-on"
                 : "cov-filter-btn"
             }
-            aria-pressed={country === code}
+            aria-pressed={country === null}
           >
-            {label}
+            All
           </button>
-        ))}
-      </div>
+          {countries.map(([code, label]) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => setCountry(code)}
+              className={
+                country === code
+                  ? "cov-filter-btn cov-filter-on"
+                  : "cov-filter-btn"
+              }
+              aria-pressed={country === code}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <ul className="cov-rows">
         {rows.map((j) => (

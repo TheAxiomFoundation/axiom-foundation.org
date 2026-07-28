@@ -3,14 +3,26 @@ import {
   buildFieldLayout,
   bucketColor,
   BUCKET_COLORS,
+  clampFieldTransform,
+  computeFieldHighlights,
   corpusFieldStats,
   dotRadius,
   FIELD_HEIGHT,
-  FIELD_HIGHLIGHTS,
   FIELD_WIDTH,
   fieldComposeHref,
   fieldStatLine,
+  fieldToView,
+  highlightScore,
+  HIGHLIGHT_COUNT,
+  HIGHLIGHT_MAX_PER_JURISDICTION,
   hitTestDot,
+  IDENTITY_TRANSFORM,
+  interpolateTransform,
+  MAX_FIELD_ZOOM,
+  panField,
+  viewToField,
+  zoomFieldAt,
+  zoomTransformForDot,
   type CorpusModule,
 } from "./corpus-field";
 import corpusSubtrees from "./corpus-subtrees.json";
@@ -111,15 +123,28 @@ describe("buildFieldLayout", () => {
     }
   });
 
-  it("marks every highlighted entry point with its label and a floor size", () => {
-    const layout = buildFieldLayout(corpusSubtrees.modules);
+  it("marks the provided highlight targets with their labels and a floor size", () => {
+    const labels = new Map(
+      computeFieldHighlights(corpusSubtrees.modules).map((m) => [
+        m.target,
+        `door:${m.target}`,
+      ]),
+    );
+    const layout = buildFieldLayout(corpusSubtrees.modules, labels);
     const highlighted = layout.dots.filter((dot) => dot.highlightLabel);
-    expect(highlighted).toHaveLength(FIELD_HIGHLIGHTS.length);
-    for (const entry of FIELD_HIGHLIGHTS) {
-      const dot = layout.dots.find((d) => d.target === entry.target)!;
-      expect(dot.highlightLabel).toBe(entry.label);
+    expect(highlighted).toHaveLength(labels.size);
+    for (const [target, label] of labels) {
+      const dot = layout.dots.find((d) => d.target === target)!;
+      expect(dot.highlightLabel).toBe(label);
       expect(dot.r).toBeGreaterThanOrEqual(5);
     }
+  });
+
+  it("marks nothing when no highlight map is given", () => {
+    const layout = buildFieldLayout(corpusSubtrees.modules.slice(0, 50));
+    expect(layout.dots.every((dot) => dot.highlightLabel === null)).toBe(
+      true,
+    );
   });
 
   it("colors dots by bucket", () => {
@@ -136,6 +161,140 @@ describe("buildFieldLayout", () => {
     const a = buildFieldLayout(corpusSubtrees.modules.slice(0, 400));
     const b = buildFieldLayout(corpusSubtrees.modules.slice(0, 400));
     expect(a).toEqual(b);
+  });
+});
+
+describe("computeFieldHighlights", () => {
+  it("scores rules + 2×imports", () => {
+    expect(
+      highlightScore(module({ ruleCount: 10, importCount: 4 })),
+    ).toBe(18);
+  });
+
+  it("picks the top scorers from the real census, in score order", () => {
+    const picked = computeFieldHighlights(corpusSubtrees.modules);
+    expect(picked).toHaveLength(HIGHLIGHT_COUNT);
+    for (let i = 1; i < picked.length; i += 1) {
+      // Later doors never outscore earlier ones (per-jurisdiction
+      // dedupe may skip, never reorder).
+      expect(highlightScore(picked[i]!)).toBeLessThanOrEqual(
+        highlightScore(picked[i - 1]!),
+      );
+    }
+    // The overall top scorer is always a door.
+    const best = [...corpusSubtrees.modules].sort(
+      (a, b) => highlightScore(b) - highlightScore(a),
+    )[0]!;
+    expect(picked.map((m) => m.target)).toContain(best.target);
+  });
+
+  it("caps doors per jurisdiction so one corpus can't monopolize", () => {
+    const picked = computeFieldHighlights(corpusSubtrees.modules);
+    const perJurisdiction = new Map<string, number>();
+    for (const m of picked) {
+      perJurisdiction.set(
+        m.jurisdiction,
+        (perJurisdiction.get(m.jurisdiction) ?? 0) + 1,
+      );
+    }
+    for (const count of perJurisdiction.values()) {
+      expect(count).toBeLessThanOrEqual(HIGHLIGHT_MAX_PER_JURISDICTION);
+    }
+    // The cap actually bites: an uncapped pick differs.
+    const uncapped = computeFieldHighlights(
+      corpusSubtrees.modules,
+      HIGHLIGHT_COUNT,
+      Infinity,
+    );
+    expect(uncapped.map((m) => m.target)).not.toEqual(
+      picked.map((m) => m.target),
+    );
+  });
+
+  it("is deterministic and never returns more than asked", () => {
+    const a = computeFieldHighlights(corpusSubtrees.modules, 5, 2);
+    const b = computeFieldHighlights(corpusSubtrees.modules, 5, 2);
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(5);
+  });
+});
+
+describe("field transform math", () => {
+  it("round-trips field ↔ view coordinates", () => {
+    const t = { k: 3, tx: -420, ty: -120 };
+    const view = fieldToView(t, 250, 100);
+    const back = viewToField(t, view.x, view.y);
+    expect(back.x).toBeCloseTo(250);
+    expect(back.y).toBeCloseTo(100);
+  });
+
+  it("clamps zoom into [1, MAX] and keeps the field covering the window", () => {
+    expect(clampFieldTransform({ k: 0.2, tx: 50, ty: 50 })).toEqual(
+      IDENTITY_TRANSFORM,
+    );
+    const clamped = clampFieldTransform({ k: 99, tx: 5, ty: -1e9 });
+    expect(clamped.k).toBe(MAX_FIELD_ZOOM);
+    // tx ≤ 0 (no bare paper on the left), and the field's right edge
+    // still reaches the window's right edge.
+    expect(clamped.tx).toBeLessThanOrEqual(0);
+    expect(clamped.tx).toBeGreaterThanOrEqual(FIELD_WIDTH * (1 - clamped.k));
+    expect(clamped.ty).toBe(FIELD_HEIGHT * (1 - clamped.k));
+  });
+
+  it("zoomFieldAt keeps the anchor point stationary", () => {
+    const t = { k: 2, tx: -300, ty: -80 };
+    const anchorView = { x: 400, y: 200 };
+    const before = viewToField(t, anchorView.x, anchorView.y);
+    const zoomed = zoomFieldAt(t, 1.7, anchorView.x, anchorView.y);
+    const after = viewToField(zoomed, anchorView.x, anchorView.y);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+    expect(zoomed.k).toBeCloseTo(3.4);
+  });
+
+  it("zooming out from the overview is a no-op", () => {
+    const zoomed = zoomFieldAt(IDENTITY_TRANSFORM, 0.5, 500, 220);
+    expect(zoomed).toEqual(IDENTITY_TRANSFORM);
+  });
+
+  it("panField translates and clamps at the world edge", () => {
+    const t = { k: 2, tx: -500, ty: -200 };
+    const panned = panField(t, 60, -30);
+    expect(panned).toEqual({ k: 2, tx: -440, ty: -230 });
+    // Cannot pan past the left edge of the world.
+    const pinned = panField(t, 1e6, 0);
+    expect(pinned.tx).toBe(0);
+  });
+
+  it("zoomTransformForDot centers the dot and frames its cluster", () => {
+    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const dot = layout.dots.find((d) => d.jurisdiction === "us-ny")!;
+    const t = zoomTransformForDot(layout, dot);
+    const view = fieldToView(t, dot.x, dot.y);
+    // Centered (up to the covering clamp near world edges).
+    expect(Math.abs(view.x - FIELD_WIDTH / 2)).toBeLessThanOrEqual(
+      FIELD_WIDTH / 2,
+    );
+    expect(t.k).toBeGreaterThanOrEqual(2.5);
+    expect(t.k).toBeLessThanOrEqual(MAX_FIELD_ZOOM);
+    // The cluster roughly fills the window: its diameter at this zoom
+    // is within the window height's magnitude.
+    const cluster = layout.clusters.find(
+      (c) => c.jurisdiction === "us-ny",
+    )!;
+    expect(cluster.r * 2 * t.k).toBeLessThanOrEqual(FIELD_HEIGHT * 1.2);
+  });
+
+  it("interpolateTransform hits its endpoints and stays clamped between", () => {
+    const from = IDENTITY_TRANSFORM;
+    const to = { k: 8, tx: -3000, ty: -1400 };
+    expect(interpolateTransform(from, to, 0)).toEqual(from);
+    expect(interpolateTransform(from, to, 1)).toEqual(to);
+    const mid = interpolateTransform(from, to, 0.5);
+    expect(mid.k).toBeGreaterThan(1);
+    expect(mid.k).toBeLessThan(8);
+    expect(mid.tx).toBeLessThanOrEqual(0);
+    expect(mid.tx).toBeGreaterThanOrEqual(FIELD_WIDTH * (1 - mid.k));
   });
 });
 

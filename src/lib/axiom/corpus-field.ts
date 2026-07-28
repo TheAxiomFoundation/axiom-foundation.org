@@ -61,30 +61,40 @@ export function dotRadius(ruleCount: number): number {
   return Math.min(6.5, 1.15 + Math.sqrt(Math.max(ruleCount, 0)) * 0.5);
 }
 
-/** The always-visible doors into the field: real, runnable law. */
-export const FIELD_HIGHLIGHTS: ReadonlyArray<{
-  target: string;
-  label: string;
-}> = [
-  {
-    target: "us:regulations/7-cfr/273/10",
-    label: "SNAP allotment machinery",
-  },
-  {
-    target: "us:statutes/7/2014/e/6/A",
-    label: "Net income · 7 USC 2014(e)(6)",
-  },
-  {
-    target: "us:policies/usda/snap/fy-2026-cola/maximum-allotments",
-    label: "FY-2026 maximum allotments",
-  },
-  { target: "us:regulations/7-cfr/273/8", label: "Resources test" },
-  { target: "us:regulations/7-cfr/273/24", label: "Work requirement" },
-  {
-    target: "us-ny:regulations/18-nycrr/387/14/a/5",
-    label: "NY categorical eligibility",
-  },
-];
+/** ── Computed doors ──
+ * The always-visible entry points are the corpus's own largest /
+ * most intricate subtrees, computed from the census — never a
+ * hand-picked list. Score favors interconnection (imports weigh
+ * double); a per-jurisdiction cap keeps one giant corpus from
+ * monopolizing every door. */
+export const HIGHLIGHT_COUNT = 14;
+export const HIGHLIGHT_MAX_PER_JURISDICTION = 3;
+
+export function highlightScore(module: CorpusModule): number {
+  return module.ruleCount + 2 * module.importCount;
+}
+
+export function computeFieldHighlights(
+  modules: CorpusModule[],
+  count = HIGHLIGHT_COUNT,
+  maxPerJurisdiction = HIGHLIGHT_MAX_PER_JURISDICTION,
+): CorpusModule[] {
+  const ranked = [...modules].sort(
+    (a, b) =>
+      highlightScore(b) - highlightScore(a) ||
+      a.target.localeCompare(b.target),
+  );
+  const perJurisdiction = new Map<string, number>();
+  const picked: CorpusModule[] = [];
+  for (const module of ranked) {
+    if (picked.length >= count) break;
+    const used = perJurisdiction.get(module.jurisdiction) ?? 0;
+    if (used >= maxPerJurisdiction) continue;
+    perJurisdiction.set(module.jurisdiction, used + 1);
+    picked.push(module);
+  }
+  return picked;
+}
 
 export interface FieldDot {
   target: string;
@@ -210,7 +220,10 @@ function packClusters(
  * Build the whole field: cluster per jurisdiction, dot per module,
  * everything fit-transformed into FIELD_WIDTH × FIELD_HEIGHT.
  */
-export function buildFieldLayout(modules: CorpusModule[]): FieldLayout {
+export function buildFieldLayout(
+  modules: CorpusModule[],
+  highlightLabels?: ReadonlyMap<string, string>,
+): FieldLayout {
   const byJurisdiction = new Map<string, CorpusModule[]>();
   for (const module of modules) {
     const list = byJurisdiction.get(module.jurisdiction);
@@ -249,9 +262,8 @@ export function buildFieldLayout(modules: CorpusModule[]): FieldLayout {
   const offsetY =
     FIELD_HEIGHT / 2 - ((minY + maxY) / 2) * scale;
 
-  const highlightByTarget = new Map(
-    FIELD_HIGHLIGHTS.map((entry) => [entry.target, entry.label]),
-  );
+  const highlightByTarget =
+    highlightLabels ?? new Map<string, string>();
 
   const dots: FieldDot[] = [];
   const clusters: FieldCluster[] = [];
@@ -347,4 +359,128 @@ export function fieldStatLine(stats: CorpusFieldStats): string {
 /** The in-app compose viewer link for one subtree. */
 export function fieldComposeHref(target: string): string {
   return `/axiom/graph?compose=${encodeURIComponent(target)}`;
+}
+
+/* ── The open-world viewport ──
+ * The field pans and zooms. A transform maps field coordinates to
+ * "view" coordinates (same units as the field: the visible window is
+ * always FIELD_WIDTH × FIELD_HEIGHT of view space, whatever the CSS
+ * size): view = field · k + t. All math is pure and clamped so the
+ * field always covers the whole window — no bare paper at the edges,
+ * no zooming out past the overview. */
+
+export interface FieldTransform {
+  k: number;
+  tx: number;
+  ty: number;
+}
+
+export const IDENTITY_TRANSFORM: FieldTransform = { k: 1, tx: 0, ty: 0 };
+export const MIN_FIELD_ZOOM = 1;
+export const MAX_FIELD_ZOOM = 16;
+
+function clampNumber(value: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, value));
+}
+
+/** Zoom clamped to [1, 16]; pan clamped so the (scaled) field always
+ *  covers the viewport rectangle. */
+export function clampFieldTransform(t: FieldTransform): FieldTransform {
+  const k = clampNumber(t.k, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+  return {
+    k,
+    tx: clampNumber(t.tx, FIELD_WIDTH * (1 - k), 0),
+    ty: clampNumber(t.ty, FIELD_HEIGHT * (1 - k), 0),
+  };
+}
+
+export function fieldToView(
+  t: FieldTransform,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  return { x: x * t.k + t.tx, y: y * t.k + t.ty };
+}
+
+export function viewToField(
+  t: FieldTransform,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  return { x: (x - t.tx) / t.k, y: (y - t.ty) / t.k };
+}
+
+/** Multiply zoom by `factor`, keeping the field point under the view
+ *  point (vx, vy) stationary — the wheel/pinch anchor. */
+export function zoomFieldAt(
+  t: FieldTransform,
+  factor: number,
+  vx: number,
+  vy: number,
+): FieldTransform {
+  const k = clampNumber(t.k * factor, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+  const anchor = viewToField(t, vx, vy);
+  return clampFieldTransform({
+    k,
+    tx: vx - anchor.x * k,
+    ty: vy - anchor.y * k,
+  });
+}
+
+/** Pan by a view-space delta (what the pointer dragged), clamped. */
+export function panField(
+  t: FieldTransform,
+  dx: number,
+  dy: number,
+): FieldTransform {
+  return clampFieldTransform({ k: t.k, tx: t.tx + dx, ty: t.ty + dy });
+}
+
+/**
+ * The click-to-enter viewport for a dot: centered on the dot, zoomed
+ * so its jurisdiction cluster roughly fills the window — "step into
+ * this territory", not "microscope on one pixel".
+ */
+export function zoomTransformForDot(
+  layout: FieldLayout,
+  dot: FieldDot,
+): FieldTransform {
+  const cluster = layout.clusters.find(
+    (item) => item.jurisdiction === dot.jurisdiction,
+  );
+  const clusterR = Math.max(cluster?.r ?? 60, 24);
+  const k = clampNumber(
+    (FIELD_HEIGHT * 0.85) / (clusterR * 2),
+    2.5,
+    MAX_FIELD_ZOOM,
+  );
+  return clampFieldTransform({
+    k,
+    tx: FIELD_WIDTH / 2 - dot.x * k,
+    ty: FIELD_HEIGHT / 2 - dot.y * k,
+  });
+}
+
+/**
+ * Camera-path interpolation for the zoom animations: the scale moves
+ * geometrically (equal zoom feel per frame) while the viewport-center
+ * field point moves linearly. p ∈ [0, 1].
+ */
+export function interpolateTransform(
+  from: FieldTransform,
+  to: FieldTransform,
+  p: number,
+): FieldTransform {
+  if (p <= 0) return from;
+  if (p >= 1) return to;
+  const k = from.k * Math.pow(to.k / from.k, p);
+  const centerFrom = viewToField(from, FIELD_WIDTH / 2, FIELD_HEIGHT / 2);
+  const centerTo = viewToField(to, FIELD_WIDTH / 2, FIELD_HEIGHT / 2);
+  const cx = centerFrom.x + (centerTo.x - centerFrom.x) * p;
+  const cy = centerFrom.y + (centerTo.y - centerFrom.y) * p;
+  return clampFieldTransform({
+    k,
+    tx: FIELD_WIDTH / 2 - cx * k,
+    ty: FIELD_HEIGHT / 2 - cy * k,
+  });
 }

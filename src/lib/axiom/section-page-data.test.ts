@@ -217,9 +217,10 @@ describe("getSectionPageData", () => {
     expect(data!.focusAnchor).toBe("a");
   });
 
-  it("rejects ancestor fallback when the requested anchor does not exist under it", async () => {
-    // /us/statute/7/2011 with §2011 missing must 404, not silently
-    // render Title 7 as though it satisfied the URL.
+  it("renders the section unfocused when the cited anchor cannot be located", async () => {
+    // Subsection markers vary by ingest ("(3)" vs "3.") and Source
+    // links append them best-effort — a body-bearing section still
+    // satisfies the citation, just without a focus highlight.
     getProvisionByCitationPathMock.mockImplementation((path: string) =>
       Promise.resolve(path === "us/statute/26/32" ? rule(path) : null)
     );
@@ -229,8 +230,26 @@ describe("getSectionPageData", () => {
     });
 
     // The fixture body only has subsections (a) and (b) — "z" is not
-    // among them, so the ancestor must not be accepted.
+    // among them, so the section renders without a focus anchor.
     const data = await getSectionPageData(["us", "statute", "26", "32", "z"]);
+    expect(data!.citationPath).toBe("us/statute/26/32");
+    expect(data!.focusAnchor).toBeNull();
+  });
+
+  it("still 404s when only a bodyless container satisfies the walk-up", async () => {
+    // /us/statute/26/2011 with §2011 missing must 404, not silently
+    // render Title 26 as though it satisfied the URL.
+    getProvisionByCitationPathMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === "us/statute/26" ? rule(path, { body: null }) : null
+      )
+    );
+    queueTables({
+      current_provisions: [{ data: [], error: null }],
+      navigation_nodes: [{ data: null, error: null }],
+    });
+
+    const data = await getSectionPageData(["us", "statute", "26", "2011"]);
     expect(data).toBeNull();
   });
 

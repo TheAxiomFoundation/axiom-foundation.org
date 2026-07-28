@@ -1,10 +1,88 @@
 import { describe, it, expect } from "vitest";
 import {
   axiomAppUrl,
+  axiomAppUrlForCitation,
   humanizeCitation,
   humanizeRuleName,
   humanizeSource,
 } from "./citations";
+
+describe("axiomAppUrlForCitation", () => {
+  it("appends the cited subsection as path segments", () => {
+    expect(
+      axiomAppUrlForCitation("us-ga:statutes/48/48-7A-3", "48-7A-3(c)"),
+    ).toBe("/us-ga/statute/48/48-7A-3/c");
+    expect(
+      axiomAppUrlForCitation(
+        "us:regulations/7-cfr/273/10",
+        "7 CFR 273.10(e)(2)(ii)(A)",
+      ),
+    ).toBe("/us/regulation/7/273/10/e/2/ii/A");
+  });
+
+  it("links the file home when the citation names no subsection", () => {
+    // The file id already carries the subsection — no doubling.
+    expect(
+      axiomAppUrlForCitation("us:statutes/7/2017/a", "7 USC 2017(a)"),
+    ).toBe("/us/statute/7/2017/a");
+    expect(
+      axiomAppUrlForCitation("us-ia:statutes/422/12C", "Iowa Code section 422.12C"),
+    ).toBe("/us-ia/statute/422/12C");
+    expect(axiomAppUrlForCitation("us-ia:statutes/422/12C", null)).toBe(
+      "/us-ia/statute/422/12C",
+    );
+  });
+
+  it("ignores URL-hostile or interior parentheticals", () => {
+    expect(
+      axiomAppUrlForCitation("us:statutes/26/21", "26 USC 21 (as amended) text"),
+    ).toBe("/us/statute/26/21");
+    expect(
+      axiomAppUrlForCitation("us:statutes/26/21", "26 USC 21(e/../../etc)"),
+    ).toBe("/us/statute/26/21");
+  });
+});
+
+describe("state and policy citations", () => {
+  it("never cites state statutes as USC", () => {
+    expect(humanizeCitation("us-ia:statutes/422/12C")).toBe(
+      "Iowa Code § 422.12C",
+    );
+    expect(humanizeCitation("us-ia:statutes/422/12C/3")).toBe(
+      "Iowa Code § 422.12C(3)",
+    );
+    expect(humanizeCitation("us-ga:statutes/48/48-7A-3")).toBe(
+      "Georgia Code § 48-7A-3",
+    );
+    expect(humanizeCitation("us-mt:statutes/15-30-2318")).toBe(
+      "Montana Code § 15-30-2318",
+    );
+    expect(humanizeCitation("us-ny:statutes/nyc/11-1701")).toBe(
+      "NYC § 11-1701 (New York)",
+    );
+  });
+
+  it("keeps the federal USC form", () => {
+    expect(humanizeCitation("us:statutes/26/21")).toBe("26 USC § 21");
+    expect(humanizeCitation("us:statutes/7/2017/a")).toBe("7 USC § 2017(a)");
+  });
+
+  it("humanizes policy documents instead of dumping raw paths", () => {
+    expect(
+      humanizeCitation(
+        "us-ak:policies/dpa/apa/standards/2026/state-supplement-payment-standard",
+      ),
+    ).toBe("Alaska · DPA · State Supplement Payment Standard");
+    expect(
+      humanizeCitation(
+        "us-ca:policies/dor/spotlight-on-social-security/2026-01/block-7",
+      ),
+    ).toBe("California · DOR · Spotlight On Social Security");
+    expect(
+      humanizeCitation("us:policies/usda/snap/fy-2026-cola/maximum-allotments"),
+    ).toBe("Federal · USDA · Maximum Allotments");
+  });
+});
 
 describe("manual-bucket citations", () => {
   const moBlock =

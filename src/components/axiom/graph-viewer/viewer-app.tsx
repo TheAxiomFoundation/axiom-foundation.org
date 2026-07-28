@@ -9,7 +9,12 @@ import {
   type IrgNodeData,
 } from "./InteractiveRuleGraph";
 
-import { axiomAppUrl, fileLegalIdOf, humanizeCitation, humanizeSource } from "./citations";
+import {
+  axiomAppUrlForCitation,
+  fileLegalIdOf,
+  humanizeCitation,
+  humanizeSource,
+} from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
 import "./styles.css";
 import "./graph-styles.css";
@@ -2198,13 +2203,15 @@ export function GraphViewerApp({
             const lawFileLegalId = (() => {
               if (!legalId) return null;
               const own = fileLegalIdOf(legalId);
-              if (/:(statutes|regulations)\//.test(own)) return own;
+              if (/:(statutes|regulations|manual)\//.test(own)) return own;
               // Synthesized package rules cite their statute in
               // `source` as a raw legal id — that IS the law to read.
               const source = rule?.source;
               if (
                 source &&
-                /^[a-z]{2}(?:-[a-z]{2})?:(statutes|regulations)\//.test(source)
+                /^[a-z]{2}(?:-[a-z]{2})?:(statutes|regulations|manual)\//.test(
+                  source,
+                )
               ) {
                 return source.split("#")[0] ?? null;
               }
@@ -2217,11 +2224,21 @@ export function GraphViewerApp({
               if (!rule) {
                 for (const consumer of consumers) {
                   const file = fileLegalIdOf(consumer.legalId);
-                  if (/:(statutes|regulations)\//.test(file)) return file;
+                  if (/:(statutes|regulations|manual)\//.test(file)) {
+                    return file;
+                  }
                 }
               }
               return null;
             })();
+            // The read link carries the cited subsection — the reader
+            // focuses it and clamps the rest of the section.
+            const lawHref = lawFileLegalId
+              ? axiomAppUrlForCitation(
+                  lawFileLegalId,
+                  citation ? rawCitation : null,
+                )
+              : null;
             return (
           <aside className="node-inspector" aria-label="Node details">
             <div className="node-inspector-head">
@@ -2550,23 +2567,28 @@ export function GraphViewerApp({
                 {running ? "Running…" : "Run with these values"}
               </button>
             ) : null}
-            {lawFileLegalId && axiomAppUrl(lawFileLegalId) ? (
+            {lawHref ? (
               <button
                 type="button"
                 className="node-inspector-link"
                 onClick={() => {
                   // Encodings can be one level deeper than the corpus
                   // provisions (…/2014/e/6/A vs …/e/6) — resolve to the
-                  // nearest existing page instead of opening a 404.
-                  const raw = axiomAppUrl(lawFileLegalId) ?? "";
-                  void fetch(`/api/axiom/resolve${raw}`)
+                  // nearest existing page instead of opening a 404. But
+                  // when the resolved row is just an ancestor of the
+                  // cited path, keep the deep path: the reader resolves
+                  // it itself and focuses the cited subsection.
+                  void fetch(`/api/axiom/resolve${lawHref}`)
                     .then((response) =>
                       response.ok ? response.json() : null,
                     )
                     .then((resolved: { href?: string | null } | null) => {
-                      setLawPopup(`${resolved?.href ?? raw}?embed=1`);
+                      const href = resolved?.href ?? null;
+                      const target =
+                        href && !lawHref.startsWith(href) ? href : lawHref;
+                      setLawPopup(`${target}?embed=1`);
                     })
-                    .catch(() => setLawPopup(`${raw}?embed=1`));
+                    .catch(() => setLawPopup(`${lawHref}?embed=1`));
                 }}
               >
                 Read the law →

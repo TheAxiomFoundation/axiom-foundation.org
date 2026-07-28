@@ -775,17 +775,21 @@ export async function resolveSection(
         () => null
       );
       if (rule) {
-        // Only accept the ancestor if the requested anchor really
-        // exists under it — otherwise …/7/2011 (missing) would render
-        // Title 7 as though it satisfied the URL.
+        // Only focus the anchor when it really exists under the
+        // ancestor. When it doesn't: a body-bearing section still
+        // satisfies the citation (subsection markers vary by ingest —
+        // "(3)" vs "3." — and Source links append them best-effort),
+        // so render it unfocused; a bodyless container keeps the hard
+        // 404 — rendering Title 7 for a missing …/7/2011 would lie.
         const anchor = ruleSegments[end];
         const subtree = await getSubtreeProvisions(candidate);
-        if (!anchorExistsUnder(rule, candidate, anchor, subtree)) {
+        const anchored = anchorExistsUnder(rule, candidate, anchor, subtree);
+        if (!anchored && !rule.body) {
           return null;
         }
         root = rule;
         citationPath = candidate;
-        focusAnchor = anchor;
+        focusAnchor = anchored ? anchor : null;
         prefetchedSubtree = subtree;
         break;
       }

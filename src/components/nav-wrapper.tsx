@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { NavClient } from "./nav-client";
 import { SITE_URL, axiomAppHref } from "@/lib/urls";
 
-const PRODUCTION_APP_ORIGIN = "https://app.axiom-foundation.org";
+// The Get-started CTA's production target — the app surface on the
+// canonical domain.
+const PRODUCTION_APP_URL = "https://axiom.org/app";
 const PRODUCTION_MARKETING_ORIGIN = "https://axiom.org";
 const PRODUCTION_MARKETING_HOSTS = new Set([
   "axiom.org",
@@ -26,7 +28,7 @@ export function marketingOriginForHost(hostname: string): string | undefined {
 
 export function appHrefForHost(hostname: string): string | undefined {
   if (PRODUCTION_MARKETING_HOSTS.has(hostname)) {
-    return PRODUCTION_APP_ORIGIN;
+    return PRODUCTION_APP_URL;
   }
 
   if (MARKETING_PREVIEW_HOST_RE.test(hostname)) {

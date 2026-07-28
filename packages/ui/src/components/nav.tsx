@@ -104,7 +104,7 @@ const DEFAULT_LOGO = "/logos/axiom-foundation.svg";
 
 export function Nav({
   baseUrl = "",
-  appUrl = "https://app.axiom-foundation.org",
+  appUrl = "https://axiom.org/app",
   pathname,
   renderLink: LinkComponent,
   extraLinks = [],

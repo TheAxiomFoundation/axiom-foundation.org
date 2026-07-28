@@ -7,7 +7,7 @@ describe("Nav", () => {
     // The app entry is the "Get started" CTA button, not a tab.
     expect(screen.getAllByText("Get started")[0]).toHaveAttribute(
       "href",
-      "https://app.axiom-foundation.org",
+      "https://axiom.org/app",
     );
     expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
     expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);

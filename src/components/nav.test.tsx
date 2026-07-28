@@ -30,13 +30,13 @@ describe('Nav', () => {
 
   it('maps marketing hosts to the matching app href', () => {
     expect(appHrefForHost('axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(appHrefForHost('www.axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(appHrefForHost('app.axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(
       appHrefForHost(

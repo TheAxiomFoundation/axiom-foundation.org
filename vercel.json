@@ -208,6 +208,16 @@
       "source": "/guidance/:path(.*)",
       "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
       "permanent": false
+    },
+    {
+      "source": "/local",
+      "destination": "https://axiom-local.vercel.app/",
+      "permanent": false
+    },
+    {
+      "source": "/local/:path(.*)",
+      "destination": "https://axiom-local.vercel.app/:path(.*)",
+      "permanent": false
     }
   ]
 }

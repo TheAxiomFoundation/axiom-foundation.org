@@ -444,7 +444,7 @@ export function CorpusField({
             ctx.fill();
           }
           ctx.beginPath();
-          ctx.arc(dot.x, dot.y, Math.max(dot.r * 0.2, 0.4), 0, Math.PI * 2);
+          ctx.arc(dot.x, dot.y, Math.max(dot.r * 0.13, 0.26), 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.globalAlpha = 1;

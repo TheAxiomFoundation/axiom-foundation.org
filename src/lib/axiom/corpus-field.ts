@@ -1015,7 +1015,7 @@ export function motifSpec(dot: FieldDot): MotifNode[] {
     nodes.push({
       dx: Math.cos(angle) * orbit,
       dy: Math.sin(angle) * orbit,
-      r: Math.max(dot.r * 0.14, 0.35),
+      r: Math.max(dot.r * 0.09, 0.22),
     });
   }
   return nodes;
@@ -1039,7 +1039,8 @@ export function trueMotifSpec(dot: FieldDot): TrueMotif | null {
   // 0..1 box → centered square whose corners stay inside the dot
   // (half-diagonal ≤ 0.95r).
   const side = dot.r * 1.34;
-  const nodeR = Math.max(dot.r * 0.055, 0.28);
+  // Nodes are punctuation, not beads: the edge-work carries the shape.
+  const nodeR = Math.max(dot.r * 0.035, 0.18);
   return {
     nodes: structure.p.map(([x, y]) => ({
       dx: (x - 0.5) * side,

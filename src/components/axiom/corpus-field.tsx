@@ -8,7 +8,10 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
-import { humanizeCitation } from "@/components/axiom/graph-viewer/citations";
+import {
+  humanizeCitation,
+  humanizeRuleName,
+} from "@/components/axiom/graph-viewer/citations";
 import {
   CLUSTER_LABEL_MIN_MODULES,
   FIELD_HEIGHT,
@@ -18,6 +21,7 @@ import {
   IDENTITY_TRANSFORM,
   MOTIF_ZOOM,
   motifSpec,
+  trueMotifSpec,
   buildFieldLayout,
   computeFieldHighlights,
   fieldComposeHref,
@@ -172,7 +176,12 @@ export function CorpusField({
     return new Map(
       computeFieldHighlights(modules).map((module) => [
         module.target,
-        humanizeCitation(module.target),
+        // Headline rule first, citation second — "Elderly Disabled
+        // Credit — 26 USC § 22"; citation-only when the census has
+        // no headline.
+        module.headlineRule
+          ? `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`
+          : humanizeCitation(module.target),
       ])
     );
   }, [modules]);
@@ -311,10 +320,11 @@ export function CorpusField({
       }
     }
 
-    // Past MOTIF_ZOOM each subtree becomes a schematic mini graph —
-    // hub, satellites, spokes — derived purely from census counts.
+    // Past MOTIF_ZOOM each subtree renders as a mini graph — its
+    // TRUE census structure where available.
     const motifStrength =
       k >= MOTIF_ZOOM ? Math.min((k - MOTIF_ZOOM) / 1.2, 1) : 0;
+    let trueEdgesDrawn = 0;
 
     const margin = 10;
     for (const dot of layout.dots) {
@@ -336,7 +346,13 @@ export function CorpusField({
         ctx.globalAlpha = 1;
         continue;
       }
-      const motif = motifStrength > 0 ? motifSpec(dot) : [];
+      // Past the motif threshold: the module's TRUE structure when
+      // the census carries it (precomputed layered layout — a draw
+      // swap, not layout work); the schematic hub-and-satellites
+      // only as fallback.
+      const trueMotif = motifStrength > 0 ? trueMotifSpec(dot) : null;
+      const motif =
+        motifStrength > 0 && !trueMotif ? motifSpec(dot) : [];
       ctx.beginPath();
       ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
       // The disc recedes as its motif takes over.
@@ -345,7 +361,28 @@ export function CorpusField({
       ctx.fillStyle = dot.color;
       ctx.fill();
       ctx.globalAlpha = 1;
-      if (motif.length > 0) {
+      if (trueMotif) {
+        ctx.globalAlpha = motifStrength;
+        ctx.lineWidth = 0.4 / k;
+        ctx.strokeStyle = dot.color;
+        for (const [from, to] of trueMotif.edges) {
+          const a = trueMotif.nodes[from];
+          const b = trueMotif.nodes[to];
+          if (!a || !b) continue;
+          ctx.beginPath();
+          ctx.moveTo(dot.x + a.dx, dot.y + a.dy);
+          ctx.lineTo(dot.x + b.dx, dot.y + b.dy);
+          ctx.stroke();
+          trueEdgesDrawn += 1;
+        }
+        ctx.fillStyle = dot.color;
+        for (const node of trueMotif.nodes) {
+          ctx.beginPath();
+          ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else if (motif.length > 0) {
         const hubR = Math.max(dot.r * 0.2, 0.4);
         ctx.globalAlpha = motifStrength;
         ctx.lineWidth = 0.5 / k;
@@ -383,6 +420,11 @@ export function CorpusField({
       ctx.strokeStyle = "#b45309";
       ctx.stroke();
     }
+
+    // Instrumentation: how many REAL structure edges this frame drew
+    // (the headless checks read it; humans read the pixels).
+    const host = containerRef.current;
+    if (host) host.dataset.trueEdgesDrawn = String(trueEdgesDrawn);
   }, [layout, hovered, transform]);
 
   useEffect(() => {
@@ -792,6 +834,11 @@ export function CorpusField({
                   top: `${((pos.y - hovered.r * transform.k - 4) / viewHeight) * 100}%`,
                 }}
               >
+                {hovered.headlineRule && (
+                  <span className="block font-mono text-[11px] font-semibold text-[var(--color-ink)]">
+                    {humanizeRuleName(hovered.headlineRule)}
+                  </span>
+                )}
                 <span className="block font-mono text-[11px] text-[var(--color-ink)]">
                   {humanizeCitation(hovered.target)}
                 </span>

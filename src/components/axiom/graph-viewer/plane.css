@@ -3676,3 +3676,54 @@
 .graph-viewer-root .launcher-list {
   padding-top: 120px;
 }
+
+/* ── Results sheet: the facts the reader set ── */
+.graph-viewer-root .results-inputs {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-paper);
+}
+.graph-viewer-root .results-inputs-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .results-inputs ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.graph-viewer-root .results-inputs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+}
+.graph-viewer-root .results-inputs li strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* The isolated-node filter's honesty note, stage corner. */
+.graph-viewer-root .standalone-note {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 8;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}

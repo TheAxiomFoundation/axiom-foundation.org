@@ -112,6 +112,27 @@ function normalizeAxiomAppSegments(
   return rest;
 }
 
+/** Acronyms that must stay upper-case when a snake_case rule name is
+ *  humanized ("cdcc" → "CDCC", "snap_agi_limit" → "SNAP AGI Limit"). */
+const RULE_NAME_ACRONYMS = new Set([
+  "cdcc", "snap", "tanf", "wic", "ssi", "eitc", "ctc", "agi", "magi",
+  "cola", "usda", "irs", "fpl", "abawd", "uc",
+]);
+
+/** Humanize a snake_case rule name: title-case words, acronyms
+ *  upper-cased. The doors and tooltips lead with this. */
+export function humanizeRuleName(name: string): string {
+  return name
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) =>
+      RULE_NAME_ACRONYMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
+}
+
 /** A legalId for a rule or input is `<file>#rule.<name>` / `<file>#input.<name>`.
  *  Split off the `#…` suffix to recover the file legalId for citation/url. */
 export function fileLegalIdOf(legalId: string): string {

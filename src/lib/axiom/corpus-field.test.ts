@@ -15,6 +15,7 @@ import {
   FILAMENT_ZOOM,
   MOTIF_ZOOM,
   motifSpec,
+  trueMotifSpec,
   NON_COMPILING_ROOTS,
   fieldComposeHref,
   fieldStatLine,
@@ -506,6 +507,54 @@ describe("cover-fit camera (full-bleed windows)", () => {
     // Zooming "out" in a tall window stops at cover-fit, not k=1.
     const out = zoomFieldAt(fitFieldTransform(viewH), 0.5, 500, 300, viewH);
     expect(out.k).toBeCloseTo(minZoomForView(viewH));
+  });
+});
+
+describe("trueMotifSpec (real structure at motif LOD)", () => {
+  const cdcc = corpusSubtrees.modules.find(
+    (m) => m.target === "us:statutes/26/21",
+  )!;
+  const layout = buildFieldLayout([
+    cdcc,
+    module({ target: "plain", linkedRuleCount: 6 }),
+  ]);
+  const cdccDot = layout.dots.find((d) => d.target === cdcc.target)!;
+
+  it("maps the census's precomputed layout into the dot footprint", () => {
+    const spec = trueMotifSpec(cdccDot)!;
+    expect(spec.nodes).toHaveLength(cdcc.graph!.n);
+    expect(spec.nodes).toHaveLength(44);
+    expect(spec.edges).toHaveLength(41);
+    // Every node stays inside the dot.
+    for (const node of spec.nodes) {
+      expect(Math.hypot(node.dx, node.dy) + node.r).toBeLessThanOrEqual(
+        cdccDot.r,
+      );
+    }
+    // Every edge references real nodes.
+    for (const [from, to] of spec.edges) {
+      expect(spec.nodes[from]).toBeDefined();
+      expect(spec.nodes[to]).toBeDefined();
+    }
+    // Roots at top: canvas y grows downward, so the layered layout's
+    // y=0 roots map to negative dy.
+    const minDy = Math.min(...spec.nodes.map((n) => n.dy));
+    expect(minDy).toBeLessThan(0);
+    // Deterministic.
+    expect(trueMotifSpec(cdccDot)).toEqual(spec);
+  });
+
+  it("returns null without census structure — the schematic is the fallback", () => {
+    const plain = layout.dots.find((d) => d.target === "plain")!;
+    expect(plain.structure).toBeNull();
+    expect(trueMotifSpec(plain)).toBeNull();
+    expect(motifSpec(plain).length).toBeGreaterThan(0);
+  });
+
+  it("the census carries real structure for a majority of doors", () => {
+    const doors = computeFieldHighlights(corpusSubtrees.modules);
+    const withStructure = doors.filter((m) => m.graph);
+    expect(withStructure.length).toBeGreaterThan(doors.length / 2);
   });
 });
 

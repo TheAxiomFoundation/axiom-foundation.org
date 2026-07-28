@@ -46,3 +46,42 @@ export function filterStandaloneRules(graph: ProgramGraph): {
     hiddenCount,
   };
 }
+
+/**
+ * Root-first selection for a composed graph: the terminal root with
+ * the largest dependency closure — the box the subtree rolls up
+ * into (matches the census's headlineRule when present, but always
+ * computed from the graph itself, never trusted from an index).
+ * Ties break lexicographically for determinism.
+ */
+export function composeRootOutput(graph: ProgramGraph): string | null {
+  const byId = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
+  const candidates = (
+    graph.terminalOutputs.length > 0
+      ? graph.terminalOutputs
+      : graph.ownOutputs
+  ).filter((id) => byId.has(id));
+  const pool =
+    candidates.length > 0 ? candidates : graph.rules.map((r) => r.legalId);
+  let best: string | null = null;
+  let bestSize = -1;
+  for (const id of pool) {
+    const seen = new Set<string>();
+    const stack = [id];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      if (seen.has(current)) continue;
+      seen.add(current);
+      const rule = byId.get(current);
+      if (rule) stack.push(...rule.ruleDeps);
+    }
+    if (
+      seen.size > bestSize ||
+      (seen.size === bestSize && best !== null && id < best)
+    ) {
+      bestSize = seen.size;
+      best = id;
+    }
+  }
+  return best;
+}

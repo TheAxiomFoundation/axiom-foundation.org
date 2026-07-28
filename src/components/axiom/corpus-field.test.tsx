@@ -17,7 +17,10 @@ vi.mock("next/dynamic", () => ({
 }));
 
 import { CorpusField } from "./corpus-field";
-import { humanizeCitation } from "@/components/axiom/graph-viewer/citations";
+import {
+  humanizeCitation,
+  humanizeRuleName,
+} from "@/components/axiom/graph-viewer/citations";
 import {
   FIELD_HEIGHT,
   FIELD_WIDTH,
@@ -117,12 +120,19 @@ describe("CorpusField", () => {
         `/axiom/graph?compose=${encodeURIComponent(module.target)}`
       );
     }
-    // Labels are humanized citations, not hand-written copy.
+    // Labels lead with the humanized headline rule, citation second.
     const best = [...expected].sort(
       (a, b) => highlightScore(b) - highlightScore(a)
     )[0]!;
+    const expectedLabel = best.headlineRule
+      ? `${humanizeRuleName(best.headlineRule)} — ${humanizeCitation(best.target)}`
+      : humanizeCitation(best.target);
+    expect(doors.some((el) => el.textContent === expectedLabel)).toBe(true);
+    const headlined = expected.find((m) => m.headlineRule)!;
     expect(
-      doors.some((el) => el.textContent === humanizeCitation(best.target))
+      doors.some((el) =>
+        el.textContent?.startsWith(humanizeRuleName(headlined.headlineRule!))
+      )
     ).toBe(true);
   });
 
@@ -261,11 +271,15 @@ describe("CorpusField", () => {
     stubFieldRect();
     const layout = buildFieldLayout(VIEW_MODULES);
     const dot = layout.dots.find(
-      (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
+      (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5 && d.headlineRule
     )!;
     fireEvent.mouseMove(canvasEl(), { clientX: dot.x, clientY: dot.y });
     const tooltip = await screen.findByTestId("corpus-field-tooltip");
     expect(tooltip.textContent).toContain(humanizeCitation(dot.target));
+    // The headline rule leads the tooltip where the census names one.
+    expect(tooltip.textContent).toContain(
+      humanizeRuleName(dot.headlineRule!)
+    );
     expect(tooltip.textContent).toContain(`${dot.ruleCount} rules`);
     fireEvent.mouseLeave(canvasEl());
     expect(screen.queryByTestId("corpus-field-tooltip")).toBeNull();

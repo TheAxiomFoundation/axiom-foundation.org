@@ -8,6 +8,15 @@
  * deterministic — same census in, same field out.
  */
 
+/** The TRUE intra-module structure, precomputed by the census:
+ *  `n` rules, dep edges by rule index, and a layered layout in 0..1
+ *  coords (roots at the top). */
+export interface ModuleGraph {
+  n: number;
+  e: Array<[number, number]>;
+  p: Array<[number, number]>;
+}
+
 export interface CorpusModule {
   target: string;
   jurisdiction: string;
@@ -19,6 +28,10 @@ export interface CorpusModule {
   importCount: number;
   /** Intra-corpus module targets this module imports (≤20). */
   imports?: string[];
+  /** The deepest root the subtree computes ("cdcc"). */
+  headlineRule?: string;
+  /** Real structure for the motif LOD; absent → schematic fallback. */
+  graph?: ModuleGraph;
 }
 
 export interface CorpusSubtreesFile {
@@ -163,6 +176,9 @@ export interface FieldDot {
   ruleCount: number;
   linkedRuleCount: number;
   importCount: number;
+  headlineRule: string | null;
+  /** Real intra-module structure (shared reference, never copied). */
+  structure: ModuleGraph | null;
   /** All-standalone module — rendered as faint dust. */
   dust: boolean;
   x: number;
@@ -378,6 +394,8 @@ export function buildFieldLayout(
         ruleCount: module.ruleCount,
         linkedRuleCount: module.linkedRuleCount,
         importCount: module.importCount,
+        headlineRule: module.headlineRule ?? null,
+        structure: module.graph ?? null,
         dust,
         x: cx + offset.dx * scale,
         y: cy + offset.dy * scale,
@@ -552,6 +570,35 @@ export function motifSpec(dot: FieldDot): MotifNode[] {
     });
   }
   return nodes;
+}
+
+export interface TrueMotif {
+  nodes: MotifNode[];
+  edges: Array<[number, number]>;
+}
+
+/**
+ * The REAL mini-graph for a subtree, from the census's precomputed
+ * layered layout: nodes at `p` scaled into the dot's footprint
+ * (roots at the top), edges from `e`. Null when the census carries
+ * no structure — the schematic motifSpec is the fallback. Pure
+ * scaling; a draw swap, never layout work.
+ */
+export function trueMotifSpec(dot: FieldDot): TrueMotif | null {
+  const structure = dot.structure;
+  if (!structure || structure.p.length === 0) return null;
+  // 0..1 box → centered square whose corners stay inside the dot
+  // (half-diagonal ≤ 0.95r).
+  const side = dot.r * 1.34;
+  const nodeR = Math.max(dot.r * 0.055, 0.28);
+  return {
+    nodes: structure.p.map(([x, y]) => ({
+      dx: (x - 0.5) * side,
+      dy: (y - 0.5) * side,
+      r: nodeR,
+    })),
+    edges: structure.e,
+  };
 }
 
 export interface CorpusFieldStats {

@@ -27,7 +27,12 @@ import {
 } from "./api";
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreeDoors, SubtreeSearch } from "./subtree-picker";
-import { filterStandaloneRules } from "./compose-filter";
+import {
+  composeRootOutput,
+  filterStandaloneRules,
+} from "./compose-filter";
+import { buildRunRequestBody } from "./run-request";
+import { RunInputsEcho } from "./run-inputs-echo";
 import {
   readLauncherMode,
   storeLauncherMode,
@@ -569,6 +574,9 @@ export function GraphViewerApp() {
   // canonical ?compose= deep link (replaceState — the viewer never
   // grows its own history entries).
   const enterComposeMode = (target: string) => {
+    // A backdrop program may have parked an opening flight while the
+    // launcher was up — that summit belongs to the OLD graph.
+    pendingOpeningRef.current = null;
     setProgram(null);
     setGraph(null);
     setSelectedOutputs([]);
@@ -712,18 +720,7 @@ export function GraphViewerApp() {
       // Compose mode speaks the run-by-root shape (`{ root, facts }`);
       // package programs keep their coordinates. Same envelope back.
       const requestBody = (variables: string[]): Record<string, unknown> =>
-        composeFocus
-          ? {
-              root: fileLegalIdOf(composeFocus),
-              facts: scenario,
-              variables,
-            }
-          : {
-              jurisdiction: effectiveProgram.jurisdiction,
-              program_id: effectiveProgram.programId,
-              values: scenario,
-              variables,
-            };
+        buildRunRequestBody(composeFocus, effectiveProgram, scenario, variables);
       const attempt = async (variables: string[]) => {
         const response = await fetch("/api/axiom/runtime/calculate", {
           method: "POST",
@@ -1073,8 +1070,15 @@ export function GraphViewerApp() {
         const defaults: Record<string, unknown> = {};
         for (const input of filteredGraph.inputs) {
           if (input.name in dtypes) continue;
+          // The mirror carries no dtypes; a boolean sample or a
+          // predicate-shaped name gets a checkbox, the rest numbers.
           dtypes[input.name] =
-            typeof input.sample === "boolean" ? "bool" : "number";
+            typeof input.sample === "boolean" ||
+            /^(?:is|has|have|was|are|does|do|meets|qualifies|entitled|eligible|receives|received|treated)_/.test(
+              input.name,
+            )
+              ? "bool"
+              : "number";
           defaults[input.name] = input.sample;
         }
         setInputMeta({ dtypes, defaults });
@@ -1089,7 +1093,16 @@ export function GraphViewerApp() {
           const rule = rulesById.get(id);
           return rule?.kind === "derived" && rule.formula?.trim();
         });
-        setSelectedOutputs((derived.length > 0 ? derived : own).slice(0, 24));
+        // Root-first: the terminal root with the largest closure
+        // (computed here, never trusted from array order) leads the
+        // selection, and the opening flight lands on it.
+        const root = composeRootOutput(filteredGraph);
+        const picked = (derived.length > 0 ? derived : own).slice(0, 24);
+        const ordered = root
+          ? [root, ...picked.filter((id) => id !== root)]
+          : picked;
+        graphJustLoaded.current = true;
+        setSelectedOutputs(ordered);
       })
       .catch((err) => {
         if (!cancelled) setError(String(err));
@@ -1356,9 +1369,11 @@ export function GraphViewerApp() {
     if (!graphJustLoaded.current || selectedOutputs.length === 0) return;
     graphJustLoaded.current = false;
     const summit = summitOutput ?? selectedOutputs[0];
-    if (launcherRef.current !== "closed") {
+    if (launcherRef.current === "open") {
       // Never move the camera behind the launcher — it reads as a
       // random zoom through the backdrop. Fly when the fade ends.
+      // (While it is LEAVING the pick already happened: fly now, with
+      // fresh state — the dismiss timer's closure would be stale.)
       pendingOpeningRef.current = summit;
       return;
     }
@@ -1366,7 +1381,9 @@ export function GraphViewerApp() {
       legalId: summit,
       nonce: (current?.nonce ?? 0) + 1,
     }));
-    if (summitOutput) inspectRule(summitOutput);
+    // The opening card: whatever the flight lands on — the summit
+    // when the graph names one, else the root-first selection.
+    inspectRule(summit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOutputs, summitOutput]);
 
@@ -1866,21 +1883,17 @@ export function GraphViewerApp() {
             subgraph the canvas itself is the navigation — no program
             dropdown, no in-subtree search box. */}
         <div className="top-controls">
-          <span className="top-meta">
-            {programsLoading
-              ? "Loading programs"
-              : graph
-                ? `${
-                    composeFocus
-                      ? "composed view"
-                      : (effectiveProgram?.jurisdiction ?? "").toUpperCase()
-                  } · ${graph.rules.length} rules${
-                    composeFocus && composedHiddenCount > 0
-                      ? ` · +${composedHiddenCount} standalone definitions hidden`
-                      : ""
-                  }`
-                : "Loading graph"}
-          </span>
+          {/* Composed views carry no header line at all — the graph
+              is its own label. Program views keep their coordinates. */}
+          {!composeFocus && (
+            <span className="top-meta">
+              {programsLoading
+                ? "Loading programs"
+                : graph
+                  ? `${(effectiveProgram?.jurisdiction ?? "").toUpperCase()} · ${graph.rules.length} rules`
+                  : "Loading graph"}
+            </span>
+          )}
         </div>
         <div
           className={`graph-stage ${runResult ? "plane-live" : ""} ${
@@ -1912,6 +1925,13 @@ export function GraphViewerApp() {
               <strong>This subtree can&rsquo;t execute yet</strong>
               <span>{runBlocked}</span>
             </div>
+          )}
+          {composeFocus && composedHiddenCount > 0 && (
+            // The isolated-node filter's honesty note: tiny, muted,
+            // out of the way — never a header.
+            <span className="standalone-note" data-testid="standalone-note">
+              +{composedHiddenCount} standalone definitions hidden
+            </span>
           )}
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
@@ -2553,6 +2573,7 @@ export function GraphViewerApp() {
                 });
               })()}
             </div>
+            <RunInputsEcho scenario={scenario} />
             <div className="results-adjust" aria-label="Adjust and run again">
               {(() => {
                 const answered = allScenarioFields.filter(

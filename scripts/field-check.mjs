@@ -56,6 +56,13 @@ const badDoors = await page.evaluate(() => {
   ).length;
 });
 console.log("non-compiling roots offered as doors:", badDoors);
+// Doors lead with the humanized headline rule — "… — citation".
+const headlineDoors = await page.evaluate(
+  () =>
+    [...document.querySelectorAll('[data-testid="corpus-field-highlight"]')]
+      .filter((el) => (el.textContent ?? "").includes(" — ")).length,
+);
+console.log("doors with headline names:", headlineDoors);
 
 // 3) Presentation: no stat line, no bucket legend — the field is
 //    the whole UI. Liveness reads from the data attribute instead.
@@ -132,8 +139,21 @@ const lodNear = await page.evaluate(() => ({
       .querySelector('[data-testid="corpus-field"]')
       ?.getAttribute("data-zoom"),
   ),
+  // TRUE structure edges drawn this frame (v4 census graphs).
+  trueEdges: Number(
+    document
+      .querySelector('[data-testid="corpus-field"]')
+      ?.getAttribute("data-true-edges-drawn") ?? 0,
+  ),
 }));
-console.log("near zoom:", lodNear.zoom, "· lod:", lodNear.lod);
+console.log(
+  "near zoom:",
+  lodNear.zoom,
+  "· lod:",
+  lodNear.lod,
+  "· true edges drawn:",
+  lodNear.trueEdges,
+);
 
 // 5b) Drag pans the camera.
 const txBefore = await page.evaluate(() =>
@@ -381,15 +401,91 @@ await picker.waitForFunction(
   () => window.location.search.includes("compose="),
   { timeout: 30000 },
 );
-await picker.waitForFunction(
-  () =>
-    document
-      .querySelector(".top-meta")
-      ?.textContent?.includes("composed view"),
-  { timeout: 60000 },
-);
+// Root-first: the opening flight lands on the subtree's true root
+// and the inspector opens on it.
+await picker.waitForSelector(".node-inspector-title", { timeout: 60000 });
+const composeState = await picker.evaluate(() => ({
+  inspector:
+    document.querySelector(".node-inspector-title")?.textContent ?? "",
+  topMetaAbsent: !document.querySelector(".top-meta"),
+  standaloneNote:
+    document.querySelector('[data-testid="standalone-note"]')?.textContent ??
+    "",
+}));
 const pickerComposeUrl = await picker.evaluate(() => window.location.href);
 console.log("picker → compose viewer:", pickerComposeUrl);
+console.log(
+  "root inspector:",
+  composeState.inspector,
+  "· top-meta absent:",
+  composeState.topMetaAbsent,
+  "· note:",
+  composeState.standaloneNote,
+);
+
+// 10b) Editable facts, end to end: run on defaults, then TYPE a fact
+//      — the outputs must change and the sheet must echo the input.
+await picker.waitForSelector(".run-toggle", { timeout: 60000 });
+await picker.click(".run-toggle");
+await picker.waitForSelector(".run-button", { timeout: 15000 });
+await picker.click(".run-button");
+await picker.waitForSelector(".results-sheet", { timeout: 60000 });
+const baseline = await picker.evaluate(
+  () =>
+    [...document.querySelectorAll(".results-cell")].map(
+      (el) => el.textContent,
+    ),
+);
+// The sheet slides in — evaluate-click so animation can't move the
+// button out from under a trusted click.
+await new Promise((r) => setTimeout(r, 800));
+await picker.evaluate(() =>
+  document.querySelector(".results-edit-inputs")?.click(),
+);
+await picker.waitForSelector(".run-overview-search", { timeout: 30000 });
+await picker.type(".run-overview-search", "gross monthly earned");
+await picker.waitForSelector(".run-picker-row", { timeout: 15000 });
+await picker.evaluate(() =>
+  document.querySelector(".run-picker-row")?.click(),
+);
+await picker.waitForSelector(".scenario-field input", { timeout: 15000 });
+await picker.type(".scenario-field input", "2000");
+await picker.evaluate(() =>
+  document.querySelector(".run-button")?.click(),
+);
+await picker.waitForFunction(
+  () => !document.querySelector(".run-spinner"),
+  { timeout: 60000 },
+);
+await picker.waitForSelector(".results-sheet", { timeout: 60000 });
+await new Promise((r) => setTimeout(r, 1500));
+const afterFact = await picker.evaluate(() => ({
+  cells: [...document.querySelectorAll(".results-cell")].map(
+    (el) => el.textContent,
+  ),
+  echo:
+    document.querySelector('[data-testid="results-inputs"]')?.textContent ??
+    "",
+  note:
+    [...document.querySelectorAll(".results-note")]
+      .map((el) => el.textContent)
+      .join(" ") ?? "",
+}));
+const outputsChanged =
+  JSON.stringify(afterFact.cells) !== JSON.stringify(baseline);
+const factEchoed =
+  /Gross Monthly Earned Income/i.test(afterFact.echo) &&
+  afterFact.echo.includes("2,000");
+const answeredLine = /You answered 1 of \d+/.test(afterFact.note);
+console.log(
+  "typed fact: outputs changed:",
+  outputsChanged,
+  "· echoed:",
+  factEchoed,
+  "· answered line:",
+  answeredLine,
+);
+console.log("echo:", afterFact.echo.slice(0, 90));
 
 // 11) /app parity: the same compose deep link through the /app
 //     rewrite mounts the same viewer with the same run affordance.
@@ -438,6 +534,8 @@ const pass =
   hasSearch &&
   zoomAfterWheel > zoomBefore &&
   lodNear.lod === "motif" &&
+  lodNear.trueEdges >= 20 &&
+  headlineDoors >= 5 &&
   txAfterDrag !== txBefore &&
   Boolean(clickedHref) &&
   composeUrl.includes("compose=") &&
@@ -460,10 +558,16 @@ const pass =
   pickerState.doors >= 10 &&
   pickerState.fieldGone &&
   pickerComposeUrl.includes("compose=") &&
+  /allotment/i.test(composeState.inspector) &&
+  composeState.topMetaAbsent &&
+  composeState.standaloneNote.includes("standalone definitions hidden") &&
+  outputsChanged &&
+  factEchoed &&
+  answeredLine &&
   appRunToggle &&
   blockedHonest;
 console.log(
-  pass ? "PASS: field-first launcher, US-only corpus, honest refusals" : "FAIL",
+  pass ? "PASS: true mini-graphs, root-first compose, editable facts" : "FAIL",
 );
 await browser.close();
 process.exit(pass ? 0 : 1);

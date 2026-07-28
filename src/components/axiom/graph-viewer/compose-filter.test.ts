@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { filterStandaloneRules } from "./compose-filter";
+import {
+  composeRootOutput,
+  filterStandaloneRules,
+} from "./compose-filter";
 import type { ProgramGraph, RuleNode } from "./types";
 
 function rule(overrides: Partial<RuleNode>): RuleNode {
@@ -116,5 +119,45 @@ describe("filterStandaloneRules", () => {
     const { graph: filtered, hiddenCount } = filterStandaloneRules(clean);
     expect(hiddenCount).toBe(0);
     expect(filtered).toBe(clean);
+  });
+});
+
+describe("composeRootOutput (root-first selection)", () => {
+  const leafA = rule({ legalId: "f#rate", name: "rate" });
+  const leafB = rule({ legalId: "f#floor", name: "floor" });
+  const mid = rule({
+    legalId: "f#creditable",
+    name: "creditable",
+    ruleDeps: ["f#rate"],
+  });
+  const root = rule({
+    legalId: "f#cdcc",
+    name: "cdcc",
+    ruleDeps: ["f#creditable", "f#floor"],
+  });
+
+  it("picks the terminal root with the largest closure — never array order", () => {
+    // Composed graphs list EVERY rule as an output, leaves first —
+    // the root must still win.
+    const g = graph([leafA, leafB, mid, root]);
+    expect(composeRootOutput(g)).toBe("f#cdcc");
+  });
+
+  it("falls back to ownOutputs, then to the rule list", () => {
+    const g = graph([leafA, mid, root]);
+    g.terminalOutputs = [];
+    expect(composeRootOutput(g)).toBe("f#cdcc");
+    g.ownOutputs = [];
+    expect(composeRootOutput(g)).toBe("f#cdcc");
+  });
+
+  it("breaks closure-size ties deterministically", () => {
+    const g = graph([leafA, leafB]);
+    expect(composeRootOutput(g)).toBe("f#floor");
+    expect(composeRootOutput(graph([leafB, leafA]))).toBe("f#floor");
+  });
+
+  it("returns null for an empty graph", () => {
+    expect(composeRootOutput(graph([]))).toBeNull();
   });
 });

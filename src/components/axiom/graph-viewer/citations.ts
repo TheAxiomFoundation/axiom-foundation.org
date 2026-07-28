@@ -238,6 +238,7 @@ const RULE_NAME_ACRONYMS = new Set([
   "cdcc", "snap", "tanf", "wic", "ssi", "eitc", "ctc", "agi", "magi",
   "cola", "usda", "irs", "fpl", "abawd", "uc", "dcf", "dss", "hhs",
   "dor", "dpa", "apa", "ess", "ssn", "itin", "amt", "fica", "cfr", "lcwra",
+  "dc", "ebt", "leap", "sme", "smed", "ssp",
 ]);
 
 /** Humanize a snake_case rule name or dash-slug document segment:

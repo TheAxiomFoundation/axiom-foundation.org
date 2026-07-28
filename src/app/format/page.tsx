@@ -8,8 +8,6 @@ export const metadata: Metadata = {
   title: "How RuleSpec compares — Axiom Foundation",
   description:
     "RuleSpec, DMN, OpenFisca, and Catala on the same statute — and what each one leaves out.",
-  // Round 1 pull-back — noindexed until the Jul 28 launch.
-  robots: { index: false, follow: false },
 };
 
 export default function FormatPage() {

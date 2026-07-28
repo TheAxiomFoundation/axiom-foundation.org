@@ -30,13 +30,13 @@ describe('Nav', () => {
 
   it('maps marketing hosts to the matching app href', () => {
     expect(appHrefForHost('axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(appHrefForHost('www.axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(appHrefForHost('app.axiom-foundation.org')).toBe(
-      'https://app.axiom-foundation.org',
+      'https://axiom.org/app',
     )
     expect(
       appHrefForHost(
@@ -56,15 +56,29 @@ describe('Nav', () => {
     expect(logo.closest('a')).toHaveAttribute('href', '/')
   })
 
-  it('renders the Round 1 navigation links (About, Team only)', () => {
+  it('renders the full launch navigation links (pages only, no scroll anchors)', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
+    expect(screen.getAllByText('Get started').length).toBeGreaterThan(0)
+    expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Coverage').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Validation').length).toBeGreaterThan(0)
     expect(screen.getAllByText('About').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
-    // Product-page + external links are pulled back in Round 1.
-    expect(screen.queryByText('Axiom')).not.toBeInTheDocument()
+    // Landing scroll anchors live on the page, not in the header;
+    // Docs is footer-only (contributor audience).
+    expect(screen.queryByText('Why')).not.toBeInTheDocument()
     expect(screen.queryByText('Encoding')).not.toBeInTheDocument()
     expect(screen.queryByText('Docs')).not.toBeInTheDocument()
+  })
+
+  it('renders demos dropdown items by segment', () => {
+    mockUsePathname.mockReturnValue('/')
+    render(<NavClient />)
+    expect(screen.getAllByText('Build a form').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Get accurate answers').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Explore benefits cliffs').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('All demos').length).toBeGreaterThan(0)
   })
 
   it('highlights active link on /about', () => {
@@ -74,14 +88,14 @@ describe('Nav', () => {
     expect(aboutLink.closest('a')).toHaveClass('is-active')
   })
 
-  it('does not render a GitHub icon link', () => {
+  it('renders a GitHub icon link', () => {
     mockUsePathname.mockReturnValue('/')
     render(<NavClient />)
     const links = screen.getAllByRole('link')
     const githubLink = links.find(
       (l) => l.getAttribute('href') === 'https://github.com/TheAxiomFoundation',
     )
-    expect(githubLink).toBeUndefined()
+    expect(githubLink).toBeDefined()
   })
 
   it('renders hamburger button for mobile', () => {

@@ -1,15 +1,15 @@
-import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
+import { UPDATES_URL } from "@/lib/launch";
 import { Reveal } from "./reveal";
 
 export function FoundationSection() {
   return (
     <section
       id="foundation"
-      className="section-tint-cream relative z-1 py-32 px-8"
+      className="section-tint-cream section-mark relative z-1 py-32 px-8"
     >
       <div className="max-w-[1280px] mx-auto">
-        <Reveal className="text-center max-w-[720px] mx-auto">
+        <Reveal className="text-center mb-12">
           <span className="kicker mb-6 inline-flex">
             <span className="kicker-mark">&sect;</span>
             Coda &middot; The foundation
@@ -17,33 +17,28 @@ export function FoundationSection() {
           <h2 className="heading-section mb-6 mt-2">
             Doing the public-interest work
           </h2>
-          <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed">
+          <p className="font-body text-lg text-[var(--color-ink-secondary)] leading-relaxed max-w-[680px] mx-auto">
             Everything we publish &mdash; code, data, and the decisions behind
-            them &mdash; is open.
+            them &mdash; is open.{" "}
+            <span className="serif-italic text-[var(--color-ink)]">
+              Encoded law belongs in the open.
+            </span>
           </p>
+        </Reveal>
 
-          <a
-            href="mailto:hello@axiom.org"
-            className="mt-10 inline-flex items-center gap-2 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
-          >
-            Get in touch &mdash; hello@axiom.org
-            <ArrowRightIcon className="w-4 h-4" />
+        <Reveal className="flex flex-wrap items-center justify-center gap-4">
+          <a href="mailto:hello@axiom.org" className="btn-primary">
+            Get in touch
+            <ArrowRightIcon className="w-5 h-5" />
           </a>
-
-          <div className="flex justify-center gap-x-8 gap-y-3 flex-wrap mt-12 pt-8 border-t border-[var(--color-rule-subtle)]">
-            {[
-              { href: "/about", label: "About the foundation" },
-              { href: "/team", label: "Meet the team" },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-mono text-[0.78rem] tracking-[0.04em] text-[var(--color-ink-muted)] no-underline hover:text-[var(--color-accent)] transition-colors duration-150"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+          <a
+            href={UPDATES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline"
+          >
+            Stay updated
+          </a>
         </Reveal>
       </div>
     </section>

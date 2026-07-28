@@ -42,7 +42,7 @@ describe('Landing sections', () => {
     expect(screen.getByText(/AI needs ground truth/i)).toBeInTheDocument()
   })
 
-  it('renders both layers and the worked example', () => {
+  it('renders both layers (worked example removed)', () => {
     render(<EncodedLawSection />)
     expect(
       screen.getByRole('heading', { name: /two layers, both in the open/i }),
@@ -53,21 +53,29 @@ describe('Landing sections', () => {
     expect(
       screen.getByRole('heading', { name: /encoded so anyone can compute them/i }),
     ).toBeInTheDocument()
-    // Round 1 pull-back: the PTC worked example is hidden until the
-    // Jul 28 reveal (SHOW_WORKED_EXAMPLE in encoded-law-section).
     expect(
-      screen.queryByRole('heading', { name: /aca premium tax credit, three eras/i }),
-    ).not.toBeInTheDocument()
+      screen.queryByRole('heading', { name: /aca premium tax credit/i }),
+    ).toBeNull()
   })
 
-  it('renders the encoder section with terminal + steps', () => {
+  it('renders the encoder section with the journey film', () => {
     render(<EncoderSection />)
     expect(
-      screen.getByRole('heading', { name: /encoded automatically/i }),
+      screen.getByRole('heading', { name: /statutes encoded and verified/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/axiom encode "26 USC 32"/i)).toBeInTheDocument()
+    // The terminal animation gave way to the journey film (scroll-
+    // scrubbed on wide viewports, self-running elsewhere).
+    expect(screen.queryByText(/axiom encode/i)).not.toBeInTheDocument()
+    // The journey opens on the reading-room act (the film crossfades
+    // in after it).
+    expect(
+      screen.getByRole('img', { name: /a law library: five bays/i }),
+    ).toBeInTheDocument()
+    // The Read / Encode / Verify step cards stay removed.
     for (const step of ['Read', 'Encode', 'Verify']) {
-      expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: step }),
+      ).not.toBeInTheDocument()
     }
   })
 
@@ -110,9 +118,20 @@ describe('Landing sections', () => {
     expect(screen.getByText(/everything we publish/i)).toBeInTheDocument()
     // The fiscal-sponsorship line was removed (Jul 14).
     expect(screen.queryByText(/fiscally sponsored/i)).not.toBeInTheDocument()
-    // Contributor/GitHub asks are pulled back in Round 1 — only hello@ + internal links remain.
-    expect(screen.getByText(/get in touch/i)).toBeInTheDocument()
-    expect(screen.getByText(/meet the team/i)).toBeInTheDocument()
+    // The Contribute / Verify / Fund cards gave way to two CTAs (Jul 24).
+    expect(screen.queryByText(/encode your jurisdiction/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/get in touch/i).closest('a')).toHaveAttribute(
+      'href',
+      'mailto:hello@axiom.org',
+    )
+    expect(screen.getByText(/stay updated/i).closest('a')).toHaveAttribute(
+      'href',
+      expect.stringContaining('list-manage.com/subscribe'),
+    )
+    // The quick-links row (Live demos / Meet the team / …) was
+    // removed — the footer carries those destinations.
+    expect(screen.queryByText(/live demos/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/meet the team/i)).not.toBeInTheDocument()
   })
 })
 

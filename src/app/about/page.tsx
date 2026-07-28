@@ -13,21 +13,26 @@ const BUILD = [
     n: "01",
     title: "The Axiom App",
     desc: "Explore the law: fetch and cite source documents, inspect the RuleSpec encodings that make them executable, and trace the logic through the computation graph. Every value cites its statute; every clause carries an effective date.",
+    href: "/axiom",
   },
   {
     n: "02",
     title: "RuleSpec",
     desc: "The open format for encoding statutes and regulations as executable, cited rules.",
+    href: "/docs",
   },
   {
     n: "03",
     title: "The Encoder",
     desc: "An AI-assisted pipeline that reads source law, drafts encodings subsection by subsection, and logs every decision with its provenance.",
+    // Held back for now — the /encoder page link returns later.
+    href: null,
   },
   {
     n: "04",
     title: "Validation",
     desc: "The harness that runs every encoding against engines we don't control — and publishes the comparison so anyone can re-run it.",
+    href: "/validation",
   },
 ];
 
@@ -112,16 +117,50 @@ export default function AboutPage() {
                 <p className="m-0 font-body text-[0.92rem] text-[var(--color-ink-secondary)] leading-relaxed">
                   {card.desc}
                 </p>
+                {card.href && (
+                  <Link
+                    href={card.href}
+                    className="mt-auto pt-4 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+                  >
+                    Explore &rarr;
+                  </Link>
+                )}
               </RevealItem>
             ))}
           </RevealGroup>
-          <p className="mt-8 mb-0 text-center font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-            We also build demonstrations on top of this layer &mdash; previews
-            of what open, computable law makes possible.{" "}
-            <span className="serif-italic text-[var(--color-ink)]">
-              The layer underneath is the product.
-            </span>
-          </p>
+
+          {/* Demos highlight — a two-column card: the pitch on the
+              left, a live thumb of the gallery on the right. */}
+          <Reveal className="mt-8">
+            <Link
+              href="/demos"
+              className="card-edition group/demos grid gap-6 p-7 no-underline transition-transform duration-300 hover:-translate-y-1 md:grid-cols-2 md:items-center"
+            >
+              <div>
+                <h3 className="font-display text-[1.25rem] font-light tracking-[0.02em] text-[var(--color-ink)] mb-3 leading-snug">
+                  See it running
+                </h3>
+                <p className="m-0 font-body text-[0.95rem] text-[var(--color-ink-secondary)] leading-relaxed">
+                  We also build demonstrations on top of this layer &mdash;
+                  previews of what open, computable law makes possible.{" "}
+                  <span className="serif-italic text-[var(--color-ink)]">
+                    The layer underneath is the product.
+                  </span>
+                </p>
+                <span className="mt-5 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] group-hover/demos:text-[var(--color-accent-hover)] transition-colors">
+                  Open the demo gallery &rarr;
+                </span>
+              </div>
+              <span className="landing-demo-thumb" aria-hidden>
+                <iframe
+                  src="https://axiom-demo-shell.vercel.app/demos/"
+                  title="Demo gallery — preview"
+                  loading="lazy"
+                  tabIndex={-1}
+                />
+              </span>
+            </Link>
+          </Reveal>
         </Reveal>
 
         <ProseBand label="How we verify">
@@ -136,11 +175,26 @@ export default function AboutPage() {
             . Our team has spent years keeping tax-and-benefit rules correct at
             scale, in government, research, and open source.
           </p>
+          <Link
+            href="/validation"
+            className="mt-5 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+          >
+            See the validation dashboard &rarr;
+          </Link>
         </ProseBand>
 
         <ProseBand label="How we're organized">
           <p className="m-0 font-body text-[1.05rem] text-[var(--color-ink-secondary)] leading-relaxed text-pretty">
-            Our code, our data, and our encoding decisions are public.
+            The Axiom Foundation is a fiscally sponsored project of the{" "}
+            <a
+              href="https://psl-foundation.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] no-underline"
+            >
+              PSL Foundation
+            </a>
+            . Our code, our data, and our encoding decisions are public.
           </p>
         </ProseBand>
 

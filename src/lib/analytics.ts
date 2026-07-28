@@ -51,7 +51,9 @@ export type AxiomEvent =
     }
   | {
       event: "hero_cta_clicked";
-      properties: { cta: "why_this_exists" | "see_encoder_run" };
+      properties: {
+        cta: "explore_the_law" | "why_this_exists" | "see_encoder_run";
+      };
     }
   | {
       event: "hero_search_submitted";

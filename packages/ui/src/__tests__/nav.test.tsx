@@ -2,14 +2,59 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Nav } from "../components/nav";
 
 describe("Nav", () => {
-  it("renders the Round 1 navigation links (About, Team only)", () => {
+  it("renders the full launch navigation links (pages only, no scroll anchors)", () => {
     render(<Nav />);
+    // The app entry is the "Get started" CTA button, not a tab.
+    expect(screen.getAllByText("Get started")[0]).toHaveAttribute(
+      "href",
+      "https://axiom.org/app",
+    );
+    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
+    expect(screen.getAllByText("What's possible").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Validation").length).toBeGreaterThan(0);
     expect(screen.getAllByText("About").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
-    // Product-page + external links are pulled back in Round 1.
-    expect(screen.queryByText("Axiom")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "GitHub" }).length,
+    ).toBeGreaterThan(0);
+    // Landing scroll anchors live on the page, not in the header;
+    // Docs is footer-only (contributor audience).
+    expect(screen.queryByText("Why")).not.toBeInTheDocument();
+    expect(screen.queryByText("Encoding")).not.toBeInTheDocument();
     expect(screen.queryByText("Docs")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+  });
+
+  it("renders the demos dropdown grouped by stakeholder", () => {
+    render(<Nav />);
+    // Group headers are the demo-gallery row sentences from axiom-demo-shell.
+    expect(
+      screen.getAllByText("Build government systems on the law").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Ground AI models in citable law").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Power products on rules you don't rebuild").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Simulate policy on real rules").length,
+    ).toBeGreaterThan(0);
+    // Labels are active phrases, shared with the shell gallery tiles.
+    expect(
+      screen.getAllByText("Build a form")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=builder");
+    // The small company checker was pulled from the gallery.
+    expect(screen.queryByText("Small company checker")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText("Get accurate answers")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=chatbot");
+    expect(
+      screen.getAllByText("Explore benefits cliffs")[0].closest("a"),
+    ).toHaveAttribute("href", "/demos?d=snap");
+    expect(screen.getAllByText("All demos")[0].closest("a")).toHaveAttribute(
+      "href",
+      "/demos",
+    );
   });
 
   it("renders the Axiom Foundation logo", () => {

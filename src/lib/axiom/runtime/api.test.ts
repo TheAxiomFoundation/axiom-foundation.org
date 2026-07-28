@@ -230,6 +230,34 @@ describe("runtime api client", () => {
     }
   });
 
+  it("carries a compile_failed refusal's code and message through", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          status: "error",
+          error: {
+            code: "compile_failed",
+            message: "versioned derived formulas are not supported yet",
+          },
+        }),
+      })
+    );
+    expect(
+      await runCalculateRoot({
+        root: "us:statutes/42/1396a/a/10",
+        facts: {},
+      })
+    ).toEqual({
+      kind: "refused",
+      code: "compile_failed",
+      message: "versioned derived formulas are not supported yet",
+    });
+  });
+
   it("maps root-calculate refusals and failures distinctly", async () => {
     vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
     vi.stubGlobal(
@@ -245,7 +273,7 @@ describe("runtime api client", () => {
     );
     expect(
       await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
-    ).toEqual({ kind: "uncertified" });
+    ).toEqual({ kind: "refused", code: "uncertified_node", message: null });
 
     vi.stubGlobal(
       "fetch",

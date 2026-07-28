@@ -45,6 +45,17 @@ const highlightCount = await page.evaluate(
     document.querySelectorAll('[data-testid="corpus-field-highlight"]').length,
 );
 console.log("cluster labels:", clusterCount, "· computed doors:", highlightCount);
+// Doors are linked-rule scored: the known non-compiling roots (and
+// dust modules — unit-tested) must never be doors.
+const badDoors = await page.evaluate(() => {
+  const banned = ["42%2F1396a%2Fa%2F10", "42%2F415%2Fa", "42%2F415%2Fb", "42%2F415%2Fi"];
+  return [
+    ...document.querySelectorAll('[data-testid="corpus-field-highlight"]'),
+  ].filter((el) =>
+    banned.some((fragment) => (el.getAttribute("href") ?? "").endsWith(fragment)),
+  ).length;
+});
+console.log("non-compiling roots offered as doors:", badDoors);
 
 // 3) The honest stat line is computed, not hardcoded.
 const statLine = await page.evaluate(
@@ -73,7 +84,7 @@ await page.mouse.move(
   fieldBox.x + fieldBox.width / 2,
   fieldBox.y + fieldBox.height / 2,
 );
-await page.mouse.wheel({ deltaY: -600 });
+await page.mouse.wheel({ deltaY: -300 });
 await new Promise((r) => setTimeout(r, 300));
 const zoomAfterWheel = await page.evaluate(() =>
   Number(
@@ -82,7 +93,28 @@ const zoomAfterWheel = await page.evaluate(() =>
       ?.getAttribute("data-zoom"),
   ),
 );
-console.log("wheel zoom:", zoomBefore, "→", zoomAfterWheel);
+const lodMid = await page.evaluate(() =>
+  document
+    .querySelector('[data-testid="corpus-field"]')
+    ?.getAttribute("data-lod"),
+);
+console.log("wheel zoom:", zoomBefore, "→", zoomAfterWheel, "· lod:", lodMid);
+
+// 5a) LOD: pushing past the motif threshold turns dots into
+//     miniature graph sketches (data-lod flips to "motif").
+await page.mouse.wheel({ deltaY: -600 });
+await new Promise((r) => setTimeout(r, 300));
+const lodNear = await page.evaluate(() => ({
+  lod: document
+    .querySelector('[data-testid="corpus-field"]')
+    ?.getAttribute("data-lod"),
+  zoom: Number(
+    document
+      .querySelector('[data-testid="corpus-field"]')
+      ?.getAttribute("data-zoom"),
+  ),
+}));
+console.log("near zoom:", lodNear.zoom, "· lod:", lodNear.lod);
 
 // 5b) Drag pans the camera.
 const txBefore = await page.evaluate(() =>
@@ -244,13 +276,52 @@ await picker.waitForFunction(
 const pickerComposeUrl = await picker.evaluate(() => window.location.href);
 console.log("picker → compose viewer:", pickerComposeUrl);
 
+// 11) /app parity: the same compose deep link through the /app
+//     rewrite mounts the same viewer with the same run affordance.
+const appPage = await browser.newPage();
+await appPage.setViewport({ width: 1500, height: 950 });
+await appPage.goto(
+  "http://localhost:3742/app?compose=us%3Aregulations%2F7-cfr%2F273%2F10",
+  { waitUntil: "networkidle2", timeout: 60000 },
+);
+await appPage.waitForSelector(".graph-viewer-root", { timeout: 60000 });
+let appRunToggle = false;
+try {
+  await appPage.waitForSelector(".run-toggle", { timeout: 30000 });
+  appRunToggle = true;
+} catch {
+  appRunToggle = false;
+}
+console.log(
+  "/app compose parity: viewer mounted · run affordance:",
+  appRunToggle ? "LIVE" : "absent",
+);
+
+// 12) Honest run refusal: 42/1396a/a/10 compiles to nothing (engine
+//     #133) — the viewer must show the API's message, not silence.
+const blockedPage = await browser.newPage();
+await blockedPage.setViewport({ width: 1500, height: 950 });
+await blockedPage.goto(
+  "http://localhost:3742/axiom/graph?compose=us%3Astatutes%2F42%2F1396a%2Fa%2F10",
+  { waitUntil: "networkidle2", timeout: 60000 },
+);
+await blockedPage.waitForSelector(".run-blocked", { timeout: 60000 });
+const blockedText = await blockedPage.evaluate(
+  () => document.querySelector(".run-blocked")?.textContent ?? "",
+);
+console.log("run-blocked state:", blockedText.slice(0, 110) + "…");
+const blockedHonest =
+  /execute yet/.test(blockedText) && blockedText.length > 60;
+
 const pass =
   dotCount > 100 &&
   clusterCount > 5 &&
   highlightCount >= 10 &&
+  badDoors === 0 &&
   /provision-rooted subtrees/.test(statLine) &&
   hasSearch &&
   zoomAfterWheel > zoomBefore &&
+  lodNear.lod === "motif" &&
   txAfterDrag !== txBefore &&
   Boolean(clickedHref) &&
   composeUrl.includes("compose=") &&
@@ -259,7 +330,11 @@ const pass =
   liveField &&
   pickerState.programCards === 0 &&
   pickerState.doors >= 10 &&
-  pickerComposeUrl.includes("compose=");
-console.log(pass ? "PASS: corpus field + picker mirror the live corpus" : "FAIL");
+  pickerComposeUrl.includes("compose=") &&
+  appRunToggle &&
+  blockedHonest;
+console.log(
+  pass ? "PASS: plane of graphs, honest refusals, /app parity" : "FAIL",
+);
 await browser.close();
 process.exit(pass ? 0 : 1);

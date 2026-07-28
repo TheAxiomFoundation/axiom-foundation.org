@@ -108,8 +108,14 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    if (outcome.kind === "uncertified") {
-      return NextResponse.json({ error: "uncertified_node" }, { status: 422 });
+    if (outcome.kind === "refused") {
+      // The engine declined this subtree (compile_failed /
+      // closure_incomplete / uncertified_node): a state the client
+      // must present with the API's own words, not a transport error.
+      return NextResponse.json(
+        { error: outcome.code, message: outcome.message },
+        { status: 422 }
+      );
     }
     if (outcome.kind === "failed") {
       return NextResponse.json({ error: "calculate_failed" }, { status: 502 });

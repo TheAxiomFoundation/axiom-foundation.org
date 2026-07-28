@@ -7,10 +7,15 @@ import {
   computeFieldHighlights,
   corpusFieldStats,
   DEFAULT_LIVE_RULE_COUNT,
+  DEFAULT_LIVE_LINKED_COUNT,
   dotRadius,
   mergeLiveSubtrees,
   FIELD_HEIGHT,
   FIELD_WIDTH,
+  FILAMENT_ZOOM,
+  MOTIF_ZOOM,
+  motifSpec,
+  NON_COMPILING_ROOTS,
   fieldComposeHref,
   fieldStatLine,
   fieldToView,
@@ -35,7 +40,9 @@ function module(overrides: Partial<CorpusModule> = {}): CorpusModule {
     jurisdiction: "us",
     bucket: "statutes",
     ruleCount: 4,
+    linkedRuleCount: 4,
     importCount: 0,
+    imports: [],
     ...overrides,
   };
 }
@@ -167,9 +174,11 @@ describe("buildFieldLayout", () => {
 });
 
 describe("computeFieldHighlights", () => {
-  it("scores rules + 2×imports", () => {
+  it("scores LINKED rules + 2×imports", () => {
     expect(
-      highlightScore(module({ ruleCount: 10, importCount: 4 })),
+      highlightScore(
+        module({ ruleCount: 99, linkedRuleCount: 10, importCount: 4 }),
+      ),
     ).toBe(18);
   });
 
@@ -300,10 +309,155 @@ describe("field transform math", () => {
   });
 });
 
+describe("dust (all-standalone modules)", () => {
+  it("renders linkedRuleCount 0 as minimal faint dust, sized apart from big modules", () => {
+    const layout = buildFieldLayout([
+      module({ target: "dusty", ruleCount: 61, linkedRuleCount: 0 }),
+      module({ target: "linked", ruleCount: 10, linkedRuleCount: 10 }),
+    ]);
+    const dusty = layout.dots.find((d) => d.target === "dusty")!;
+    const linked = layout.dots.find((d) => d.target === "linked")!;
+    expect(dusty.dust).toBe(true);
+    expect(linked.dust).toBe(false);
+    // 61 raw rules mean nothing if none are linked: dust stays small.
+    expect(dusty.r).toBeLessThan(linked.r);
+  });
+
+  it("dust never gets a door, whatever its raw rule count", () => {
+    const picked = computeFieldHighlights([
+      module({ target: "glossary", ruleCount: 61, linkedRuleCount: 0 }),
+      module({ target: "real", ruleCount: 5, linkedRuleCount: 5 }),
+    ]);
+    expect(picked.map((m) => m.target)).toEqual(["real"]);
+  });
+});
+
+describe("door exclusions", () => {
+  it("never offers the known non-compiling roots as doors", () => {
+    const modules = [
+      ...[...NON_COMPILING_ROOTS].map((target) =>
+        module({ target, ruleCount: 99, linkedRuleCount: 99 }),
+      ),
+      module({ target: "us:statutes/26/21", linkedRuleCount: 37 }),
+    ];
+    const picked = computeFieldHighlights(modules);
+    expect(picked.map((m) => m.target)).toEqual(["us:statutes/26/21"]);
+  });
+
+  it("real census doors exclude non-compiling roots and dust", () => {
+    const picked = computeFieldHighlights(corpusSubtrees.modules);
+    expect(picked.length).toBeGreaterThanOrEqual(10);
+    for (const door of picked) {
+      expect(door.linkedRuleCount).toBeGreaterThan(0);
+      expect(NON_COMPILING_ROOTS.has(door.target)).toBe(false);
+    }
+  });
+});
+
+describe("import attraction + filaments", () => {
+  const related = [
+    module({
+      target: "a:statutes/1",
+      jurisdiction: "us",
+      imports: ["b:statutes/1"],
+    }),
+    module({ target: "b:statutes/1", jurisdiction: "us" }),
+    module({ target: "c:statutes/1", jurisdiction: "us" }),
+    module({ target: "d:statutes/1", jurisdiction: "us" }),
+    module({ target: "e:statutes/1", jurisdiction: "us" }),
+    module({ target: "f:statutes/1", jurisdiction: "us" }),
+  ];
+  const unrelated = related.map((m) => ({ ...m, imports: [] }));
+
+  it("pulls import-related modules closer than the plain layout", () => {
+    const withPull = buildFieldLayout(related);
+    const without = buildFieldLayout(unrelated);
+    const dist = (layout: ReturnType<typeof buildFieldLayout>) => {
+      const a = layout.dots.find((d) => d.target === "a:statutes/1")!;
+      const b = layout.dots.find((d) => d.target === "b:statutes/1")!;
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+    expect(dist(withPull)).toBeLessThan(dist(without));
+  });
+
+  it("keeps attracted dots inside their jurisdiction's territory", () => {
+    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const clusterByJurisdiction = new Map(
+      layout.clusters.map((c) => [c.jurisdiction, c]),
+    );
+    for (const link of layout.links) {
+      for (const dot of [layout.dots[link.a]!, layout.dots[link.b]!]) {
+        const cluster = clusterByJurisdiction.get(dot.jurisdiction)!;
+        expect(
+          Math.hypot(dot.x - cluster.x, dot.y - cluster.y),
+        ).toBeLessThanOrEqual(cluster.r + 0.001);
+      }
+    }
+  });
+
+  it("builds deduped links with mutual imports at weight 2, deterministically", () => {
+    const build = () =>
+      buildFieldLayout([
+        module({ target: "x", imports: ["y"] }),
+        module({ target: "y", imports: ["x"] }),
+        module({ target: "z", imports: ["x", "missing:target"] }),
+      ]);
+    const mutual = build();
+    expect(mutual.links).toHaveLength(2);
+    expect(mutual.links.map((l) => l.weight).sort()).toEqual([1, 2]);
+    expect(build()).toEqual(mutual);
+  });
+
+  it("lays out the real census deterministically, attraction included", () => {
+    const a = buildFieldLayout(corpusSubtrees.modules);
+    const b = buildFieldLayout(corpusSubtrees.modules);
+    expect(a).toEqual(b);
+    expect(a.links.length).toBeGreaterThan(100);
+  });
+});
+
+describe("motifSpec (LOD sketches)", () => {
+  const layout = buildFieldLayout([
+    module({ target: "big", linkedRuleCount: 40, importCount: 2 }),
+    module({ target: "small", linkedRuleCount: 1 }),
+    module({ target: "dusty", linkedRuleCount: 0 }),
+  ]);
+  const dotOf = (target: string) =>
+    layout.dots.find((d) => d.target === target)!;
+
+  it("keeps the LOD thresholds ordered: filaments before motifs", () => {
+    expect(FILAMENT_ZOOM).toBeLessThan(MOTIF_ZOOM);
+    expect(FILAMENT_ZOOM).toBeGreaterThan(1);
+  });
+
+  it("derives more satellites for more linked/imported subtrees, capped", () => {
+    const big = motifSpec(dotOf("big"));
+    const small = motifSpec(dotOf("small"));
+    expect(big.length).toBeGreaterThan(small.length);
+    expect(big.length).toBeLessThanOrEqual(8);
+    expect(small.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps every satellite inside its dot and is deterministic", () => {
+    const dot = dotOf("big");
+    const nodes = motifSpec(dot);
+    for (const node of nodes) {
+      expect(Math.hypot(node.dx, node.dy) + node.r).toBeLessThanOrEqual(
+        dot.r,
+      );
+    }
+    expect(motifSpec(dot)).toEqual(nodes);
+  });
+
+  it("gives dust no motif — it stays dust at every zoom", () => {
+    expect(motifSpec(dotOf("dusty"))).toEqual([]);
+  });
+});
+
 describe("hitTestDot", () => {
   const layout = buildFieldLayout([
-    module({ target: "big", ruleCount: 60 }),
-    module({ target: "small", ruleCount: 1 }),
+    module({ target: "big", ruleCount: 60, linkedRuleCount: 60 }),
+    module({ target: "small", ruleCount: 1, linkedRuleCount: 1 }),
   ]);
 
   it("finds a dot at its own center", () => {
@@ -377,7 +531,9 @@ describe("mergeLiveSubtrees", () => {
       jurisdiction: "be",
       bucket: "policies",
       ruleCount: DEFAULT_LIVE_RULE_COUNT,
+      linkedRuleCount: DEFAULT_LIVE_LINKED_COUNT,
       importCount: 0,
+      imports: [],
     });
   });
 

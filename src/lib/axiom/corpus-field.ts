@@ -13,7 +13,12 @@ export interface CorpusModule {
   jurisdiction: string;
   bucket: string;
   ruleCount: number;
+  /** Rules referenced by / referencing anything corpus-wide. Zero =
+   *  an all-standalone module (glossary definitions): field dust. */
+  linkedRuleCount: number;
   importCount: number;
+  /** Intra-corpus module targets this module imports (≤20). */
+  imports?: string[];
 }
 
 export interface CorpusSubtreesFile {
@@ -53,25 +58,46 @@ function bucketRank(bucket: string): number {
 }
 
 /**
- * Dot radius in abstract units: area tracks rule count (sqrt scaling)
- * so a 60-rule subtree reads bigger without drowning the field, and a
- * 0-rule module stays visible.
+ * Dot radius in abstract units: area tracks the LINKED rule count
+ * (rules that actually participate in the corpus graph — sqrt
+ * scaling) so an intricate subtree reads bigger without drowning the
+ * field. All-standalone modules don't come through here: they render
+ * as dust (see DUST_RADIUS).
  */
-export function dotRadius(ruleCount: number): number {
-  return Math.min(6.5, 1.15 + Math.sqrt(Math.max(ruleCount, 0)) * 0.5);
+export function dotRadius(linkedRuleCount: number): number {
+  return Math.min(6.5, 1.15 + Math.sqrt(Math.max(linkedRuleCount, 0)) * 0.5);
+}
+
+/** All-standalone modules (linkedRuleCount 0 — glossary-definition
+ *  pages) render as minimal faint dust: visible, never highlighted. */
+export const DUST_RADIUS = 0.7;
+
+export function isDustModule(module: CorpusModule): boolean {
+  return module.linkedRuleCount <= 0;
 }
 
 /** ── Computed doors ──
  * The always-visible entry points are the corpus's own largest /
  * most intricate subtrees, computed from the census — never a
- * hand-picked list. Score favors interconnection (imports weigh
- * double); a per-jurisdiction cap keeps one giant corpus from
+ * hand-picked list. Score counts LINKED rules (glossary pages full
+ * of unreferenced definitions don't get doors) with imports weighing
+ * double; a per-jurisdiction cap keeps one giant corpus from
  * monopolizing every door. */
 export const HIGHLIGHT_COUNT = 14;
 export const HIGHLIGHT_MAX_PER_JURISDICTION = 3;
 
+/** Roots known not to compile to an executable program (versioned
+ *  formulas — engine#133). They stay on the field; they make poor
+ *  doors. */
+export const NON_COMPILING_ROOTS: ReadonlySet<string> = new Set([
+  "us:statutes/42/1396a/a/10",
+  "us:statutes/42/415/a",
+  "us:statutes/42/415/b",
+  "us:statutes/42/415/i",
+]);
+
 export function highlightScore(module: CorpusModule): number {
-  return module.ruleCount + 2 * module.importCount;
+  return module.linkedRuleCount + 2 * module.importCount;
 }
 
 export function computeFieldHighlights(
@@ -88,6 +114,11 @@ export function computeFieldHighlights(
   const picked: CorpusModule[] = [];
   for (const module of ranked) {
     if (picked.length >= count) break;
+    // Dust never gets a door, and neither do roots we know can't
+    // execute. (Callers pass the mirror-authoritative module list, so
+    // targets absent from the live mirror are already gone.)
+    if (isDustModule(module)) continue;
+    if (NON_COMPILING_ROOTS.has(module.target)) continue;
     const used = perJurisdiction.get(module.jurisdiction) ?? 0;
     if (used >= maxPerJurisdiction) continue;
     perJurisdiction.set(module.jurisdiction, used + 1);
@@ -101,11 +132,23 @@ export interface FieldDot {
   jurisdiction: string;
   bucket: string;
   ruleCount: number;
+  linkedRuleCount: number;
+  importCount: number;
+  /** All-standalone module — rendered as faint dust. */
+  dust: boolean;
   x: number;
   y: number;
   r: number;
   color: string;
   highlightLabel: string | null;
+}
+
+/** An import relation between two laid-out dots (indices into
+ *  layout.dots). weight 2 = mutual import. */
+export interface FieldLink {
+  a: number;
+  b: number;
+  weight: number;
 }
 
 export interface FieldCluster {
@@ -122,6 +165,8 @@ export interface FieldLayout {
   height: number;
   dots: FieldDot[];
   clusters: FieldCluster[];
+  /** Import filaments, drawn at mid zoom. */
+  links: FieldLink[];
 }
 
 /** Clusters with at least this many modules earn a text label —
@@ -144,17 +189,29 @@ interface PackedCluster {
  * Returns offsets relative to the cluster center plus the packed
  * radius actually used.
  */
+/** A module's abstract dot radius: linked-rule sized, or dust. */
+function moduleRadius(module: CorpusModule): number {
+  return isDustModule(module)
+    ? DUST_RADIUS
+    : dotRadius(module.linkedRuleCount);
+}
+
+/** One sort for offsets AND dot emission — they must stay aligned. */
+function clusterSort(a: CorpusModule, b: CorpusModule): number {
+  return (
+    bucketRank(a.bucket) - bucketRank(b.bucket) ||
+    b.linkedRuleCount - a.linkedRuleCount ||
+    b.ruleCount - a.ruleCount ||
+    a.target.localeCompare(b.target)
+  );
+}
+
 function placeClusterDots(
   modules: CorpusModule[],
 ): { offsets: Array<{ dx: number; dy: number }>; radius: number } {
-  const sorted = [...modules].sort(
-    (a, b) =>
-      bucketRank(a.bucket) - bucketRank(b.bucket) ||
-      b.ruleCount - a.ruleCount ||
-      a.target.localeCompare(b.target),
-  );
+  const sorted = [...modules].sort(clusterSort);
   const meanR =
-    sorted.reduce((sum, m) => sum + dotRadius(m.ruleCount), 0) /
+    sorted.reduce((sum, m) => sum + moduleRadius(m), 0) /
     Math.max(sorted.length, 1);
   const spacing = meanR * 2.05;
   const offsets: Array<{ dx: number; dy: number }> = [];
@@ -251,7 +308,13 @@ export function buildFieldLayout(
     maxY = Math.max(maxY, cluster.y + cluster.clusterR);
   }
   if (packed.length === 0) {
-    return { width: FIELD_WIDTH, height: FIELD_HEIGHT, dots: [], clusters: [] };
+    return {
+      width: FIELD_WIDTH,
+      height: FIELD_HEIGHT,
+      dots: [],
+      clusters: [],
+      links: [],
+    };
   }
   const scale = Math.min(
     (FIELD_WIDTH - FIELD_MARGIN * 2) / Math.max(maxX - minX, 1),
@@ -267,30 +330,32 @@ export function buildFieldLayout(
 
   const dots: FieldDot[] = [];
   const clusters: FieldCluster[] = [];
+  const moduleByDotIndex: CorpusModule[] = [];
   for (const cluster of packed) {
     const { offsets } = placeClusterDots(cluster.modules);
-    const sortedModules = [...cluster.modules].sort(
-      (a, b) =>
-        bucketRank(a.bucket) - bucketRank(b.bucket) ||
-        b.ruleCount - a.ruleCount ||
-        a.target.localeCompare(b.target),
-    );
+    const sortedModules = [...cluster.modules].sort(clusterSort);
     const cx = cluster.x * scale + offsetX;
     const cy = cluster.y * scale + offsetY;
     sortedModules.forEach((module, index) => {
       const offset = offsets[index]!;
       const highlightLabel = highlightByTarget.get(module.target) ?? null;
-      const baseR = dotRadius(module.ruleCount) * scale;
+      const dust = isDustModule(module);
+      const baseR = moduleRadius(module) * scale;
+      moduleByDotIndex.push(module);
       dots.push({
         target: module.target,
         jurisdiction: module.jurisdiction,
         bucket: module.bucket,
         ruleCount: module.ruleCount,
+        linkedRuleCount: module.linkedRuleCount,
+        importCount: module.importCount,
+        dust,
         x: cx + offset.dx * scale,
         y: cy + offset.dy * scale,
         // Every dot survives the fit-shrink; highlighted doors get a
-        // guaranteed presence even inside a dense cluster.
-        r: Math.max(baseR, highlightLabel ? 5 : 0.8),
+        // guaranteed presence even inside a dense cluster. Dust stays
+        // minimal by design.
+        r: Math.max(baseR, highlightLabel ? 5 : dust ? 0.5 : 0.8),
         color: bucketColor(module.bucket),
         highlightLabel,
       });
@@ -305,7 +370,82 @@ export function buildFieldLayout(
     });
   }
 
-  return { width: FIELD_WIDTH, height: FIELD_HEIGHT, dots, clusters };
+  const links = buildFieldLinks(dots, moduleByDotIndex);
+  applyImportAttraction(dots, clusters, links);
+
+  return { width: FIELD_WIDTH, height: FIELD_HEIGHT, dots, clusters, links };
+}
+
+/** Import edges between laid-out dots, deduped; a mutual import
+ *  carries weight 2. Deterministic: ordered by (a, b) dot index. */
+function buildFieldLinks(
+  dots: FieldDot[],
+  modules: CorpusModule[],
+): FieldLink[] {
+  const indexByTarget = new Map(dots.map((dot, index) => [dot.target, index]));
+  const weights = new Map<string, FieldLink>();
+  modules.forEach((module, from) => {
+    for (const imported of module.imports ?? []) {
+      const to = indexByTarget.get(imported);
+      if (to === undefined || to === from) continue;
+      const a = Math.min(from, to);
+      const b = Math.max(from, to);
+      const key = `${a}:${b}`;
+      const existing = weights.get(key);
+      if (existing) existing.weight += 1;
+      else weights.set(key, { a, b, weight: 1 });
+    }
+  });
+  return [...weights.values()].sort((x, y) => x.a - y.a || x.b - y.b);
+}
+
+/* Import gravity: a light deterministic attraction pass — modules
+ * that import each other drift toward one another (across clusters
+ * they meet at the facing rims), then every dot is clamped back
+ * inside its jurisdiction's territory so the document grouping
+ * stays absolute. */
+const ATTRACTION_PASSES = 12;
+const ATTRACTION_STRENGTH = 0.055;
+
+function applyImportAttraction(
+  dots: FieldDot[],
+  clusters: FieldCluster[],
+  links: FieldLink[],
+): void {
+  if (links.length === 0) return;
+  const clusterByJurisdiction = new Map(
+    clusters.map((cluster) => [cluster.jurisdiction, cluster]),
+  );
+  for (let pass = 0; pass < ATTRACTION_PASSES; pass += 1) {
+    for (const link of links) {
+      const a = dots[link.a]!;
+      const b = dots[link.b]!;
+      const pull = ATTRACTION_STRENGTH * Math.min(link.weight, 2);
+      const dx = (b.x - a.x) * pull;
+      const dy = (b.y - a.y) * pull;
+      a.x += dx;
+      a.y += dy;
+      b.x -= dx;
+      b.y -= dy;
+    }
+    // Containment: the grouping is non-negotiable — pull any escapee
+    // back to its cluster's rim.
+    for (const link of links) {
+      for (const index of [link.a, link.b]) {
+        const dot = dots[index]!;
+        const cluster = clusterByJurisdiction.get(dot.jurisdiction);
+        if (!cluster) continue;
+        const limit = Math.max(cluster.r - dot.r, cluster.r * 0.35);
+        const dx = dot.x - cluster.x;
+        const dy = dot.y - cluster.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > limit && dist > 0) {
+          dot.x = cluster.x + (dx / dist) * limit;
+          dot.y = cluster.y + (dy / dist) * limit;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -331,6 +471,58 @@ export function hitTestDot(
     }
   }
   return best;
+}
+
+/* ── LOD: from dots to a plane of graphs ──
+ * Far out the field stays dots; past FILAMENT_ZOOM the import
+ * filaments fade in; past MOTIF_ZOOM each subtree renders as a small
+ * schematic node-and-edge motif derived from its census counts.
+ * (The REAL graph still loads only on entry.) */
+export const FILAMENT_ZOOM = 1.5;
+export const MOTIF_ZOOM = 3.2;
+
+export interface MotifNode {
+  dx: number;
+  dy: number;
+  r: number;
+}
+
+/** Small deterministic hash for stable per-module motif rotation. */
+function targetHash(target: string): number {
+  let hash = 0;
+  for (let i = 0; i < target.length; i += 1) {
+    hash = (hash * 31 + target.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+/**
+ * The schematic mini-graph for one subtree: a hub plus satellites —
+ * count scaled by linked rules, one extra marked satellite per
+ * import (capped) — all inside the dot's own radius. Deterministic
+ * per target (rotation from a target hash); dust gets no motif.
+ */
+export function motifSpec(dot: FieldDot): MotifNode[] {
+  if (dot.dust) return [];
+  const satellites = Math.min(
+    8,
+    2 +
+      Math.round(Math.sqrt(Math.max(dot.linkedRuleCount, 1))) +
+      Math.min(dot.importCount, 2),
+  );
+  const rotation =
+    ((targetHash(dot.target) % 360) / 360) * Math.PI * 2;
+  const orbit = dot.r * 0.62;
+  const nodes: MotifNode[] = [];
+  for (let i = 0; i < satellites; i += 1) {
+    const angle = rotation + (i / satellites) * Math.PI * 2;
+    nodes.push({
+      dx: Math.cos(angle) * orbit,
+      dy: Math.sin(angle) * orbit,
+      r: Math.max(dot.r * 0.14, 0.35),
+    });
+  }
+  return nodes;
 }
 
 export interface CorpusFieldStats {
@@ -383,6 +575,9 @@ export interface LiveSubtree {
 }
 
 export const DEFAULT_LIVE_RULE_COUNT = 3;
+/** New law is presumed modest-but-linked: a small visible dot, not
+ *  dust, until the next census sizes it honestly. */
+export const DEFAULT_LIVE_LINKED_COUNT = 2;
 
 export function mergeLiveSubtrees(
   snapshot: CorpusModule[],
@@ -396,7 +591,9 @@ export function mergeLiveSubtrees(
         jurisdiction: subtree.jurisdiction,
         bucket: subtree.bucket,
         ruleCount: DEFAULT_LIVE_RULE_COUNT,
+        linkedRuleCount: DEFAULT_LIVE_LINKED_COUNT,
         importCount: 0,
+        imports: [],
       },
   );
 }

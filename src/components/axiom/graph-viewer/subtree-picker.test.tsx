@@ -10,7 +10,9 @@ function module(overrides: Partial<CorpusModule>): CorpusModule {
     jurisdiction: "us",
     bucket: "statutes",
     ruleCount: 5,
+    linkedRuleCount: 5,
     importCount: 0,
+    imports: [],
     ...overrides,
   };
 }

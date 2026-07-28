@@ -225,7 +225,9 @@ describe("CorpusField", () => {
     await renderField();
     stubFieldRect();
     const layout = buildFieldLayout(corpusSubtrees.modules);
-    const dot = layout.dots.find((d) => !d.highlightLabel && d.ruleCount > 5)!;
+    const dot = layout.dots.find(
+      (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
+    )!;
     fireEvent.mouseMove(canvasEl(), { clientX: dot.x, clientY: dot.y });
     const tooltip = await screen.findByTestId("corpus-field-tooltip");
     expect(tooltip.textContent).toContain(humanizeCitation(dot.target));
@@ -238,7 +240,9 @@ describe("CorpusField", () => {
     await renderField();
     stubFieldRect();
     const layout = buildFieldLayout(corpusSubtrees.modules);
-    const dot = layout.dots.find((d) => !d.highlightLabel && d.ruleCount > 5)!;
+    const dot = layout.dots.find(
+      (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
+    )!;
 
     fireEvent.click(canvasEl(), { clientX: dot.x, clientY: dot.y });
     // Reduced-motion test env: the camera jumps, the overlay mounts.

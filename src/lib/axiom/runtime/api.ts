@@ -268,7 +268,10 @@ export async function runCalculate(
  *  `{ root }` request shape, i.e. the endpoint isn't deployed yet. */
 export type RootCalculateOutcome =
   | { kind: "ok"; result: CalculateResult }
-  | { kind: "uncertified" }
+  /** 422: the engine declined this subtree (compile_failed /
+   *  closure_incomplete / uncertified_node) — code and the API's own
+   *  message carried through for honest display. */
+  | { kind: "refused"; code: string; message: string | null }
   | { kind: "unsupported" }
   | { kind: "failed" };
 
@@ -304,13 +307,16 @@ export async function runCalculateRoot(request: {
       if (response.status === 422) {
         try {
           const failure = (await response.json()) as {
-            error?: { code?: string };
+            error?: { code?: string; message?: string };
           };
-          if (failure.error?.code === "uncertified_node") {
-            return { kind: "uncertified" };
-          }
+          return {
+            kind: "refused",
+            code: failure.error?.code ?? "refused",
+            message: failure.error?.message ?? null,
+          };
         } catch {
-          // Unparseable 422 body — fall through to the generic failure.
+          // Unparseable 422 body — still a refusal, just anonymous.
+          return { kind: "refused", code: "refused", message: null };
         }
       }
       return { kind: "failed" };

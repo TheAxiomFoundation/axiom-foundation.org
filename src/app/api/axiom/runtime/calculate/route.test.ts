@@ -87,11 +87,20 @@ describe("POST /api/axiom/runtime/calculate (run-by-root)", () => {
     expect((await response.json()).error).toBe("root_calculate_unsupported");
   });
 
-  it("maps refusal and failure outcomes for root runs", async () => {
-    runCalculateRootMock.mockResolvedValue({ kind: "uncertified" });
-    expect(
-      (await POST(post({ root: "us:statutes/7/2014", facts: {} }))).status
-    ).toBe(422);
+  it("maps refusal and failure outcomes for root runs, message included", async () => {
+    runCalculateRootMock.mockResolvedValue({
+      kind: "refused",
+      code: "compile_failed",
+      message: "versioned derived formulas are not supported yet",
+    });
+    const refused = await POST(
+      post({ root: "us:statutes/42/1396a/a/10", facts: {} })
+    );
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toEqual({
+      error: "compile_failed",
+      message: "versioned derived formulas are not supported yet",
+    });
 
     runCalculateRootMock.mockResolvedValue({ kind: "failed" });
     expect(

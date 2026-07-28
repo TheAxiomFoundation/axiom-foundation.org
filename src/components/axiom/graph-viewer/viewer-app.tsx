@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   InputEditContext,
   InteractiveRuleGraph,
@@ -16,21 +16,18 @@ import "./plane.css";
 import {
   countriesFromPrograms,
   PREFERRED_DEFAULT_PROGRAM_KEY,
-  countryLabel,
   countryOf,
-  countryShortLabel,
   defaultOutputsForProgram,
-  displayNameForProgram,
   fetchAllPrograms,
   fetchComposedGraph,
   fetchInputMeta,
   fetchProgramGraph,
   programKey,
   programRefFromSummary,
-  summaryForProgram,
 } from "./api";
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreePicker } from "./subtree-picker";
+import { filterStandaloneRules } from "./compose-filter";
 import { loadCorpusModules } from "@/lib/axiom/corpus-live";
 import type { CorpusModule } from "@/lib/axiom/corpus-field";
 
@@ -243,9 +240,6 @@ export function GraphViewerApp() {
   } | null>(null);
   const [scenarioGlow, setScenarioGlow] = useState(false);
   const [outputsOpen, setOutputsOpen] = useState(false);
-  const [indexSearch, setIndexSearch] = useState("");
-  const [indexHover, setIndexHover] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [runPanelOpen, setRunPanelOpen] = useState(false);
   const [runBrowseSearch, setRunBrowseSearch] = useState("");
   // True for a beat after a run lands — drives the one-shot edge
@@ -498,6 +492,9 @@ export function GraphViewerApp() {
   );
   const [composedFiles, setComposedFiles] = useState<LegalId[]>([]);
   const [composedTruncated, setComposedTruncated] = useState(false);
+  // Standalone definitions hidden from the composed canvas (the
+  // isolated-node filter) — reported honestly in top-meta.
+  const [composedHiddenCount, setComposedHiddenCount] = useState(0);
   // Run-by-root, feature-detected: the API is gaining POST /calculate
   // with `{ root, facts }`. Until the probe confirms the deployment
   // answers that shape, compose mode shows no run affordance at all —
@@ -505,6 +502,10 @@ export function GraphViewerApp() {
   const [composeRunReady, setComposeRunReady] = useState<boolean | null>(
     null,
   );
+  // 422 refusal for the composed root (compile_failed /
+  // closure_incomplete): the API's own message, surfaced as a styled
+  // state in the run panel — never a silent failure.
+  const [runBlocked, setRunBlocked] = useState<string | null>(null);
 
   // Load the full program registry once; countries and the per-country program
   // list are derived from it, so a newly compiled program appears here with no
@@ -558,6 +559,7 @@ export function GraphViewerApp() {
     setSelectedOutputs([]);
     setComposedFiles([]);
     setComposedTruncated(false);
+    setComposedHiddenCount(0);
     setComposeFocus(target);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -640,6 +642,7 @@ export function GraphViewerApp() {
     // rules, and "Edit inputs" would show another program's fields.
     setRunResult(null);
     setRunError(null);
+    setRunBlocked(null);
     setRunPanelOpen(false);
     setSelectedLevers(null);
     setScenario({});
@@ -729,10 +732,27 @@ export function GraphViewerApp() {
             "Too many runs in the last minute — wait a moment and run again.",
           );
         }
-        // Certified serving refused the run (422 uncertified_node).
-        // Probing chunks can't help — the ledger, not a bad name, is
-        // the gate. Name what WE asked for; the API never names ids.
         if (response.status === 422) {
+          if (composeFocus) {
+            // The engine declined this composed root (compile_failed /
+            // closure_incomplete). Chunk probing can't help; surface
+            // the API's own message as the run-blocked state.
+            let payload: { error?: string; message?: string | null } = {};
+            try {
+              payload = await response.json();
+            } catch {
+              // Anonymous refusal — the styled state still shows.
+            }
+            const blocked = new Error(
+              payload.message ??
+                "the engine declined this computation without a message.",
+            );
+            blocked.name = "RunBlockedError";
+            throw blocked;
+          }
+          // Certified serving refused the run (422 uncertified_node).
+          // Probing chunks can't help — the ledger, not a bad name, is
+          // the gate. Name what WE asked for; the API never names ids.
           throw new Error(
             `Some requested rules aren't certified for serving yet: ${
               variables.length > 0
@@ -819,16 +839,23 @@ export function GraphViewerApp() {
       };
       setRunResult(data);
     } catch (err) {
-      const timedOut =
-        err instanceof DOMException &&
-        (err.name === "TimeoutError" || err.name === "AbortError");
-      setRunError(
-        timedOut
-          ? "The run timed out — the engine didn't answer. Try again."
-          : err instanceof Error
-            ? err.message
-            : "run failed",
-      );
+      if (err instanceof Error && err.name === "RunBlockedError") {
+        // A refusal, not a failure: the styled run-blocked state
+        // carries the API's message; no generic error on top.
+        setRunBlocked(err.message);
+        setRunError(null);
+      } else {
+        const timedOut =
+          err instanceof DOMException &&
+          (err.name === "TimeoutError" || err.name === "AbortError");
+        setRunError(
+          timedOut
+            ? "The run timed out — the engine didn't answer. Try again."
+            : err instanceof Error
+              ? err.message
+              : "run failed",
+        );
+      }
     } finally {
       setRunning(false);
     }
@@ -851,13 +878,12 @@ export function GraphViewerApp() {
       if (event.key !== "Escape") return;
       if (lawPopup) setLawPopup(null);
       else if (runPanelOpen) setRunPanelOpen(false);
-      else if (searchOpen) setSearchOpen(false);
       else if (inspected) setInspected(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lawPopup, runPanelOpen, searchOpen, inspected]);
+  }, [lawPopup, runPanelOpen, inspected]);
 
 
   // Deep links: the address bar always reproduces the current view —
@@ -1015,7 +1041,14 @@ export function GraphViewerApp() {
     fetchComposedGraph(composeFocus)
       .then((composed) => {
         if (cancelled) return;
-        setGraph(composed.graph);
+        // Standalone-definition filter: rules nothing feeds and
+        // nothing consumes are wallpaper on a composed canvas — hide
+        // them, count them honestly (top-meta reports the count).
+        const { graph: filteredGraph, hiddenCount } = filterStandaloneRules(
+          composed.graph,
+        );
+        setGraph(filteredGraph);
+        setComposedHiddenCount(hiddenCount);
         setComposedFiles(composed.files);
         setComposedTruncated(composed.truncated);
         // No package registry backs a composed view; the graph's own
@@ -1023,7 +1056,7 @@ export function GraphViewerApp() {
         // for the run panel's controls.
         const dtypes: Record<string, string> = {};
         const defaults: Record<string, unknown> = {};
-        for (const input of composed.graph.inputs) {
+        for (const input of filteredGraph.inputs) {
           if (input.name in dtypes) continue;
           dtypes[input.name] =
             typeof input.sample === "boolean" ? "bool" : "number";
@@ -1031,12 +1064,12 @@ export function GraphViewerApp() {
         }
         setInputMeta({ dtypes, defaults });
         const rulesById = new Map(
-          composed.graph.rules.map((rule) => [rule.legalId, rule]),
+          filteredGraph.rules.map((rule) => [rule.legalId, rule]),
         );
         // Prefer outputs with a real computation to draw; fall back to
         // everything the focus file declares (a parameter-only section
         // still renders its nodes).
-        const own = composed.graph.ownOutputs.filter((id) => rulesById.has(id));
+        const own = filteredGraph.ownOutputs.filter((id) => rulesById.has(id));
         const derived = own.filter((id) => {
           const rule = rulesById.get(id);
           return rule?.kind === "derived" && rule.formula?.trim();
@@ -1060,6 +1093,7 @@ export function GraphViewerApp() {
   // mean the endpoint isn't there yet — keep the affordance hidden.
   useEffect(() => {
     setComposeRunReady(null);
+    setRunBlocked(null);
     if (!composeFocus) return;
     let cancelled = false;
     const root = fileLegalIdOf(composeFocus);
@@ -1069,11 +1103,27 @@ export function GraphViewerApp() {
       body: JSON.stringify({ root, facts: {}, variables: [] }),
       signal: AbortSignal.timeout(30_000),
     })
-      .then((response) => {
+      .then(async (response) => {
         if (cancelled) return;
-        setComposeRunReady(
-          response.ok || response.status === 422 || response.status === 429,
-        );
+        if (response.status === 422) {
+          // The endpoint exists but declines this subtree — show the
+          // affordance AND the honest blocked state up front.
+          let payload: { message?: string | null } = {};
+          try {
+            payload = await response.json();
+          } catch {
+            // Anonymous refusal.
+          }
+          if (!cancelled) {
+            setRunBlocked(
+              payload.message ??
+                "the engine declined this computation without a message.",
+            );
+            setComposeRunReady(true);
+          }
+          return;
+        }
+        setComposeRunReady(response.ok || response.status === 429);
       })
       .catch(() => {
         if (!cancelled) setComposeRunReady(false);
@@ -1232,55 +1282,6 @@ export function GraphViewerApp() {
     }
     return scope;
   }, [selectedOutputs, structureTraces]);
-  // Typing stays responsive on 1,700-rule graphs: filtering runs on
-  // the deferred value, off the keystroke's critical path.
-  const deferredIndexSearch = useDeferredValue(indexSearch);
-  const indexMatches = useMemo(() => {
-    const query = deferredIndexSearch.trim().toLowerCase();
-    if (!graph) return [];
-    // Empty query browses the whole program; every query word must
-    // appear, any order — "monthly income" finds Monthly Household
-    // Income.
-    const tokens = query ? query.split(/\s+/) : [];
-    const hits = (label: string) => {
-      if (tokens.length === 0) return true;
-      const hay = label.toLowerCase();
-      return tokens.every((token) => hay.includes(token));
-    };
-    // Global: search the whole program, always — rules (results and
-    // every intermediate) and the questions that feed them. Standalone
-    // pieces (see connectedToOwnOutputs) stay out of the results like
-    // they stay off the canvas; the outputs list is their doorway.
-    const rules = graph.rules
-      .filter((rule) => !mainlandIds || mainlandIds.has(rule.legalId))
-      .filter((rule) => hits(`${humanize(rule.name)} ${rule.name}`))
-      .map((rule) => ({
-        legalId: rule.legalId,
-        label: humanize(rule.name),
-        kind:
-          rule.kind === "parameter"
-            ? ("parameter" as const)
-            : ("rule" as const),
-        inScope: inScopeIds.has(rule.legalId),
-      }));
-    const seenNames = new Set<string>();
-    const inputs = graph.inputs
-      .filter((input) => !mainlandIds || mainlandIds.has(input.legalId))
-      .filter((input) => {
-        if (seenNames.has(input.name)) return false;
-        seenNames.add(input.name);
-        return hits(`${humanize(input.name)} ${input.name}`);
-      })
-      .map((input) => ({
-        legalId: input.legalId,
-        label: humanize(input.name),
-        kind: "input" as const,
-        inScope: inScopeIds.has(input.legalId),
-      }));
-    return [...rules, ...inputs]
-      .sort((a, b) => a.label.localeCompare(b.label))
-      .slice(0, 100);
-  }, [deferredIndexSearch, graph, inScopeIds, mainlandIds]);
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the lens and re-root on the
   // rule itself.
@@ -1561,31 +1562,6 @@ export function GraphViewerApp() {
     );
   }
 
-  // Leaving compose mode: clear the composed graph and the ?compose=
-  // param so the registry-driven selection takes over again.
-  function exitComposeMode() {
-    if (!composeFocus) return;
-    setComposeFocus(null);
-    setComposedFiles([]);
-    setComposedTruncated(false);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("compose");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }
-
-  function selectProgram(value: string) {
-    const next = allPrograms.find((item) => programKey(item) === value);
-    if (!next) return;
-    exitComposeMode();
-    setOutputsOpen(false);
-    setCountry(countryOf(next.jurisdiction));
-    setProgram(programRefFromSummary(next));
-    setGraph(null);
-    setSelectedOutputs([]);
-  }
-
   const launchRun = () => {
     // Always closes the panel — even when the answer-edit auto-run is
     // already in flight (the first press used to be swallowed by a
@@ -1824,73 +1800,10 @@ export function GraphViewerApp() {
     <main className="app-shell no-sidebar">
 
       <section className="viewer-panel">
+        {/* The picker and the field are the ways IN; inside a
+            subgraph the canvas itself is the navigation — no program
+            dropdown, no in-subtree search box. */}
         <div className="top-controls">
-            <select
-              className="program-select"
-              aria-label="Select program"
-              value={program ? programKey(program) : ""}
-              onChange={(event) => selectProgram(event.target.value)}
-              disabled={allPrograms.length === 0}
-            >
-              {composeFocus && <option value="">Composed view</option>}
-              {programs.length === 0 && !composeFocus && (
-                <option value="">No programs available</option>
-              )}
-              {[...new Set(allPrograms.map((i) => countryOf(i.jurisdiction)))].map(
-                (group) => (
-                  <optgroup key={group} label={countryLabel(group)}>
-                    {allPrograms
-                      .filter((i) => countryOf(i.jurisdiction) === group)
-                      .map((item) => (
-                        <option key={programKey(item)} value={programKey(item)}>
-                          {displayNameForProgram(item)}
-                        </option>
-                      ))}
-                  </optgroup>
-                ),
-              )}
-            </select>
-            <div className="top-search">
-              <input
-                type="search"
-                value={indexSearch}
-                onChange={(event) => setIndexSearch(event.target.value)}
-                onFocus={() => {
-                  setSearchOpen(true);
-                  // Searching is a navigation intent — the launcher
-                  // steps aside so results are reachable.
-                  if (launcher !== "closed") dismissLauncher();
-                }}
-                onBlur={() =>
-                  // Delay so a result click lands before the list closes.
-                  window.setTimeout(() => setSearchOpen(false), 180)
-                }
-                placeholder="Search the law..."
-                aria-label="Search the law"
-              />
-              {searchOpen && (
-                <div className="top-search-results" aria-label="Search results">
-                  {indexMatches.map((match) => (
-                    <button
-                      type="button"
-                      key={match.legalId}
-                      onClick={() => {
-                        setSearchOpen(false);
-                        goToSearchResult(match);
-                      }}
-                      onMouseEnter={() => setIndexHover(match.legalId)}
-                      onMouseLeave={() => setIndexHover(null)}
-                      title="Fly to this on the canvas"
-                    >
-                      {match.label}
-                    </button>
-                  ))}
-                  {indexMatches.length === 0 && (
-                    <div className="output-empty">No rules match this search.</div>
-                  )}
-                </div>
-              )}
-            </div>
           <span className="top-meta">
             {programsLoading
               ? "Loading programs"
@@ -1899,7 +1812,11 @@ export function GraphViewerApp() {
                     composeFocus
                       ? "composed view"
                       : (effectiveProgram?.jurisdiction ?? "").toUpperCase()
-                  } · ${graph.rules.length} rules`
+                  } · ${graph.rules.length} rules${
+                    composeFocus && composedHiddenCount > 0
+                      ? ` · +${composedHiddenCount} standalone definitions hidden`
+                      : ""
+                  }`
                 : "Loading graph"}
           </span>
         </div>
@@ -1924,6 +1841,14 @@ export function GraphViewerApp() {
               title="Dismiss"
             >
               {runError}
+            </div>
+          )}
+          {/* A refused subtree announces itself even with the panel
+              closed — silence would read as "runnable". */}
+          {runBlocked && !runPanelOpen && !running && (
+            <div className="run-blocked run-blocked-floating" role="status">
+              <strong>This subtree can&rsquo;t execute yet</strong>
+              <span>{runBlocked}</span>
             </div>
           )}
           <div
@@ -1975,6 +1900,12 @@ export function GraphViewerApp() {
                   </button>
                 </div>
                 {scenarioFlowUI}
+                {runBlocked && (
+                  <div className="run-blocked" role="status">
+                    <strong>This subtree can&rsquo;t execute yet</strong>
+                    <span>{runBlocked}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2042,7 +1973,7 @@ export function GraphViewerApp() {
                   ? inspected.legalId
                   : null
               }
-              hoverLegalId={indexHover}
+              hoverLegalId={null}
               onPaneClear={() => setInspected(null)}
               onLens={openLens}
               parameterRules={parameterRules}

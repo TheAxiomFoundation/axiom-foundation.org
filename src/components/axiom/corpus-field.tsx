@@ -14,7 +14,10 @@ import {
   CLUSTER_LABEL_MIN_MODULES,
   FIELD_HEIGHT,
   FIELD_WIDTH,
+  FILAMENT_ZOOM,
   IDENTITY_TRANSFORM,
+  MOTIF_ZOOM,
+  motifSpec,
   buildFieldLayout,
   computeFieldHighlights,
   corpusFieldStats,
@@ -253,6 +256,41 @@ export function CorpusField() {
       ctx.setLineDash([]);
     }
 
+    // Import filaments fade in at mid zoom — the ties between
+    // related subtrees, drawn under the dots.
+    if (k >= FILAMENT_ZOOM) {
+      const filamentAlpha = Math.min((k - FILAMENT_ZOOM) / 1.2, 1) * 0.3;
+      ctx.lineWidth = 0.7 / k;
+      for (const link of layout.links) {
+        const a = layout.dots[link.a]!;
+        const b = layout.dots[link.b]!;
+        const aVisible =
+          a.x > topLeft.x &&
+          a.x < bottomRight.x &&
+          a.y > topLeft.y &&
+          a.y < bottomRight.y;
+        const bVisible =
+          b.x > topLeft.x &&
+          b.x < bottomRight.x &&
+          b.y > topLeft.y &&
+          b.y < bottomRight.y;
+        if (!aVisible && !bVisible) continue;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        // Mutual imports read stronger than one-way ones.
+        ctx.strokeStyle = `rgba(180, 83, 9, ${
+          filamentAlpha * (link.weight > 1 ? 1 : 0.6)
+        })`;
+        ctx.stroke();
+      }
+    }
+
+    // Past MOTIF_ZOOM each subtree becomes a schematic mini graph —
+    // hub, satellites, spokes — derived purely from census counts.
+    const motifStrength =
+      k >= MOTIF_ZOOM ? Math.min((k - MOTIF_ZOOM) / 1.2, 1) : 0;
+
     const margin = 10;
     for (const dot of layout.dots) {
       if (
@@ -263,12 +301,47 @@ export function CorpusField() {
       ) {
         continue;
       }
+      if (dot.dust) {
+        // All-standalone modules: minimal faint dust, at every LOD.
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.28;
+        ctx.fillStyle = dot.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      const motif = motifStrength > 0 ? motifSpec(dot) : [];
       ctx.beginPath();
       ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-      ctx.globalAlpha = dot.highlightLabel ? 0.95 : 0.72;
+      // The disc recedes as its motif takes over.
+      ctx.globalAlpha =
+        (dot.highlightLabel ? 0.95 : 0.72) * (1 - motifStrength * 0.72);
       ctx.fillStyle = dot.color;
       ctx.fill();
       ctx.globalAlpha = 1;
+      if (motif.length > 0) {
+        const hubR = Math.max(dot.r * 0.2, 0.4);
+        ctx.globalAlpha = motifStrength;
+        ctx.lineWidth = 0.5 / k;
+        ctx.strokeStyle = dot.color;
+        for (const node of motif) {
+          ctx.beginPath();
+          ctx.moveTo(dot.x, dot.y);
+          ctx.lineTo(dot.x + node.dx, dot.y + node.dy);
+          ctx.stroke();
+        }
+        ctx.fillStyle = dot.color;
+        for (const node of motif) {
+          ctx.beginPath();
+          ctx.arc(dot.x + node.dx, dot.y + node.dy, node.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, hubR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       if (dot.highlightLabel) {
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.r + 2.4 / k, 0, Math.PI * 2);
@@ -538,6 +611,13 @@ export function CorpusField() {
         data-testid="corpus-field"
         data-dot-count={layout?.dots.length ?? 0}
         data-corpus-source={source}
+        data-lod={
+          transform.k >= MOTIF_ZOOM
+            ? "motif"
+            : transform.k >= FILAMENT_ZOOM
+              ? "mid"
+              : "far"
+        }
         data-zoom={transform.k.toFixed(3)}
         data-tx={transform.tx.toFixed(1)}
         data-ty={transform.ty.toFixed(1)}

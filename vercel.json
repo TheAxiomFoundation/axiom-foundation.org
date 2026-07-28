@@ -95,6 +95,14 @@
     {
       "source": "/bills/:path(.*)",
       "destination": "https://axiom-bills.vercel.app/bills/:path(.*)"
+    },
+    {
+      "source": "/local",
+      "destination": "https://axiom-local-pi.vercel.app/local"
+    },
+    {
+      "source": "/local/:path(.*)",
+      "destination": "https://axiom-local-pi.vercel.app/local/:path(.*)"
     }
   ],
   "redirects": [
@@ -207,16 +215,6 @@
     {
       "source": "/guidance/:path(.*)",
       "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
-      "permanent": false
-    },
-    {
-      "source": "/local",
-      "destination": "https://axiom-local.vercel.app/",
-      "permanent": false
-    },
-    {
-      "source": "/local/:path(.*)",
-      "destination": "https://axiom-local.vercel.app/:path(.*)",
       "permanent": false
     }
   ]

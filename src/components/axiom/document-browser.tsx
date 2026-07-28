@@ -11,7 +11,7 @@ import { RuleDetailPanel } from "./rule-detail-panel";
 import { RuleInlineSummary } from "./rule-inline-summary";
 import { SiblingStrip } from "./sibling-strip";
 import { AxiomStats } from "./axiom-stats";
-import { LiveProvisionTile } from "./live-provision-tile";
+import { CorpusField } from "./corpus-field";
 import { PaletteTrigger } from "./palette-trigger";
 import { HeroSearchBar } from "./hero-search-bar";
 import { transformRuleToViewerDoc } from "@/lib/axiom-utils";
@@ -431,33 +431,34 @@ export function AxiomBrowser({
   if (resolved.phase === "jurisdiction-picker") {
     return (
       <div className="mx-auto max-w-[1200px] px-4 sm:px-8">
-        {/* Asymmetric hero — tagline + search on the left, a live
-            product peek on the right. Drops the centered editorial
-            "kicker / title / tagline" stack so the page opens with the
-            product, not the brand badge. */}
-        <section className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16">
-          <div>
-            <h1 className="text-balance font-display text-[clamp(2.5rem,5vw,4rem)] font-light leading-[1.05] tracking-[-0.02em] text-[var(--color-ink)]">
-              Every statute, regulation, and policy —{" "}
-              <span className="text-gradient">executable.</span>
-            </h1>
-            <p className="mt-5 max-w-[520px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
-              Axiom indexes law across dozens of jurisdictions and links
-              available machine-readable RuleSpec encodings to their source
-              provisions, with coverage expanding. Search, browse, or wire
-              it into your own software.
-            </p>
-            <div className="mt-8">
-              <HeroSearchBar />
-            </div>
+        {/* The first screen: the encoded corpus itself, drawn to
+            scale. A compact tagline + search on top (searching is the
+            second entry path), then the field — every clean
+            provision-rooted subtree as a clickable dot, clustered by
+            jurisdiction, colored by bucket. */}
+        <section className="flex flex-col items-center text-center">
+          <h1 className="text-balance font-display text-[clamp(2.2rem,4.5vw,3.4rem)] font-light leading-[1.05] tracking-[-0.02em] text-[var(--color-ink)]">
+            Every statute, regulation, and policy —{" "}
+            <span className="text-gradient">executable.</span>
+          </h1>
+          <p className="mt-4 max-w-[640px] text-pretty font-body text-lg leading-relaxed text-[var(--color-ink-secondary)]">
+            Axiom indexes law across dozens of jurisdictions and links
+            available machine-readable RuleSpec encodings to their source
+            provisions, with coverage expanding. Below: the whole encoded
+            corpus — click any subtree to open its rule graph.
+          </p>
+          <div className="mt-6 flex w-full justify-center">
+            <HeroSearchBar />
           </div>
-          <LiveProvisionTile />
         </section>
 
-        {/* Headline scale strip — three live figures rendered with
-            count-up animation. Numbers carry the page's confidence; the
-            stats RPC hydrates them after server render. */}
-        <div className="mt-20">
+        {/* The field of subtrees. */}
+        <div className="mt-10">
+          <CorpusField />
+        </div>
+
+        {/* Jurisdiction pill navigation — the browse entry path. */}
+        <div className="mt-16">
           <AxiomStats
             onNavigateHref={navigateHref}
             initialStats={initialStats}

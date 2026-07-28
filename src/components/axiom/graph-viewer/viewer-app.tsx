@@ -505,6 +505,13 @@ export function GraphViewerApp() {
   );
   const [composedFiles, setComposedFiles] = useState<LegalId[]>([]);
   const [composedTruncated, setComposedTruncated] = useState(false);
+  // Run-by-root, feature-detected: the API is gaining POST /calculate
+  // with `{ root, facts }`. Until the probe confirms the deployment
+  // answers that shape, compose mode shows no run affordance at all —
+  // the graph is fully browsable either way. null = probing.
+  const [composeRunReady, setComposeRunReady] = useState<boolean | null>(
+    null,
+  );
 
   // Load the full program registry once; countries and the per-country program
   // list are derived from it, so a newly compiled program appears here with no
@@ -634,6 +641,8 @@ export function GraphViewerApp() {
 
   const runScenario = async () => {
     if (!effectiveProgram || running) return;
+    // Compose mode runs only through the feature-detected root shape.
+    if (composeFocus && composeRunReady !== true) return;
     setRunning(true);
     setRunError(null);
     try {
@@ -659,19 +668,37 @@ export function GraphViewerApp() {
         walkRuleById.has(id),
       );
       for (const id of traceRoots) walk(id);
+      // Compose mode speaks the run-by-root shape (`{ root, facts }`);
+      // package programs keep their coordinates. Same envelope back.
+      const requestBody = (variables: string[]): Record<string, unknown> =>
+        composeFocus
+          ? {
+              root: fileLegalIdOf(composeFocus),
+              facts: scenario,
+              variables,
+            }
+          : {
+              jurisdiction: effectiveProgram.jurisdiction,
+              program_id: effectiveProgram.programId,
+              values: scenario,
+              variables,
+            };
       const attempt = async (variables: string[]) => {
         const response = await fetch("/api/axiom/runtime/calculate", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            jurisdiction: effectiveProgram.jurisdiction,
-            program_id: effectiveProgram.programId,
-            values: scenario,
-            variables,
-          }),
+          body: JSON.stringify(requestBody(variables)),
           // A hung request must never strand the Run buttons disabled.
           signal: AbortSignal.timeout(30_000),
         });
+        // The root endpoint vanished mid-session (deploy rollback):
+        // fold the affordance back away instead of error-looping.
+        if (composeFocus && response.status === 404) {
+          setComposeRunReady(false);
+          throw new Error(
+            "Running composed views isn't available on this deployment yet.",
+          );
+        }
         // Rate limited: more requests only dig deeper — stop the whole
         // run (including chunk probing) with an honest message.
         if (response.status === 429) {
@@ -710,12 +737,7 @@ export function GraphViewerApp() {
         ...new Set(ordered.map((id) => id.split("#").pop() ?? id)),
       ].slice(0, 96);
       const tryVariables = async (variables: string[]) => {
-        lastRunRequest.current = {
-          jurisdiction: effectiveProgram.jurisdiction,
-          program_id: effectiveProgram.programId,
-          values: scenario,
-          variables,
-        };
+        lastRunRequest.current = requestBody(variables);
         const result = await attempt(variables);
         return result.ok ? result : null;
       };
@@ -749,12 +771,7 @@ export function GraphViewerApp() {
       }
       if (!response) {
         // Even outputs-only failed: the package itself can't run.
-        lastRunRequest.current = {
-          jurisdiction: effectiveProgram.jurisdiction,
-          program_id: effectiveProgram.programId,
-          values: scenario,
-          variables: [],
-        };
+        lastRunRequest.current = requestBody([]);
         const bare = await attempt([]);
         if (!bare.ok) {
           throw new Error(
@@ -978,6 +995,18 @@ export function GraphViewerApp() {
         setGraph(composed.graph);
         setComposedFiles(composed.files);
         setComposedTruncated(composed.truncated);
+        // No package registry backs a composed view; the graph's own
+        // input census (name + sample) is the best available registry
+        // for the run panel's controls.
+        const dtypes: Record<string, string> = {};
+        const defaults: Record<string, unknown> = {};
+        for (const input of composed.graph.inputs) {
+          if (input.name in dtypes) continue;
+          dtypes[input.name] =
+            typeof input.sample === "boolean" ? "bool" : "number";
+          defaults[input.name] = input.sample;
+        }
+        setInputMeta({ dtypes, defaults });
         const rulesById = new Map(
           composed.graph.rules.map((rule) => [rule.legalId, rule]),
         );
@@ -1001,6 +1030,38 @@ export function GraphViewerApp() {
       cancelled = true;
     };
   }, [composeFocus]);
+
+  // Feature-detect run-by-root once per composed view: one probe run
+  // with default facts. 200/422/429 mean the deployment understands
+  // the `{ root }` shape (even if this subtree is refused); 400/404
+  // mean the endpoint isn't there yet — keep the affordance hidden.
+  useEffect(() => {
+    setComposeRunReady(null);
+    if (!composeFocus) return;
+    let cancelled = false;
+    const root = fileLegalIdOf(composeFocus);
+    fetch("/api/axiom/runtime/calculate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ root, facts: {}, variables: [] }),
+      signal: AbortSignal.timeout(30_000),
+    })
+      .then((response) => {
+        if (cancelled) return;
+        setComposeRunReady(
+          response.ok || response.status === 422 || response.status === 429,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setComposeRunReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [composeFocus]);
+  // The run affordance exists in compose mode only once the probe
+  // confirms the API can execute a composed root.
+  const runAffordanceReady = !composeFocus || composeRunReady === true;
 
   const outputRules = useMemo(
     () => rankOutputRules(graph, { includeLeaves: composeFocus != null }),
@@ -2082,7 +2143,7 @@ export function GraphViewerApp() {
                 exit
               </button>
             </div>
-          ) : (
+          ) : runAffordanceReady ? (
             <button
               type="button"
               className="run-toggle"
@@ -2093,7 +2154,7 @@ export function GraphViewerApp() {
             >
               {running ? "Running…" : "Run a scenario"}
             </button>
-          )}
+          ) : null}
           {runPanelOpen && (
             <div
               className="run-panel"

@@ -2,15 +2,47 @@ import { NextResponse } from "next/server";
 import {
   getRuntimePackage,
   runCalculate,
+  runCalculateRoot,
   isRuntimeApiConfigured,
 } from "@/lib/axiom/runtime/api";
 import { clientKey, isRateLimited } from "../run/limiter";
 
 export const dynamic = "force-dynamic";
 
+/** Scenario values / facts: keep well-formed number-or-boolean
+ *  entries, report the type-rejected keys (silent filtering hid
+ *  client bugs). */
+function sanitizeValues(raw: unknown): {
+  sanitized: Record<string, number | boolean>;
+  rejected: string[];
+} {
+  const sanitized: Record<string, number | boolean> = {};
+  const rejected: string[] = [];
+  if (raw && typeof raw === "object") {
+    for (const [key, value] of Object.entries(
+      raw as Record<string, unknown>
+    )) {
+      if (!INPUT_NAME_RE.test(key)) continue;
+      if (
+        (typeof value !== "number" && typeof value !== "boolean") ||
+        (typeof value === "number" && !Number.isFinite(value))
+      ) {
+        rejected.push(key);
+        continue;
+      }
+      sanitized[key] = value;
+      if (Object.keys(sanitized).length >= MAX_VALUES) break;
+    }
+  }
+  return { sanitized, rejected };
+}
+
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const INPUT_NAME_RE = /^[a-z0-9_]{1,80}$/;
 const VARIABLE_RE = /^[\w.:#/–-]{1,140}$/;
+// A file legal id: `us:statutes/7/2014/e/6/A` — no #fragment; run-by-root
+// roots a whole subtree, not a single rule.
+const ROOT_RE = /^[a-z]{2}(?:-[a-z]{2})?:[\w./–-]{1,200}$/;
 const MAX_VALUES = 64;
 const MAX_VARIABLES = 96;
 
@@ -37,6 +69,8 @@ export async function POST(request: Request) {
     jurisdiction?: unknown;
     program_id?: unknown;
     values?: unknown;
+    root?: unknown;
+    facts?: unknown;
     variables?: unknown;
   };
   try {
@@ -44,6 +78,55 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
+
+  const variables = Array.isArray(body.variables)
+    ? (body.variables as unknown[])
+        .filter(
+          (item): item is string =>
+            typeof item === "string" && VARIABLE_RE.test(item)
+        )
+        .slice(0, MAX_VARIABLES)
+    : [];
+
+  // ── Run-by-root: `{ root, facts, variables }` passes straight
+  // through to the API's root-composed calculate. Feature-detected:
+  // an upstream that doesn't know the shape yet answers 400/404,
+  // surfaced as 404 root_calculate_unsupported so the client can
+  // hide the run affordance instead of erroring.
+  if (body.root !== undefined) {
+    const root = body.root;
+    if (typeof root !== "string" || !ROOT_RE.test(root)) {
+      return NextResponse.json({ error: "invalid_root" }, { status: 400 });
+    }
+    const { sanitized: facts, rejected: droppedFacts } = sanitizeValues(
+      body.facts
+    );
+    const outcome = await runCalculateRoot({ root, facts, variables });
+    if (outcome.kind === "unsupported") {
+      return NextResponse.json(
+        { error: "root_calculate_unsupported" },
+        { status: 404 }
+      );
+    }
+    if (outcome.kind === "uncertified") {
+      return NextResponse.json({ error: "uncertified_node" }, { status: 422 });
+    }
+    if (outcome.kind === "failed") {
+      return NextResponse.json({ error: "calculate_failed" }, { status: 502 });
+    }
+    return NextResponse.json(
+      {
+        outputs: outcome.result.outputs,
+        trace: outcome.result.trace ?? [],
+        period: null,
+        provenance: outcome.result.provenance ?? null,
+        applied: Object.keys(facts),
+        dropped: droppedFacts,
+      },
+      { headers: { "cache-control": "no-store" } }
+    );
+  }
+
   const jurisdiction = body.jurisdiction;
   const programId = body.program_id;
   if (
@@ -55,35 +138,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_program" }, { status: 400 });
   }
 
-  const values: Record<string, number | boolean> = {};
-  // Values rejected for TYPE reasons (NaN/Infinity, wrong type) are
-  // reported in `dropped` — silent filtering hid client bugs.
-  const rejected: string[] = [];
-  if (body.values && typeof body.values === "object") {
-    for (const [key, value] of Object.entries(
-      body.values as Record<string, unknown>
-    )) {
-      if (!INPUT_NAME_RE.test(key)) continue;
-      if (
-        (typeof value !== "number" && typeof value !== "boolean") ||
-        (typeof value === "number" && !Number.isFinite(value))
-      ) {
-        rejected.push(key);
-        continue;
-      }
-      values[key] = value;
-      if (Object.keys(values).length >= MAX_VALUES) break;
-    }
-  }
-
-  const variables = Array.isArray(body.variables)
-    ? (body.variables as unknown[])
-        .filter(
-          (item): item is string =>
-            typeof item === "string" && VARIABLE_RE.test(item)
-        )
-        .slice(0, MAX_VARIABLES)
-    : [];
+  const { sanitized: values, rejected } = sanitizeValues(body.values);
 
   const detail = await getRuntimePackage(jurisdiction, programId);
   if (!detail?.sample_request) {

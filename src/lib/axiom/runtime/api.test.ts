@@ -4,6 +4,7 @@ import {
   listRuntimePackages,
   getProgramGraph,
   runCalculate,
+  runCalculateRoot,
   getCertifiedNode,
   getCertifiedSubgraph,
   getCertifiedLedger,
@@ -182,6 +183,88 @@ describe("runtime api client", () => {
       outputs: { snap_allotment: 298 },
       provenance,
     });
+  });
+
+  it("runs calculate by root and passes the shape straight through", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okEnvelope({ outputs: { net_income: 1200 } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const outcome = await runCalculateRoot({
+      root: "us:statutes/7/2014/e/6/A",
+      facts: { household_size: 2 },
+      variables: ["net_income"],
+    });
+    expect(outcome).toEqual({
+      kind: "ok",
+      result: { outputs: { net_income: 1200 } },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/calculate");
+    expect(JSON.parse(init.body)).toEqual({
+      root: "us:statutes/7/2014/e/6/A",
+      facts: { household_size: 2 },
+      variables: ["net_income"],
+    });
+  });
+
+  it("feature-detects run-by-root: upstream 400/404 map to unsupported", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    for (const status of [400, 404]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status,
+          json: async () => ({
+            status: "error",
+            error: { code: "invalid_request" },
+          }),
+        })
+      );
+      expect(
+        await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
+      ).toEqual({ kind: "unsupported" });
+    }
+  });
+
+  it("maps root-calculate refusals and failures distinctly", async () => {
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          status: "error",
+          error: { code: "uncertified_node" },
+        }),
+      })
+    );
+    expect(
+      await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
+    ).toEqual({ kind: "uncertified" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
+    );
+    expect(
+      await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
+    ).toEqual({ kind: "failed" });
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+    expect(
+      await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
+    ).toEqual({ kind: "failed" });
+
+    vi.stubEnv("AXIOM_RUNTIME_API_KEY", "");
+    vi.stubEnv("AXIOM_RUNTIME_API_BASE", "");
+    expect(
+      await runCalculateRoot({ root: "us:statutes/7/2014", facts: {} })
+    ).toEqual({ kind: "failed" });
   });
 
   it("fetches a certified node, encoding # per segment and keeping slashes", async () => {

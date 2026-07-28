@@ -121,6 +121,26 @@ describe("AxiomBrowser", () => {
       );
     });
 
+    it("renders the corpus field with its labeled entry points and stat line", async () => {
+      render(<AxiomBrowser segments={[]} />);
+      // The census loads through a dynamic import — wait for the dots.
+      await waitFor(() =>
+        expect(
+          Number(
+            screen
+              .getByTestId("corpus-field")
+              .getAttribute("data-dot-count")
+          )
+        ).toBeGreaterThan(100)
+      );
+      expect(
+        screen.getAllByTestId("corpus-field-highlight").length
+      ).toBeGreaterThanOrEqual(6);
+      expect(
+        screen.getByTestId("corpus-field-stats").textContent
+      ).toContain("provision-rooted subtrees");
+    });
+
     it("renders the primary jurisdiction navigation", async () => {
       render(<AxiomBrowser segments={[]} />);
       // AxiomStats renders the aria-labelled nav after its RPC

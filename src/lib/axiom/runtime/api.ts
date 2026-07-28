@@ -263,6 +263,71 @@ export async function runCalculate(
   }
 }
 
+/** Outcome of a run-by-root calculate. `unsupported` is the feature
+ *  detector's signal: the upstream API answered 400/404 for the
+ *  `{ root }` request shape, i.e. the endpoint isn't deployed yet. */
+export type RootCalculateOutcome =
+  | { kind: "ok"; result: CalculateResult }
+  | { kind: "uncertified" }
+  | { kind: "unsupported" }
+  | { kind: "failed" };
+
+/**
+ * POST /v1/calculate with the run-by-root shape: `{ root: <file
+ * legal id>, facts, variables }` — same response envelope as the
+ * program-coordinates shape. Unlike `runCalculate`, upstream 400/404
+ * are surfaced distinctly so callers can feature-detect the endpoint
+ * and hide the run affordance instead of erroring.
+ */
+export async function runCalculateRoot(request: {
+  root: string;
+  facts: Record<string, number | boolean>;
+  variables?: string[];
+}): Promise<RootCalculateOutcome> {
+  if (!isRuntimeApiConfigured()) return { kind: "failed" };
+  const key = process.env.AXIOM_RUNTIME_API_KEY;
+  try {
+    const response = await fetch(`${apiBase()}/calculate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(key ? { "x-api-key": key } : {}),
+      },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(CALCULATE_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (response.status === 400 || response.status === 404) {
+      return { kind: "unsupported" };
+    }
+    if (!response.ok) {
+      if (response.status === 422) {
+        try {
+          const failure = (await response.json()) as {
+            error?: { code?: string };
+          };
+          if (failure.error?.code === "uncertified_node") {
+            return { kind: "uncertified" };
+          }
+        } catch {
+          // Unparseable 422 body — fall through to the generic failure.
+        }
+      }
+      return { kind: "failed" };
+    }
+    const envelope = (await response.json()) as {
+      status?: string;
+      data?: CalculateResult;
+    };
+    if (envelope.status !== "ok" || !envelope.data?.outputs) {
+      return { kind: "failed" };
+    }
+    return { kind: "ok", result: envelope.data };
+  } catch {
+    return { kind: "failed" };
+  }
+}
+
 export interface ParityCaseSummary {
   id: string;
   description: string;

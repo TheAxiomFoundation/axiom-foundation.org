@@ -665,6 +665,27 @@ function anchorExistsUnder(
   return false;
 }
 
+/**
+ * Joined-segment citation candidates for slash-form section URLs.
+ * ruleSegments = [docType, ...numberParts]; emits the dotted join of
+ * the first two number parts ("422/12C" → "422.12C") and the dashed
+ * join of all of them ("15/1/1" → "15-1-1") — the two conventions
+ * state corpora use for single-row sections.
+ */
+export function joinedSegmentPaths(
+  slug: string,
+  ruleSegments: string[]
+): string[] {
+  const [docType, ...parts] = ruleSegments;
+  if (!docType || parts.length < 2) return [];
+  const paths: string[] = [];
+  if (parts.length === 2) {
+    paths.push([slug, docType, `${parts[0]}.${parts[1]}`].join("/"));
+  }
+  paths.push([slug, docType, parts.join("-")].join("/"));
+  return paths;
+}
+
 export async function resolveSection(
   segments: string[]
 ): Promise<SectionResolution | null> {
@@ -727,6 +748,23 @@ export async function resolveSection(
           synthetic = true;
           prefetchedSubtree = probe;
         }
+      }
+    }
+  }
+  if (!root) {
+    // State corpora often store a section's number joined into ONE
+    // path segment — dotted ("us-ia/statute/422.12C", Oregon
+    // "315.264") or dashed ("us-mt/statute/15-1-1") — while encoding
+    // legal ids and human URLs split it on slashes. Retry the joined
+    // shapes before climbing to an ancestor.
+    for (const candidate of joinedSegmentPaths(slug, ruleSegments)) {
+      const rule = await getProvisionByCitationPath(candidate).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = candidate;
+        break;
       }
     }
   }

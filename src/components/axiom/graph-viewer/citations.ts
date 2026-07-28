@@ -17,7 +17,11 @@ const KIND_SINGULAR: Record<string, string> = {
   policies: "policy",
   guidance: "guidance",
   bills: "bill",
+  manual: "manual",
 };
+
+/** Encoding-only leaves ("block-1") that never exist as corpus nodes. */
+const ENCODING_LEAF = /^block-\d+$/i;
 
 export function humanizeCitation(fileLegalId: string): string {
   if (!fileLegalId.includes(":")) return fileLegalId;
@@ -51,6 +55,21 @@ export function humanizeCitation(fileLegalId: string): string {
     return `${readable} § ${path}${suffix}`;
   }
 
+  if (kind === "manual" && rest.length >= 1) {
+    // "manual/dss/snap/1115-000-00/…/1115-035-25/block-1" →
+    // "MO DSS SNAP Manual 1115.035.25": agency/program segments lead,
+    // the deepest numeric section reads dotted, encoding leaves drop.
+    const agency = rest
+      .filter((s) => /[a-z]/i.test(s) && !ENCODING_LEAF.test(s))
+      .map((s) => s.toUpperCase())
+      .join(" ");
+    const section = [...rest].reverse().find((s) => /^\d[\d-]*$/.test(s));
+    const state =
+      jurisdiction.split("-")[1]?.toUpperCase() ?? jurisdiction.toUpperCase();
+    const parts = [state, agency, "Manual", section?.replace(/-/g, ".")];
+    return parts.filter(Boolean).join(" ");
+  }
+
   return `${JURISDICTION_LABELS[jurisdiction] ?? jurisdiction} · ${body}`;
 }
 
@@ -66,7 +85,7 @@ export function humanizeSource(source: string): string {
     return humanizeCitation(source.split("#")[0] ?? source);
   }
   const pathish = source.match(
-    /^([a-z]{2}(?:-[a-z]{2})?)\/(statutes?|regulations?|polic(?:y|ies)|guidance)\/(.+)$/,
+    /^([a-z]{2}(?:-[a-z]{2})?)\/(statutes?|regulations?|polic(?:y|ies)|guidance|manual)\/(.+)$/,
   );
   if (pathish) {
     const bucket = pathish[2]!.startsWith("statute")
@@ -75,7 +94,9 @@ export function humanizeSource(source: string): string {
         ? "regulations"
         : pathish[2]!.startsWith("polic")
           ? "policies"
-          : "guidance";
+          : pathish[2] === "manual"
+            ? "manual"
+            : "guidance";
     return humanizeCitation(`${pathish[1]}:${bucket}/${pathish[3]}`);
   }
   return source;
@@ -108,6 +129,15 @@ function normalizeAxiomAppSegments(
   ) {
     const [title, ...tail] = rest;
     return [title.replace(/-cfr$/, ""), ...tail];
+  }
+  // Manuals: encoding-only leaves ("block-1") are not corpus nodes —
+  // link to the deepest real section instead.
+  if (kind === "manual") {
+    const trimmed = [...rest];
+    while (trimmed.length > 0 && ENCODING_LEAF.test(trimmed[trimmed.length - 1]!)) {
+      trimmed.pop();
+    }
+    return trimmed;
   }
   return rest;
 }

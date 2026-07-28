@@ -1,5 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { humanizeRuleName } from "./citations";
+import {
+  axiomAppUrl,
+  humanizeCitation,
+  humanizeRuleName,
+  humanizeSource,
+} from "./citations";
+
+describe("manual-bucket citations", () => {
+  const moBlock =
+    "us-mo:manual/dss/snap/1115-000-00/1115-035-00/1115-035-25/block-1";
+
+  it("links a manual home to its deepest real section (block leaves drop)", () => {
+    expect(axiomAppUrl(moBlock)).toBe(
+      "/us-mo/manual/dss/snap/1115-000-00/1115-035-00/1115-035-25",
+    );
+  });
+
+  it("humanizes a manual citation", () => {
+    expect(humanizeCitation(moBlock)).toBe("MO DSS SNAP Manual 1115.035.25");
+  });
+
+  it("recognizes slash-form manual sources", () => {
+    expect(
+      humanizeSource("us-mo/manual/dss/snap/1115-000-00/1115-035-00/1115-035-25"),
+    ).toBe("MO DSS SNAP Manual 1115.035.25");
+  });
+
+  it("leaves statute and regulation links untouched", () => {
+    expect(axiomAppUrl("us:regulations/7-cfr/273/10")).toBe(
+      "/us/regulation/7/273/10",
+    );
+    expect(axiomAppUrl("us:statutes/7/2017/a")).toBe("/us/statute/7/2017/a");
+  });
+});
 
 describe("humanizeRuleName", () => {
   it("title-cases snake_case rule names", () => {

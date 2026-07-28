@@ -13,9 +13,30 @@ import {
   subtreeAnchor,
   type SectionProvision,
   mapRulesToDeepPath,
+  joinedSegmentPaths,
 } from "./section-page";
 
 const ROOT = "us/statute/26/32";
+
+describe("joinedSegmentPaths", () => {
+  it("emits dotted and dashed joins for a two-part section number", () => {
+    expect(joinedSegmentPaths("us-ia", ["statute", "422", "12C"])).toEqual([
+      "us-ia/statute/422.12C",
+      "us-ia/statute/422-12C",
+    ]);
+  });
+
+  it("emits only the dashed join for deeper numbers", () => {
+    expect(joinedSegmentPaths("us-mt", ["statute", "15", "1", "1"])).toEqual([
+      "us-mt/statute/15-1-1",
+    ]);
+  });
+
+  it("emits nothing when the number is a single segment already", () => {
+    expect(joinedSegmentPaths("us-or", ["statute", "315.264"])).toEqual([]);
+    expect(joinedSegmentPaths("us", ["statute"])).toEqual([]);
+  });
+});
 
 function provision(
   subPath: string,

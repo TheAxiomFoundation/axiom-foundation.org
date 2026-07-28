@@ -285,4 +285,30 @@ describe("proxy", () => {
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
+
+  it("redirects the slashless API reference path to the slash form", () => {
+    const response = proxy(request("https://axiom.org/receipt/api", "axiom.org"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://axiom.org/receipt/api/"
+    );
+  });
+
+  it("redirects the slashless API reference path on localhost too", () => {
+    const response = proxy(
+      request("http://localhost:4944/receipt/api", "localhost:4944")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:4944/receipt/api/"
+    );
+  });
+
+  it("passes the slash-form API reference path through, so it cannot loop", () => {
+    const response = proxy(request("https://axiom.org/receipt/api/", "axiom.org"));
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
 });

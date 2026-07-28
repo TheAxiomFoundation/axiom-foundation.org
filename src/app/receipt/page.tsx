@@ -100,6 +100,13 @@ export default function ReceiptPage() {
             >
               github.com/TheAxiomFoundation/receipt
             </a>{" "}
+            ·{" "}
+            <a
+              href="/receipt/api/"
+              className="text-[var(--color-accent)] hover:underline"
+            >
+              API reference
+            </a>{" "}
             · <code>receipt verify</code> lands with the corpus adoption
           </p>
         </Reveal>

@@ -19,6 +19,15 @@ const nextConfig: NextConfig = {
   // same upstream instead of a different deployment.
   async rewrites() {
     return [
+      // Dev-parity mirror for the receipt API reference, which
+      // vercel.json rewrites to the package repo's GitHub Pages build.
+      // Wildcard form only: the slashless /receipt/api gets its slash
+      // from src/proxy.ts (exact match) and the vercel.json redirect,
+      // so pdoc's relative links resolve under /receipt/api/.
+      {
+        source: "/receipt/api/:path*",
+        destination: "https://theaxiomfoundation.github.io/receipt/:path*",
+      },
       {
         source: "/proposal",
         destination: "https://proposal.axiom-foundation.org/",

@@ -48,6 +48,7 @@ describe("receipt package page", () => {
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("https://pypi.org/project/receipt/");
     expect(hrefs).toContain("https://github.com/TheAxiomFoundation/receipt");
+    expect(hrefs).toContain("/receipt/api/");
     expect(hrefs).toContain("/receipts");
   });
 });

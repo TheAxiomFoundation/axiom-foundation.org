@@ -136,9 +136,8 @@ describe("AxiomBrowser", () => {
       expect(
         screen.getAllByTestId("corpus-field-highlight").length
       ).toBeGreaterThanOrEqual(6);
-      expect(
-        screen.getByTestId("corpus-field-stats").textContent
-      ).toContain("provision-rooted subtrees");
+      // The field carries no stat line — the open world is the UI.
+      expect(screen.queryByTestId("corpus-field-stats")).toBeNull();
     });
 
     it("renders the primary jurisdiction navigation", async () => {

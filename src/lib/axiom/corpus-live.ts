@@ -12,7 +12,7 @@
  */
 
 import {
-  filterUsModules,
+  filterViewModules,
   mergeLiveSubtrees,
   type CorpusModule,
   type CorpusSource,
@@ -56,14 +56,14 @@ export async function loadCorpusModules(): Promise<LoadedCorpus> {
   const snapshot = (await import("./corpus-subtrees.json")).default
     .modules as CorpusModule[];
   const live = await fetchLiveSubtrees();
-  // US-only scope, applied to BOTH sources: every view surface (field,
-  // picker, doors, clusters, stat counts) shows the US corpora only,
-  // whatever the mirror serves.
+  // The app's view scope, applied to BOTH sources so every surface
+  // (field, picker, doors, clusters, counts) agrees: US-only, and no
+  // single-node subtrees (a one-rule module isn't a graph).
   if (live) {
     return {
-      modules: filterUsModules(mergeLiveSubtrees(snapshot, live)),
+      modules: filterViewModules(mergeLiveSubtrees(snapshot, live)),
       source: "live",
     };
   }
-  return { modules: filterUsModules(snapshot), source: "snapshot" };
+  return { modules: filterViewModules(snapshot), source: "snapshot" };
 }

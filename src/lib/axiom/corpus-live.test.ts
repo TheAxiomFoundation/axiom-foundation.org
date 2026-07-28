@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { loadCorpusModules } from "./corpus-live";
-import { DEFAULT_LIVE_RULE_COUNT } from "./corpus-field";
+import {
+  DEFAULT_LIVE_RULE_COUNT,
+  filterViewModules,
+} from "./corpus-field";
 import corpusSubtrees from "./corpus-subtrees.json";
 
 function okResponse(data: unknown) {
@@ -19,7 +22,10 @@ describe("loadCorpusModules", () => {
   });
 
   it("merges the live mirror over the snapshot, US-only, and reports source live", async () => {
-    const known = corpusSubtrees.modules[0]!;
+    const known = corpusSubtrees.modules.find((m) => m.ruleCount > 1)!;
+    // A live entry whose snapshot subtree is a single node: filtered
+    // out of every view surface.
+    const oneNode = corpusSubtrees.modules.find((m) => m.ruleCount <= 1)!;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -35,6 +41,11 @@ describe("loadCorpusModules", () => {
               target: "us-pr:statutes/13/30171",
               jurisdiction: "us-pr",
               bucket: "statutes",
+            },
+            {
+              target: oneNode.target,
+              jurisdiction: oneNode.jurisdiction,
+              bucket: oneNode.bucket,
             },
             // Non-US mirror entries exist upstream but never reach a
             // view surface.
@@ -55,6 +66,9 @@ describe("loadCorpusModules", () => {
     const { modules, source } = await loadCorpusModules();
     expect(source).toBe("live");
     expect(modules).toHaveLength(2);
+    expect(
+      modules.some((m) => m.target === oneNode.target)
+    ).toBe(false);
     // Known target keeps its snapshot size; a new US target gets the
     // default dot.
     expect(modules[0]!.ruleCount).toBe(known.ruleCount);
@@ -74,7 +88,10 @@ describe("loadCorpusModules", () => {
     );
     const { modules, source } = await loadCorpusModules();
     expect(source).toBe("snapshot");
-    expect(modules).toHaveLength(corpusSubtrees.modules.length);
+    // The view filter applies to the fallback too (US + multi-node).
+    expect(modules).toHaveLength(
+      filterViewModules(corpusSubtrees.modules).length
+    );
   });
 
   it("falls back on transport failure and on malformed payloads", async () => {
@@ -94,6 +111,6 @@ describe("loadCorpusModules", () => {
     );
     const empty = await loadCorpusModules();
     expect(empty.source).toBe("snapshot");
-    expect(empty.modules.length).toBeGreaterThan(4000);
+    expect(empty.modules.length).toBeGreaterThan(2500);
   });
 });

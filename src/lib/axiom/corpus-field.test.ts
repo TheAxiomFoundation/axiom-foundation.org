@@ -20,6 +20,8 @@ import {
   fieldStatLine,
   fieldToView,
   filterUsModules,
+  filterViewModules,
+  fitFieldTransform,
   highlightScore,
   isUsJurisdiction,
   HIGHLIGHT_COUNT,
@@ -28,6 +30,8 @@ import {
   IDENTITY_TRANSFORM,
   interpolateTransform,
   MAX_FIELD_ZOOM,
+  MIN_VIEW_RULE_COUNT,
+  minZoomForView,
   panField,
   viewToField,
   zoomFieldAt,
@@ -453,6 +457,55 @@ describe("motifSpec (LOD sketches)", () => {
 
   it("gives dust no motif — it stays dust at every zoom", () => {
     expect(motifSpec(dotOf("dusty"))).toEqual([]);
+  });
+});
+
+describe("filterViewModules (one-node filter)", () => {
+  it("drops single-node subtrees entirely — not dust, gone", () => {
+    const kept = filterViewModules([
+      module({ target: "one", ruleCount: 1 }),
+      module({ target: "zero", ruleCount: 0 }),
+      module({ target: "two", ruleCount: MIN_VIEW_RULE_COUNT }),
+      module({ target: "uk:x", jurisdiction: "uk", ruleCount: 9 }),
+    ]);
+    expect(kept.map((m) => m.target)).toEqual(["two"]);
+  });
+
+  it("thins the real census: 1,500 one-node modules disappear", () => {
+    const kept = filterViewModules(corpusSubtrees.modules);
+    expect(kept.length).toBeLessThan(corpusSubtrees.modules.length);
+    expect(kept.every((m) => m.ruleCount >= MIN_VIEW_RULE_COUNT)).toBe(true);
+    expect(kept.length).toBeGreaterThan(2500);
+  });
+});
+
+describe("cover-fit camera (full-bleed windows)", () => {
+  it("an aspect-matched window keeps the exact overview", () => {
+    expect(minZoomForView(FIELD_HEIGHT)).toBe(1);
+    expect(fitFieldTransform(FIELD_HEIGHT)).toEqual({ k: 1, tx: 0, ty: 0 });
+    // Sub-pixel aspect jitter snaps to 1, not 1.002.
+    expect(minZoomForView(FIELD_HEIGHT + 1)).toBe(1);
+  });
+
+  it("a taller window raises the minimum zoom so the world covers it", () => {
+    const viewH = 600;
+    expect(minZoomForView(viewH)).toBeCloseTo(600 / FIELD_HEIGHT);
+    const fit = fitFieldTransform(viewH);
+    expect(fit.k).toBeCloseTo(600 / FIELD_HEIGHT);
+    // Covered: world spans the window exactly in y, centered in x.
+    expect(fit.ty).toBeCloseTo(0);
+    expect(fit.tx).toBeLessThan(0);
+    expect(FIELD_WIDTH * fit.k + fit.tx).toBeGreaterThanOrEqual(FIELD_WIDTH);
+  });
+
+  it("clamping honors the window height: no bare paper below", () => {
+    const viewH = 600;
+    const clamped = clampFieldTransform({ k: 2, tx: 5, ty: -1e9 }, viewH);
+    expect(clamped.tx).toBe(0);
+    expect(clamped.ty).toBe(viewH - FIELD_HEIGHT * 2);
+    // Zooming "out" in a tall window stops at cover-fit, not k=1.
+    const out = zoomFieldAt(fitFieldTransform(viewH), 0.5, 500, 300, viewH);
+    expect(out.k).toBeCloseTo(minZoomForView(viewH));
   });
 });
 

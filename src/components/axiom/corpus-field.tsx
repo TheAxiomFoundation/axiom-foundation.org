@@ -10,19 +10,17 @@ import {
 import dynamic from "next/dynamic";
 import { humanizeCitation } from "@/components/axiom/graph-viewer/citations";
 import {
-  BUCKET_COLORS,
   CLUSTER_LABEL_MIN_MODULES,
   FIELD_HEIGHT,
   FIELD_WIDTH,
   FILAMENT_ZOOM,
+  fitFieldTransform,
   IDENTITY_TRANSFORM,
   MOTIF_ZOOM,
   motifSpec,
   buildFieldLayout,
   computeFieldHighlights,
-  corpusFieldStats,
   fieldComposeHref,
-  fieldStatLine,
   fieldToView,
   hitTestDot,
   interpolateTransform,
@@ -103,12 +101,16 @@ function composeTargetFromLocation(): string | null {
 
 export function CorpusField({
   onPick,
+  frame = true,
 }: {
   /** Embedded mode (the viewer's launcher): picking a subtree calls
    *  this instead of pushState + mounting the compose viewer overlay
    *  — the host is already the viewer. Omitted on the /axiom landing,
    *  where the field owns the whole enter/return journey. */
   onPick?: (target: string) => void;
+  /** frame=false: full-bleed — no border/panel chrome and no fixed
+   *  aspect; the host sizes the box and the camera cover-fits it. */
+  frame?: boolean;
 } = {}) {
   const embedded = Boolean(onPick);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -123,6 +125,13 @@ export function CorpusField({
   );
   const transformRef = useRef(transform);
   transformRef.current = transform;
+  // The window's height in view units (width is always FIELD_WIDTH).
+  // A full-bleed host is usually taller than the world's own aspect;
+  // the camera cover-fits it. Ref mirror for rAF/native handlers.
+  const [viewHeight, setViewHeight] = useState<number>(FIELD_HEIGHT);
+  const viewHeightRef = useRef(viewHeight);
+  viewHeightRef.current = viewHeight;
+  const userMovedRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   // Where the camera should pull back to when the viewer closes.
   const returnTransformRef = useRef<FieldTransform>(IDENTITY_TRANSFORM);
@@ -174,11 +183,6 @@ export function CorpusField({
         : null,
     [modules, highlightLabels]
   );
-  const stats = useMemo(
-    () => (modules ? corpusFieldStats(modules) : null),
-    [modules]
-  );
-
   const stopAnimation = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
@@ -203,7 +207,9 @@ export function CorpusField({
           raw < 0.5
             ? 4 * raw * raw * raw
             : 1 - Math.pow(-2 * raw + 2, 3) / 2;
-        setTransform(interpolateTransform(from, to, eased));
+        setTransform(
+          interpolateTransform(from, to, eased, viewHeightRef.current)
+        );
         if (raw < 1) {
           rafRef.current = requestAnimationFrame(step);
         } else {
@@ -224,8 +230,14 @@ export function CorpusField({
     if (!canvas || !layout) return;
     const parent = canvas.parentElement;
     const cssWidth = parent?.clientWidth ?? 0;
-    if (cssWidth <= 0) return;
-    const cssHeight = (cssWidth * FIELD_HEIGHT) / FIELD_WIDTH;
+    const cssHeight = parent?.clientHeight ?? 0;
+    if (cssWidth <= 0 || cssHeight <= 0) return;
+    // Track the window's aspect: full-bleed hosts are taller than the
+    // world; the camera cover-fits whatever we measure here.
+    const measuredViewHeight = (cssHeight / cssWidth) * FIELD_WIDTH;
+    if (Math.abs(measuredViewHeight - viewHeightRef.current) > 0.5) {
+      setViewHeight(measuredViewHeight);
+    }
     const dpr =
       typeof window !== "undefined" ? (window.devicePixelRatio ?? 1) : 1;
     const pxWidth = Math.round(cssWidth * dpr);
@@ -236,13 +248,17 @@ export function CorpusField({
     if (!ctx) return; // jsdom / very old browsers: overlay links still work
     const { k, tx, ty } = transform;
     const unit = (cssWidth / FIELD_WIDTH) * dpr;
-    ctx.setTransform(unit, 0, 0, unit, 0, 0);
-    ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(unit * k, 0, 0, unit * k, unit * tx, unit * ty);
 
     // Visible field rect for culling (with a halo margin).
     const topLeft = viewToField(transform, 0, 0);
-    const bottomRight = viewToField(transform, FIELD_WIDTH, FIELD_HEIGHT);
+    const bottomRight = viewToField(
+      transform,
+      FIELD_WIDTH,
+      measuredViewHeight
+    );
 
     // Cluster halos first — the faint territories the dots live in.
     for (const cluster of layout.clusters) {
@@ -383,9 +399,12 @@ export function CorpusField({
       if (!container) return null;
       const rect = container.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
+      // One uniform scale (view units per px is width-based) — the
+      // window's height in view units is whatever the box gives.
+      const scale = FIELD_WIDTH / rect.width;
       return {
-        x: ((event.clientX - rect.left) / rect.width) * FIELD_WIDTH,
-        y: ((event.clientY - rect.top) / rect.height) * FIELD_HEIGHT,
+        x: (event.clientX - rect.left) * scale,
+        y: (event.clientY - rect.top) * scale,
       };
     },
     []
@@ -405,8 +424,9 @@ export function CorpusField({
         -event.deltaY * (event.ctrlKey ? 0.01 : 0.002)
       );
       stopAnimation();
+      userMovedRef.current = true;
       setTransform((current) =>
-        zoomFieldAt(current, factor, point.x, point.y)
+        zoomFieldAt(current, factor, point.x, point.y, viewHeightRef.current)
       );
     };
     container.addEventListener("wheel", onWheel, { passive: false });
@@ -467,7 +487,10 @@ export function CorpusField({
               Math.hypot(dx, dy) > 3;
           }
           stopAnimation();
-          setTransform((current) => panField(current, dx, dy));
+          userMovedRef.current = true;
+          setTransform((current) =>
+            panField(current, dx, dy, viewHeightRef.current)
+          );
         }
         pointers.set(event.pointerId, point);
         return;
@@ -490,8 +513,15 @@ export function CorpusField({
         if (dragStateRef.current) dragStateRef.current.moved = true;
         const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         stopAnimation();
+        userMovedRef.current = true;
         setTransform((current) =>
-          zoomFieldAt(current, nextDist / prevDist, mid.x, mid.y)
+          zoomFieldAt(
+            current,
+            nextDist / prevDist,
+            mid.x,
+            mid.y,
+            viewHeightRef.current
+          )
         );
       }
     },
@@ -519,7 +549,11 @@ export function CorpusField({
     (dot: FieldDot) => {
       if (!layout || openTarget) return;
       returnTransformRef.current = transformRef.current;
-      const destination = zoomTransformForDot(layout, dot);
+      const destination = zoomTransformForDot(
+        layout,
+        dot,
+        viewHeightRef.current
+      );
       animateTo(destination, ZOOM_IN_MS, () => {
         if (onPick) onPick(dot.target);
         else openCompose(dot.target);
@@ -590,12 +624,24 @@ export function CorpusField({
     };
   }, [openTarget]);
 
+  // At rest the camera cover-fits the window; when a full-bleed host
+  // resizes (or first measures), re-fit unless the user has taken
+  // the camera somewhere.
+  useEffect(() => {
+    if (userMovedRef.current || openTarget) return;
+    setTransform(fitFieldTransform(viewHeight));
+  }, [viewHeight, openTarget]);
+
   const resetView = useCallback(() => {
-    animateTo(IDENTITY_TRANSFORM, ZOOM_OUT_MS);
+    userMovedRef.current = false;
+    animateTo(fitFieldTransform(viewHeightRef.current), ZOOM_OUT_MS);
   }, [animateTo]);
 
+  const fitNow = fitFieldTransform(viewHeight);
   const isZoomed =
-    transform.k !== 1 || transform.tx !== 0 || transform.ty !== 0;
+    Math.abs(transform.k - fitNow.k) > 0.01 ||
+    Math.abs(transform.tx - fitNow.tx) > 1 ||
+    Math.abs(transform.ty - fitNow.ty) > 1;
 
   const highlights = useMemo(
     () => (layout ? layout.dots.filter((dot) => dot.highlightLabel) : []),
@@ -615,10 +661,10 @@ export function CorpusField({
     x > -margin &&
     x < FIELD_WIDTH + margin &&
     y > -margin &&
-    y < FIELD_HEIGHT + margin;
+    y < viewHeight + margin;
 
   return (
-    <div className="w-full">
+    <div className={frame ? "w-full" : "h-full w-full"}>
       <div
         ref={containerRef}
         data-testid="corpus-field"
@@ -634,8 +680,16 @@ export function CorpusField({
         data-zoom={transform.k.toFixed(3)}
         data-tx={transform.tx.toFixed(1)}
         data-ty={transform.ty.toFixed(1)}
-        className="relative w-full touch-none overflow-hidden rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] shadow-sm"
-        style={{ aspectRatio: `${FIELD_WIDTH} / ${FIELD_HEIGHT}` }}
+        className={
+          frame
+            ? "relative w-full touch-none overflow-hidden rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] shadow-sm"
+            : "relative h-full w-full touch-none overflow-hidden bg-[var(--color-paper-elevated)]"
+        }
+        style={
+          frame
+            ? { aspectRatio: `${FIELD_WIDTH} / ${FIELD_HEIGHT}` }
+            : undefined
+        }
       >
         {!layout && (
           <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
@@ -674,7 +728,7 @@ export function CorpusField({
               className="pointer-events-none absolute -translate-x-1/2 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)] sm:text-[10px]"
               style={{
                 left: `${(pos.x / FIELD_WIDTH) * 100}%`,
-                top: `${(pos.y / FIELD_HEIGHT) * 100}%`,
+                top: `${(pos.y / viewHeight) * 100}%`,
               }}
             >
               {clusterLabel(cluster.jurisdiction)}
@@ -714,7 +768,7 @@ export function CorpusField({
                 // Clamped so a door on a cluster's rim never bleeds
                 // past the panel edge (the chip is centered on its dot).
                 left: `clamp(130px, ${(pos.x / FIELD_WIDTH) * 100}%, calc(100% - 130px))`,
-                top: `${(pos.y / FIELD_HEIGHT) * 100}%`,
+                top: `${(pos.y / viewHeight) * 100}%`,
                 transform: `translate(-50%, ${index % 2 === 0 ? "-160%" : "70%"})`,
               }}
             >
@@ -735,7 +789,7 @@ export function CorpusField({
                 className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded border border-[var(--color-rule)] bg-[var(--color-paper)] px-2 py-1 shadow-md"
                 style={{
                   left: `${(pos.x / FIELD_WIDTH) * 100}%`,
-                  top: `${((pos.y - hovered.r * transform.k - 4) / FIELD_HEIGHT) * 100}%`,
+                  top: `${((pos.y - hovered.r * transform.k - 4) / viewHeight) * 100}%`,
                 }}
               >
                 <span className="block font-mono text-[11px] text-[var(--color-ink)]">
@@ -760,28 +814,6 @@ export function CorpusField({
             ⌂ whole corpus
           </button>
         )}
-      </div>
-
-      {/* Legend + the one honest stat line */}
-      <div className="mt-3 flex flex-col items-center justify-between gap-2 sm:flex-row">
-        <p
-          data-testid="corpus-field-stats"
-          className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-secondary)]"
-        >
-          {stats ? fieldStatLine(stats, source) : "counting the corpus…"}
-        </p>
-        <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-          {(["statutes", "regulations", "policies"] as const).map((bucket) => (
-            <span key={bucket} className="inline-flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: BUCKET_COLORS[bucket] }}
-              />
-              {bucket}
-            </span>
-          ))}
-        </div>
       </div>
 
       {/* The compose viewer, mounted in place over the zoomed field.

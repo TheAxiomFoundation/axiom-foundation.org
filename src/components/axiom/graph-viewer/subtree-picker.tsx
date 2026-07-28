@@ -10,30 +10,33 @@ import {
 /**
  * The launcher's single verb: pick a node → its subgraph opens.
  *
- * A search over EVERY subtree the corpus serves (live mirror merged
- * with the snapshot; matching humanized citation + raw target), plus
- * the census's own computed doors — the largest / most intricate
- * subtrees. Picking anything calls onPick(target); the viewer enters
- * compose mode for exactly that root. No program cards, no registry.
+ * Two pieces, composed by the launcher:
+ * - SubtreeSearch — a search over EVERY subtree the corpus serves
+ *   (matching humanized citation + raw target). Compact mode floats
+ *   its results as a dropdown, for the top-right control cluster
+ *   over the full-bleed field.
+ * - SubtreeDoors — the census's own computed doors (largest / most
+ *   intricate subtrees), the list mode's body.
+ *
+ * Picking anything calls onPick(target); the viewer enters compose
+ * mode for exactly that root. No program cards, no registry.
  */
 
 const MAX_RESULTS = 40;
 
-export function SubtreePicker({
+export function SubtreeSearch({
   modules,
   onPick,
-  idle,
+  compact = false,
 }: {
   modules: CorpusModule[];
   onPick: (target: string) => void;
-  /** Rendered under the search box while the query is empty —
-   *  defaults to the computed doors grid; the launcher's field mode
-   *  passes the open-world field here so search rides along. */
-  idle?: React.ReactNode;
+  /** Floating variant: results drop down over whatever is beneath. */
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState("");
 
-  // Humanize once — 5,000 citations per keystroke is real money.
+  // Humanize once — thousands of citations per keystroke is real money.
   const entries = useMemo(
     () =>
       modules.map((module) => {
@@ -44,11 +47,6 @@ export function SubtreePicker({
           haystack: `${label} ${module.target}`.toLowerCase(),
         };
       }),
-    [modules],
-  );
-
-  const doors = useMemo(
-    () => computeFieldHighlights(modules),
     [modules],
   );
 
@@ -69,20 +67,19 @@ export function SubtreePicker({
   const searching = query.trim().length > 0;
 
   return (
-    <div className="subtree-picker">
+    <div className={`subtree-search ${compact ? "is-compact" : ""}`}>
       <input
         type="search"
         className="picker-search"
         data-testid="picker-search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder={`Search ${modules.length.toLocaleString("en-US")} provisions — citation or path…`}
+        placeholder={`Search ${modules.length.toLocaleString("en-US")} provisions…`}
         aria-label="Search every encoded provision"
-        autoFocus
       />
-      {searching ? (
+      {searching && (
         <div
-          className="picker-results"
+          className={`picker-results ${compact ? "picker-results-floating" : ""}`}
           role="listbox"
           aria-label="Matching provisions"
         >
@@ -110,35 +107,44 @@ export function SubtreePicker({
             </p>
           )}
         </div>
-      ) : idle ? (
-        idle
-      ) : (
-        <>
-          <p className="picker-doors-label">
-            or step through the corpus&apos;s deepest subtrees
-          </p>
-          <div className="picker-doors">
-            {doors.map((module, index) => (
-              <button
-                type="button"
-                key={module.target}
-                className="picker-door"
-                data-testid="picker-door"
-                style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
-                onClick={() => onPick(module.target)}
-              >
-                <span className="plane-launcher-chip">
-                  {module.jurisdiction.toUpperCase()}
-                </span>
-                <strong>{humanizeCitation(module.target)}</strong>
-                <span className="plane-launcher-meta">
-                  {module.ruleCount} rules · {module.bucket}
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
       )}
     </div>
+  );
+}
+
+export function SubtreeDoors({
+  modules,
+  onPick,
+}: {
+  modules: CorpusModule[];
+  onPick: (target: string) => void;
+}) {
+  const doors = useMemo(() => computeFieldHighlights(modules), [modules]);
+  return (
+    <>
+      <p className="picker-doors-label">
+        the corpus&apos;s deepest subtrees
+      </p>
+      <div className="picker-doors">
+        {doors.map((module, index) => (
+          <button
+            type="button"
+            key={module.target}
+            className="picker-door"
+            data-testid="picker-door"
+            style={{ animationDelay: `${Math.min(index, 11) * 35}ms` }}
+            onClick={() => onPick(module.target)}
+          >
+            <span className="plane-launcher-chip">
+              {module.jurisdiction.toUpperCase()}
+            </span>
+            <strong>{humanizeCitation(module.target)}</strong>
+            <span className="plane-launcher-meta">
+              {module.ruleCount} rules · {module.bucket}
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

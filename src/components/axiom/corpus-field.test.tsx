@@ -24,9 +24,12 @@ import {
   HIGHLIGHT_COUNT,
   buildFieldLayout,
   computeFieldHighlights,
+  filterViewModules,
   highlightScore,
 } from "@/lib/axiom/corpus-field";
 import corpusSubtrees from "@/lib/axiom/corpus-subtrees.json";
+
+const VIEW_MODULES = filterViewModules(corpusSubtrees.modules);
 
 async function renderField() {
   const view = render(<CorpusField />);
@@ -93,19 +96,21 @@ describe("CorpusField", () => {
     window.history.replaceState({}, "", "/axiom");
   });
 
-  it("renders every subtree in the census as a field dot", async () => {
+  it("renders every VIEW subtree (US, multi-node) as a field dot", async () => {
     await renderField();
     const field = screen.getByTestId("corpus-field");
     expect(Number(field.getAttribute("data-dot-count"))).toBe(
-      corpusSubtrees.modules.length
+      VIEW_MODULES.length
     );
+    // One-node subtrees are gone entirely, not dust.
+    expect(VIEW_MODULES.length).toBeLessThan(corpusSubtrees.modules.length);
   });
 
   it("shows the computed doors — the census's own top-scored subtrees", async () => {
     await renderField();
     const doors = screen.getAllByTestId("corpus-field-highlight");
     expect(doors).toHaveLength(HIGHLIGHT_COUNT);
-    const expected = computeFieldHighlights(corpusSubtrees.modules);
+    const expected = computeFieldHighlights(VIEW_MODULES);
     const hrefs = new Set(doors.map((el) => el.getAttribute("href")));
     for (const module of expected) {
       expect(hrefs).toContain(
@@ -131,15 +136,13 @@ describe("CorpusField", () => {
     expect(labels.length).toBeGreaterThan(5);
   });
 
-  it("computes the stat line from the census and names the snapshot fallback", async () => {
+  it("shows no stat line and no bucket legend — the field is the whole UI", async () => {
     // No live endpoint in jsdom — the loader falls back to the snapshot.
     await renderField();
-    const line = screen.getByTestId("corpus-field-stats").textContent!;
-    expect(line).toContain(
-      corpusSubtrees.modules.length.toLocaleString("en-US")
-    );
-    expect(line).toContain("encoded rules");
-    expect(line).toContain("census snapshot");
+    expect(screen.queryByTestId("corpus-field-stats")).toBeNull();
+    expect(screen.queryByText("statutes")).toBeNull();
+    expect(screen.queryByText("regulations")).toBeNull();
+    expect(screen.queryByText("policies")).toBeNull();
     expect(
       screen.getByTestId("corpus-field").getAttribute("data-corpus-source")
     ).toBe("snapshot");
@@ -168,7 +171,7 @@ describe("CorpusField", () => {
         bucket: "statutes",
       },
     ];
-    const usCount = corpusSubtrees.modules.length + 1;
+    const usCount = VIEW_MODULES.length + 1;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -188,10 +191,6 @@ describe("CorpusField", () => {
       );
       const field = screen.getByTestId("corpus-field");
       expect(Number(field.getAttribute("data-dot-count"))).toBe(usCount);
-      const line = screen.getByTestId("corpus-field-stats").textContent!;
-      expect(line).toContain(usCount.toLocaleString("en-US"));
-      expect(line).toContain("US provision-rooted subtrees");
-      expect(line).toContain("live mirror");
       // No non-US territory labels either.
       const labels = screen
         .getAllByTestId("corpus-field-cluster")
@@ -211,7 +210,7 @@ describe("CorpusField", () => {
       ).not.toBe("0")
     );
     stubFieldRect();
-    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const layout = buildFieldLayout(VIEW_MODULES);
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
     )!;
@@ -260,7 +259,7 @@ describe("CorpusField", () => {
   it("hover shows a humanized tooltip through the transform", async () => {
     await renderField();
     stubFieldRect();
-    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const layout = buildFieldLayout(VIEW_MODULES);
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
     )!;
@@ -275,7 +274,7 @@ describe("CorpusField", () => {
   it("click zooms into the subtree and mounts the compose viewer in place; BACK returns and zooms out", async () => {
     await renderField();
     stubFieldRect();
-    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const layout = buildFieldLayout(VIEW_MODULES);
     const dot = layout.dots.find(
       (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
     )!;

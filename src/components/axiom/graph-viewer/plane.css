@@ -3616,3 +3616,63 @@
 .graph-viewer-root .picker-field {
   margin-top: 14px;
 }
+
+/* ── Full-bleed launcher: the field IS the screen ── */
+.graph-viewer-root .plane-launcher.is-field {
+  display: block;
+  overflow: hidden;
+}
+.graph-viewer-root .launcher-field-stage {
+  position: absolute;
+  inset: 0;
+}
+/* The verb, unobtrusive, bottom left — never a headline. */
+.graph-viewer-root .launcher-eyebrow {
+  position: absolute;
+  left: 18px;
+  bottom: 14px;
+  z-index: 40;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}
+/* Compact control cluster over the field, top right (clear of the
+   fixed site nav). */
+.graph-viewer-root .launcher-controls {
+  position: absolute;
+  top: 76px;
+  right: 18px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.graph-viewer-root .launcher-controls .picker-mode-toggle {
+  margin-top: 0;
+}
+.graph-viewer-root .subtree-search {
+  position: relative;
+}
+.graph-viewer-root .subtree-search.is-compact .picker-search {
+  width: 280px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px -8px rgba(28, 25, 23, 0.35);
+}
+.graph-viewer-root .picker-results-floating {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(440px, 80vw);
+  max-height: 55vh;
+  z-index: 41;
+  box-shadow: 0 18px 40px -20px rgba(28, 25, 23, 0.45);
+}
+/* List mode keeps a centered, breathing column (heading removed). */
+.graph-viewer-root .launcher-list {
+  padding-top: 120px;
+}

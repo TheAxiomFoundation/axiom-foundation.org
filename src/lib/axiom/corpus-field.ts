@@ -59,6 +59,21 @@ export function filterUsModules(modules: CorpusModule[]): CorpusModule[] {
   return modules.filter((module) => isUsJurisdiction(module.jurisdiction));
 }
 
+/** A one-node subtree isn't a graph — it never reaches a view
+ *  surface (not dust: gone). */
+export const MIN_VIEW_RULE_COUNT = 2;
+
+/** The app's full view filter, applied once in the shared loader so
+ *  every surface (field, picker, doors, clusters, counts) agrees:
+ *  US-only, and no single-node subtrees. */
+export function filterViewModules(modules: CorpusModule[]): CorpusModule[] {
+  return modules.filter(
+    (module) =>
+      isUsJurisdiction(module.jurisdiction) &&
+      module.ruleCount >= MIN_VIEW_RULE_COUNT,
+  );
+}
+
 /** Draw order inside a cluster: statutes core, regulations around
  *  them, policies at the rim, anything unknown last. */
 const BUCKET_ORDER: Record<string, number> = {
@@ -639,14 +654,45 @@ function clampNumber(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
 }
 
-/** Zoom clamped to [1, 16]; pan clamped so the (scaled) field always
- *  covers the viewport rectangle. */
-export function clampFieldTransform(t: FieldTransform): FieldTransform {
-  const k = clampNumber(t.k, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+/**
+ * The window is FIELD_WIDTH view-units wide and `viewHeight` units
+ * tall (the host's aspect; FIELD_HEIGHT when the box matches the
+ * world's own aspect — the landing panel). A window taller than the
+ * world raises the minimum zoom so the world always covers it
+ * ("cover" fit, full-bleed hosts). Near-1 ratios snap to 1 so an
+ * aspect-matched box keeps its exact overview.
+ */
+export function minZoomForView(viewHeight: number = FIELD_HEIGHT): number {
+  const ratio = viewHeight / FIELD_HEIGHT;
+  return ratio < 1.01 ? MIN_FIELD_ZOOM : ratio;
+}
+
+/** The at-rest camera for a window: minimum zoom, centered. */
+export function fitFieldTransform(
+  viewHeight: number = FIELD_HEIGHT,
+): FieldTransform {
+  const k = minZoomForView(viewHeight);
+  return clampFieldTransform(
+    {
+      k,
+      tx: (FIELD_WIDTH * (1 - k)) / 2,
+      ty: (viewHeight - FIELD_HEIGHT * k) / 2,
+    },
+    viewHeight,
+  );
+}
+
+/** Zoom clamped to [cover-fit, 16]; pan clamped so the (scaled)
+ *  field always covers the whole window. */
+export function clampFieldTransform(
+  t: FieldTransform,
+  viewHeight: number = FIELD_HEIGHT,
+): FieldTransform {
+  const k = clampNumber(t.k, minZoomForView(viewHeight), MAX_FIELD_ZOOM);
   return {
     k,
     tx: clampNumber(t.tx, FIELD_WIDTH * (1 - k), 0),
-    ty: clampNumber(t.ty, FIELD_HEIGHT * (1 - k), 0),
+    ty: clampNumber(t.ty, viewHeight - FIELD_HEIGHT * k, 0),
   };
 }
 
@@ -673,14 +719,22 @@ export function zoomFieldAt(
   factor: number,
   vx: number,
   vy: number,
+  viewHeight: number = FIELD_HEIGHT,
 ): FieldTransform {
-  const k = clampNumber(t.k * factor, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+  const k = clampNumber(
+    t.k * factor,
+    minZoomForView(viewHeight),
+    MAX_FIELD_ZOOM,
+  );
   const anchor = viewToField(t, vx, vy);
-  return clampFieldTransform({
-    k,
-    tx: vx - anchor.x * k,
-    ty: vy - anchor.y * k,
-  });
+  return clampFieldTransform(
+    {
+      k,
+      tx: vx - anchor.x * k,
+      ty: vy - anchor.y * k,
+    },
+    viewHeight,
+  );
 }
 
 /** Pan by a view-space delta (what the pointer dragged), clamped. */
@@ -688,8 +742,12 @@ export function panField(
   t: FieldTransform,
   dx: number,
   dy: number,
+  viewHeight: number = FIELD_HEIGHT,
 ): FieldTransform {
-  return clampFieldTransform({ k: t.k, tx: t.tx + dx, ty: t.ty + dy });
+  return clampFieldTransform(
+    { k: t.k, tx: t.tx + dx, ty: t.ty + dy },
+    viewHeight,
+  );
 }
 
 /**
@@ -700,21 +758,25 @@ export function panField(
 export function zoomTransformForDot(
   layout: FieldLayout,
   dot: FieldDot,
+  viewHeight: number = FIELD_HEIGHT,
 ): FieldTransform {
   const cluster = layout.clusters.find(
     (item) => item.jurisdiction === dot.jurisdiction,
   );
   const clusterR = Math.max(cluster?.r ?? 60, 24);
   const k = clampNumber(
-    (FIELD_HEIGHT * 0.85) / (clusterR * 2),
-    2.5,
+    (viewHeight * 0.85) / (clusterR * 2),
+    Math.max(2.5, minZoomForView(viewHeight)),
     MAX_FIELD_ZOOM,
   );
-  return clampFieldTransform({
-    k,
-    tx: FIELD_WIDTH / 2 - dot.x * k,
-    ty: FIELD_HEIGHT / 2 - dot.y * k,
-  });
+  return clampFieldTransform(
+    {
+      k,
+      tx: FIELD_WIDTH / 2 - dot.x * k,
+      ty: viewHeight / 2 - dot.y * k,
+    },
+    viewHeight,
+  );
 }
 
 /**
@@ -726,17 +788,21 @@ export function interpolateTransform(
   from: FieldTransform,
   to: FieldTransform,
   p: number,
+  viewHeight: number = FIELD_HEIGHT,
 ): FieldTransform {
   if (p <= 0) return from;
   if (p >= 1) return to;
   const k = from.k * Math.pow(to.k / from.k, p);
-  const centerFrom = viewToField(from, FIELD_WIDTH / 2, FIELD_HEIGHT / 2);
-  const centerTo = viewToField(to, FIELD_WIDTH / 2, FIELD_HEIGHT / 2);
+  const centerFrom = viewToField(from, FIELD_WIDTH / 2, viewHeight / 2);
+  const centerTo = viewToField(to, FIELD_WIDTH / 2, viewHeight / 2);
   const cx = centerFrom.x + (centerTo.x - centerFrom.x) * p;
   const cy = centerFrom.y + (centerTo.y - centerFrom.y) * p;
-  return clampFieldTransform({
-    k,
-    tx: FIELD_WIDTH / 2 - cx * k,
-    ty: FIELD_HEIGHT / 2 - cy * k,
-  });
+  return clampFieldTransform(
+    {
+      k,
+      tx: FIELD_WIDTH / 2 - cx * k,
+      ty: viewHeight / 2 - cy * k,
+    },
+    viewHeight,
+  );
 }

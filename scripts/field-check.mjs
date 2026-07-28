@@ -57,13 +57,32 @@ const badDoors = await page.evaluate(() => {
 });
 console.log("non-compiling roots offered as doors:", badDoors);
 
-// 3) The honest stat line is computed, not hardcoded.
-const statLine = await page.evaluate(
-  () =>
-    document.querySelector('[data-testid="corpus-field-stats"]')?.textContent ??
-    "",
+// 3) Presentation: no stat line, no bucket legend — the field is
+//    the whole UI. Liveness reads from the data attribute instead.
+const statAbsent = await page.evaluate(
+  () => !document.querySelector('[data-testid="corpus-field-stats"]'),
 );
-console.log("stat line:", statLine);
+const legendAbsent = await page.evaluate(
+  () =>
+    ![...document.querySelectorAll("span")].some((el) =>
+      ["statutes", "regulations", "policies"].includes(
+        el.textContent?.trim() ?? "",
+      ),
+    ),
+);
+const corpusSource = await page.evaluate(() =>
+  document
+    .querySelector('[data-testid="corpus-field"]')
+    ?.getAttribute("data-corpus-source"),
+);
+console.log(
+  "stat line absent:",
+  statAbsent,
+  "· legend absent:",
+  legendAbsent,
+  "· source:",
+  corpusSource,
+);
 
 // 4) The search box (second entry path) is present above the field.
 const hasSearch = await page.evaluate(() =>
@@ -212,14 +231,14 @@ await page.waitForFunction(
 );
 console.log("BACK returned to the field at:", backUrl, "(camera zoomed out)");
 
-// 9) The field mirrors the corpus, live and US-only: with the API on
-//    :8787 up, the dot count exceeds the committed snapshot (4,392)
-//    and the stat line names the US scope + live mirror.
+// 9) The field mirrors the corpus, live, US-only, one-node-filtered:
+//    with :8787 up the count sits above the filtered snapshot (2,892)
+//    and well below the unfiltered census (4,392).
 const liveField =
-  dotCount > 4392 && /US provision-rooted subtrees · live mirror/.test(statLine);
+  corpusSource === "live" && dotCount > 2892 && dotCount < 4392;
 console.log(
-  "live mirror (US-only):",
-  liveField ? `yes (${dotCount} subtrees)` : "NO — snapshot fallback?",
+  "live mirror (US-only, one-node-filtered):",
+  liveField ? `yes (${dotCount} subtrees)` : `NO (${dotCount})`,
 );
 const landingNonUsClusters = await page.evaluate(() =>
   [...document.querySelectorAll('[data-testid="corpus-field-cluster"]')]
@@ -250,35 +269,80 @@ await picker.waitForFunction(
   },
   { timeout: 60000 },
 );
-const launcherFieldState = await picker.evaluate(() => ({
-  dotCount: Number(
-    document
-      .querySelector('[data-testid="launcher-field"] [data-testid="corpus-field"]')
-      ?.getAttribute("data-dot-count"),
-  ),
-  statLine:
-    document.querySelector(
-      '[data-testid="launcher-field"] ~ * [data-testid="corpus-field-stats"], [data-testid="launcher-field"] [data-testid="corpus-field-stats"]',
-    )?.textContent ?? "",
-  nonUsClusters: [
-    ...document.querySelectorAll(
-      '[data-testid="launcher-field"] [data-testid="corpus-field-cluster"]',
+const launcherFieldState = await picker.evaluate(() => {
+  const canvas = document.querySelector(
+    '[data-testid="launcher-field"] canvas',
+  );
+  const rect = canvas?.getBoundingClientRect();
+  const controls = document
+    .querySelector('[data-testid="launcher-controls"]')
+    ?.getBoundingClientRect();
+  return {
+    dotCount: Number(
+      document
+        .querySelector(
+          '[data-testid="launcher-field"] [data-testid="corpus-field"]',
+        )
+        ?.getAttribute("data-dot-count"),
     ),
-  ]
-    .map((el) => el.textContent ?? "")
-    .filter((label) => !/^US/.test(label)),
-  searchPresent: Boolean(
-    document.querySelector('[data-testid="picker-search"]'),
-  ),
-  programCards: document.querySelectorAll(
-    ".plane-launcher-card, .plane-launcher-grid, .constellation, .constellation-summit",
-  ).length,
-  fieldChipActive:
-    document
-      .querySelector('[data-testid="launcher-mode-field"]')
-      ?.getAttribute("aria-selected") === "true",
-}));
+    source: document
+      .querySelector('[data-testid="launcher-field"] [data-testid="corpus-field"]')
+      ?.getAttribute("data-corpus-source"),
+    statAbsent: !document.querySelector('[data-testid="corpus-field-stats"]'),
+    // Full-bleed: the field canvas covers ≥ ~80% of the viewport.
+    canvasViewportShare: rect
+      ? (rect.width * rect.height) / (window.innerWidth * window.innerHeight)
+      : 0,
+    // The control cluster floats top-right over the field.
+    controlsTopRight: Boolean(
+      controls &&
+        controls.top < 160 &&
+        controls.right > window.innerWidth * 0.7,
+    ),
+    nonUsClusters: [
+      ...document.querySelectorAll(
+        '[data-testid="launcher-field"] [data-testid="corpus-field-cluster"]',
+      ),
+    ]
+      .map((el) => el.textContent ?? "")
+      .filter((label) => !/^US/.test(label)),
+    searchPresent: Boolean(
+      document.querySelector('[data-testid="picker-search"]'),
+    ),
+    programCards: document.querySelectorAll(
+      ".plane-launcher-card, .plane-launcher-grid, .constellation, .constellation-summit",
+    ).length,
+    copyGone: !document.querySelector(
+      ".plane-launcher-title, .plane-launcher-sub",
+    ),
+    fieldChipActive:
+      document
+        .querySelector('[data-testid="launcher-mode-field"]')
+        ?.getAttribute("aria-selected") === "true",
+  };
+});
 console.log("launcher field:", JSON.stringify(launcherFieldState));
+
+// One-node subtrees are gone from every surface: searching for a
+// known single-rule module finds nothing.
+await picker.type(
+  '[data-testid="picker-search"]',
+  "chapter-02-application-processing/211",
+);
+await picker.waitForSelector(".picker-empty", { timeout: 15000 });
+const oneNodeAbsent = await picker.evaluate(
+  () => document.querySelectorAll('[data-testid="picker-result"]').length === 0,
+);
+console.log("one-node module searchable:", !oneNodeAbsent ? "YES (bad)" : "no");
+await picker.evaluate(() => {
+  const input = document.querySelector('[data-testid="picker-search"]');
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  ).set;
+  setter.call(input, "");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+});
 
 // Toggle → List: doors appear, the field steps aside.
 await picker.click('[data-testid="launcher-mode-list"]');
@@ -291,8 +355,6 @@ const pickerState = await picker.evaluate(() => ({
   ).length,
   doors: document.querySelectorAll('[data-testid="picker-door"]').length,
   fieldGone: !document.querySelector('[data-testid="launcher-field"]'),
-  copy:
-    document.querySelector(".plane-launcher-sub")?.textContent ?? "",
 }));
 console.log(
   "list mode: program cards:",
@@ -302,7 +364,6 @@ console.log(
   "· field stepped aside:",
   pickerState.fieldGone,
 );
-console.log("picker copy:", pickerState.copy.trim().slice(0, 80) + "…");
 
 // Search "273.10" → pick → the compose viewer opens for that root.
 await picker.type('[data-testid="picker-search"]', "273.10");
@@ -372,7 +433,8 @@ const pass =
   clusterCount > 5 &&
   highlightCount >= 10 &&
   badDoors === 0 &&
-  /provision-rooted subtrees/.test(statLine) &&
+  statAbsent &&
+  legendAbsent &&
   hasSearch &&
   zoomAfterWheel > zoomBefore &&
   lodNear.lod === "motif" &&
@@ -383,12 +445,17 @@ const pass =
   backUrl.endsWith("/axiom") &&
   liveField &&
   landingNonUsClusters.length === 0 &&
-  launcherFieldState.dotCount > 4392 &&
-  /US provision-rooted subtrees/.test(launcherFieldState.statLine) &&
+  launcherFieldState.dotCount > 2892 &&
+  launcherFieldState.source === "live" &&
+  launcherFieldState.statAbsent &&
+  launcherFieldState.canvasViewportShare >= 0.8 &&
+  launcherFieldState.controlsTopRight &&
+  launcherFieldState.copyGone &&
   launcherFieldState.nonUsClusters.length === 0 &&
   launcherFieldState.searchPresent &&
   launcherFieldState.programCards === 0 &&
   launcherFieldState.fieldChipActive &&
+  oneNodeAbsent &&
   pickerState.programCards === 0 &&
   pickerState.doors >= 10 &&
   pickerState.fieldGone &&

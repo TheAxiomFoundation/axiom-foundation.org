@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import Link from "next/link";
 import "./globals.css";
 import { NavWrapper } from "@/components/nav-wrapper";
+import { CommandPaletteProvider } from "@/components/axiom/command-palette-provider";
 import { Footer, GradientSync } from "@axiom-foundation/ui";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { PostHogProvider } from "@/components/posthog-provider";
@@ -64,8 +65,10 @@ export default function RootLayout({
         <GoogleAnalytics />
         <PostHogProvider />
         <GradientSync />
-        <NavWrapper />
-        <main className="relative z-10">{children}</main>
+        <CommandPaletteProvider>
+          <NavWrapper />
+          <main className="relative z-10">{children}</main>
+        </CommandPaletteProvider>
         <Footer renderLink={Link} appUrl={axiomAppHref()} updatesUrl={UPDATES_URL} />
       </body>
     </html>

@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+// ESM config: __dirname does not exist here.
+const configDir = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // A stray package-lock.json in the home directory makes Next infer
+  // the wrong workspace root; pin it to the repo.
+  turbopack: { root: configDir },
   images: {
     remotePatterns: [
       { hostname: "maxghenis.com" },

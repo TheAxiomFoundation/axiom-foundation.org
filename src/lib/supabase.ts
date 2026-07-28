@@ -463,11 +463,17 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
     .in('file_path', candidates)
     .order('timestamp', { ascending: false })
 
-  if (!error && data && data.length > 0) {
+  // Some encoding_runs rows are telemetry-only (rulespec_content is
+  // null); displaying them would render an empty encoding rail, so
+  // treat them as misses and let the repo-file fallback fire.
+  const withContent = (data ?? []).filter(
+    (row) => row.rulespec_content && row.rulespec_content.trim().length > 0
+  )
+  if (!error && withContent.length > 0) {
     // Pick the most specific match (earliest in candidates list = most specific path)
     const pathPriority = new Map(candidates.map((p, i) => [p, i]))
     /* v8 ignore next 2 -- reduce comparator only exercises b-branch with multiple results */
-    const best = data.reduce((a, b) =>
+    const best = withContent.reduce((a, b) =>
       (pathPriority.get(a.file_path) ?? Infinity) <= (pathPriority.get(b.file_path) ?? Infinity) ? a : b
     )
     return {

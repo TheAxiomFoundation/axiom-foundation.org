@@ -188,13 +188,13 @@ describe("resolveAxiomPath", () => {
 describe("buildBreadcrumbs", () => {
   it("returns only Axiom for empty segments", () => {
     const crumbs = buildBreadcrumbs([]);
-    expect(crumbs).toEqual([{ label: "Axiom", href: "/" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
   });
 
   it("builds jurisdiction breadcrumb for US", () => {
     const crumbs = buildBreadcrumbs(["us"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "US Federal", href: "/us" },
     ]);
   });
@@ -202,7 +202,7 @@ describe("buildBreadcrumbs", () => {
   it("builds full path for US/statute/26/1", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "1"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "US Federal", href: "/us" },
       { label: "Statutes", href: "/us/statute" },
       { label: "Title 26", href: "/us/statute/26" },
@@ -213,7 +213,7 @@ describe("buildBreadcrumbs", () => {
   it("formats nested statute breadcrumbs with parenthetical subsections", () => {
     const crumbs = buildBreadcrumbs(["us", "statute", "26", "24", "d", "1", "A"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "US Federal", href: "/us" },
       { label: "Statutes", href: "/us/statute" },
       { label: "Title 26", href: "/us/statute/26" },
@@ -233,7 +233,7 @@ describe("buildBreadcrumbs", () => {
       "snap-fy2026-cola",
     ]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "US Federal", href: "/us" },
       { label: "Guidance", href: "/us/guidance" },
       { label: "USDA", href: "/us/guidance/usda" },
@@ -254,7 +254,7 @@ describe("buildBreadcrumbs", () => {
     ]);
 
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "US Federal", href: "/us" },
       { label: "Rulemaking", href: "/us/rulemaking" },
       { label: "Federal Register", href: "/us/rulemaking/federal-register" },
@@ -268,7 +268,7 @@ describe("buildBreadcrumbs", () => {
   it("builds breadcrumb for UK", () => {
     const crumbs = buildBreadcrumbs(["uk"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "United Kingdom", href: "/uk" },
     ]);
   });
@@ -276,7 +276,7 @@ describe("buildBreadcrumbs", () => {
   it("builds breadcrumb for UK with rule segments", () => {
     const crumbs = buildBreadcrumbs(["uk", "legislation", "uksi", "2013", "376"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "United Kingdom", href: "/uk" },
       { label: "Legislation", href: "/uk/legislation" },
       { label: "UK Statutory Instruments", href: "/uk/legislation/uksi" },
@@ -288,7 +288,7 @@ describe("buildBreadcrumbs", () => {
   it("builds breadcrumb for Ohio path", () => {
     const crumbs = buildBreadcrumbs(["us-oh", "statute", "26"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "Ohio", href: "/us-oh" },
       { label: "Statutes", href: "/us-oh/statute" },
       { label: "Title 26", href: "/us-oh/statute/26" },
@@ -298,7 +298,7 @@ describe("buildBreadcrumbs", () => {
   it("builds breadcrumb for Colorado regulation path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "regulation", "9-CCR-2503-6", "3.606.1", "I"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "Colorado", href: "/us-co" },
       { label: "Regulations", href: "/us-co/regulation" },
       { label: "9 CCR 2503-6", href: "/us-co/regulation/9-CCR-2503-6" },
@@ -310,7 +310,7 @@ describe("buildBreadcrumbs", () => {
   it("builds breadcrumb for Colorado statute path", () => {
     const crumbs = buildBreadcrumbs(["us-co", "statute", "crs", "26-2-703", "2.5"]);
     expect(crumbs).toEqual([
-      { label: "Axiom", href: "/" },
+      { label: "Axiom", href: "/axiom" },
       { label: "Colorado", href: "/us-co" },
       { label: "Statutes", href: "/us-co/statute" },
       { label: "Colorado Revised Statutes", href: "/us-co/statute/crs" },
@@ -321,7 +321,7 @@ describe("buildBreadcrumbs", () => {
 
   it("returns only Axiom for unknown jurisdiction", () => {
     const crumbs = buildBreadcrumbs(["mars"]);
-    expect(crumbs).toEqual([{ label: "Axiom", href: "/" }]);
+    expect(crumbs).toEqual([{ label: "Axiom", href: "/axiom" }]);
   });
 
   it("does not prefix identifier-style statute segments with 'Title'", () => {

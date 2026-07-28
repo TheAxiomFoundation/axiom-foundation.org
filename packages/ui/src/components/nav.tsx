@@ -30,6 +30,9 @@ export interface NavProps {
   /** Logo image src. Defaults to "/logos/axiom-foundation.svg".
    *  When baseUrl is set, resolved relative to baseUrl. */
   logoSrc?: string;
+  /** Rendered at the right edge of the bar, after the links — e.g.
+   *  the app's search / command-palette trigger. */
+  rightSlot?: React.ReactNode;
 }
 
 // Round 1 pull-back — the site is a pre-launch tease. Nav is Home
@@ -48,6 +51,7 @@ export function Nav({
   renderLink: LinkComponent,
   extraLinks = [],
   logoSrc,
+  rightSlot,
 }: NavProps = {}) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -122,6 +126,7 @@ export function Nav({
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link))}
+          {rightSlot}
         </nav>
 
         {/* Hamburger button */}
@@ -153,6 +158,11 @@ export function Nav({
       {open && (
         <nav className="md:hidden border-t border-[var(--color-rule)] bg-[var(--color-paper)] px-8 py-6 uppercase tracking-wider text-[0.8rem]">
           {navLinks.map((link) => renderNavLink(link, true))}
+          {rightSlot && (
+            <div className="mt-4" onClick={close}>
+              {rightSlot}
+            </div>
+          )}
         </nav>
       )}
     </header>

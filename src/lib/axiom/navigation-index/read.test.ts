@@ -498,12 +498,27 @@ describe("navigation index read helpers", () => {
 
   it("loads a single navigation node by path", async () => {
     const row = navRow();
-    const builder = enqueue({ data: row });
+    const builder = enqueue({ data: [row] });
 
     await expect(getNavigationIndexNode("us/statute/26")).resolves.toEqual(row);
 
     expect(calls(builder, "eq")).toContainEqual(["path", "us/statute/26"]);
-    expect(calls(builder, "maybeSingle")).toHaveLength(1);
+    // Ordered list query, not maybeSingle(): the index has shipped
+    // duplicate rows for one path, which maybeSingle() escalates to
+    // a subtree-wide 503.
+    expect(calls(builder, "order")).toContainEqual([
+      "sort_key",
+      { ascending: false },
+    ]);
+    expect(calls(builder, "limit")).toContainEqual([1]);
+  });
+
+  it("picks the canonically-sorted row when the index has duplicates", async () => {
+    const good = navRow({ sort_key: "00000026|000000000026" });
+    enqueue({ data: [good] });
+    await expect(getNavigationIndexNode("us/statute/26")).resolves.toEqual(
+      good
+    );
   });
 
   it("loads the provision linked from a navigation node id", async () => {

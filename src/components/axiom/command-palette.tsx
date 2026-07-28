@@ -21,6 +21,11 @@ import { trackAxiomEvent } from "@/lib/analytics";
 interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
+  /** Route prefix applied to section-depth results (≥4 path
+   *  segments), so the palette stays inside the v2 reader when
+   *  mounted there. Title-level and shallower paths keep their v1
+   *  browse URLs, matching the reader's breadcrumb behavior. */
+  hrefPrefix?: string;
 }
 
 const SEARCH_DEBOUNCE_MS = 180;
@@ -69,7 +74,20 @@ interface SectionRange {
  * Arrow-key navigation is global across all three sections; Enter
  * navigates to the focused row's href.
  */
-export function CommandPalette({ open, onClose }: CommandPaletteProps) {
+
+/** Prefix section-depth hrefs (≥4 segments) so palette navigation
+ *  stays inside the v2 reader when mounted there. */
+function prefixDeepPath(href: string, prefix?: string): string {
+  if (!prefix) return href;
+  const path = href.replace(/^\//, "");
+  return path.split("/").length >= 4 ? `${prefix}/${path}` : href;
+}
+
+export function CommandPalette({
+  open,
+  onClose,
+  hrefPrefix,
+}: CommandPaletteProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] =
@@ -302,9 +320,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         row.kind === "search" || row.kind === "encoded"
           ? row.href
           : await resolveNavigableHref(row.href);
-      router.push(href);
+      router.push(prefixDeepPath(href, hrefPrefix));
     },
-    [router, onClose, query]
+    [router, onClose, query, hrefPrefix]
   );
 
   const onKey = useCallback(

@@ -150,6 +150,32 @@ export async function fetchComposedGraph(focus: string): Promise<ComposedGraph> 
   };
 }
 
+export interface RootInputSlot {
+  name: string;
+  dtype: string;
+  default: string | number | boolean;
+  entity: string;
+  /** Closed value domain (table keys or the equality-literal set the
+   *  statute distinguishes), when the artifact defines one. */
+  values?: Array<number | string>;
+}
+
+// Input catalog for a compose-on-demand subtree: dtypes and screening
+// defaults the runtime inferred from the compiled artifact. The run
+// panel types its controls from this; callers fall back to name-shape
+// heuristics when the subtree doesn't compile.
+export async function fetchRootInputs(root: string): Promise<RootInputSlot[]> {
+  const url = `${trimSlash(API_BASE)}/runtime/root-inputs?root=${encodeURIComponent(root)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`root-inputs request failed (${response.status})`);
+  }
+  const json = (await response.json()) as {
+    data?: { inputs?: RootInputSlot[] };
+  };
+  return json.data?.inputs ?? [];
+}
+
 export function displayNameForProgram(program: ProgramSummary | ProgramRef): string {
   if ("displayName" in program && program.displayName) return program.displayName;
   return `${jurisdictionLabel(program.jurisdiction)} ${programLabel(program.programId, program.jurisdiction)}`;

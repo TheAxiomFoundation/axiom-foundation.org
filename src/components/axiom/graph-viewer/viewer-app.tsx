@@ -27,6 +27,7 @@ import {
   defaultOutputsForProgram,
   fetchAllPrograms,
   fetchComposedGraph,
+  fetchRootInputs,
   fetchInputMeta,
   fetchProgramGraph,
   programKey,
@@ -45,7 +46,6 @@ import {
   filterStandaloneRules,
 } from "./compose-filter";
 import { buildRunRequestBody, scenarioKey } from "./run-request";
-import { RunInputsEcho } from "./run-inputs-echo";
 import {
   readLauncherMode,
   storeLauncherMode,
@@ -306,16 +306,18 @@ export function GraphViewerApp({
   const [selectedLevers, setSelectedLevers] = useState<string[] | null>(null);
   // The runtime's input registry: every settable input, its dtype
   // and default — the single source of truth for answer controls.
+  // `options` holds closed numeric domains (table keys, equality-
+  // literal sets like filing_status ∈ {0,1,2}) rendered as selects.
   const [inputMeta, setInputMeta] = useState<{
     dtypes: Record<string, string>;
     defaults: Record<string, unknown>;
+    options?: Record<string, number[]>;
   }>({ dtypes: {}, defaults: {} });
   // Bumped by Retry buttons — re-fires the program load effect after
   // a transient graph/registry failure.
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const lastRunRequest = useRef<Record<string, unknown> | null>(null);
-  const [copiedRun, setCopiedRun] = useState(false);
   // The results sheet's quick-adjust strip pages through answered
   // inputs — a dozen answers must not balloon the sheet.
   const [adjustPage, setAdjustPage] = useState(0);
@@ -1205,6 +1207,47 @@ export function GraphViewerApp({
           defaults[input.name] = input.sample;
         }
         setInputMeta({ dtypes, defaults });
+        // The runtime's input catalog carries the REAL dtypes, inferred
+        // from the compiled artifact — a mid-name predicate like
+        // taxpayer_married_at_close_of_taxable_year is a checkbox, not
+        // a 0/1 number box. It lands async and overrides the heuristics
+        // above; a subtree that doesn't compile just keeps them.
+        fetchRootInputs(fileLegalIdOf(composeFocus))
+          .then((slots) => {
+            if (cancelled || slots.length === 0) return;
+            setInputMeta((current) => {
+              const merged = {
+                dtypes: { ...current.dtypes },
+                defaults: { ...current.defaults },
+                options: { ...current.options },
+              };
+              for (const slot of slots) {
+                if (slot.dtype === "bool") {
+                  merged.dtypes[slot.name] = "bool";
+                  merged.defaults[slot.name] = Boolean(slot.default);
+                } else if (slot.dtype === "integer" || slot.dtype === "decimal") {
+                  merged.dtypes[slot.name] =
+                    slot.dtype === "integer" ? "integer" : "number";
+                  merged.defaults[slot.name] = Number(slot.default) || 0;
+                  // A closed numeric domain becomes a select — table
+                  // keys, or the literal set the statute distinguishes
+                  // (filing_status ∈ {0,1,2}).
+                  const numeric = (slot.values ?? []).filter(
+                    (value): value is number => typeof value === "number",
+                  );
+                  if (numeric.length > 0 && numeric.length === slot.values?.length) {
+                    merged.options[slot.name] = numeric;
+                  }
+                }
+                // text/date slots can't travel the run wire (facts are
+                // number|boolean) — leave their heuristic controls be.
+              }
+              return merged;
+            });
+          })
+          .catch(() => {
+            // Catalog unavailable — heuristics carry the panel.
+          });
         const rulesById = new Map(
           filteredGraph.rules.map((rule) => [rule.legalId, rule]),
         );
@@ -1402,6 +1445,15 @@ export function GraphViewerApp({
     () => ({
       answered: new Set(Object.keys(scenario)),
       values: inputEditValues,
+      // Registry defaults, so an unanswered card can say WHICH value
+      // held for the run — the default applies whether or not the
+      // question was asked.
+      defaults: Object.fromEntries(
+        Object.entries(inputMeta.defaults).filter(
+          (entry): entry is [string, number | boolean] =>
+            typeof entry[1] === "number" || typeof entry[1] === "boolean",
+        ),
+      ),
       onChange: (name: string, value: number | boolean) =>
         setScenario((current) => {
           if (typeof value === "number" && Number.isNaN(value)) {
@@ -1412,7 +1464,7 @@ export function GraphViewerApp({
           return { ...current, [name]: value };
         }),
     }),
-    [inputEditValues, scenario],
+    [inputEditValues, scenario, inputMeta],
   );
 
   const structureTraces = useMemo(
@@ -1798,40 +1850,22 @@ export function GraphViewerApp({
                 <label key={field.name} className="scenario-field">
                   <span>{humanize(field.label)}</span>
                   <span className="scenario-field-controls">
-                    {typeof field.sample === "boolean" ? (
-                      <input
-                        type="checkbox"
-                        checked={Boolean(scenario[field.name])}
-                        onChange={(event) =>
-                          setScenario((current) => ({
-                            ...current,
-                            [field.name]: event.target.checked,
-                          }))
-                        }
-                      />
-                    ) : (
-                    <input
-                      type="number"
-                      value={
-                        scenario[field.name] === undefined
-                          ? ""
-                          : String(scenario[field.name])
-                      }
+                    <AnswerControl
+                      name={field.name}
+                      value={scenario[field.name]}
+                      meta={inputMeta}
+                      selectClassName="scenario-field-select"
                       placeholder={`e.g. ${field.sample}`}
-                      onChange={(event) =>
+                      onChange={(next) =>
                         setScenario((current) => {
-                          if (event.target.value === "") {
+                          if (next === undefined) {
                             const { [field.name]: _gone, ...rest } = current;
                             return rest;
                           }
-                          return {
-                            ...current,
-                            [field.name]: Number(event.target.value),
-                          };
+                          return { ...current, [field.name]: next };
                         })
                       }
                     />
-                    )}
                     <button
                       type="button"
                       className="scenario-field-remove"
@@ -2488,42 +2522,24 @@ export function GraphViewerApp({
                 <>
                   <dt>Your answer</dt>
                   <dd>
-                    {inputMeta.dtypes[input.name] === "bool" ? (
-                      <input
-                        type="checkbox"
-                        checked={Boolean(scenario[input.name])}
-                        onChange={(event) =>
-                          setScenario((current) => ({
-                            ...current,
-                            [input.name]: event.target.checked,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <input
-                        className="node-inspector-answer"
-                        type="number"
-                        placeholder="answer…"
-                        value={
-                          typeof scenario[input.name] === "number"
-                            ? String(scenario[input.name])
-                            : ""
-                        }
-                        onChange={(event) =>
-                          setScenario((current) => {
-                            if (event.target.value === "") {
-                              const next = { ...current };
-                              delete next[input.name];
-                              return next;
-                            }
-                            return {
-                              ...current,
-                              [input.name]: Number(event.target.value),
-                            };
-                          })
-                        }
-                      />
-                    )}
+                    <AnswerControl
+                      name={input.name}
+                      value={scenario[input.name]}
+                      meta={inputMeta}
+                      selectClassName="node-inspector-answer"
+                      inputClassName="node-inspector-answer"
+                      placeholder="answer…"
+                      onChange={(next) =>
+                        setScenario((current) => {
+                          if (next === undefined) {
+                            const cleaned = { ...current };
+                            delete cleaned[input.name];
+                            return cleaned;
+                          }
+                          return { ...current, [input.name]: next };
+                        })
+                      }
+                    />
                   </dd>
                 </>
               ) : null}
@@ -2567,18 +2583,40 @@ export function GraphViewerApp({
                     onClick: () => flyFromIndex(depId),
                   })),
                   ...(rule?.inputDeps ?? []).map((depId) => {
-                    const answered = miniValue(depId);
+                    const bareName =
+                      walkInputById.get(depId)?.name ??
+                      (depId.split("#").pop() ?? depId).split(".").pop() ??
+                      depId;
+                    // The engine doesn't trace inputs, so the trace
+                    // never carries a value here — the scenario is the
+                    // truth for answered ones; unanswered ones ran on
+                    // their registry default, and the run says so.
+                    const fromScenario =
+                      bareName in scenario ? scenario[bareName] : undefined;
+                    const format = (raw: number | boolean) =>
+                      typeof raw === "boolean"
+                        ? raw
+                          ? "✓ true"
+                          : "✗ false"
+                        : raw.toLocaleString("en-US");
+                    const fallback = inputMeta.defaults[bareName];
+                    const answered =
+                      miniValue(depId) ??
+                      (fromScenario !== undefined
+                        ? format(fromScenario)
+                        : null);
                     return {
                     id: depId,
-                    label: humanize(
-                      walkInputById.get(depId)?.name ??
-                        (depId.split("#").pop() ?? depId).split(".").pop() ??
-                        depId,
-                    ),
+                    label: humanize(bareName),
                     kind: "question" as const,
-                    // A live run with no answer for this question is a
-                    // state worth naming, not a blank.
-                    value: answered ?? (runResult ? "not selected" : null),
+                    value:
+                      answered ??
+                      (runResult
+                        ? typeof fallback === "number" ||
+                          typeof fallback === "boolean"
+                          ? `default — ${String(fallback)}`
+                          : "default"
+                        : null),
                     valueTone:
                       answered === null && runResult
                         ? ("muted" as const)
@@ -2756,35 +2794,23 @@ export function GraphViewerApp({
                 });
               })()}
             </div>
-            <RunInputsEcho
-              items={(() => {
-                // Every SELECTED input shows: typed values as
-                // themselves, untouched picks with their registry
-                // default and a muted "default" tag.
+            <div className="results-adjust" aria-label="Adjust and run again">
+              {(() => {
+                // Every SELECTED input, editable in place: typed values
+                // show as themselves, untouched picks show their
+                // registry default in the control itself — one list,
+                // not an echo plus a second editor.
                 const names = [...(selectedLevers ?? [])];
                 for (const name of Object.keys(scenario)) {
                   if (!names.includes(name)) names.push(name);
                 }
-                return names.map((name) => {
-                  const fallback = inputMeta.defaults[name];
-                  return {
-                    name,
-                    value:
-                      name in scenario
-                        ? scenario[name]!
-                        : typeof fallback === "number" ||
-                            typeof fallback === "boolean"
-                          ? fallback
-                          : null,
-                    isDefault: !(name in scenario),
-                  };
-                });
-              })()}
-            />
-            <div className="results-adjust" aria-label="Adjust and run again">
-              {(() => {
-                const answered = allScenarioFields.filter(
-                  (field) => field.name in scenario,
+                const answered = names.map(
+                  (name) =>
+                    allScenarioFields.find((field) => field.name === name) ?? {
+                      name,
+                      label: name,
+                      sample: inputMeta.defaults[name] ?? 0,
+                    },
                 );
                 const perPage = 6;
                 const pageCount = Math.max(
@@ -2829,24 +2855,19 @@ export function GraphViewerApp({
                       );
                     })()}
                   </span>
-                  <input
-                    type="number"
-                    value={
-                      scenario[field.name] === undefined
-                        ? ""
-                        : String(scenario[field.name])
-                    }
+                  <AnswerControl
+                    name={field.name}
+                    value={scenario[field.name]}
+                    meta={inputMeta}
+                    selectClassName="results-adjust-select"
                     placeholder={`e.g. ${field.sample}`}
-                    onChange={(event) =>
+                    onChange={(next) =>
                       setScenario((current) => {
-                        if (event.target.value === "") {
+                        if (next === undefined) {
                           const { [field.name]: _gone, ...rest } = current;
                           return rest;
                         }
-                        return {
-                          ...current,
-                          [field.name]: Number(event.target.value),
-                        };
+                        return { ...current, [field.name]: next };
                       })
                     }
                   />
@@ -2919,22 +2940,6 @@ export function GraphViewerApp({
                 engine {runResult.provenance.vintage.engine_release}
               </p>
             )}
-            <button
-              type="button"
-              className="results-copy"
-              onClick={() => {
-                const request = lastRunRequest.current;
-                if (!request) return;
-                const body = JSON.stringify(request, null, 2);
-                void navigator.clipboard.writeText(
-                  `curl -X POST '${window.location.origin}/api/axiom/runtime/calculate' \\\n  -H 'content-type: application/json' \\\n  -d '${body.replace(/'/g, "'\\''")}'`,
-                );
-                setCopiedRun(true);
-                window.setTimeout(() => setCopiedRun(false), 2000);
-              }}
-            >
-              {copiedRun ? "✓ Copied" : "Copy run as code"}
-            </button>
           </aside>
         )}
       </section>
@@ -3124,6 +3129,125 @@ function humanize(value: string): string {
     value
       .replace(/^snap_/, "")
       .replace(/^universal_credit_/, "UC "),
+  );
+}
+
+// Labels for encoding conventions whose raw values would read as
+// magic numbers. filing_status is the rulespec-us convention: 1 joint,
+// 2 married filing separately, everything else not a married filing.
+const FILING_STATUS_LABELS: Record<number, string> = {
+  0: "0 — not a married filing",
+  1: "1 — joint return",
+  2: "2 — married filing separately",
+};
+
+function enumOptionLabel(inputName: string, option: number): string {
+  if (/(^|_)filing_status$/.test(inputName)) {
+    return FILING_STATUS_LABELS[option] ?? String(option);
+  }
+  return String(option);
+}
+
+/**
+ * The one control for answering a scenario input, typed by the input
+ * registry: bools are a three-way select (default — X / true / false)
+ * so the registry default stays visible and an explicit false is
+ * distinguishable from "unanswered"; closed domains are selects over
+ * the statute's own values; everything else is a number field.
+ * `undefined` from onChange means "back to the default" — the caller
+ * removes the entry from the scenario.
+ */
+function AnswerControl({
+  name,
+  value,
+  meta,
+  onChange,
+  selectClassName,
+  inputClassName,
+  placeholder,
+}: {
+  name: string;
+  value: number | boolean | undefined;
+  meta: {
+    dtypes: Record<string, string>;
+    defaults: Record<string, unknown>;
+    options?: Record<string, number[]>;
+  };
+  onChange: (value: number | boolean | undefined) => void;
+  selectClassName?: string;
+  inputClassName?: string;
+  placeholder?: string;
+}) {
+  const dtype = meta.dtypes[name];
+  const fallback = meta.defaults[name];
+  if (dtype === "bool") {
+    // Two options only: the default (named) and its opposite — a
+    // separate "false" when the default IS false would be the same
+    // answer twice. Explicitly picking the default value collapses
+    // into "default".
+    const presumed = Boolean(fallback);
+    return (
+      <select
+        className={selectClassName}
+        value={value === undefined || value === presumed ? "" : String(value)}
+        onChange={(event) =>
+          onChange(
+            event.target.value === ""
+              ? undefined
+              : event.target.value === "true",
+          )
+        }
+      >
+        <option value="">default — {String(presumed)}</option>
+        <option value={String(!presumed)}>{String(!presumed)}</option>
+      </select>
+    );
+  }
+  const domain = meta.options?.[name];
+  if (domain) {
+    // Same rule for closed domains: the default's own entry folds into
+    // the "default" option instead of appearing twice.
+    const presumed = Number(fallback) || 0;
+    return (
+      <select
+        className={selectClassName}
+        value={
+          value === undefined || value === presumed ? "" : String(value)
+        }
+        onChange={(event) =>
+          onChange(
+            event.target.value === ""
+              ? undefined
+              : Number(event.target.value),
+          )
+        }
+      >
+        <option value="">default — {enumOptionLabel(name, presumed)}</option>
+        {domain
+          .filter((option) => option !== presumed)
+          .map((option) => (
+            <option key={option} value={String(option)}>
+              {enumOptionLabel(name, option)}
+            </option>
+          ))}
+      </select>
+    );
+  }
+  return (
+    <input
+      type="number"
+      className={inputClassName}
+      step={dtype === "integer" ? 1 : "any"}
+      placeholder={placeholder}
+      value={typeof value === "number" ? String(value) : ""}
+      onChange={(event) =>
+        onChange(
+          event.target.value === ""
+            ? undefined
+            : Number(event.target.value),
+        )
+      }
+    />
   );
 }
 

@@ -1349,6 +1349,9 @@ function useAnswerBoxPopulated(legalId: string): boolean {
 export const InputEditContext = createContext<{
   values: Record<string, number | boolean>;
   answered: Set<string>;
+  /** Registry defaults by bare name — an unanswered card names the
+   *  value that held for the run. */
+  defaults?: Record<string, number | boolean>;
   onChange: ((name: string, value: number | boolean) => void) | null;
 }>({ values: {}, answered: new Set(), onChange: null });
 
@@ -1358,11 +1361,13 @@ const InputNode = ({ data }: NodeProps) => {
   const pop = useHoverPopover();
   const ref = useRef<HTMLDivElement>(null);
   const answerPopulated = useAnswerBoxPopulated(d.legalId);
-  const { values, answered, onChange } = useContext(InputEditContext);
+  const { values, answered, defaults, onChange } = useContext(InputEditContext);
   const inputFragment = d.legalId.split("#").pop() ?? "";
+  // Package graphs write `#input.<name>`; composed graphs write the
+  // bare `#<name>` — both name the same registry slot.
   const inputName = inputFragment.startsWith("input.")
     ? inputFragment.slice("input.".length)
-    : null;
+    : inputFragment || null;
   const settable = Boolean(onChange && inputName && inputName in values);
   const isAnswered = Boolean(inputName && answered.has(inputName));
   // Affordance shows when the parent wired up onExposeInput (Step III).
@@ -1383,10 +1388,16 @@ const InputNode = ({ data }: NodeProps) => {
       {!answerPopulated && d.showValues && d.value && (
         <div className="irg-value">{d.value}</div>
       )}
-      {/* Honesty on the card: after a run, an unanswered question says
-          so — a downstream "No" can mean "not asked". */}
+      {/* Honesty on the card: after a run, an unanswered question
+          names the default that held — the engine always fills every
+          slot, asked or not, so a downstream "No" can trace to a
+          default rather than an answer. */}
       {d.showValues && settable && !isAnswered && (
-        <div className="irg-default-chip">using default</div>
+        <div className="irg-default-chip">
+          {inputName && defaults && inputName in defaults
+            ? `default — ${String(defaults[inputName])}`
+            : "using default"}
+        </div>
       )}
       {showAction && (
         <div className="irg-action irg-action-clickable">

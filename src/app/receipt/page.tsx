@@ -130,6 +130,12 @@ export default function ReceiptPage() {
             it because we needed it. We publish it because everyone shipping
             agent-produced records will.
           </p>
+          <p className="mt-4 font-mono text-[0.72rem] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            Axiom&apos;s own records carry them:{" "}
+            <a href="/receipts" className="text-[var(--color-accent)] hover:underline">
+              axiom.org/receipts
+            </a>
+          </p>
         </Reveal>
       </div>
     </div>

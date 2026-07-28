@@ -17,31 +17,54 @@ describe("DocsPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /canonical docs live with the system that enforces them/i,
+        name: /docs live with the system that enforces them/i,
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /documentation homes/i })
+      screen.getByText(/docs live in the repo that owns the code or contract/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/repo-owned engineering docs/i)).toBeInTheDocument();
-    expect(screen.getByText("axiom-corpus")).toBeInTheDocument();
+    expect(screen.getAllByText("axiom-corpus").length).toBeGreaterThan(0);
     expect(screen.getAllByText("axiom-encode").length).toBeGreaterThan(0);
   });
 
-  it("links to canonical repo docs and related maps", () => {
+  it("no longer indexes the per-repo doc links (Documentation homes removed)", () => {
     render(<DocsPage />);
+    expect(
+      screen.queryByRole("heading", { name: /documentation homes/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /signed corpus releases/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /oracle adapters/i })
+    ).not.toBeInTheDocument();
+    // The internal lab notebook stays in the repo, not on the index.
+    expect(screen.queryByText(/methods log/i)).not.toBeInTheDocument();
+  });
 
+  it("renders the pipeline strip natively — no architecture iframe", () => {
+    render(<DocsPage />);
+    expect(screen.queryByTitle("Cross-system architecture map")).toBeNull();
     expect(
-      screen.getByRole("link", { name: /rulespec proof validation/i })
-    ).toHaveAttribute(
-      "href",
-      "https://github.com/TheAxiomFoundation/axiom-encode/blob/main/docs/rulespec-proof-validation.md"
-    );
+      screen.getByRole("heading", { name: /^the architecture$/i })
+    ).toBeInTheDocument();
+    // The strip mounts client-side (jsdom runs effects, so it's here).
     expect(
-      screen.getByRole("link", { name: /technical stack/i })
-    ).toHaveAttribute("href", "/stack");
+      screen.getByRole("img", { name: /five equal stations/i })
+    ).toBeInTheDocument();
+  });
+
+  it("no longer shows the Related maps row (held back for now)", () => {
+    render(<DocsPage />);
     expect(
-      screen.getByRole("link", { name: /encoder system map/i })
-    ).toHaveAttribute("href", "/encoder");
+      screen.queryByRole("heading", { name: /related maps/i })
+    ).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /technical stack/i })
+    ).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /encoder system map/i })
+    ).toBeNull();
+    expect(screen.queryByRole("link", { name: /open axiom/i })).toBeNull();
   });
 });

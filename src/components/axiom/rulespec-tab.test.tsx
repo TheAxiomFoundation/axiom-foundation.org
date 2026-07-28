@@ -139,6 +139,20 @@ describe("RuleSpecTab — rendering edge cases", () => {
     }
   });
 
+  it("does not repeat the rule name as a technical id under the title", () => {
+    render(
+      <RuleSpecTab
+        encoding={makeEncoding({ rulespec_content: TWO_RULES_DOC })}
+        loading={false}
+        jurisdiction="us"
+      />
+    );
+    // Plain rules title as their name; the "#name" line would be a
+    // verbatim repeat, so it must be absent.
+    expect(screen.getByRole("heading", { name: "tax" })).toBeInTheDocument();
+    expect(screen.queryByText("#tax")).not.toBeInTheDocument();
+  });
+
   it("emits each rule's YAML inside a code block", () => {
     const { container } = render(
       <RuleSpecTab

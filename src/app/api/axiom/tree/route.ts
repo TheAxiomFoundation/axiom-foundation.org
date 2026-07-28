@@ -42,6 +42,13 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const missing = error instanceof NavigationIndexMissingError;
     const unavailable = error instanceof NavigationIndexUnavailableError;
+    // The client sees a friendly message; the cause must survive
+    // somewhere or 503s become undebuggable (title-26 regression,
+    // 2026-07-17).
+    console.error(
+      `tree route failed for ${dbJurisdictionId}/${rawSegments}:`,
+      error
+    );
     return NextResponse.json(
       {
         error:

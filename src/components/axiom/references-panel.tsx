@@ -52,7 +52,49 @@ export function formatCitationLabel(path: string): string {
   return path;
 }
 
-function RefItem({ ref }: { ref: InlineReference }) {
+
+/** Where the referenced provision lives in the corpus tree, as a
+ *  compact crumb trail: "US Federal › Statutes › Title 26 › § 63".
+ *  Previews the destination before the reader commits to the jump. */
+export function citationTreeCrumb(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length < 2) return path;
+  const [jurisdiction, docType, ...rest] = parts;
+  const jurisdictionLabel =
+    jurisdiction === "us"
+      ? "US Federal"
+      : jurisdiction.startsWith("us-")
+        ? jurisdiction.slice(3).toUpperCase()
+        : jurisdiction.toUpperCase();
+  const docLabel =
+    docType.charAt(0).toUpperCase() +
+    docType.slice(1) +
+    (docType.endsWith("s") || docType === "guidance" ? "" : "s");
+  const crumbs = [jurisdictionLabel, docLabel];
+  if (rest.length > 0) {
+    crumbs.push(
+      docType === "statute" || docType === "regulation"
+        ? `Title ${rest[0]}`
+        : rest[0].toUpperCase()
+    );
+  }
+  if (rest.length > 1) {
+    const section = rest[1].startsWith("subpart-")
+      ? `Subpart ${rest[1].slice("subpart-".length).toUpperCase()}`
+      : `§ ${rest[1]}`;
+    crumbs.push(section);
+  }
+  if (rest.length > 2) crumbs.push(`(${rest.slice(2).join(")(")})`);
+  return crumbs.join(" › ");
+}
+
+function RefItem({
+  ref,
+  hrefPrefix = "",
+}: {
+  ref: InlineReference;
+  hrefPrefix?: string;
+}) {
   // Incoming refs carry offsets into the citing rule's body; pass
   // them through as ``?mark=start-end`` so the target page scrolls
   // to and highlights the exact citing passage. ``mt`` carries the
@@ -64,7 +106,14 @@ function RefItem({ ref }: { ref: InlineReference }) {
           ref.citation_text
         )}`
       : "";
-  const href = `/${ref.other_citation_path}${markQuery}`;
+  // Inferred refs are regex-derived and unverified below section
+  // level — a hallucinated subsection chain 404s. Link them to the
+  // section root (always real); the label still names the claimed
+  // subsection.
+  const targetPath = ref.inferred
+    ? ref.other_citation_path.split("/").slice(0, 4).join("/")
+    : ref.other_citation_path;
+  const href = `${hrefPrefix}/${targetPath}${markQuery}`;
   const label = formatCitationLabel(ref.other_citation_path);
   const resolved = ref.direction === "incoming" ? true : ref.target_resolved;
 
@@ -78,25 +127,35 @@ function RefItem({ ref }: { ref: InlineReference }) {
     : `${ref.other_citation_path} — not yet ingested`;
 
   return (
-    <li className="py-2 flex items-baseline gap-3">
-      <Link href={href} className={`font-mono text-xs ${linkClasses}`} title={title}>
-        {label}
-      </Link>
-      {ref.other_heading && (
-        <span className="text-sm text-[var(--color-ink-secondary)] leading-snug">
-          {ref.other_heading}
-        </span>
-      )}
-      {!resolved && (
-        <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
-          pending
-        </span>
-      )}
-      {ref.inferred && (
-        <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
-          inferred
-        </span>
-      )}
+    <li className="py-2">
+      <span className="flex items-baseline gap-3">
+        <Link
+          href={href}
+          className={`font-mono text-xs ${linkClasses}`}
+          title={title}
+          {...(resolved && { "data-cite": ref.other_citation_path })}
+        >
+          {label}
+        </Link>
+        {ref.other_heading && (
+          <span className="text-sm text-[var(--color-ink-secondary)] leading-snug">
+            {ref.other_heading}
+          </span>
+        )}
+        {!resolved && (
+          <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+            pending
+          </span>
+        )}
+        {ref.inferred && (
+          <span className="font-mono text-[10px] uppercase text-[var(--color-ink-muted)]">
+            inferred
+          </span>
+        )}
+      </span>
+      <span className="mt-0.5 block font-mono text-[10px] tracking-wide text-[var(--color-ink-muted)]">
+        {citationTreeCrumb(ref.other_citation_path)}
+      </span>
     </li>
   );
 }
@@ -106,11 +165,13 @@ function RefGroup({
   subtitle,
   refs,
   isFirst,
+  hrefPrefix = "",
 }: {
   title: string;
   subtitle: string;
   refs: InlineReference[];
   isFirst: boolean;
+  hrefPrefix?: string;
 }) {
   if (refs.length === 0) return null;
   return (
@@ -121,7 +182,11 @@ function RefGroup({
       </p>
       <ul className="divide-y divide-[var(--color-rule-subtle)] m-0 p-0 list-none">
         {refs.map((ref, i) => (
-          <RefItem key={`${ref.direction}-${i}-${ref.other_citation_path}`} ref={ref} />
+          <RefItem
+            key={`${ref.direction}-${i}-${ref.other_citation_path}`}
+            ref={ref}
+            hrefPrefix={hrefPrefix}
+          />
         ))}
       </ul>
     </section>
@@ -131,9 +196,13 @@ function RefGroup({
 export function ReferencesPanel({
   outgoing,
   incoming,
+  hrefPrefix = "",
 }: {
   outgoing: InlineReference[];
   incoming: RuleReference[];
+  /** Route prefix for citation links — the v2 reader passes
+   *  "/axiom/v2" so navigation stays inside the new surface. */
+  hrefPrefix?: string;
 }) {
   if (outgoing.length === 0 && incoming.length === 0) return null;
 
@@ -144,12 +213,14 @@ export function ReferencesPanel({
         title="References"
         subtitle={`This rule cites ${outgoing.length} other ${outgoing.length === 1 ? "rule" : "rules"}.`}
         refs={outgoing}
+        hrefPrefix={hrefPrefix}
       />
       <RefGroup
         isFirst={outgoing.length === 0}
         title="Referenced by"
         subtitle={`${incoming.length} other ${incoming.length === 1 ? "rule cites" : "rules cite"} this one.`}
         refs={incoming}
+        hrefPrefix={hrefPrefix}
       />
     </div>
   );

@@ -1,4 +1,3 @@
-import { AnnouncementBanner } from "@/components/landing/announcement-banner";
 import { Hero } from "@/components/landing/hero";
 import { EncodingMarquee } from "@/components/landing/encoding-marquee";
 import { TheGapSection } from "@/components/landing/the-gap-section";
@@ -12,11 +11,9 @@ export default function Home() {
   return (
     <>
       <CitationNetwork3D />
-      {/* First screen: exactly one viewport — announcement card on
-          top, hero filling the middle, the encoding marquee as the
-          bottom edge. */}
+      {/* First screen: exactly one viewport — hero filling the middle,
+          the encoding marquee as the bottom edge. */}
       <div className="relative z-1 flex min-h-svh flex-col">
-        <AnnouncementBanner />
         <Hero />
         <EncodingMarquee />
       </div>

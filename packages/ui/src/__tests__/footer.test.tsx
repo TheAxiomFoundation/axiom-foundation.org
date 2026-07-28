@@ -16,13 +16,30 @@ describe("Footer", () => {
 
   it("renders all footer links", () => {
     render(<Footer />);
+    expect(screen.getByText("Axiom platform")).toBeInTheDocument();
+    expect(screen.getByText("Demos")).toBeInTheDocument();
+    expect(screen.getByText("Validation")).toBeInTheDocument();
+    expect(screen.getByText("Documentation")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
     expect(screen.getByText("Team")).toBeInTheDocument();
+    expect(screen.getByText("Privacy")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("Get updates")).toBeInTheDocument();
-    expect(screen.getByText("Privacy")).toBeInTheDocument();
-    // GitHub link-outs are pulled back in Round 1.
-    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("hello@axiom.org"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders social icon links", () => {
+    render(<Footer />);
+    expect(screen.getByLabelText("GitHub")).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation",
+    );
+    expect(screen.getByLabelText("LinkedIn")).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/company/axiom-foundation",
+    );
   });
 
   it("points Get updates at the provided updatesUrl", () => {
@@ -51,7 +68,7 @@ describe("Footer", () => {
 
   it("does not apply baseUrl to external links", () => {
     render(<Footer baseUrl="https://axiom-foundation.org" />);
-    expect(screen.getByText("Contact")).toHaveAttribute(
+    expect(screen.getByText("hello@axiom.org")).toHaveAttribute(
       "href",
       "mailto:hello@axiom.org",
     );
@@ -76,6 +93,7 @@ describe("Footer", () => {
 
     render(<Footer renderLink={TestLink} />);
     const customLinks = screen.getAllByTestId("custom-link");
-    expect(customLinks.length).toBe(3); // About, Team, and Privacy
+    // Demos, Coverage, Validation, Docs, About, Team, Blog, Privacy, Contact
+    expect(customLinks.length).toBe(9);
   });
 });

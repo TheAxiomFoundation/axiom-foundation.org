@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
+import { axiomAppHref } from "@/lib/urls";
 import { trackAxiomEvent } from "@/lib/analytics";
 
 export function Hero() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Shares the first viewport with the announcement card above and
-  // the encoding marquee below: flex-1 fills whatever height remains
-  // so the marquee lands on the viewport's bottom edge.
+  // Shares the first viewport with the encoding marquee below:
+  // flex-1 fills whatever height remains so the marquee lands on
+  // the viewport's bottom edge.
   return (
     <section className="relative z-1 flex flex-1 flex-col justify-center py-10 px-8">
       <div
@@ -37,15 +38,13 @@ export function Hero() {
             , so anyone can run, audit, or reform them.
           </p>
 
-          {/* Registration lives in the announcement card above — the hero
-              pulls readers into the story instead of repeating the CTA. */}
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <a
-              href="#gap"
-              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "why_this_exists" })}
+              href={axiomAppHref()}
+              onClick={() => trackAxiomEvent("hero_cta_clicked", { cta: "explore_the_law" })}
               className="btn-primary"
             >
-              Why this exists
+              Explore the law
               <ArrowRightIcon className="w-5 h-5" />
             </a>
             <a

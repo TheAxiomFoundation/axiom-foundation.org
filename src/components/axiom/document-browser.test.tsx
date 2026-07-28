@@ -113,12 +113,31 @@ describe("AxiomBrowser", () => {
         })
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Axiom indexes US, UK, and Canadian law/i)
+        screen.getByText(/Axiom indexes law across dozens of jurisdictions/i)
       ).toBeInTheDocument();
       expect(screen.getByRole("link", { name: /ops dashboard/i })).toHaveAttribute(
         "href",
         "/ops"
       );
+    });
+
+    it("renders the corpus field with its labeled entry points and stat line", async () => {
+      render(<AxiomBrowser segments={[]} />);
+      // The census loads through a dynamic import — wait for the dots.
+      await waitFor(() =>
+        expect(
+          Number(
+            screen
+              .getByTestId("corpus-field")
+              .getAttribute("data-dot-count")
+          )
+        ).toBeGreaterThan(100)
+      );
+      expect(
+        screen.getAllByTestId("corpus-field-highlight").length
+      ).toBeGreaterThanOrEqual(6);
+      // The field carries no stat line — the open world is the UI.
+      expect(screen.queryByTestId("corpus-field-stats")).toBeNull();
     });
 
     it("renders the primary jurisdiction navigation", async () => {

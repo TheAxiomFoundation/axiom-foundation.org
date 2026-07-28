@@ -49,12 +49,12 @@
       "destination": "https://co-snap-workflow-checker.vercel.app/gallery/workflow/:path(.*)"
     },
     {
-      "source": "/gallery/snap",
-      "destination": "https://axiom-co-snap.vercel.app/gallery/snap"
+      "source": "/gallery/cliffs",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/cliffs"
     },
     {
-      "source": "/gallery/snap/:path(.*)",
-      "destination": "https://axiom-co-snap.vercel.app/gallery/snap/:path(.*)"
+      "source": "/gallery/cliffs/:path(.*)",
+      "destination": "https://axiom-co-snap.vercel.app/gallery/cliffs/:path(.*)"
     },
     {
       "source": "/gallery/microsim",
@@ -95,6 +95,14 @@
     {
       "source": "/bills/:path(.*)",
       "destination": "https://axiom-bills.vercel.app/bills/:path(.*)"
+    },
+    {
+      "source": "/local",
+      "destination": "https://axiom-local-pi.vercel.app/local"
+    },
+    {
+      "source": "/local/:path(.*)",
+      "destination": "https://axiom-local-pi.vercel.app/local/:path(.*)"
     }
   ],
   "redirects": [
@@ -110,7 +118,12 @@
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "www.axiom-foundation.org" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.axiom-foundation.org"
+        }
+      ],
       "destination": "https://axiom-foundation.org/:path",
       "permanent": true
     },
@@ -156,12 +169,32 @@
     },
     {
       "source": "/snap",
-      "destination": "/gallery/snap",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/cliffs",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/cliffs/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
+      "permanent": false
+    },
+    {
+      "source": "/gallery/snap",
+      "destination": "/gallery/cliffs",
+      "permanent": false
+    },
+    {
+      "source": "/gallery/snap/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
       "permanent": false
     },
     {
       "source": "/snap/:path(.*)",
-      "destination": "/gallery/snap/:path(.*)",
+      "destination": "/gallery/cliffs/:path(.*)",
       "permanent": false
     },
     {

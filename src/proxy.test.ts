@@ -207,6 +207,8 @@ describe("proxy", () => {
   });
 
   it("redirects marketing paths on the app host to the marketing site", () => {
+    // axiom.org became the canonical marketing host on master
+    // (#134–#152); the app host forwards there.
     for (const path of ["/about", "/team", "/privacy", "/docs"]) {
       const response = proxy(
         request(
@@ -216,7 +218,7 @@ describe("proxy", () => {
       );
       expect(response.status).toBe(308);
       expect(response.headers.get("location")).toBe(
-        `https://axiom-foundation.org${path}`
+        `https://axiom.org${path}`
       );
     }
   });

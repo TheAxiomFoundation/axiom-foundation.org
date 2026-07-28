@@ -180,7 +180,7 @@ export const usEvidenceRows: UsEvidenceRow[] = [
     id: "fiit",
     check: "Federal income tax (fiit)",
     reference: "PolicyEngine",
-    scale: "3,997,401 distinct comparisons",
+    scale: "3,881,635 distinct comparisons",
     result: "A comparison count, not a match-rate claim.",
     href: "https://github.com/TheAxiomFoundation/axiom-oracles",
     linkLabel: "Open comparison evidence",
@@ -196,7 +196,7 @@ export const goldenHousehold = {
     ["snap_net_income", "226"],
   ] as const,
   certificate:
-    "certified: unavailable — two of four verdicts are attested rather than computed.",
+    "certified: 0 — certification is automatic when the harness computes completeness and fidelity green; we expect no current encoding passes yet.",
 };
 
 export const closurePredicate =
@@ -232,17 +232,25 @@ export const closureRoots: ClosureRoot[] = [
     root: "7 CFR 273",
     status: "Published debt",
     detail:
-      "Provisions remain pending, and each pending provision is named in the public ledger.",
-    placeholder:
-      "Placeholder — exact counts pending from axiom-oracles closure/summary.json",
+      "Content-level review counts a module as encoded only when it computes its section — seven modules declare deferred outputs and stay pending. Every pending provision is a named row.",
+    metrics: [
+      { label: "Provisions", value: "39" },
+      { label: "Encoded", value: "2" },
+      { label: "Excluded", value: "14" },
+      { label: "Pending", value: "23" },
+    ],
   },
   {
     root: "7 USC ch. 51",
     status: "Published debt",
     detail:
-      "Provisions remain pending, and each pending provision is named in the public ledger.",
-    placeholder:
-      "Placeholder — exact counts pending from axiom-oracles closure/summary.json",
+      "Most of chapter 51 is retailer, EBT, and state-plan administration, excluded with content-grounded reasons. Every pending provision is a named row.",
+    metrics: [
+      { label: "Provisions", value: "827" },
+      { label: "Encoded", value: "16" },
+      { label: "Excluded", value: "544" },
+      { label: "Pending", value: "267" },
+    ],
   },
 ];
 

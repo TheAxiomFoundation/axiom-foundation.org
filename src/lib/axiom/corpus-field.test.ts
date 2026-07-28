@@ -21,6 +21,9 @@ import {
   GROUP_CLEARANCE,
   PINNED_HIGHLIGHT_TARGETS,
   SUBTREE_LABEL_MIN_PX,
+  SUBTREE_FALLBACK_LABEL_MIN_PX,
+  FALLBACK_LABELS_PER_FRAME,
+  labelMinPx,
   FOOTPRINT_MARGIN_RATIO,
   FOOTPRINT_MARGIN_RATIO_MAX,
   LABEL_CLEARANCE,
@@ -1070,6 +1073,20 @@ describe("subtree titles (labels under document-grouped subtrees)", () => {
     const eligible = layout.dots.filter((dot) => dotEarnsLabel(dot));
     expect(eligible.length).toBeGreaterThan(1000);
     expect(eligible.length).toBeLessThan(layout.dots.length);
+  });
+
+  it("two tiers: headline titles appear early, citation fallbacks much later", () => {
+    expect(labelMinPx({ headlineRule: "eitc" })).toBe(SUBTREE_LABEL_MIN_PX);
+    expect(labelMinPx({ headlineRule: null })).toBe(
+      SUBTREE_FALLBACK_LABEL_MIN_PX,
+    );
+    // The fallback tier is meaningfully deeper, and its per-frame
+    // budget stays below the overall label cap.
+    expect(SUBTREE_FALLBACK_LABEL_MIN_PX).toBeGreaterThanOrEqual(
+      SUBTREE_LABEL_MIN_PX * 1.8,
+    );
+    expect(FALLBACK_LABELS_PER_FRAME).toBeGreaterThan(0);
+    expect(FALLBACK_LABELS_PER_FRAME).toBeLessThan(160);
   });
 });
 

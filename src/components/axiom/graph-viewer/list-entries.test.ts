@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
+  ALL_STATES,
   buildListEntries,
   filterListEntries,
   filterModulesByScope,
   JURISDICTION_SCOPES,
   LIST_SLAB_SIZE,
   matchesScope,
+  statesInModules,
 } from "./list-entries";
 import { filterViewModules, type CorpusModule } from "@/lib/axiom/corpus-field";
 import corpusSubtreesJson from "@/lib/axiom/corpus-subtrees.json";
@@ -181,5 +183,69 @@ describe("jurisdiction scope (All · Nationwide · States)", () => {
     expect(filterListEntries(entries, "", "states")).toHaveLength(2);
     // Every entry carries its jurisdiction for the row attribute.
     expect(entries.every((e) => e.jurisdiction.startsWith("us"))).toBe(true);
+  });
+});
+
+describe("state picker (one us-XX under the States scope)", () => {
+  const modules = [
+    module({ target: "us:statutes/26/32", jurisdiction: "us" }),
+    module({
+      target: "us-ia:statutes/422/12C",
+      jurisdiction: "us-ia",
+      headlineRule: "iowa_credit",
+    }),
+    module({
+      target: "us-mo:manual/dss/snap/1115",
+      jurisdiction: "us-mo",
+      bucket: "manual",
+    }),
+    module({ target: "us-ia:statutes/422/9", jurisdiction: "us-ia" }),
+  ];
+
+  it("matchesScope narrows to exactly one state — never under other scopes", () => {
+    expect(matchesScope("us-ia", "states", "us-ia")).toBe(true);
+    expect(matchesScope("us-mo", "states", "us-ia")).toBe(false);
+    expect(matchesScope("us", "states", "us-ia")).toBe(false);
+    expect(matchesScope("us-ia", "states", ALL_STATES)).toBe(true);
+    // The state is a States-scope refinement only.
+    expect(matchesScope("us-mo", "all", "us-ia")).toBe(true);
+    expect(matchesScope("us", "nationwide", "us-ia")).toBe(true);
+  });
+
+  it("statesInModules lists only present states, real names, sorted", () => {
+    const options = statesInModules(modules);
+    expect(options).toEqual([
+      { id: "us-ia", label: "Iowa" },
+      { id: "us-mo", label: "Missouri" },
+    ]);
+    // Federal never appears; absent states never appear.
+    expect(options.some((o) => o.id === "us")).toBe(false);
+    expect(options.some((o) => o.id === "us-ny")).toBe(false);
+  });
+
+  it("the census offers dozens of states, sorted by name", () => {
+    const options = statesInModules(filterViewModules(corpusSubtrees.modules));
+    expect(options.length).toBeGreaterThan(20);
+    const labels = options.map((o) => o.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
+    expect(labels).toContain("Iowa");
+    expect(labels.some((label) => /^us-/.test(label))).toBe(false);
+  });
+
+  it("query × scope × state compose over the same list", () => {
+    const entries = buildListEntries(modules);
+    expect(
+      filterListEntries(entries, "", "states", "us-ia").map((e) => e.target),
+    ).toEqual(["us-ia:statutes/422/12C", "us-ia:statutes/422/9"]);
+    expect(
+      filterListEntries(entries, "422.12", "states", "us-ia").map(
+        (e) => e.target,
+      ),
+    ).toEqual(["us-ia:statutes/422/12C"]);
+    expect(filterListEntries(entries, "1115", "states", "us-ia")).toEqual([]);
+    // The doors-band cut agrees.
+    expect(
+      filterModulesByScope(modules, "states", "us-mo").map((m) => m.target),
+    ).toEqual(["us-mo:manual/dss/snap/1115"]);
   });
 });

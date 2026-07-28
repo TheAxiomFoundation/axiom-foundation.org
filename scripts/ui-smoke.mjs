@@ -17,9 +17,10 @@ await new Promise((r) => setTimeout(r, 3000));
 await page.click(".run-toggle");
 await page.waitForSelector(".run-sample", { timeout: 15000 });
 await page.click(".run-sample");
-console.log("sample loaded; waiting for auto-run…");
-
-// Auto-run (answering IS running) should produce the exec layer
+// Explicit runs only: loading the sample never fires the engine —
+// click Run.
+await page.click(".run-button");
+console.log("sample loaded; Run clicked…");
 await page.waitForSelector(".results-sheet", { timeout: 30000 });
 console.log("results sheet up — run completed");
 

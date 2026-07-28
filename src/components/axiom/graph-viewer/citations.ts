@@ -24,6 +24,12 @@ const JURISDICTION_LABELS: Record<string, string> = {
   "us-wy": "Wyoming",
 };
 
+/** The one place jurisdiction codes become names ("us-ia" → "Iowa").
+ *  Consumers (the state picker) look up here — never a second map. */
+export function jurisdictionLabel(code: string): string {
+  return JURISDICTION_LABELS[code] ?? code;
+}
+
 const KIND_SINGULAR: Record<string, string> = {
   regulations: "regulation",
   statutes: "statute",

@@ -26,3 +26,17 @@ export function buildRunRequestBody(
     variables,
   };
 }
+
+/**
+ * A stable identity for "the values a run computed": entries sorted
+ * by name so insertion order never fakes an edit. The viewer keeps
+ * the key of the LAST explicit run; a differing key of the current
+ * scenario marks the results sheet stale — it never fires a run.
+ */
+export function scenarioKey(
+  scenario: Record<string, number | boolean>,
+): string {
+  return JSON.stringify(
+    Object.entries(scenario).sort(([a], [b]) => a.localeCompare(b)),
+  );
+}

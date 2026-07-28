@@ -31,6 +31,8 @@ checks.runButton = await page.evaluate(() => {
 await page.click(".run-toggle");
 await page.waitForSelector(".run-sample", { timeout: 15000 });
 await page.click(".run-sample");
+// Explicit runs only: the sample never fires the engine — click Run.
+await page.click(".run-button");
 await page.waitForSelector(".results-sheet", { timeout: 30000 });
 await page.keyboard.press("Escape");
 await new Promise((r) => setTimeout(r, 800));

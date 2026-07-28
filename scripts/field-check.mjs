@@ -116,6 +116,8 @@ const readFieldMetrics = () =>
       outlines: Number(field?.getAttribute("data-outlines-drawn") ?? 0),
       dots: Number(field?.getAttribute("data-dots-drawn") ?? 0),
       labels: Number(field?.getAttribute("data-labels-drawn") ?? 0),
+      labelsHeadline: Number(field?.getAttribute("data-labels-headline") ?? 0),
+      labelsFallback: Number(field?.getAttribute("data-labels-fallback") ?? 0),
       frameMs: Number(field?.getAttribute("data-frame-ms") ?? NaN),
     };
   });
@@ -135,6 +137,8 @@ await page.screenshot({ path: "/tmp/shape-field.png" });
 await page.screenshot({ path: "/tmp/field-spaced.png" });
 await page.screenshot({ path: "/tmp/field-no-overlap.png" });
 await page.screenshot({ path: "/tmp/field-final-fitted.png" });
+// The translucent constellation layer, at the fitted view.
+await page.screenshot({ path: "/tmp/field-translucent.png" });
 
 // Hard invariant: the layout resolves to ZERO intersecting footprint
 // pairs (stamped once per layout by the renderer) — plus the
@@ -261,13 +265,31 @@ console.log(
   lodNear.trueEdges,
 );
 await page.screenshot({ path: "/tmp/shape-field-near.png" });
-// Titles under document-grouped subtrees: readable-footprint modules
-// carry a small muted label at this zoom (screen-space deduped).
-const labelsAtMid = (await readFieldMetrics()).labels;
-console.log("subtree labels drawn at mid zoom:", labelsAtMid);
+// Two-tier titles: at this zoom the HEADLINE names are out in
+// force while citation fallbacks stay few/none (they wait for a
+// deeper camera).
+const labelTiersMid = await readFieldMetrics();
+console.log(
+  "labels at mid zoom — headline:",
+  labelTiersMid.labelsHeadline,
+  "· fallback:",
+  labelTiersMid.labelsFallback,
+);
 await page.screenshot({ path: "/tmp/field-labels.png" });
 await page.screenshot({ path: "/tmp/field-final-mid.png" });
+await page.screenshot({ path: "/tmp/field-labels-tiered.png" });
 const motifFrames = await frameStorm("motif zoom", 30, 200);
+
+// Push the camera in close: BOTH tiers present now.
+await page.mouse.wheel({ deltaY: -900 });
+await new Promise((r) => setTimeout(r, 400));
+const labelTiersClose = await readFieldMetrics();
+console.log(
+  "labels close in — headline:",
+  labelTiersClose.labelsHeadline,
+  "· fallback:",
+  labelTiersClose.labelsFallback,
+);
 
 // 5b) Drag pans the camera.
 const txBefore = await page.evaluate(() =>
@@ -601,6 +623,49 @@ const statesScope = await picker.evaluate(() => {
   };
 });
 await picker.screenshot({ path: "/tmp/list-filter.png" });
+
+// The state picker: under States, narrow to ONE state — real names,
+// only states the corpus carries; every row obeys the pick.
+const stateOptions = await picker.evaluate(() =>
+  [...document.querySelectorAll('[data-testid="list-state-select"] option')]
+    .map((option) => ({ value: option.value, label: option.textContent })),
+);
+const iowaOption = stateOptions.find((option) => option.label === "Iowa");
+await picker.select('[data-testid="list-state-select"]', "us-ia");
+await new Promise((r) => setTimeout(r, 500));
+const stateCut = await picker.evaluate(() => {
+  const rows = [
+    ...document.querySelectorAll('[data-testid="picker-list-row"]'),
+  ];
+  const doors = [
+    ...document.querySelectorAll('[data-testid="picker-door"]'),
+  ];
+  return {
+    total: Number(
+      document
+        .querySelector('[data-testid="picker-list"]')
+        ?.getAttribute("data-list-total") ?? 0,
+    ),
+    rows: rows.length,
+    offState: rows.filter(
+      (row) => row.getAttribute("data-jurisdiction") !== "us-ia",
+    ).length,
+    doorCount: doors.length,
+    offStateDoors: doors.filter(
+      (door) => !(door.textContent ?? "").includes("US-IA"),
+    ).length,
+  };
+});
+console.log(
+  "state picker — Iowa option:",
+  Boolean(iowaOption),
+  "· cut:",
+  JSON.stringify(stateCut),
+);
+await picker.screenshot({ path: "/tmp/list-state-picker.png" });
+// Back to every state before the scope sums check.
+await picker.select('[data-testid="list-state-select"]', "all");
+await new Promise((r) => setTimeout(r, 300));
 await picker.click('[data-testid="list-scope-nationwide"]');
 await new Promise((r) => setTimeout(r, 400));
 const nationwideScope = await picker.evaluate(() => {
@@ -755,6 +820,67 @@ console.log(
 );
 console.log("echo:", afterFact.echo.slice(0, 90));
 
+// 10c) Explicit runs ONLY: editing a value after a run fires
+//      nothing — the sheet goes STALE ("values changed — Run
+//      again"); outputs move only when Run is clicked.
+await picker.evaluate(() => {
+  const input = document.querySelector(".results-adjust-field input");
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  ).set;
+  setter.call(input, "1500");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+});
+// Well past the 700ms debounce: if an auto-run were still wired,
+// the spinner (or fresh cells) would betray it here.
+await new Promise((r) => setTimeout(r, 1600));
+const staleState = await picker.evaluate(() => ({
+  cells: [...document.querySelectorAll(".results-cell")].map(
+    (el) => el.textContent,
+  ),
+  stale: Boolean(document.querySelector('[data-testid="results-stale"]')),
+  spinner: Boolean(document.querySelector(".run-spinner")),
+}));
+const noAutoRun =
+  JSON.stringify(staleState.cells) === JSON.stringify(afterFact.cells) &&
+  staleState.stale &&
+  !staleState.spinner;
+console.log(
+  "explicit runs only: outputs frozen:",
+  JSON.stringify(staleState.cells) === JSON.stringify(afterFact.cells),
+  "· stale indicator:",
+  staleState.stale,
+  "· no spinner:",
+  !staleState.spinner,
+);
+await picker.screenshot({ path: "/tmp/run-stale-state.png" });
+// The explicit click consumes the edits: outputs move, stale clears.
+await picker.evaluate(() =>
+  document.querySelector(".results-rerun")?.click(),
+);
+await picker.waitForFunction(
+  () => !document.querySelector(".run-spinner"),
+  { timeout: 60000 },
+);
+await picker.waitForSelector(".results-sheet", { timeout: 60000 });
+await new Promise((r) => setTimeout(r, 1500));
+const afterRerun = await picker.evaluate(() => ({
+  cells: [...document.querySelectorAll(".results-cell")].map(
+    (el) => el.textContent,
+  ),
+  stale: Boolean(document.querySelector('[data-testid="results-stale"]')),
+}));
+const rerunApplied =
+  JSON.stringify(afterRerun.cells) !== JSON.stringify(staleState.cells) &&
+  !afterRerun.stale;
+console.log(
+  "explicit rerun: outputs changed:",
+  JSON.stringify(afterRerun.cells) !== JSON.stringify(staleState.cells),
+  "· stale cleared:",
+  !afterRerun.stale,
+);
+
 // 11) /app parity: the same compose deep link through the /app
 //     rewrite mounts the same viewer with the same run affordance.
 const appPage = await browser.newPage();
@@ -835,9 +961,12 @@ const pass =
   lodNear.lod === "motif" &&
   lodNear.trueEdges >= 20 &&
   headlineDoors >= 5 &&
-  // Pinned EITC door, subtree titles, frame budget.
+  // Pinned EITC door, two-tier subtree titles, frame budget.
   eitcDoor &&
-  labelsAtMid > 10 &&
+  labelTiersMid.labelsHeadline > 10 &&
+  labelTiersMid.labelsFallback < labelTiersMid.labelsHeadline &&
+  labelTiersClose.labelsHeadline > 0 &&
+  labelTiersClose.labelsFallback > 0 &&
   farFrames.median < 8 &&
   // Hard no-overlap: zero intersecting footprint pairs, both hosts.
   overlapPairs === 0 &&
@@ -861,6 +990,14 @@ const pass =
   nationwideScope.nonFederal === 0 &&
   nationwideScope.rows > 0 &&
   statesScope.total + nationwideScope.total === listStats.total &&
+  // The state picker: real names, and one state cuts everything.
+  Boolean(iowaOption) &&
+  stateCut.total > 0 &&
+  stateCut.total < statesScope.total &&
+  stateCut.rows > 0 &&
+  stateCut.offState === 0 &&
+  stateCut.doorCount > 0 &&
+  stateCut.offStateDoors === 0 &&
   // App-side pipeline exclusion: none reachable in the list.
   pipelineTotal === 0 &&
   txAfterDrag !== txBefore &&
@@ -891,6 +1028,10 @@ const pass =
   outputsChanged &&
   factEchoed &&
   answeredLine &&
+  // Explicit runs only: post-run edits freeze outputs and flag the
+  // sheet stale until Run is clicked.
+  noAutoRun &&
+  rerunApplied &&
   appRunToggle &&
   appBackButton &&
   appBackState.path === "/app" &&
@@ -898,7 +1039,7 @@ const pass =
   blockedHonest;
 console.log(
   pass
-    ? "PASS: no-overlap field, scope filter, pipeline exclusion, no instruction copy"
+    ? "PASS: state picker, tiered titles, translucent field, full echo, explicit runs only"
     : "FAIL",
 );
 await browser.close();

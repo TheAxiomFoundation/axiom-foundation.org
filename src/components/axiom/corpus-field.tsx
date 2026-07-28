@@ -20,8 +20,9 @@ import {
   fitFieldTransform,
   IDENTITY_TRANSFORM,
   MOTIF_ZOOM,
-  SUBTREE_LABEL_MIN_PX,
+  FALLBACK_LABELS_PER_FRAME,
   dotEarnsLabel,
+  labelMinPx,
   dotShapeSpec,
   shapeRendersNodes,
   buildFieldLayout,
@@ -382,7 +383,7 @@ export function CorpusField({
         // All-standalone modules: minimal faint dust, at every LOD.
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-        ctx.globalAlpha = 0.28;
+        ctx.globalAlpha = 0.18;
         ctx.fillStyle = dot.color;
         ctx.fill();
         ctx.globalAlpha = 1;
@@ -390,7 +391,11 @@ export function CorpusField({
       }
       const shape = dotShapeSpec(dot);
       const detailed = shapeRendersNodes(dot.r * pxPerUnit);
-      const alpha = dot.highlightLabel ? 0.95 : 0.8;
+      // Translucent constellation layer: ordinary shapes recede so
+      // the doors, source rings, and the hovered dot carry the
+      // hierarchy. Hover restores full presence.
+      const alpha =
+        dot === hovered ? 0.95 : dot.highlightLabel ? 0.9 : 0.5;
       if (shape.kind === "true") {
         const { nodes, edges } = shape.motif;
         ctx.globalAlpha = alpha;
@@ -450,7 +455,9 @@ export function CorpusField({
       if (dot.sourceOutline) {
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-        ctx.globalAlpha = 0.3;
+        // Softened with the shapes, but LESS so — the ring hierarchy
+        // survives the translucent layer.
+        ctx.globalAlpha = dot === hovered ? 0.45 : 0.24;
         ctx.lineWidth = 0.5 / k;
         ctx.strokeStyle = dot.color;
         ctx.stroke();
@@ -465,11 +472,12 @@ export function CorpusField({
         ctx.stroke();
       }
       // Title candidates: subtrees grouped under a source document
-      // (headline rule or source-backed linkage), footprint readable,
-      // not already named by a door chip.
+      // (headline rule or source-backed linkage), footprint readable
+      // AT THIS DOT'S TIER (headline titles early, citation
+      // fallbacks only much closer), not already named by a door.
       if (
         !dot.highlightLabel &&
-        dot.r * pxPerUnit >= SUBTREE_LABEL_MIN_PX &&
+        dot.r * pxPerUnit >= labelMinPx(dot) &&
         dotEarnsLabel(dot)
       ) {
         labelCandidates.push(dot);
@@ -477,11 +485,14 @@ export function CorpusField({
     }
 
     // ── Titles under document-grouped subtrees ──
-    // Small muted text beneath each footprint, biggest subtrees
-    // first; a simple screen-space overlap check keeps the band from
-    // wallpapering dense clusters. At far zoom no candidate passes
-    // the size gate — unlabeled is fine there.
+    // Small muted text beneath each footprint — headline names
+    // first (biggest first within a tier), citation fallbacks under
+    // their own lower per-frame cap so names reveal progressively; a
+    // screen-space overlap check keeps the band from wallpapering
+    // dense clusters. At far zoom no candidate passes — unlabeled.
     let labelsDrawn = 0;
+    let headlineLabelsDrawn = 0;
+    let fallbackLabelsDrawn = 0;
     if (labelCandidates.length > 0) {
       const fontCss = 10;
       const fontField = fontCss / pxPerUnit;
@@ -492,9 +503,17 @@ export function CorpusField({
       const lineH = fontField * 1.35;
       const placed: Array<{ x: number; y: number; w: number }> = [];
       const cache = labelCacheRef.current;
-      const sorted = [...labelCandidates].sort((a, b) => b.r - a.r);
+      const sorted = [...labelCandidates].sort(
+        (a, b) =>
+          (b.headlineRule ? 1 : 0) - (a.headlineRule ? 1 : 0) ||
+          b.r - a.r
+      );
       for (const dot of sorted) {
         if (labelsDrawn >= 160) break;
+        const isHeadline = dot.headlineRule !== null;
+        if (!isHeadline && fallbackLabelsDrawn >= FALLBACK_LABELS_PER_FRAME) {
+          continue;
+        }
         let entry = cache.get(dot.target);
         if (!entry) {
           const text = dot.headlineRule
@@ -520,6 +539,8 @@ export function CorpusField({
         ctx.fillText(entry.text, x, y);
         placed.push({ x, y, w });
         labelsDrawn += 1;
+        if (isHeadline) headlineLabelsDrawn += 1;
+        else fallbackLabelsDrawn += 1;
       }
     }
 
@@ -539,6 +560,8 @@ export function CorpusField({
       host.dataset.outlinesDrawn = String(outlinesDrawn);
       host.dataset.dotsDrawn = String(dotsDrawn);
       host.dataset.labelsDrawn = String(labelsDrawn);
+      host.dataset.labelsHeadline = String(headlineLabelsDrawn);
+      host.dataset.labelsFallback = String(fallbackLabelsDrawn);
       host.dataset.frameMs = (performance.now() - frameStartedAt).toFixed(2);
     }
   }, [layout, hovered, transform]);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { humanizeCitation, humanizeRuleName } from "./citations";
 import {
+  ALL_STATES,
   buildListEntries,
   filterListEntries,
   filterModulesByScope,
@@ -142,6 +143,7 @@ export function SubtreeDoors({
   onPick,
   query = "",
   scope = "all",
+  state = ALL_STATES,
 }: {
   modules: CorpusModule[];
   onPick: (target: string) => void;
@@ -151,24 +153,27 @@ export function SubtreeDoors({
   /** All · Nationwide (us) · States (us-XX) — applies to the doors
    *  band AND the complete list, composed with the query. */
   scope?: JurisdictionScope;
+  /** One `us-XX` under the States scope (ALL_STATES = every state);
+   *  cuts the doors band and the list alike. */
+  state?: string;
 }) {
   const doors = useMemo(
-    () => computeFieldHighlights(filterModulesByScope(modules, scope)),
-    [modules, scope],
+    () => computeFieldHighlights(filterModulesByScope(modules, scope, state)),
+    [modules, scope, state],
   );
   const entries = useMemo(() => buildListEntries(modules), [modules]);
   const filtered = useMemo(
-    () => filterListEntries(entries, query, scope),
-    [entries, query, scope],
+    () => filterListEntries(entries, query, scope, state),
+    [entries, query, scope, state],
   );
   // Slab rendering: 2,900 rows of DOM at once is a jank tax — the
   // sentinel at the list's tail appends the next slab on scroll.
   const [slabs, setSlabs] = useState(1);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    // A new search or scope restarts the window.
+    // A new search, scope, or state restarts the window.
     setSlabs(1);
-  }, [query, scope]);
+  }, [query, scope, state]);
   const visible = filtered.slice(0, slabs * LIST_SLAB_SIZE);
   const exhausted = visible.length >= filtered.length;
   useEffect(() => {

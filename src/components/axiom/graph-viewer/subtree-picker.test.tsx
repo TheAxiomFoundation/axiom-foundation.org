@@ -155,6 +155,23 @@ describe("SubtreeDoors", () => {
     expect(screen.queryAllByTestId("picker-list-row")).toHaveLength(0);
     expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
   });
+
+  it("one state narrows the list AND the doors under the States scope", () => {
+    render(
+      <SubtreeDoors
+        modules={MODULES}
+        onPick={vi.fn()}
+        scope="states"
+        state="us-ny"
+      />
+    );
+    const rows = screen.getAllByTestId("picker-list-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.getAttribute("data-jurisdiction")).toBe("us-ny");
+    const doors = screen.getAllByTestId("picker-door");
+    expect(doors).toHaveLength(1);
+    expect(doors[0]!.textContent).toContain("US-NY");
+  });
 });
 
 describe("SubtreeSearch", () => {

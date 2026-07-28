@@ -34,14 +34,16 @@ import {
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreeDoors, SubtreeSearch } from "./subtree-picker";
 import {
+  ALL_STATES,
   JURISDICTION_SCOPES,
+  statesInModules,
   type JurisdictionScope,
 } from "./list-entries";
 import {
   composeRootOutput,
   filterStandaloneRules,
 } from "./compose-filter";
-import { buildRunRequestBody } from "./run-request";
+import { buildRunRequestBody, scenarioKey } from "./run-request";
 import { RunInputsEcho } from "./run-inputs-echo";
 import {
   readLauncherMode,
@@ -83,6 +85,13 @@ export function GraphViewerApp({
   // List mode's jurisdiction scope: All · Nationwide (us) · States
   // (us-XX). Composes with the text search.
   const [listScope, setListScope] = useState<JurisdictionScope>("all");
+  // Under States, one state may be picked (ALL_STATES = every state);
+  // leaving the States scope forgets the pick.
+  const [listState, setListState] = useState<string>(ALL_STATES);
+  const pickListScope = (scope: JurisdictionScope) => {
+    setListScope(scope);
+    if (scope !== "states") setListState(ALL_STATES);
+  };
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -100,6 +109,10 @@ export function GraphViewerApp({
   );
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  // Post-run edits mark the sheet stale until the NEXT explicit run
+  // (edits never fire the engine by themselves).
+  const [resultsStale, setResultsStale] = useState(false);
+  const ranScenarioKey = useRef<string | null>(null);
   const [inspected, setInspected] = useState<IrgNodeData | null>(null);
   // The rule lens: "how does this rule work?" — a trail of focused
   // rules over the map. Entering saves the map's output selection;
@@ -748,6 +761,8 @@ export function GraphViewerApp({
     setRunPanelOpen(false);
     setSelectedLevers(null);
     setScenario({});
+    setResultsStale(false);
+    ranScenarioKey.current = null;
     setInputMeta({ dtypes: {}, defaults: {} });
     setLensTrail([]);
     savedSelection.current = null;
@@ -773,6 +788,10 @@ export function GraphViewerApp({
     if (composeFocus && composeRunReady !== true) return;
     setRunning(true);
     setRunError(null);
+    // An explicit run consumes the pending edits: the stale flag
+    // clears and the edit tracker syncs to what this run computes.
+    setResultsStale(false);
+    ranScenarioKey.current = scenarioKey(scenario);
     try {
       // Trace the selected outputs plus their reachable rules so the
       // execution lights intermediate nodes, not just the results.
@@ -1505,29 +1524,15 @@ export function GraphViewerApp({
     return () => window.clearTimeout(timer);
   }, [scenario]);
 
-  // Live recompute: answering IS running. In run mode (panel open or
-  // execution layer live), any edited answer computes the program —
-  // including the very first answer — so every box downstream of the
-  // change lights up without pressing Run.
-  const liveRunKey = useRef<string | null>(null);
+  // Explicit runs ONLY: editing answers never fires the engine. The
+  // tracker follows edits silently; once a result is on screen, any
+  // change to the values marks it STALE ("values changed — Run
+  // again") until the next explicit Run consumes the edits.
   useEffect(() => {
-    const key = JSON.stringify(debouncedScenario);
-    if (liveRunKey.current === null) {
-      // First observation is baseline, not an edit.
-      liveRunKey.current = key;
-      return;
-    }
-    if (liveRunKey.current === key) return;
-    if (!runPanelOpen && !runResult) {
-      // Browsing mode: track silently, never surprise-run.
-      liveRunKey.current = key;
-      return;
-    }
-    if (running) return; // re-fires when running flips false
-    liveRunKey.current = key;
-    void runScenario();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedScenario, runPanelOpen, runResult, running]);
+    const key = scenarioKey(debouncedScenario);
+    if (ranScenarioKey.current === null) return; // nothing ran yet
+    setResultsStale(runResult !== null && key !== ranScenarioKey.current);
+  }, [debouncedScenario, runResult]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -1910,6 +1915,7 @@ export function GraphViewerApp({
                   onPick={enterComposeMode}
                   query={launcherQuery}
                   scope={listScope}
+                  state={listState}
                 />
               </div>
             )}
@@ -1938,12 +1944,30 @@ export function GraphViewerApp({
                       data-testid={`list-scope-${scope.id}`}
                       aria-selected={listScope === scope.id}
                       className={listScope === scope.id ? "is-active" : ""}
-                      onClick={() => setListScope(scope.id)}
+                      onClick={() => pickListScope(scope.id)}
                     >
                       {scope.label}
                     </button>
                   ))}
                 </div>
+              )}
+              {/* Under States, narrow to ONE state — real names from
+                  the citations map, only states the corpus carries. */}
+              {launcherMode === "list" && listScope === "states" && (
+                <select
+                  className="list-state-select"
+                  data-testid="list-state-select"
+                  value={listState}
+                  onChange={(event) => setListState(event.target.value)}
+                  aria-label="Narrow to one state"
+                >
+                  <option value={ALL_STATES}>All states</option>
+                  {statesInModules(corpusModules).map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               )}
               <div
                 className="picker-mode-toggle"
@@ -2069,7 +2093,7 @@ export function GraphViewerApp({
           ) : runAffordanceReady ? (
             <button
               type="button"
-              className="run-toggle"
+              className={`run-toggle ${resultsStale ? "is-stale" : ""}`}
               disabled={running}
               onClick={() => setRunPanelOpen((open) => !open)}
               aria-expanded={runPanelOpen}
@@ -2707,7 +2731,31 @@ export function GraphViewerApp({
                 });
               })()}
             </div>
-            <RunInputsEcho scenario={scenario} />
+            <RunInputsEcho
+              items={(() => {
+                // Every SELECTED input shows: typed values as
+                // themselves, untouched picks with their registry
+                // default and a muted "default" tag.
+                const names = [...(selectedLevers ?? [])];
+                for (const name of Object.keys(scenario)) {
+                  if (!names.includes(name)) names.push(name);
+                }
+                return names.map((name) => {
+                  const fallback = inputMeta.defaults[name];
+                  return {
+                    name,
+                    value:
+                      name in scenario
+                        ? scenario[name]!
+                        : typeof fallback === "number" ||
+                            typeof fallback === "boolean"
+                          ? fallback
+                          : null,
+                    isDefault: !(name in scenario),
+                  };
+                });
+              })()}
+            />
             <div className="results-adjust" aria-label="Adjust and run again">
               {(() => {
                 const answered = allScenarioFields.filter(
@@ -2808,9 +2856,14 @@ export function GraphViewerApp({
                   </>
                 );
               })()}
+              {resultsStale && (
+                <p className="results-stale" data-testid="results-stale">
+                  values changed — Run again
+                </p>
+              )}
               <button
                 type="button"
-                className="results-rerun"
+                className={`results-rerun ${resultsStale ? "is-stale" : ""}`}
                 disabled={running}
                 onClick={() => void runScenario()}
               >

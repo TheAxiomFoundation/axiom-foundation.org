@@ -1085,16 +1085,32 @@ export function shapeRendersNodes(pxRadius: number): boolean {
  * citation) and dedupes overlaps in screen space; this module owns
  * only the WHO and the WHEN. */
 
-/** On-screen footprint radius (CSS px) below which a subtree stays
- *  unlabeled — at far zoom, unlabeled is fine. (8: the grouped
- *  layout trades fit scale for clearance, so footprints run a shade
- *  smaller at every zoom.) */
-export const SUBTREE_LABEL_MIN_PX = 8;
+/* Two-tier label LOD: a subtree with a census HEADLINE rule names
+ * itself as soon as its footprint is readable; citation-fallback
+ * titles (source-backed but headline-less) wait for a deeper zoom
+ * and reveal progressively under a lower per-frame cap — zooming in
+ * meets the important names first, never a wall of citations. */
+
+/** On-screen footprint radius (CSS px) at which a HEADLINE title
+ *  appears — at far zoom, unlabeled is fine. */
+export const SUBTREE_LABEL_MIN_PX = 10;
+/** Citation-fallback titles wait for twice the footprint. */
+export const SUBTREE_FALLBACK_LABEL_MIN_PX = 20;
+/** At most this many fallback titles per frame (headline titles own
+ *  the rest of the label budget). */
+export const FALLBACK_LABELS_PER_FRAME = 32;
 
 export function dotEarnsLabel(
   dot: Pick<FieldDot, "dust" | "headlineRule" | "sourceOutline">,
 ): boolean {
   return !dot.dust && (dot.headlineRule !== null || dot.sourceOutline);
+}
+
+/** The footprint size (CSS px) this dot's title tier requires. */
+export function labelMinPx(dot: Pick<FieldDot, "headlineRule">): number {
+  return dot.headlineRule !== null
+    ? SUBTREE_LABEL_MIN_PX
+    : SUBTREE_FALLBACK_LABEL_MIN_PX;
 }
 
 export interface CorpusFieldStats {

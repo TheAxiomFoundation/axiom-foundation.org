@@ -10,7 +10,11 @@
  * survive — every target passes through humanizeCitation.
  */
 
-import { humanizeCitation, humanizeRuleName } from "./citations";
+import {
+  humanizeCitation,
+  humanizeRuleName,
+  jurisdictionLabel,
+} from "./citations";
 import type { CorpusModule } from "@/lib/axiom/corpus-field";
 
 export interface CorpusListEntry {
@@ -48,23 +52,51 @@ export const JURISDICTION_SCOPES: ReadonlyArray<{
   { id: "states", label: "States" },
 ];
 
+/** "all states", or one `us-XX` code under the States scope. */
+export const ALL_STATES = "all";
+
 export function matchesScope(
   jurisdiction: string,
   scope: JurisdictionScope,
+  state: string = ALL_STATES,
 ): boolean {
   if (scope === "nationwide") return jurisdiction === "us";
-  if (scope === "states") return jurisdiction.startsWith("us-");
+  if (scope === "states") {
+    return (
+      jurisdiction.startsWith("us-") &&
+      (state === ALL_STATES || jurisdiction === state)
+    );
+  }
   return true;
 }
 
 /** Scope over raw modules — the doors band filters BEFORE the
- *  highlight computation so featured picks respect the scope too. */
+ *  highlight computation so featured picks respect the scope (and
+ *  the chosen state) too. */
 export function filterModulesByScope(
   modules: CorpusModule[],
   scope: JurisdictionScope,
+  state: string = ALL_STATES,
 ): CorpusModule[] {
   if (scope === "all") return modules;
-  return modules.filter((module) => matchesScope(module.jurisdiction, scope));
+  return modules.filter((module) =>
+    matchesScope(module.jurisdiction, scope, state),
+  );
+}
+
+/** The states actually present in a module set, as real names from
+ *  the citations map ("Iowa", never "us-ia"), sorted by name — the
+ *  state picker's option list. */
+export function statesInModules(
+  modules: CorpusModule[],
+): Array<{ id: string; label: string }> {
+  const seen = new Set<string>();
+  for (const module of modules) {
+    if (module.jurisdiction.startsWith("us-")) seen.add(module.jurisdiction);
+  }
+  return [...seen]
+    .map((id) => ({ id, label: jurisdictionLabel(id) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function buildListEntries(
@@ -97,16 +129,17 @@ export function buildListEntries(
 
 /** The same every-token-matches search the dropdown uses, applied to
  *  the full list — typing filters it live, composed with the
- *  jurisdiction scope. */
+ *  jurisdiction scope and (under States) the chosen state. */
 export function filterListEntries(
   entries: CorpusListEntry[],
   query: string,
   scope: JurisdictionScope = "all",
+  state: string = ALL_STATES,
 ): CorpusListEntry[] {
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return entries.filter(
     (entry) =>
-      matchesScope(entry.jurisdiction, scope) &&
+      matchesScope(entry.jurisdiction, scope, state) &&
       tokens.every((token) => entry.haystack.includes(token)),
   );
 }

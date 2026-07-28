@@ -19,7 +19,9 @@ import {
   fieldComposeHref,
   fieldStatLine,
   fieldToView,
+  filterUsModules,
   highlightScore,
+  isUsJurisdiction,
   HIGHLIGHT_COUNT,
   HIGHLIGHT_MAX_PER_JURISDICTION,
   hitTestDot,
@@ -489,7 +491,7 @@ describe("corpusFieldStats + fieldStatLine", () => {
     expect(stats.subtrees).toBe(corpusSubtrees.clean_subtrees);
     const line = fieldStatLine(stats);
     expect(line).toContain(stats.subtrees.toLocaleString("en-US"));
-    expect(line).toContain("provision-rooted subtrees");
+    expect(line).toContain("US provision-rooted subtrees");
     // The fallback names itself honestly.
     expect(line).toContain("census snapshot");
     // ~20,100 today: rounded to the nearest hundred with a tilde.
@@ -498,9 +500,36 @@ describe("corpusFieldStats + fieldStatLine", () => {
 
   it("names the live mirror — and quotes no rule total it can't know", () => {
     const line = fieldStatLine({ subtrees: 5026, rules: 12345 }, "live");
-    expect(line).toContain("5,026 provision-rooted subtrees");
+    expect(line).toContain("5,026 US provision-rooted subtrees");
     expect(line).toContain("live mirror");
     expect(line).not.toContain("encoded rules");
+  });
+});
+
+describe("US-only scope", () => {
+  it("keeps us and us-* jurisdictions only", () => {
+    expect(isUsJurisdiction("us")).toBe(true);
+    expect(isUsJurisdiction("us-ny")).toBe(true);
+    expect(isUsJurisdiction("uk")).toBe(false);
+    expect(isUsJurisdiction("be-dg")).toBe(false);
+    // "usa" or a hypothetical "usk" must not sneak through the prefix.
+    expect(isUsJurisdiction("usa")).toBe(false);
+  });
+
+  it("filters modules to the US corpora", () => {
+    const filtered = filterUsModules([
+      module({ target: "us:statutes/1", jurisdiction: "us" }),
+      module({ target: "us-co:statutes/1", jurisdiction: "us-co" }),
+      module({ target: "uk:statutes/1", jurisdiction: "uk" }),
+      module({ target: "be-dg:statutes/1", jurisdiction: "be-dg" }),
+    ]);
+    expect(filtered.map((m) => m.jurisdiction)).toEqual(["us", "us-co"]);
+  });
+
+  it("the committed snapshot is already US-only", () => {
+    expect(filterUsModules(corpusSubtrees.modules)).toHaveLength(
+      corpusSubtrees.modules.length,
+    );
   });
 });
 

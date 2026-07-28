@@ -22,9 +22,14 @@ const MAX_RESULTS = 40;
 export function SubtreePicker({
   modules,
   onPick,
+  idle,
 }: {
   modules: CorpusModule[];
   onPick: (target: string) => void;
+  /** Rendered under the search box while the query is empty —
+   *  defaults to the computed doors grid; the launcher's field mode
+   *  passes the open-world field here so search rides along. */
+  idle?: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
 
@@ -105,6 +110,8 @@ export function SubtreePicker({
             </p>
           )}
         </div>
+      ) : idle ? (
+        idle
       ) : (
         <>
           <p className="picker-doors-label">

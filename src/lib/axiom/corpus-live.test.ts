@@ -18,13 +18,13 @@ describe("loadCorpusModules", () => {
     vi.unstubAllGlobals();
   });
 
-  it("merges the live mirror over the snapshot and reports source live", async () => {
+  it("merges the live mirror over the snapshot, US-only, and reports source live", async () => {
     const known = corpusSubtrees.modules[0]!;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         okResponse({
-          count: 2,
+          count: 4,
           subtrees: [
             {
               target: known.target,
@@ -32,9 +32,21 @@ describe("loadCorpusModules", () => {
               bucket: known.bucket,
             },
             {
+              target: "us-pr:statutes/13/30171",
+              jurisdiction: "us-pr",
+              bucket: "statutes",
+            },
+            // Non-US mirror entries exist upstream but never reach a
+            // view surface.
+            {
               target: "be:policies/euromod_benefit_income_list",
               jurisdiction: "be",
               bucket: "policies",
+            },
+            {
+              target: "uk:statutes/universal-credit/1",
+              jurisdiction: "uk",
+              bucket: "statutes",
             },
           ],
         })
@@ -43,12 +55,16 @@ describe("loadCorpusModules", () => {
     const { modules, source } = await loadCorpusModules();
     expect(source).toBe("live");
     expect(modules).toHaveLength(2);
-    // Known target keeps its snapshot size; new target gets the default.
+    // Known target keeps its snapshot size; a new US target gets the
+    // default dot.
     expect(modules[0]!.ruleCount).toBe(known.ruleCount);
     expect(modules[1]!).toMatchObject({
-      jurisdiction: "be",
+      jurisdiction: "us-pr",
       ruleCount: DEFAULT_LIVE_RULE_COUNT,
     });
+    expect(
+      modules.every((m) => m.jurisdiction.startsWith("us"))
+    ).toBe(true);
   });
 
   it("falls back to the whole snapshot on HTTP failure", async () => {

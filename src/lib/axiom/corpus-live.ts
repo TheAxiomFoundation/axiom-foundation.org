@@ -12,6 +12,7 @@
  */
 
 import {
+  filterUsModules,
   mergeLiveSubtrees,
   type CorpusModule,
   type CorpusSource,
@@ -50,14 +51,19 @@ async function fetchLiveSubtrees(): Promise<LiveSubtree[] | null> {
 }
 
 export async function loadCorpusModules(): Promise<LoadedCorpus> {
-  // The snapshot ships as its own cached chunk (~590 KB), never
-  // inline; it is needed either way (sizes when live, everything
-  // when not).
+  // The snapshot ships as its own cached chunk, never inline; it is
+  // needed either way (sizes when live, everything when not).
   const snapshot = (await import("./corpus-subtrees.json")).default
     .modules as CorpusModule[];
   const live = await fetchLiveSubtrees();
+  // US-only scope, applied to BOTH sources: every view surface (field,
+  // picker, doors, clusters, stat counts) shows the US corpora only,
+  // whatever the mirror serves.
   if (live) {
-    return { modules: mergeLiveSubtrees(snapshot, live), source: "live" };
+    return {
+      modules: filterUsModules(mergeLiveSubtrees(snapshot, live)),
+      source: "live",
+    };
   }
-  return { modules: snapshot, source: "snapshot" };
+  return { modules: filterUsModules(snapshot), source: "snapshot" };
 }

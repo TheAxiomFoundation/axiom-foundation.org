@@ -3579,3 +3579,40 @@
   max-width: 380px;
   box-shadow: 0 10px 26px -16px rgba(28, 25, 23, 0.4);
 }
+
+/* ── Launcher mode toggle: Field ⇄ List ── */
+.graph-viewer-root .picker-mode-toggle {
+  display: inline-flex;
+  margin-top: 18px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-paper-elevated);
+  padding: 3px;
+  gap: 2px;
+}
+.graph-viewer-root .picker-mode-toggle button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 16px;
+  background: transparent;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.graph-viewer-root .picker-mode-toggle button:hover {
+  color: var(--color-accent);
+}
+.graph-viewer-root .picker-mode-toggle button.is-active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+.graph-viewer-root .plane-launcher-inner.has-field {
+  width: min(1100px, calc(100% - 48px));
+}
+.graph-viewer-root .picker-field {
+  margin-top: 14px;
+}

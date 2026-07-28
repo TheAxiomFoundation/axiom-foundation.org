@@ -145,7 +145,7 @@ describe("CorpusField", () => {
     ).toBe("snapshot");
   });
 
-  it("mirrors the live corpus when the endpoint answers — new jurisdictions included", async () => {
+  it("mirrors the live corpus US-only: new US law appears, non-US mirror entries never render", async () => {
     const live = [
       ...corpusSubtrees.modules.map((m) => ({
         target: m.target,
@@ -153,16 +153,22 @@ describe("CorpusField", () => {
         bucket: m.bucket,
       })),
       {
+        target: "us-pr:statutes/13/30171",
+        jurisdiction: "us-pr",
+        bucket: "statutes",
+      },
+      {
         target: "be:policies/euromod_benefit_income_list",
         jurisdiction: "be",
         bucket: "policies",
       },
       {
-        target: "be-dg:statutes/family_benefits/amounts",
-        jurisdiction: "be-dg",
+        target: "uk:statutes/universal-credit/1",
+        jurisdiction: "uk",
         bucket: "statutes",
       },
     ];
+    const usCount = corpusSubtrees.modules.length + 1;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -181,13 +187,43 @@ describe("CorpusField", () => {
         ).toBe("live")
       );
       const field = screen.getByTestId("corpus-field");
-      expect(Number(field.getAttribute("data-dot-count"))).toBe(live.length);
+      expect(Number(field.getAttribute("data-dot-count"))).toBe(usCount);
       const line = screen.getByTestId("corpus-field-stats").textContent!;
-      expect(line).toContain(live.length.toLocaleString("en-US"));
+      expect(line).toContain(usCount.toLocaleString("en-US"));
+      expect(line).toContain("US provision-rooted subtrees");
       expect(line).toContain("live mirror");
+      // No non-US territory labels either.
+      const labels = screen
+        .getAllByTestId("corpus-field-cluster")
+        .map((el) => el.textContent);
+      expect(labels.some((label) => /UK|BE/.test(label ?? ""))).toBe(false);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("embedded mode: picking calls onPick instead of mounting the viewer or touching the URL", async () => {
+    const onPick = vi.fn();
+    render(<CorpusField onPick={onPick} />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("corpus-field").getAttribute("data-dot-count")
+      ).not.toBe("0")
+    );
+    stubFieldRect();
+    const layout = buildFieldLayout(corpusSubtrees.modules);
+    const dot = layout.dots.find(
+      (d) => !d.highlightLabel && !d.dust && d.ruleCount > 5
+    )!;
+    fireEvent.click(canvasEl(), { clientX: dot.x, clientY: dot.y });
+    await waitFor(() => expect(onPick).toHaveBeenCalledWith(dot.target));
+    expect(screen.queryByTestId("corpus-field-overlay")).toBeNull();
+    expect(window.location.pathname).toBe("/axiom");
+
+    // A door click routes through onPick too.
+    fireEvent.click(screen.getAllByTestId("corpus-field-highlight")[0]!);
+    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(2));
+    expect(window.location.pathname).toBe("/axiom");
   });
 
   it("zooms on wheel, anchored under the pointer, and offers a reset", async () => {

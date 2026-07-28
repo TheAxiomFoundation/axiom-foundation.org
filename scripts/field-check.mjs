@@ -212,18 +212,25 @@ await page.waitForFunction(
 );
 console.log("BACK returned to the field at:", backUrl, "(camera zoomed out)");
 
-// 9) The field mirrors the corpus, live: with the API on :8787 up,
-//    the dot count exceeds the committed snapshot (4,397) and the
-//    stat line names the live mirror.
+// 9) The field mirrors the corpus, live and US-only: with the API on
+//    :8787 up, the dot count exceeds the committed snapshot (4,392)
+//    and the stat line names the US scope + live mirror.
 const liveField =
-  dotCount > 4397 && /live mirror/.test(statLine);
+  dotCount > 4392 && /US provision-rooted subtrees · live mirror/.test(statLine);
 console.log(
-  "live mirror:",
+  "live mirror (US-only):",
   liveField ? `yes (${dotCount} subtrees)` : "NO — snapshot fallback?",
 );
+const landingNonUsClusters = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-testid="corpus-field-cluster"]')]
+    .map((el) => el.textContent ?? "")
+    .filter((label) => !/^US/.test(label)),
+);
+console.log("landing non-US clusters:", JSON.stringify(landingNonUsClusters));
 
-// 10) The viewer's picker: a single verb. Cold /axiom/graph shows a
-//     search over all subtrees + computed doors — no program cards.
+// 10) The launcher: its first view IS the field. Cold /axiom/graph
+//     opens on the embedded open-world corpus field (US-only stat),
+//     with the list picker one toggle away — no program cards ever.
 const picker = await browser.newPage();
 picker.on("pageerror", (e) => console.log("PICKER PAGE ERROR:", e.message));
 await picker.setViewport({ width: 1500, height: 950 });
@@ -231,22 +238,69 @@ await picker.goto("http://localhost:3742/axiom/graph", {
   waitUntil: "networkidle2",
   timeout: 60000,
 });
-await picker.waitForSelector('[data-testid="picker-search"]', {
+await picker.waitForSelector('[data-testid="launcher-field"]', {
   timeout: 60000,
+});
+await picker.waitForFunction(
+  () => {
+    const field = document.querySelector(
+      '[data-testid="launcher-field"] [data-testid="corpus-field"]',
+    );
+    return field && Number(field.getAttribute("data-dot-count")) > 100;
+  },
+  { timeout: 60000 },
+);
+const launcherFieldState = await picker.evaluate(() => ({
+  dotCount: Number(
+    document
+      .querySelector('[data-testid="launcher-field"] [data-testid="corpus-field"]')
+      ?.getAttribute("data-dot-count"),
+  ),
+  statLine:
+    document.querySelector(
+      '[data-testid="launcher-field"] ~ * [data-testid="corpus-field-stats"], [data-testid="launcher-field"] [data-testid="corpus-field-stats"]',
+    )?.textContent ?? "",
+  nonUsClusters: [
+    ...document.querySelectorAll(
+      '[data-testid="launcher-field"] [data-testid="corpus-field-cluster"]',
+    ),
+  ]
+    .map((el) => el.textContent ?? "")
+    .filter((label) => !/^US/.test(label)),
+  searchPresent: Boolean(
+    document.querySelector('[data-testid="picker-search"]'),
+  ),
+  programCards: document.querySelectorAll(
+    ".plane-launcher-card, .plane-launcher-grid, .constellation, .constellation-summit",
+  ).length,
+  fieldChipActive:
+    document
+      .querySelector('[data-testid="launcher-mode-field"]')
+      ?.getAttribute("aria-selected") === "true",
+}));
+console.log("launcher field:", JSON.stringify(launcherFieldState));
+
+// Toggle → List: doors appear, the field steps aside.
+await picker.click('[data-testid="launcher-mode-list"]');
+await picker.waitForSelector('[data-testid="picker-door"]', {
+  timeout: 15000,
 });
 const pickerState = await picker.evaluate(() => ({
   programCards: document.querySelectorAll(
     ".plane-launcher-card, .plane-launcher-grid, .constellation, .constellation-summit",
   ).length,
   doors: document.querySelectorAll('[data-testid="picker-door"]').length,
+  fieldGone: !document.querySelector('[data-testid="launcher-field"]'),
   copy:
     document.querySelector(".plane-launcher-sub")?.textContent ?? "",
 }));
 console.log(
-  "picker: program cards:",
+  "list mode: program cards:",
   pickerState.programCards,
   "· doors:",
   pickerState.doors,
+  "· field stepped aside:",
+  pickerState.fieldGone,
 );
 console.log("picker copy:", pickerState.copy.trim().slice(0, 80) + "…");
 
@@ -328,13 +382,21 @@ const pass =
   zoomAtEnter > 1 &&
   backUrl.endsWith("/axiom") &&
   liveField &&
+  landingNonUsClusters.length === 0 &&
+  launcherFieldState.dotCount > 4392 &&
+  /US provision-rooted subtrees/.test(launcherFieldState.statLine) &&
+  launcherFieldState.nonUsClusters.length === 0 &&
+  launcherFieldState.searchPresent &&
+  launcherFieldState.programCards === 0 &&
+  launcherFieldState.fieldChipActive &&
   pickerState.programCards === 0 &&
   pickerState.doors >= 10 &&
+  pickerState.fieldGone &&
   pickerComposeUrl.includes("compose=") &&
   appRunToggle &&
   blockedHonest;
 console.log(
-  pass ? "PASS: plane of graphs, honest refusals, /app parity" : "FAIL",
+  pass ? "PASS: field-first launcher, US-only corpus, honest refusals" : "FAIL",
 );
 await browser.close();
 process.exit(pass ? 0 : 1);

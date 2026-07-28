@@ -101,7 +101,16 @@ function composeTargetFromLocation(): string | null {
   return url.searchParams.get("compose");
 }
 
-export function CorpusField() {
+export function CorpusField({
+  onPick,
+}: {
+  /** Embedded mode (the viewer's launcher): picking a subtree calls
+   *  this instead of pushState + mounting the compose viewer overlay
+   *  — the host is already the viewer. Omitted on the /axiom landing,
+   *  where the field owns the whole enter/return journey. */
+  onPick?: (target: string) => void;
+} = {}) {
+  const embedded = Boolean(onPick);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [modules, setModules] = useState<CorpusModule[] | null>(null);
@@ -511,9 +520,12 @@ export function CorpusField() {
       if (!layout || openTarget) return;
       returnTransformRef.current = transformRef.current;
       const destination = zoomTransformForDot(layout, dot);
-      animateTo(destination, ZOOM_IN_MS, () => openCompose(dot.target));
+      animateTo(destination, ZOOM_IN_MS, () => {
+        if (onPick) onPick(dot.target);
+        else openCompose(dot.target);
+      });
     },
-    [layout, openTarget, animateTo, openCompose]
+    [layout, openTarget, animateTo, openCompose, onPick]
   );
 
   const onClick = useCallback(
@@ -544,6 +556,7 @@ export function CorpusField() {
   // the viewer unmounts, and the camera pulls back out to where the
   // reader was. FORWARD re-opens without ceremony.
   useEffect(() => {
+    if (embedded) return;
     const onPopState = () => {
       const target = composeTargetFromLocation();
       if (target) {
@@ -559,7 +572,7 @@ export function CorpusField() {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [animateTo]);
+  }, [animateTo, embedded]);
 
   // The overlay fades in over the zoomed field; the page beneath
   // must not scroll while the viewer owns the screen.
@@ -776,7 +789,7 @@ export function CorpusField() {
           reload serves the standalone graph route and BACK returns
           here. z-index sits under the fixed site nav (z-100) so the
           overlay reads exactly like the standalone page. */}
-      {openTarget && (
+      {!embedded && openTarget && (
         <div
           data-testid="corpus-field-overlay"
           className="fixed inset-0 z-90 bg-[#f4f1ec] transition-opacity duration-300"

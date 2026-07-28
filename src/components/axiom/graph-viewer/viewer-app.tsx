@@ -28,6 +28,12 @@ import {
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreePicker } from "./subtree-picker";
 import { filterStandaloneRules } from "./compose-filter";
+import {
+  readLauncherMode,
+  storeLauncherMode,
+  type LauncherMode,
+} from "./launcher-mode";
+import { CorpusField } from "@/components/axiom/corpus-field";
 import { loadCorpusModules } from "@/lib/axiom/corpus-live";
 import type { CorpusModule } from "@/lib/axiom/corpus-field";
 
@@ -39,6 +45,15 @@ export function GraphViewerApp() {
   const [corpusModules, setCorpusModules] = useState<CorpusModule[] | null>(
     null,
   );
+  // Field ⇄ List: the launcher opens on the open-world field by
+  // default; the list picker is the alternate mode. Persisted.
+  const [launcherMode, setLauncherMode] = useState<LauncherMode>(() =>
+    readLauncherMode(),
+  );
+  const pickLauncherMode = (mode: LauncherMode) => {
+    setLauncherMode(mode);
+    storeLauncherMode(mode);
+  };
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -1781,7 +1796,11 @@ export function GraphViewerApp() {
         role="dialog"
         aria-label="Pick a provision to open"
       >
-        <div className="plane-launcher-inner has-picker">
+        <div
+          className={`plane-launcher-inner has-picker ${
+            launcherMode === "field" ? "has-field" : ""
+          }`}
+        >
           <h1 className="plane-launcher-title">
             What law do you want to run?
           </h1>
@@ -1789,8 +1808,47 @@ export function GraphViewerApp() {
             Pick any provision — its subgraph opens on the canvas: search
             it, isolate any rule, answer its questions, and run.
           </p>
+          <div
+            className="picker-mode-toggle"
+            role="tablist"
+            aria-label="How to browse the corpus"
+          >
+            <button
+              type="button"
+              role="tab"
+              data-testid="launcher-mode-field"
+              aria-selected={launcherMode === "field"}
+              className={launcherMode === "field" ? "is-active" : ""}
+              onClick={() => pickLauncherMode("field")}
+            >
+              Field
+            </button>
+            <button
+              type="button"
+              role="tab"
+              data-testid="launcher-mode-list"
+              aria-selected={launcherMode === "list"}
+              className={launcherMode === "list" ? "is-active" : ""}
+              onClick={() => pickLauncherMode("list")}
+            >
+              List
+            </button>
+          </div>
           {corpusModules ? (
-            <SubtreePicker modules={corpusModules} onPick={enterComposeMode} />
+            <SubtreePicker
+              modules={corpusModules}
+              onPick={enterComposeMode}
+              idle={
+                launcherMode === "field" ? (
+                  <div className="picker-field" data-testid="launcher-field">
+                    {/* The landing's open world, embedded: pan, zoom,
+                        motifs, doors — picking calls straight into
+                        compose mode. */}
+                    <CorpusField onPick={enterComposeMode} />
+                  </div>
+                ) : undefined
+              }
+            />
           ) : (
             <p className="plane-launcher-loading">Loading the corpus…</p>
           )}

@@ -45,6 +45,20 @@ export function bucketColor(bucket: string): string {
   return BUCKET_COLORS[bucket] ?? FALLBACK_BUCKET_COLOR;
 }
 
+/* ── Scope: the app's view of the corpus is US-only ──
+ * The mirror serves every jurisdiction it has (uk, be, nz, …); every
+ * VIEW surface — field, picker, doors, clusters, stat counts —
+ * filters to the US federal + state corpora. The API listing itself
+ * stays unfiltered. */
+
+export function isUsJurisdiction(jurisdiction: string): boolean {
+  return jurisdiction === "us" || jurisdiction.startsWith("us-");
+}
+
+export function filterUsModules(modules: CorpusModule[]): CorpusModule[] {
+  return modules.filter((module) => isUsJurisdiction(module.jurisdiction));
+}
+
 /** Draw order inside a cluster: statutes core, regulations around
  *  them, policies at the rim, anything unknown last. */
 const BUCKET_ORDER: Record<string, number> = {
@@ -555,10 +569,10 @@ export function fieldStatLine(
 ): string {
   const subtrees = stats.subtrees.toLocaleString("en-US");
   if (source === "live") {
-    return `${subtrees} provision-rooted subtrees · live mirror · every node cites its law`;
+    return `${subtrees} US provision-rooted subtrees · live mirror · every node cites its law`;
   }
   const rules = (Math.round(stats.rules / 100) * 100).toLocaleString("en-US");
-  return `${subtrees} provision-rooted subtrees · ~${rules} encoded rules · census snapshot`;
+  return `${subtrees} US provision-rooted subtrees · ~${rules} encoded rules · census snapshot`;
 }
 
 /* ── Live mirror merge ──

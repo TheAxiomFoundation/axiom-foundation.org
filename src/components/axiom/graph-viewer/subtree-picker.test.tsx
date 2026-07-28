@@ -91,6 +91,30 @@ describe("SubtreePicker", () => {
     expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
   });
 
+  it("renders the idle slot instead of doors while the query is empty — search still wins", () => {
+    const onPick = vi.fn();
+    render(
+      <SubtreePicker
+        modules={MODULES}
+        onPick={onPick}
+        idle={<div data-testid="idle-field" />}
+      />
+    );
+    // Idle: the slot (the launcher passes the corpus field here).
+    expect(screen.getByTestId("idle-field")).toBeInTheDocument();
+    expect(screen.queryAllByTestId("picker-door")).toHaveLength(0);
+    // Typing swaps the slot for results; clearing brings it back.
+    fireEvent.change(screen.getByTestId("picker-search"), {
+      target: { value: "273.10" },
+    });
+    expect(screen.queryByTestId("idle-field")).toBeNull();
+    expect(screen.getAllByTestId("picker-result")).toHaveLength(1);
+    fireEvent.change(screen.getByTestId("picker-search"), {
+      target: { value: "" },
+    });
+    expect(screen.getByTestId("idle-field")).toBeInTheDocument();
+  });
+
   it("a door click picks its target", () => {
     const onPick = vi.fn();
     render(<SubtreePicker modules={MODULES} onPick={onPick} />);

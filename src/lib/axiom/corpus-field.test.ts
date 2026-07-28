@@ -17,6 +17,10 @@ import {
   motifSpec,
   trueMotifSpec,
   NON_COMPILING_ROOTS,
+  PHYLLOTAXIS_SPACING,
+  PINNED_HIGHLIGHT_TARGETS,
+  SUBTREE_LABEL_MIN_PX,
+  dotEarnsLabel,
   fieldComposeHref,
   fieldStatLine,
   fieldToView,
@@ -43,7 +47,14 @@ import {
   zoomTransformForDot,
   type CorpusModule,
 } from "./corpus-field";
-import corpusSubtrees from "./corpus-subtrees.json";
+import corpusSubtreesJson from "./corpus-subtrees.json";
+
+// JSON widens the census's `[number, number]` tuples to number[] —
+// the committed data is well-formed; narrow it once here.
+const corpusSubtrees = corpusSubtreesJson as unknown as {
+  clean_subtrees: number;
+  modules: CorpusModule[];
+};
 
 function module(overrides: Partial<CorpusModule> = {}): CorpusModule {
   return {
@@ -69,7 +80,7 @@ describe("dotRadius", () => {
   });
 
   it("caps giant subtrees so one module can't drown the field", () => {
-    expect(dotRadius(10_000)).toBe(6.5);
+    expect(dotRadius(10_000)).toBe(7.5);
   });
 });
 
@@ -195,7 +206,11 @@ describe("computeFieldHighlights", () => {
 
   it("picks the top scorers from the real census, in score order", () => {
     const picked = computeFieldHighlights(corpusSubtrees.modules);
-    expect(picked).toHaveLength(HIGHLIGHT_COUNT);
+    // The size-based picks plus the pinned doors (all pinned targets
+    // exist in the committed census).
+    expect(picked).toHaveLength(
+      HIGHLIGHT_COUNT + PINNED_HIGHLIGHT_TARGETS.length,
+    );
     for (let i = 1; i < picked.length; i += 1) {
       // Later doors never outscore earlier ones (per-jurisdiction
       // dedupe may skip, never reorder).
@@ -219,8 +234,23 @@ describe("computeFieldHighlights", () => {
         (perJurisdiction.get(m.jurisdiction) ?? 0) + 1,
       );
     }
-    for (const count of perJurisdiction.values()) {
-      expect(count).toBeLessThanOrEqual(HIGHLIGHT_MAX_PER_JURISDICTION);
+    // Pinned doors extend a jurisdiction's cap gracefully (the US
+    // shows 4 doors); everyone else honors the cap exactly.
+    const pinnedByJurisdiction = new Map<string, number>();
+    for (const target of PINNED_HIGHLIGHT_TARGETS) {
+      const jurisdiction = corpusSubtrees.modules.find(
+        (m) => m.target === target,
+      )!.jurisdiction;
+      pinnedByJurisdiction.set(
+        jurisdiction,
+        (pinnedByJurisdiction.get(jurisdiction) ?? 0) + 1,
+      );
+    }
+    for (const [jurisdiction, count] of perJurisdiction) {
+      expect(count).toBeLessThanOrEqual(
+        HIGHLIGHT_MAX_PER_JURISDICTION +
+          (pinnedByJurisdiction.get(jurisdiction) ?? 0),
+      );
     }
     // The cap actually bites: an uncapped pick differs.
     const uncapped = computeFieldHighlights(
@@ -233,11 +263,55 @@ describe("computeFieldHighlights", () => {
     );
   });
 
-  it("is deterministic and never returns more than asked", () => {
+  it("is deterministic and never returns more than asked plus the pinned", () => {
     const a = computeFieldHighlights(corpusSubtrees.modules, 5, 2);
     const b = computeFieldHighlights(corpusSubtrees.modules, 5, 2);
     expect(a).toEqual(b);
-    expect(a).toHaveLength(5);
+    expect(a).toHaveLength(5 + PINNED_HIGHLIGHT_TARGETS.length);
+  });
+});
+
+describe("pinned highlights (EITC door)", () => {
+  it("always includes the pinned targets from the committed census", () => {
+    const picked = computeFieldHighlights(
+      filterViewModules(corpusSubtrees.modules),
+    );
+    for (const target of PINNED_HIGHLIGHT_TARGETS) {
+      expect(picked.map((m) => m.target)).toContain(target);
+    }
+    // EITC specifically: the census names its headline, so the door
+    // label path yields "EITC — 26 USC § 32".
+    const eitc = picked.find((m) => m.target === "us:statutes/26/32")!;
+    expect(eitc.headlineRule).toBe("eitc");
+    expect(eitc.ruleCount).toBe(24);
+  });
+
+  it("pins are not phantoms: absent from the module list, absent from the doors", () => {
+    const picked = computeFieldHighlights([
+      module({ target: "us:statutes/7/2014", linkedRuleCount: 9 }),
+    ]);
+    expect(picked.map((m) => m.target)).toEqual(["us:statutes/7/2014"]);
+  });
+
+  it("a pinned target that turned to dust loses its door", () => {
+    const picked = computeFieldHighlights([
+      module({ target: "us:statutes/26/32", linkedRuleCount: 0, ruleCount: 24 }),
+      module({ target: "us:statutes/7/2014", linkedRuleCount: 9 }),
+    ]);
+    expect(picked.map((m) => m.target)).toEqual(["us:statutes/7/2014"]);
+  });
+
+  it("pinned doors never evict size-based picks — they extend the count", () => {
+    const withPin = computeFieldHighlights(corpusSubtrees.modules);
+    const sizeOnly = withPin.filter(
+      (m) => !PINNED_HIGHLIGHT_TARGETS.includes(m.target),
+    );
+    expect(sizeOnly).toHaveLength(HIGHLIGHT_COUNT);
+    // No pinned root may be a known non-compiling root (a pin is a
+    // promise the door executes).
+    for (const target of PINNED_HIGHLIGHT_TARGETS) {
+      expect(NON_COMPILING_ROOTS.has(target)).toBe(false);
+    }
   });
 });
 
@@ -800,6 +874,66 @@ describe("shapeRendersNodes (zoom-scaled simplification)", () => {
     expect(shapeRendersNodes(NODE_DETAIL_MIN_PX * 3)).toBe(true);
     expect(shapeRendersNodes(NODE_DETAIL_MIN_PX - 0.01)).toBe(false);
     expect(shapeRendersNodes(0)).toBe(false);
+  });
+});
+
+describe("spaced-out field (footprints breathe)", () => {
+  it("phyllotaxis spacing gives footprints clear separation", () => {
+    // The constant itself: dots sit farther apart than edge-to-edge.
+    expect(PHYLLOTAXIS_SPACING).toBeGreaterThanOrEqual(2.5);
+    // Functionally: in a uniform cluster, nearest neighbors keep a
+    // gap beyond their combined footprints (scale-invariant ratio).
+    const uniform = Array.from({ length: 16 }, (_, i) =>
+      module({ target: `us:statutes/26/${i}`, linkedRuleCount: 4 }),
+    );
+    const layout = buildFieldLayout(uniform);
+    let minRatio = Infinity;
+    for (let i = 0; i < layout.dots.length; i += 1) {
+      for (let j = i + 1; j < layout.dots.length; j += 1) {
+        const a = layout.dots[i]!;
+        const b = layout.dots[j]!;
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        minRatio = Math.min(minRatio, dist / (a.r + b.r));
+      }
+    }
+    expect(minRatio).toBeGreaterThan(1.05);
+  });
+});
+
+describe("subtree titles (labels under document-grouped subtrees)", () => {
+  it("labels subtrees with a headline rule or a source-backed outline", () => {
+    expect(
+      dotEarnsLabel({ dust: false, headlineRule: "eitc", sourceOutline: false }),
+    ).toBe(true);
+    expect(
+      dotEarnsLabel({ dust: false, headlineRule: null, sourceOutline: true }),
+    ).toBe(true);
+    expect(
+      dotEarnsLabel({ dust: false, headlineRule: null, sourceOutline: false }),
+    ).toBe(false);
+    // Dust never gets a title, whatever it claims to be.
+    expect(
+      dotEarnsLabel({ dust: true, headlineRule: "eitc", sourceOutline: true }),
+    ).toBe(false);
+  });
+
+  it("the size gate exists and far zoom stays unlabeled", () => {
+    expect(SUBTREE_LABEL_MIN_PX).toBeGreaterThan(0);
+    // A typical mid-size module at the fitted overview renders well
+    // under the gate — labels are a close-zoom affordance.
+    const layout = buildFieldLayout(filterViewModules(corpusSubtrees.modules));
+    const median = [...layout.dots].sort((a, b) => a.r - b.r)[
+      Math.floor(layout.dots.length / 2)
+    ]!;
+    // ~1.2 CSS px per field unit at the fitted landing view.
+    expect(median.r * 1.2).toBeLessThan(SUBTREE_LABEL_MIN_PX);
+  });
+
+  it("stamps enough label-eligible dots on the real census", () => {
+    const layout = buildFieldLayout(filterViewModules(corpusSubtrees.modules));
+    const eligible = layout.dots.filter((dot) => dotEarnsLabel(dot));
+    expect(eligible.length).toBeGreaterThan(1000);
+    expect(eligible.length).toBeLessThan(layout.dots.length);
   });
 });
 

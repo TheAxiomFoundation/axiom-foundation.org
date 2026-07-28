@@ -45,6 +45,78 @@ describe("SubtreeDoors", () => {
       onPick.mock.calls[0]![0]
     );
   });
+
+  it("doors lead with the humanized headline rule when the census names one", () => {
+    render(
+      <SubtreeDoors
+        modules={[
+          module({
+            target: "us:statutes/26/32",
+            ruleCount: 24,
+            linkedRuleCount: 23,
+            headlineRule: "eitc",
+          }),
+        ]}
+        onPick={vi.fn()}
+      />
+    );
+    const door = screen.getByTestId("picker-door");
+    expect(door.querySelector("strong")?.textContent).toBe("EITC");
+    // The citation demotes to the door's subtitle line.
+    expect(door.textContent).toContain("26 USC § 32");
+  });
+
+  it("renders the COMPLETE corpus list beneath the doors, humanized", () => {
+    const onPick = vi.fn();
+    render(<SubtreeDoors modules={MODULES} onPick={onPick} />);
+    const list = screen.getByTestId("picker-list");
+    // Every module the field shows is a row (jsdom has no
+    // IntersectionObserver — the slab window opens fully).
+    expect(list.getAttribute("data-list-total")).toBe(
+      String(MODULES.length)
+    );
+    const rows = screen.getAllByTestId("picker-list-row");
+    expect(rows).toHaveLength(MODULES.length);
+    // No raw slugs: the Florida policy manual row reads humanized.
+    const florida = rows.find((el) =>
+      el.textContent?.includes("Florida")
+    )!;
+    expect(florida.textContent).not.toContain("policies/");
+    // Meta line: the same fields the doors show.
+    expect(
+      rows.some((el) => el.textContent?.includes("40 rules · regulations"))
+    ).toBe(true);
+    // Clicking a row enters that subtree exactly like a door click.
+    fireEvent.click(rows[0]!);
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(MODULES.map((m) => m.target)).toContain(
+      onPick.mock.calls[0]![0]
+    );
+  });
+
+  it("the shared query filters the full list live; doors stay put", () => {
+    render(
+      <SubtreeDoors modules={MODULES} onPick={vi.fn()} query="273.10" />
+    );
+    const rows = screen.getAllByTestId("picker-list-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.textContent).toContain("7 CFR § 273.10");
+    // The featured band is unaffected by the filter.
+    expect(screen.getAllByTestId("picker-door")).toHaveLength(
+      MODULES.length
+    );
+    expect(
+      screen.getByTestId("picker-list").getAttribute("data-list-total")
+    ).toBe("1");
+  });
+
+  it("says so when the query matches nothing in the list", () => {
+    render(
+      <SubtreeDoors modules={MODULES} onPick={vi.fn()} query="zzz-nope" />
+    );
+    expect(screen.queryAllByTestId("picker-list-row")).toHaveLength(0);
+    expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
+  });
 });
 
 describe("SubtreeSearch", () => {
@@ -94,6 +166,32 @@ describe("SubtreeSearch", () => {
     });
     expect(screen.queryAllByTestId("picker-result")).toHaveLength(0);
     expect(screen.getByText(/No provision matches/i)).toBeInTheDocument();
+  });
+
+  it("controlled mode reports keystrokes and renders the given query", () => {
+    const onQueryChange = vi.fn();
+    const { rerender } = render(
+      <SubtreeSearch
+        modules={MODULES}
+        onPick={vi.fn()}
+        query=""
+        onQueryChange={onQueryChange}
+      />
+    );
+    fireEvent.change(screen.getByTestId("picker-search"), {
+      target: { value: "273.10" },
+    });
+    expect(onQueryChange).toHaveBeenCalledWith("273.10");
+    // The host owns the value: results follow the prop.
+    rerender(
+      <SubtreeSearch
+        modules={MODULES}
+        onPick={vi.fn()}
+        query="273.10"
+        onQueryChange={onQueryChange}
+      />
+    );
+    expect(screen.getAllByTestId("picker-result")).toHaveLength(1);
   });
 
   it("compact mode floats its results (the top-right cluster)", () => {

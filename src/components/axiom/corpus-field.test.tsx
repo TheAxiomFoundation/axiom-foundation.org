@@ -112,8 +112,14 @@ describe("CorpusField", () => {
   it("shows the computed doors — the census's own top-scored subtrees", async () => {
     await renderField();
     const doors = screen.getAllByTestId("corpus-field-highlight");
-    expect(doors).toHaveLength(HIGHLIGHT_COUNT);
     const expected = computeFieldHighlights(VIEW_MODULES);
+    // Size-based picks plus the pinned doors (EITC).
+    expect(expected.length).toBeGreaterThanOrEqual(HIGHLIGHT_COUNT);
+    expect(doors).toHaveLength(expected.length);
+    // The pinned EITC door is always offered, headline first.
+    expect(
+      doors.some((el) => el.textContent === "EITC — 26 USC § 32")
+    ).toBe(true);
     const hrefs = new Set(doors.map((el) => el.getAttribute("href")));
     for (const module of expected) {
       expect(hrefs).toContain(

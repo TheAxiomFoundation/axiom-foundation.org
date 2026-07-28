@@ -112,7 +112,7 @@ function bucketRank(bucket: string): number {
  * as dust (see DUST_RADIUS).
  */
 export function dotRadius(linkedRuleCount: number): number {
-  return Math.min(6.5, 1.15 + Math.sqrt(Math.max(linkedRuleCount, 0)) * 0.5);
+  return Math.min(7.5, 1.35 + Math.sqrt(Math.max(linkedRuleCount, 0)) * 0.6);
 }
 
 /** All-standalone modules (linkedRuleCount 0 — glossary-definition
@@ -159,6 +159,15 @@ export function highlightScore(module: CorpusModule): number {
   return module.linkedRuleCount + 2 * module.importCount;
 }
 
+/** Doors the corpus must always offer, whatever the size formula
+ *  says. Verified compiling (run-by-root answers 200 with outputs):
+ *  EITC — 24 rules, headline "eitc", census graph, 4 imports. Pinned
+ *  entries extend the count and the per-jurisdiction cap gracefully
+ *  (the US may show 4 doors) — they never evict a size-based pick. */
+export const PINNED_HIGHLIGHT_TARGETS: readonly string[] = [
+  "us:statutes/26/32",
+];
+
 export function computeFieldHighlights(
   modules: CorpusModule[],
   count = HIGHLIGHT_COUNT,
@@ -169,10 +178,25 @@ export function computeFieldHighlights(
       highlightScore(b) - highlightScore(a) ||
       a.target.localeCompare(b.target),
   );
+  const pinned = new Set(PINNED_HIGHLIGHT_TARGETS);
   const perJurisdiction = new Map<string, number>();
   const picked: CorpusModule[] = [];
+  let sizePicked = 0;
   for (const module of ranked) {
-    if (picked.length >= count) break;
+    // Pinned doors ride along at their ranked position, outside the
+    // count and the per-jurisdiction cap — never evicting a
+    // size-based pick. Dust and non-compiling roots stay banned even
+    // when pinned (a pin is a promise the door works).
+    if (
+      pinned.has(module.target) &&
+      !isDustModule(module) &&
+      !NON_COMPILING_ROOTS.has(module.target)
+    ) {
+      picked.push(module);
+      continue;
+    }
+    // Keep scanning past the count: a pinned target may rank lower.
+    if (sizePicked >= count) continue;
     // Dust never gets a door, and neither do roots we know can't
     // execute. (Callers pass the mirror-authoritative module list, so
     // targets absent from the live mirror are already gone.)
@@ -182,6 +206,7 @@ export function computeFieldHighlights(
     if (used >= maxPerJurisdiction) continue;
     perJurisdiction.set(module.jurisdiction, used + 1);
     picked.push(module);
+    sizePicked += 1;
   }
   return picked;
 }
@@ -270,6 +295,12 @@ function clusterSort(a: CorpusModule, b: CorpusModule): number {
   );
 }
 
+/** Phyllotaxis ring spacing as a multiple of the cluster's mean dot
+ *  radius. 2.05 packed footprints edge-to-edge; 2.6 lets each
+ *  subtree's true shape breathe (the fit-transform absorbs the
+ *  larger extent — the whole field still lands in the same frame). */
+export const PHYLLOTAXIS_SPACING = 2.6;
+
 function placeClusterDots(
   modules: CorpusModule[],
 ): { offsets: Array<{ dx: number; dy: number }>; radius: number } {
@@ -277,7 +308,7 @@ function placeClusterDots(
   const meanR =
     sorted.reduce((sum, m) => sum + moduleRadius(m), 0) /
     Math.max(sorted.length, 1);
-  const spacing = meanR * 2.05;
+  const spacing = meanR * PHYLLOTAXIS_SPACING;
   const offsets: Array<{ dx: number; dy: number }> = [];
   let radius = 0;
   sorted.forEach((_, index) => {
@@ -286,7 +317,7 @@ function placeClusterDots(
     offsets.push({ dx: Math.cos(theta) * r, dy: Math.sin(theta) * r });
     radius = Math.max(radius, r);
   });
-  return { offsets, radius: radius + meanR * 1.6, };
+  return { offsets, radius: radius + meanR * 1.9 };
 }
 
 /**
@@ -317,7 +348,7 @@ function packClusters(
       const angle = step * GOLDEN_ANGLE;
       const x = Math.cos(angle) * t * aspect * 0.55;
       const y = Math.sin(angle) * t * 0.55;
-      const pad = 6;
+      const pad = 10;
       const collides = placed.some(
         (other) =>
           Math.hypot(other.x - x, other.y - y) <
@@ -649,6 +680,24 @@ export const NODE_DETAIL_MIN_PX = 5;
 
 export function shapeRendersNodes(pxRadius: number): boolean {
   return pxRadius >= NODE_DETAIL_MIN_PX;
+}
+
+/* ── Subtree titles ──
+ * Every subtree grouped under a source document — a census headline
+ * rule OR source-backed linkage — earns a small muted label beneath
+ * its footprint once the camera is close enough to read it. The
+ * renderer supplies the text (humanized headline, else humanized
+ * citation) and dedupes overlaps in screen space; this module owns
+ * only the WHO and the WHEN. */
+
+/** On-screen footprint radius (CSS px) below which a subtree stays
+ *  unlabeled — at far zoom, unlabeled is fine. */
+export const SUBTREE_LABEL_MIN_PX = 10;
+
+export function dotEarnsLabel(
+  dot: Pick<FieldDot, "dust" | "headlineRule" | "sourceOutline">,
+): boolean {
+  return !dot.dust && (dot.headlineRule !== null || dot.sourceOutline);
 }
 
 export interface CorpusFieldStats {

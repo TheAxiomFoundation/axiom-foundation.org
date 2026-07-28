@@ -63,6 +63,13 @@ const headlineDoors = await page.evaluate(
       .filter((el) => (el.textContent ?? "").includes(" — ")).length,
 );
 console.log("doors with headline names:", headlineDoors);
+// The pinned EITC door is always offered ("EITC — 26 USC § 32").
+const eitcDoor = await page.evaluate(() =>
+  [
+    ...document.querySelectorAll('[data-testid="corpus-field-highlight"]'),
+  ].some((el) => (el.textContent ?? "").includes("EITC")),
+);
+console.log("EITC pinned door present:", eitcDoor);
 
 // 3) Presentation: no stat line, no bucket legend — the field is
 //    the whole UI. Liveness reads from the data attribute instead.
@@ -108,6 +115,7 @@ const readFieldMetrics = () =>
       trueEdges: Number(field?.getAttribute("data-true-edges-drawn") ?? 0),
       outlines: Number(field?.getAttribute("data-outlines-drawn") ?? 0),
       dots: Number(field?.getAttribute("data-dots-drawn") ?? 0),
+      labels: Number(field?.getAttribute("data-labels-drawn") ?? 0),
       frameMs: Number(field?.getAttribute("data-frame-ms") ?? NaN),
     };
   });
@@ -119,8 +127,12 @@ console.log(
   farView.outlines,
   "· dots drawn:",
   farView.dots,
+  "· labels:",
+  farView.labels,
 );
 await page.screenshot({ path: "/tmp/shape-field.png" });
+// The spaced-out overview: footprints breathe, whole US field fitted.
+await page.screenshot({ path: "/tmp/field-spaced.png" });
 
 // Frame-time storm: alternate small wheel zooms so every sample is a
 // fresh full redraw, then report the median/p95.
@@ -220,6 +232,11 @@ console.log(
   lodNear.trueEdges,
 );
 await page.screenshot({ path: "/tmp/shape-field-near.png" });
+// Titles under document-grouped subtrees: readable-footprint modules
+// carry a small muted label at this zoom (screen-space deduped).
+const labelsAtMid = (await readFieldMetrics()).labels;
+console.log("subtree labels drawn at mid zoom:", labelsAtMid);
+await page.screenshot({ path: "/tmp/field-labels.png" });
 const motifFrames = await frameStorm("motif zoom", 30, 200);
 
 // 5b) Drag pans the camera.
@@ -303,6 +320,34 @@ console.log(
 await page.waitForSelector('[data-testid="back-to-overview"]', {
   timeout: 30000,
 });
+// The chip lives in its own slim row ABOVE the graph plane, flush
+// with the plane's left edge — frame, not floating chrome.
+const chipGeom = await page.evaluate(() => {
+  const chip = document
+    .querySelector('[data-testid="back-to-overview"]')
+    ?.getBoundingClientRect();
+  const stage = document
+    .querySelector(".graph-stage")
+    ?.getBoundingClientRect();
+  return chip && stage
+    ? {
+        chipBottom: chip.bottom,
+        chipLeft: chip.left,
+        stageTop: stage.top,
+        stageLeft: stage.left,
+      }
+    : null;
+});
+const chipAboveStage = Boolean(
+  chipGeom &&
+    chipGeom.chipBottom <= chipGeom.stageTop &&
+    Math.abs(chipGeom.chipLeft - chipGeom.stageLeft) < 4,
+);
+console.log(
+  "overview chip above the plane, edge-aligned:",
+  chipAboveStage,
+  JSON.stringify(chipGeom),
+);
 await page.click('[data-testid="back-to-overview"]');
 await page.waitForFunction(
   () =>
@@ -459,6 +504,34 @@ console.log(
   "· field stepped aside:",
   pickerState.fieldGone,
 );
+
+// The list is COMPLETE: every subtree the field shows, rendered in
+// slabs — the total rides a data attribute, scrolling appends rows.
+const listStats = await picker.evaluate(() => {
+  const list = document.querySelector('[data-testid="picker-list"]');
+  return {
+    total: Number(list?.getAttribute("data-list-total") ?? 0),
+    rendered: Number(list?.getAttribute("data-list-rendered") ?? 0),
+  };
+});
+await picker.evaluate(() => {
+  const scroller = document.querySelector(".plane-launcher");
+  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+});
+await new Promise((r) => setTimeout(r, 800));
+const listAfterScroll = await picker.evaluate(() => {
+  const list = document.querySelector('[data-testid="picker-list"]');
+  return Number(list?.getAttribute("data-list-rendered") ?? 0);
+});
+console.log(
+  "complete list: total:",
+  listStats.total,
+  "· rendered before scroll:",
+  listStats.rendered,
+  "· after scroll:",
+  listAfterScroll,
+);
+await picker.screenshot({ path: "/tmp/list-complete.png" });
 
 // Search "273.10" → pick → the compose viewer opens for that root.
 await picker.type('[data-testid="picker-search"]', "273.10");
@@ -642,6 +715,15 @@ const pass =
   lodNear.lod === "motif" &&
   lodNear.trueEdges >= 20 &&
   headlineDoors >= 5 &&
+  // Pinned EITC door, subtree titles, frame budget.
+  eitcDoor &&
+  labelsAtMid > 10 &&
+  farFrames.median < 8 &&
+  // The overview chip sits above the plane, left-edge aligned.
+  chipAboveStage &&
+  // The complete list: > 1000 subtrees, slabs append on scroll.
+  listStats.total > 1000 &&
+  listAfterScroll > listStats.rendered &&
   txAfterDrag !== txBefore &&
   Boolean(clickedHref) &&
   composeUrl.includes("compose=") &&
@@ -677,7 +759,7 @@ const pass =
   blockedHonest;
 console.log(
   pass
-    ? "PASS: true shapes with source outlines, overview button, editable facts"
+    ? "PASS: spaced field with subtree titles, pinned EITC door, framed overview chip, complete list"
     : "FAIL",
 );
 await browser.close();

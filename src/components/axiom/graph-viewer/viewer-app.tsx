@@ -73,6 +73,9 @@ export function GraphViewerApp({
     setLauncherMode(mode);
     storeLauncherMode(mode);
   };
+  // One query, two surfaces: the top-right search's dropdown AND the
+  // list mode's full corpus list filter live on the same string.
+  const [launcherQuery, setLauncherQuery] = useState("");
   const [country, setCountry] = useState<Country>(() => initialCountry());
   const [program, setProgram] = useState<ProgramRef | null>(null);
   const [graph, setGraph] = useState<ProgramGraph | null>(null);
@@ -1898,6 +1901,7 @@ export function GraphViewerApp({
                 <SubtreeDoors
                   modules={corpusModules}
                   onPick={enterComposeMode}
+                  query={launcherQuery}
                 />
               </div>
             )}
@@ -1911,6 +1915,8 @@ export function GraphViewerApp({
                 modules={corpusModules}
                 onPick={enterComposeMode}
                 compact
+                query={launcherQuery}
+                onQueryChange={setLauncherQuery}
               />
               <div
                 className="picker-mode-toggle"
@@ -1952,6 +1958,21 @@ export function GraphViewerApp({
             subgraph the canvas itself is the navigation — no program
             dropdown, no in-subtree search box. */}
         <div className="top-controls">
+          {/* The way back to the field overview: the frame's own slim
+              row ABOVE the plane, flush with the plane's left edge —
+              compose AND program views, every host (/axiom overlay,
+              standalone /axiom/graph, /app). */}
+          {launcher === "closed" && (
+            <button
+              type="button"
+              className="back-to-overview"
+              data-testid="back-to-overview"
+              onClick={backToOverview}
+              title="Back to the corpus overview"
+            >
+              ← Overview
+            </button>
+          )}
           {/* Composed views carry no header line at all — the graph
               is its own label. Program views keep their coordinates. */}
           {!composeFocus && (
@@ -1969,20 +1990,6 @@ export function GraphViewerApp({
             planeFresh ? "plane-fresh" : ""
           }`}
         >
-          {/* Always-visible way back to the field overview — compose
-              AND program views (neither had one). Muted chrome, top
-              left so it never fights the top-right run controls. */}
-          {launcher === "closed" && (
-            <button
-              type="button"
-              className="back-to-overview"
-              data-testid="back-to-overview"
-              onClick={backToOverview}
-              title="Back to the corpus overview"
-            >
-              ← Overview
-            </button>
-          )}
           {running && (
             <div className="run-spinner" role="status" aria-label="Computing">
               <span className="run-spinner-ring" />

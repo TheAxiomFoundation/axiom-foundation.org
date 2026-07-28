@@ -20,6 +20,8 @@ import {
   fitFieldTransform,
   IDENTITY_TRANSFORM,
   MOTIF_ZOOM,
+  SUBTREE_LABEL_MIN_PX,
+  dotEarnsLabel,
   dotShapeSpec,
   shapeRendersNodes,
   buildFieldLayout,
@@ -147,6 +149,11 @@ export function CorpusField({
     new Map<number, { x: number; y: number }>()
   );
   const dragStateRef = useRef<{ moved: boolean } | null>(null);
+  // Subtree label cache: humanized text + width at the reference font
+  // size (CSS px — zoom-independent), computed lazily per target.
+  const labelCacheRef = useRef(
+    new Map<string, { text: string; widthCss: number }>()
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -335,6 +342,9 @@ export function CorpusField({
     const pxPerUnit = (cssWidth / FIELD_WIDTH) * k;
 
     const margin = 10;
+    // Document-grouped subtrees whose footprint is readable this
+    // frame — labeled after the shapes so text never sits under ink.
+    const labelCandidates: FieldDot[] = [];
     for (const dot of layout.dots) {
       if (
         dot.x + dot.r < topLeft.x - margin ||
@@ -431,6 +441,63 @@ export function CorpusField({
         ctx.strokeStyle = "#b45309";
         ctx.stroke();
       }
+      // Title candidates: subtrees grouped under a source document
+      // (headline rule or source-backed linkage), footprint readable,
+      // not already named by a door chip.
+      if (
+        !dot.highlightLabel &&
+        dot.r * pxPerUnit >= SUBTREE_LABEL_MIN_PX &&
+        dotEarnsLabel(dot)
+      ) {
+        labelCandidates.push(dot);
+      }
+    }
+
+    // ── Titles under document-grouped subtrees ──
+    // Small muted text beneath each footprint, biggest subtrees
+    // first; a simple screen-space overlap check keeps the band from
+    // wallpapering dense clusters. At far zoom no candidate passes
+    // the size gate — unlabeled is fine there.
+    let labelsDrawn = 0;
+    if (labelCandidates.length > 0) {
+      const fontCss = 10;
+      const fontField = fontCss / pxPerUnit;
+      ctx.font = `500 ${fontField}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "rgba(87, 83, 78, 0.85)";
+      const lineH = fontField * 1.35;
+      const placed: Array<{ x: number; y: number; w: number }> = [];
+      const cache = labelCacheRef.current;
+      const sorted = [...labelCandidates].sort((a, b) => b.r - a.r);
+      for (const dot of sorted) {
+        if (labelsDrawn >= 160) break;
+        let entry = cache.get(dot.target);
+        if (!entry) {
+          const text = dot.headlineRule
+            ? humanizeRuleName(dot.headlineRule)
+            : humanizeCitation(dot.target);
+          entry = {
+            text,
+            // measureText under the current font (field units) —
+            // times pxPerUnit it's zoom-independent CSS px.
+            widthCss: ctx.measureText(text).width * pxPerUnit,
+          };
+          cache.set(dot.target, entry);
+        }
+        const w = entry.widthCss / pxPerUnit;
+        const x = dot.x;
+        const y = dot.y + dot.r + 2 / k;
+        const collides = placed.some(
+          (p) =>
+            Math.abs(p.y - y) < lineH &&
+            Math.abs(p.x - x) < (p.w + w) / 2 + fontField
+        );
+        if (collides) continue;
+        ctx.fillText(entry.text, x, y);
+        placed.push({ x, y, w });
+        labelsDrawn += 1;
+      }
     }
 
     if (hovered) {
@@ -448,6 +515,7 @@ export function CorpusField({
       host.dataset.trueEdgesDrawn = String(trueEdgesDrawn);
       host.dataset.outlinesDrawn = String(outlinesDrawn);
       host.dataset.dotsDrawn = String(dotsDrawn);
+      host.dataset.labelsDrawn = String(labelsDrawn);
       host.dataset.frameMs = (performance.now() - frameStartedAt).toFixed(2);
     }
   }, [layout, hovered, transform]);

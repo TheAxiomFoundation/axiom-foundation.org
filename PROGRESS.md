@@ -2,8 +2,9 @@
 
 ## State
 
-The strict, typed ledger reader and exact empty mirror are implemented. Work is
-now moving to the reusable status component and its node-view integrations.
+The strict reader, certification status component, operational alert, and
+deliberate empty/filled ledger states are implemented. Work is now moving to
+the actual encoding and graph-node integrations.
 
 ## Done
 
@@ -31,11 +32,20 @@ now moving to the reusable status component and its node-view integrations.
   missing `@xyflow/react` installation, with no certification-reader errors.
 - Confirmed a schema limitation: the structured file has no uncertified rows,
   frontier, deferred-output, pending, completeness, or fidelity fields.
+- Added a reusable status component whose mark is controlled only by an exact
+  generated-ledger entry.
+- Added source-backed non-certified presentations for validated frontiers,
+  declared deferred outputs, pending ledger rows, and the only file-derived
+  fallback: absent/not certified.
+- Added a visible operational alert that cannot be mistaken for a valid empty
+  ledger.
+- Designed the zero-node state as deliberate copy: the automatic rule, all five
+  criteria, and an explicit statement that the schema does not publish
+  per-node failed checks.
+- Passed the reader and status-component suites together: 2 files, 10 tests.
 
 ## Next
 
-- Implement the reusable certification badge, operational warning, and
-  deliberate empty state using design-system tokens.
 - Show the badge/status on encoding and graph-node views, with supplemental
   reasons only where their source metadata is actually present.
 - Run the focused component tests and commit each coherent UI integration.

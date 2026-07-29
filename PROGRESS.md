@@ -4,7 +4,8 @@
 
 The strict reader and reusable status states are wired into the Library and
 Plane. The local mirror is now the only source that can render certification.
-Work is moving to the production build and final verification.
+Focused tests and a production build pass. Work is moving to publication and
+the final handoff.
 
 ## Done
 
@@ -69,9 +70,18 @@ Work is moving to the production build and final verification.
 - Reused the deliberate ledger empty state when a program graph is empty and
   the authoritative mirror confirms zero passing nodes.
 - Passed the focused certification data-path and UI suite: 7 files, 37 tests.
+- Passed the final combined focused suite: 9 files, 76 tests.
+- Completed a production webpack build: compilation, TypeScript, all 54 static
+  pages, optimization, and build-trace collection passed.
+- Confirmed the `/api/axiom/certified` function trace contains
+  `src/data/certified-nodes.yaml`.
+- Recorded the local build-environment caveat: the default Turbopack build
+  stalled in compilation in this nested worktree; the webpack production path
+  completed after an offline frozen install and a local Google-font fixture.
+- Reconfirmed that no `/verify` file changed and no new hardcoded color was
+  introduced.
 
 ## Next
 
-- Run the production build and final focused test pass.
-- Verify the mirrored YAML is included in the production function trace.
-- Record final schema feedback, publication results, and handoff files.
+- Attempt the branch push, draft PR, and required Vercel status check.
+- Record publication results and schema feedback in `FINAL_REPORT.md`.

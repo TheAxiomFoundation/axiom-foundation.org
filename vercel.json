@@ -13,10 +13,6 @@
       "destination": "https://proposal.axiom-foundation.org/"
     },
     {
-      "source": "/slides",
-      "destination": "https://axiom-slides.vercel.app/slides"
-    },
-    {
       "source": "/slides/:path(.*)",
       "destination": "https://axiom-slides.vercel.app/slides/:path(.*)"
     },

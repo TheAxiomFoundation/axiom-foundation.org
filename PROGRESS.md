@@ -2,10 +2,9 @@
 
 ## State
 
-The strict reader and reusable status states are wired into the Library and
-Plane. The local mirror is now the only source that can render certification.
-Focused tests and a production build pass. Work is moving to publication and
-the final handoff.
+Implementation and local verification are complete. The local mirror is the
+only source that can render certification. Publication was attempted but is
+blocked by shell DNS and a cancelled connected-GitHub write.
 
 ## Done
 
@@ -80,8 +79,17 @@ the final handoff.
   completed after an offline frozen install and a local Google-font fixture.
 - Reconfirmed that no `/verify` file changed and no new hardcoded color was
   introduced.
+- Completed direct SSR/API/RSC smoke checks after the sandbox blocked local
+  listening sockets and browser launch.
+- Attempted the branch push; shell DNS could not resolve `github.com`.
+- Attempted the connected GitHub publication path; the write was cancelled
+  before any remote object, branch, or PR was created.
+- Ran the required Vercel listing command; the restricted network prevented it
+  from returning project/deployment status, and no deployment was initiated.
+- Replaced the stale report with the complete implementation, validation,
+  schema-feedback, and publication handoff in `FINAL_REPORT.md`.
 
 ## Next
 
-- Attempt the branch push, draft PR, and required Vercel status check.
-- Record publication results and schema feedback in `FINAL_REPORT.md`.
+- From a network-enabled session, push `app/node-certification-status`.
+- Open a draft PR to `master` and verify the resulting Vercel preview.

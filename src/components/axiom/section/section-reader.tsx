@@ -25,6 +25,7 @@ import {
   ruleGraphFocus,
 } from "@/lib/axiom/runtime/graph-links";
 import { formatLegalCitation } from "@/lib/axiom/citation/format";
+import type { CertificationSnapshot } from "@/lib/axiom/certification";
 
 /**
  * Server-rendered reading column for a section and its full
@@ -580,7 +581,13 @@ function NeighborNav({ data }: { data: SectionPageData }) {
   );
 }
 
-export function SectionReader({ data }: { data: SectionPageData }) {
+export function SectionReader({
+  data,
+  certification,
+}: {
+  data: SectionPageData;
+  certification: CertificationSnapshot;
+}) {
   const heading = data.root.heading?.trim();
   const effective = formatDate(data.root.effective_date);
   const outgoing = buildInlineReferences(
@@ -739,6 +746,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           incoming={incoming}
           programs={data.programs}
           ruleFiles={data.ruleFiles}
+          certification={certification}
         />
       </aside>
     </div>

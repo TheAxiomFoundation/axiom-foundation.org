@@ -2,9 +2,9 @@
 
 ## State
 
-The strict reader, certification status component, operational alert, and
-deliberate empty/filled ledger states are implemented. Work is now moving to
-the actual encoding and graph-node integrations.
+The strict reader and reusable status states are now wired into the Library's
+encoding index and per-rule rail. Work is moving to the Plane's graph-node
+inspector and the local mirror API.
 
 ## Done
 
@@ -48,9 +48,17 @@ the actual encoding and graph-node integrations.
 - Preserved deferred-output declarations when section rendering merges several
   source modules, instead of silently dropping the incompleteness record.
 - Passed the RuleSpec parser and section-encoding suites: 2 files, 39 tests.
+- Added the deliberate certification ledger state to the encoded-rules index.
+- Threaded the server-read snapshot into section pages and exact RuleSpec legal
+  IDs into every encoding card; only an exact entry can render the mark.
+- Added a module-level declared-incomplete notice with every published deferred
+  output reason, and a single operational warning per rail on reader failure.
+- Added Library integration coverage for the valid empty state and an exact
+  certified node.
+- Passed the focused Library integration suite: 6 files, 62 tests.
 
 ## Next
 
-- Show the badge/status on encoding and graph-node views, with supplemental
-  reasons only where their source metadata is actually present.
-- Run the focused component tests and commit each coherent UI integration.
+- Replace the hosted certification passthrough with the local mirror and use it
+  in graph-node views without trusting runtime certification fields.
+- Run the production build and final focused test pass.

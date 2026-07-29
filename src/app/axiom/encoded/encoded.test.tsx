@@ -49,6 +49,11 @@ describe("EncodedRulesIndexPage", () => {
     expect(
       screen.getByText(/No encodings found/i)
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "No encoding has met the bar yet",
+      })
+    ).toBeInTheDocument();
   });
 
   it("groups files by jurisdiction, sorts groups by descending count, and links each row", async () => {
@@ -90,7 +95,11 @@ describe("EncodedRulesIndexPage", () => {
     const headings = screen
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
-    expect(headings).toEqual(["US Federal", "United Kingdom"]);
+    expect(headings).toEqual([
+      "No encoding has met the bar yet",
+      "US Federal",
+      "United Kingdom",
+    ]);
     // Each row links to /encoded/<citation_path>.
     expect(
       screen.getByText("us/statute/26/3101/a").closest("a")

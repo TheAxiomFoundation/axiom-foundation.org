@@ -4,6 +4,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EncodingRail } from "./encoding-rail";
 import type { RuleEncodingData } from "@/lib/supabase";
 import { _resetRawFetchCache } from "@/lib/axiom/rulespec/raw-cache";
+import type { CertificationSnapshot } from "@/lib/axiom/certification";
+
+const EMPTY_CERTIFICATION: CertificationSnapshot = {
+  state: "ready",
+  warning: null,
+  ledger: {
+    schema: "axiom.certified_nodes.v1",
+    generated: true,
+    as_of: "2026-07-27",
+    nodes: [],
+  },
+};
 
 const YAML = [
   "format: rulespec/v1",
@@ -111,6 +123,7 @@ function renderRail() {
       encodedRules={ENCODED_RULES}
       outgoing={OUTGOING}
       incoming={[]}
+      certification={EMPTY_CERTIFICATION}
     />
   );
 }
@@ -199,6 +212,7 @@ describe("EncodingRail", () => {
         outgoing={OUTGOING}
         incoming={[]}
         programs={programs}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     expect(screen.queryByTestId("rail-programs")).not.toBeInTheDocument();
@@ -241,6 +255,7 @@ describe("EncodingRail", () => {
         encodedRules={[{ name: "rule_for_a", kind: "derived", anchors: ["a"] }]}
         outgoing={[]}
         incoming={[]}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     scrollTo({ j: -50 });

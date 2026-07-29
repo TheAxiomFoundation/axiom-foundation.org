@@ -9,6 +9,8 @@ import {
   listRuleSpecJurisdictions,
   type EncodedFile,
 } from "@/lib/axiom/rulespec/repo-listing";
+import { readCertifiedNodes } from "@/lib/axiom/certification";
+import { CertificationLedgerState } from "@/components/axiom/certification-status";
 
 export const dynamic = "force-static";
 export const revalidate = 600;
@@ -54,7 +56,10 @@ async function loadGroups(): Promise<JurisdictionGroup[]> {
 }
 
 export default async function EncodedRulesIndexPage() {
-  const groups = await loadGroups();
+  const [groups, certification] = await Promise.all([
+    loadGroups(),
+    readCertifiedNodes(),
+  ]);
   const total = groups.reduce((sum, g) => sum + g.files.length, 0);
   return (
     <div className="px-8 py-10 max-w-[1100px] mx-auto">
@@ -78,6 +83,10 @@ export default async function EncodedRulesIndexPage() {
           encoding flag, which is still being backfilled.
         </p>
       </header>
+
+      <div className="mb-10">
+        <CertificationLedgerState snapshot={certification} />
+      </div>
 
       {groups.length === 0 ? (
         <div className="py-16 text-center text-[var(--color-ink-muted)]">

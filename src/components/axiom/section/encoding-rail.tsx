@@ -22,6 +22,11 @@ import {
 } from "@/lib/axiom/runtime/graph-links";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
+import {
+  CertificationOperationalWarning,
+  NonCertifiedStatus,
+} from "@/components/axiom/certification-status";
+import type { CertificationSnapshot } from "@/lib/axiom/certification";
 
 export interface RailChunk {
   anchor: string;
@@ -92,6 +97,7 @@ export function EncodingRail({
   incoming,
   programs = [],
   ruleFiles = {},
+  certification,
 }: {
   encoding: RuleEncodingData | null;
   jurisdiction: string;
@@ -104,11 +110,18 @@ export function EncodingRail({
   programs?: ProvisionProgramCoverage[];
   /** Rule name → repo file path; enables per-rule graph links. */
   ruleFiles?: Record<string, string>;
+  certification: CertificationSnapshot;
 }) {
+  const parsedEncoding = useMemo(
+    () =>
+      encoding?.rulespec_content
+        ? parseRuleSpec(encoding.rulespec_content)
+        : null,
+    [encoding?.rulespec_content]
+  );
   const ruleDetails = useMemo(() => {
     const map = new Map<string, RuleCardDetail>();
-    if (!encoding?.rulespec_content) return map;
-    for (const rule of parseRuleSpec(encoding.rulespec_content).rules) {
+    for (const rule of parsedEncoding?.rules ?? []) {
       map.set(rule.name, {
         source: rule.source ?? null,
         yaml: yaml.dump(rule.raw, {
@@ -120,7 +133,13 @@ export function EncodingRail({
       });
     }
     return map;
-  }, [encoding?.rulespec_content]);
+  }, [parsedEncoding]);
+  const deferredOutputs = (parsedEncoding?.module.deferred_outputs ?? [])
+    .filter(
+      (item): item is typeof item & { output: string; reason: string } =>
+        Boolean(item.output && item.reason)
+    )
+    .map((item) => ({ output: item.output, reason: item.reason }));
 
   const active = useActiveAnchor(chunks.map((chunk) => chunk.anchor));
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
@@ -172,6 +191,18 @@ export function EncodingRail({
         {activeChunk ? activeChunk.label : "Whole section"}
       </p>
 
+      <CertificationOperationalWarning snapshot={certification} />
+      {deferredOutputs.length > 0 && (
+        <section
+          data-testid="rail-deferred-status"
+          className="mt-4 rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-3"
+        >
+          <NonCertifiedStatus
+            reason={{ kind: "incomplete", deferredOutputs }}
+          />
+        </section>
+      )}
+
       {nodeRules.length > 0 && (
         <section data-testid="rail-encodings" className="mt-4">
           <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
@@ -190,6 +221,14 @@ export function EncodingRail({
               return program
                 ? graphViewerUrl(program, focus)
                 : composeGraphViewerUrl(focus);
+            }}
+            certification={certification}
+            nodeIdFor={(ruleName) => {
+              const slug = citationPath?.split("/")[0] ?? null;
+              const filePath = ruleFiles[ruleName];
+              return slug && filePath
+                ? ruleGraphFocus(slug, filePath, ruleName)
+                : null;
             }}
           />
         </section>

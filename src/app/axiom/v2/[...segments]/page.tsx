@@ -21,6 +21,7 @@ import {
   BrowseView,
   BrowseUnavailable,
 } from "@/components/axiom/section/browse-view";
+import { readCertifiedNodes } from "@/lib/axiom/certification";
 
 /**
  * v2 section reader — the first server-rendered surface of the app
@@ -85,9 +86,10 @@ async function SectionBody({
   resolution: SectionResolution;
   decoded: string[];
 }) {
-  const [data, meta] = await Promise.all([
+  const [data, meta, certification] = await Promise.all([
     getSectionPageDataFromResolution(resolution),
     getAxiomRuleMetadata(decoded),
+    readCertifiedNodes(),
   ]);
   if (!data) notFound();
 
@@ -101,7 +103,7 @@ async function SectionBody({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <SectionReader data={data} />
+      <SectionReader data={data} certification={certification} />
     </>
   );
 }

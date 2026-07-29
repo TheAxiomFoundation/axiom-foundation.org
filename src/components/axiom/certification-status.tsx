@@ -66,22 +66,26 @@ function CertifiedMark({ entry }: { entry: CertifiedNode }) {
   );
 }
 
-function NonCertifiedCopy({ reason }: { reason: NonCertifiedReason }) {
+export function NonCertifiedStatus({
+  reason,
+}: {
+  reason: NonCertifiedReason;
+}) {
   if (reason.kind === "validated") {
     return (
-      <>
+      <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
         <span className="font-medium text-[var(--color-ink-secondary)]">
           Validated, not certified
         </span>
         <span className="text-[var(--color-ink-muted)]">
           Published frontier: {reason.frontier}
         </span>
-      </>
+      </div>
     );
   }
   if (reason.kind === "incomplete") {
     return (
-      <>
+      <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
         <span className="font-medium text-[var(--color-ink-secondary)]">
           Encoded, incomplete by declaration
         </span>
@@ -100,30 +104,30 @@ function NonCertifiedCopy({ reason }: { reason: NonCertifiedReason }) {
             The module declares deferred outputs.
           </span>
         )}
-      </>
+      </div>
     );
   }
   if (reason.kind === "pending") {
     return (
-      <>
+      <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
         <span className="font-medium text-[var(--color-ink-secondary)]">
           Pending
         </span>
         <span className="text-[var(--color-ink-muted)]">
           This ledger row has not earned certification.
         </span>
-      </>
+      </div>
     );
   }
   return (
-    <>
+    <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
       <span className="font-medium text-[var(--color-ink-secondary)]">
         Not certified
       </span>
       <span className="text-[var(--color-ink-muted)]">
         This node does not appear in the generated certification ledger.
       </span>
-    </>
+    </div>
   );
 }
 
@@ -138,10 +142,12 @@ export function CertificationStatus({
   snapshot,
   nodeId,
   reason = DEFAULT_REASON,
+  showWarning = true,
 }: {
   snapshot: CertificationSnapshot;
   nodeId: string;
   reason?: NonCertifiedReason;
+  showWarning?: boolean;
 }) {
   const entry = entryFor(snapshot, nodeId);
   return (
@@ -149,8 +155,8 @@ export function CertificationStatus({
       data-testid="certification-status"
       className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed"
     >
-      <CertificationOperationalWarning snapshot={snapshot} />
-      {entry ? <CertifiedMark entry={entry} /> : <NonCertifiedCopy reason={reason} />}
+      {showWarning && <CertificationOperationalWarning snapshot={snapshot} />}
+      {entry ? <CertifiedMark entry={entry} /> : <NonCertifiedStatus reason={reason} />}
     </div>
   );
 }

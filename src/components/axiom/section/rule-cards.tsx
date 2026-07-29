@@ -1,5 +1,7 @@
 import type { EncodedRuleLink } from "@/lib/axiom/section-page";
 import CodeBlock from "@/components/code-block";
+import { CertificationStatus } from "@/components/axiom/certification-status";
+import type { CertificationSnapshot } from "@/lib/axiom/certification";
 
 export interface RuleCardDetail {
   /** The rule's source citation string ("26 USC 32(a)(1)"). */
@@ -20,6 +22,8 @@ export function RuleCardList({
   hrefFor,
   detailFor,
   citationLabel = "",
+  certification,
+  nodeIdFor,
 }: {
   rules: EncodedRuleLink[];
   hrefFor: (ruleName: string) => string | null;
@@ -27,6 +31,8 @@ export function RuleCardList({
   /** Compact legal cite for the section ("7 USC § 2017") — grounds
    *  each card's second line without per-card glyph icons. */
   citationLabel?: string;
+  certification?: CertificationSnapshot;
+  nodeIdFor?: (ruleName: string) => string | null;
 }) {
   if (rules.length === 0) return null;
   return (
@@ -34,6 +40,7 @@ export function RuleCardList({
       {rules.map((rule) => {
         const href = hrefFor(rule.name);
         const detail = detailFor?.(rule.name) ?? null;
+        const nodeId = nodeIdFor?.(rule.name) ?? null;
         const cite = citationLabel
           ? `${citationLabel}${
               rule.anchors.length > 0 ? ` (${rule.anchors.join(")(")})` : ""
@@ -61,6 +68,15 @@ export function RuleCardList({
                   {cite && rule.kind && " · "}
                   {rule.kind}
                 </span>
+                {certification && nodeId && (
+                  <div className="mt-2">
+                    <CertificationStatus
+                      snapshot={certification}
+                      nodeId={nodeId}
+                      showWarning={false}
+                    />
+                  </div>
+                )}
               </summary>
               <div className="border-t border-[var(--color-rule)] px-3 py-2.5">
                 {detail?.source && (

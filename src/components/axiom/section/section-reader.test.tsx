@@ -4,6 +4,10 @@ import { SectionReader } from "./section-reader";
 import type { SectionPageData } from "@/lib/axiom/section-page";
 import type { Rule } from "@/lib/supabase";
 import { _resetRawFetchCache } from "@/lib/axiom/rulespec/raw-cache";
+import type {
+  CertificationSnapshot,
+  CertifiedNode,
+} from "@/lib/axiom/certification";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => null,
@@ -29,6 +33,26 @@ const ROOT: Rule = {
   created_at: "",
   updated_at: "",
 };
+
+const EMPTY_CERTIFICATION: CertificationSnapshot = {
+  state: "ready",
+  warning: null,
+  ledger: {
+    schema: "axiom.certified_nodes.v1",
+    generated: true,
+    as_of: "2026-07-27",
+    nodes: [],
+  },
+};
+
+function renderReader(
+  data: SectionPageData,
+  certification = EMPTY_CERTIFICATION
+) {
+  return render(
+    <SectionReader data={data} certification={certification} />
+  );
+}
 
 function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
   return {
@@ -97,7 +121,7 @@ describe("SectionReader", () => {
   });
 
   it("renders header, chunks, chips, TOC, and neighbors", () => {
-    render(<SectionReader data={makeData()} />);
+    renderReader(makeData());
     expect(screen.getByText("Earned income")).toBeInTheDocument();
     // The citation path is implied by the breadcrumbs — no eyebrow.
     expect(screen.getByText("Official source")).toHaveAttribute(
@@ -139,6 +163,7 @@ describe("SectionReader", () => {
             { label: "(b)", href: "/us/statute/26/32/b" },
           ],
         })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     const crumbs = within(
@@ -157,7 +182,7 @@ describe("SectionReader", () => {
   });
 
   it("highlights and scrolls to the focus anchor", () => {
-    render(<SectionReader data={makeData({ focusAnchor: "b" })} />);
+    renderReader(makeData({ focusAnchor: "b" }));
     const focused = document.getElementById("b");
     expect(focused?.className).toContain("shadow");
     const other = document.getElementById("a");
@@ -182,6 +207,7 @@ describe("SectionReader", () => {
           ],
           ruleFiles: { eitc_phased_in: "statutes/26/32/a.yaml" },
         })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     const rows = screen.getAllByTestId("subsection-actions");
@@ -210,6 +236,7 @@ describe("SectionReader", () => {
     render(
       <SectionReader
         data={makeData({ focusAnchor: "b", encodedRules: [] })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     const row = screen.getByTestId("subsection-actions");
@@ -271,6 +298,7 @@ describe("SectionReader", () => {
           ],
           ruleFiles: { limit_rule: "statutes/26/32/d.yaml" },
         })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     // Focus highlight on the top-level provision.
@@ -303,6 +331,7 @@ describe("SectionReader", () => {
           prev: null,
           next: null,
         })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     expect(screen.getByText(/General chapeau text/)).toBeInTheDocument();
@@ -341,10 +370,49 @@ describe("SectionReader", () => {
             },
           ],
         })}
+        certification={EMPTY_CERTIFICATION}
       />
     );
     expect(screen.getByText("In general")).toBeInTheDocument();
     expect(screen.getByText("Child body text.")).toBeInTheDocument();
     expect(document.getElementById("a-1")).not.toBeNull();
+  });
+
+  it("shows the mark only when the exact RuleSpec node is in the ledger", () => {
+    const certifiedNode: CertifiedNode = {
+      node: "us:statutes/26/32#eitc_phased_in",
+      label: "EITC phase-in",
+      provision: "26 USC 32",
+      corpus_citation_path: "us/statute/26/32",
+      certified_at: "2026-07-29T12:00:00Z",
+      harness: { run: "run-sha", certify_check: "check-sha" },
+      pinned: {
+        rulespec_us: "rulespec-sha",
+        corpus: "corpus-sha",
+        engine: "v1.2.3",
+        artifact: "sha256:artifact",
+      },
+      criteria: {
+        provision_rooted: { holds: true, evidence: "provenance" },
+        conformant: { holds: true, evidence: "report" },
+        exercised: { holds: true, evidence: "census" },
+        closed: { holds: true, evidence: "closure" },
+        executable: { holds: true, evidence: "receipt" },
+      },
+    };
+    renderReader(
+      makeData({
+        ruleFiles: { eitc_phased_in: "statutes/26/32.yaml" },
+      }),
+      {
+        ...EMPTY_CERTIFICATION,
+        ledger: {
+          ...EMPTY_CERTIFICATION.ledger,
+          nodes: [certifiedNode],
+        },
+      } as CertificationSnapshot
+    );
+
+    expect(screen.getByLabelText("Certified encoding")).toBeInTheDocument();
   });
 });

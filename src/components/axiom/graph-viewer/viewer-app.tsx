@@ -46,6 +46,7 @@ import {
   filterStandaloneRules,
 } from "./compose-filter";
 import { buildRunRequestBody, scenarioKey } from "./run-request";
+import { trackAxiomEvent } from "@/lib/analytics";
 import {
   readLauncherMode,
   storeLauncherMode,
@@ -208,6 +209,7 @@ export function GraphViewerApp({
   const inspectRule = (legalId: string) => {
     const rule = walkRuleById.get(legalId);
     if (!rule) return;
+    trackNodeOpened("ruleRef");
     setInspected({
       kind: "ruleRef",
       label: rule.name,
@@ -246,6 +248,7 @@ export function GraphViewerApp({
   // double-click lens).
   const focusNode = (data: IrgNodeData) => {
     setInspected(data);
+    trackNodeOpened(data.kind);
     const legalId = "legalId" in data && data.legalId ? data.legalId : null;
     if (!legalId) return;
     if (data.kind !== "output" && data.kind !== "ruleRef") return;
@@ -699,6 +702,18 @@ export function GraphViewerApp({
     };
   }, [composeFocus]);
   const effectiveProgram = program ?? composedProgram;
+  const trackNodeOpened = (kind: string) =>
+    trackAxiomEvent("axiom_graph_node_opened", {
+      node_kind: kind,
+      program_id: effectiveProgram?.programId ?? null,
+    });
+  const trackRun = (outcome: "ok" | "error" | "refused") =>
+    trackAxiomEvent("axiom_run_executed", {
+      program_id: effectiveProgram?.programId ?? "composed",
+      jurisdiction: effectiveProgram?.jurisdiction ?? "unknown",
+      outcome,
+      surface: "graph",
+    });
 
   // Placeholder samples for a few common inputs; anything else uses
   // the registry default. Samples are placeholders, never answers.
@@ -975,12 +990,14 @@ export function GraphViewerApp({
         } | null;
       };
       setRunResult(data);
+      trackRun("ok");
     } catch (err) {
       if (err instanceof Error && err.name === "RunBlockedError") {
         // A refusal, not a failure: the styled run-blocked state
         // carries the API's message; no generic error on top.
         setRunBlocked(err.message);
         setRunError(null);
+        trackRun("refused");
       } else {
         const timedOut =
           err instanceof DOMException &&
@@ -992,6 +1009,7 @@ export function GraphViewerApp({
               ? err.message
               : "run failed",
         );
+        trackRun("error");
       }
     } finally {
       setRunning(false);
@@ -1526,6 +1544,7 @@ export function GraphViewerApp({
   const inspectInput = (legalId: string) => {
     const input = walkInputById.get(legalId);
     if (!input) return;
+    trackNodeOpened("input");
     setInspected({
       kind: "input",
       label: input.name,

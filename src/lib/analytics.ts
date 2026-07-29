@@ -31,6 +31,23 @@ export type AxiomEvent =
       };
     }
   | { event: "axiom_tree_navigated"; properties: { depth: number; segment: string } }
+  | {
+      /** A sample-household calculation ran against the hosted engine —
+       *  from the reader's run panel or the Plane's scenario runner. */
+      event: "axiom_run_executed";
+      properties: {
+        program_id: string;
+        jurisdiction: string;
+        outcome: "ok" | "error" | "refused";
+        surface: "reader" | "graph";
+      };
+    }
+  | {
+      /** A node opened in the Plane's inspector (canvas click or a
+       *  list-driven inspect). */
+      event: "axiom_graph_node_opened";
+      properties: { node_kind: string; program_id: string | null };
+    }
   | { event: "axiom_filter_toggled"; properties: { filter: string; enabled: boolean } }
   | {
       event: "axiom_palette_commit";

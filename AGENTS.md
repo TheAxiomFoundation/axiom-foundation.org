@@ -1,6 +1,6 @@
 # Axiom
 
-Axiom website (axiom-foundation.org). Deploys to Vercel.
+Axiom website (axiom.org). Deploys to Vercel.
 
 ## After pushing changes
 

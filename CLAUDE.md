@@ -1,6 +1,6 @@
 # Axiom
 
-Axiom website + app (axiom-foundation.org / app.axiom-foundation.org). Deploys
+Axiom website + app (axiom.org / app.axiom-foundation.org). Deploys
 to Vercel (project `axiom-foundation`, team `axiom-foundation`).
 
 ## Routing model

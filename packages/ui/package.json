@@ -24,10 +24,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TheAxiomFoundation/axiom-foundation.org.git",
+    "url": "git+https://github.com/TheAxiomFoundation/axiom.org.git",
     "directory": "packages/ui"
   },
-  "homepage": "https://axiom-foundation.org",
+  "homepage": "https://axiom.org",
   "publishConfig": {
     "access": "public"
   },

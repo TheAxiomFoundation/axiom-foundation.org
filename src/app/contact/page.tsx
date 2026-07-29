@@ -26,7 +26,19 @@ const CHANNELS = [
   {
     label: "LinkedIn",
     value: "Axiom Foundation",
-    href: "https://www.linkedin.com/company/axiom-foundation",
+    href: "https://www.linkedin.com/company/axiomfoundation",
+    external: true,
+  },
+  {
+    label: "X",
+    value: "@AxiomFdn",
+    href: "https://x.com/AxiomFdn",
+    external: true,
+  },
+  {
+    label: "Bluesky",
+    value: "@axiom.org",
+    href: "https://bsky.app/profile/axiom.org",
     external: true,
   },
   {

@@ -42,6 +42,9 @@ export const metadata: Metadata = {
     // 1200×630, w350 lockup on paper).
     images: ["/og-image.png"],
   },
+  twitter: {
+    site: "@AxiomFdn",
+  },
 };
 
 export default function RootLayout({

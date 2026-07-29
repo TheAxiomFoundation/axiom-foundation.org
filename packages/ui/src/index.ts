@@ -8,7 +8,7 @@ export { GradientSync } from "./components/gradient-sync";
 
 export { AxiomLogo } from "./components/axiom-logo";
 
-export { GitHubIcon, ArrowRightIcon, ChevronDownIcon, LinkedInIcon } from "./components/icons";
+export { GitHubIcon, ArrowRightIcon, BlueskyIcon, ChevronDownIcon, LinkedInIcon, XIcon } from "./components/icons";
 export type { IconProps } from "./components/icons";
 
 export { resolveHref } from "./components/link-utils";

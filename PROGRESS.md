@@ -2,9 +2,9 @@
 
 ## State
 
-The strict reader and reusable status states are now wired into the Library's
-encoding index and per-rule rail. Work is moving to the Plane's graph-node
-inspector and the local mirror API.
+The strict reader and reusable status states are wired into the Library and
+Plane. The local mirror is now the only source that can render certification.
+Work is moving to the production build and final verification.
 
 ## Done
 
@@ -59,9 +59,19 @@ inspector and the local mirror API.
 - Distinguished an unavailable ledger from a confirmed ledger absence in node
   copy, and made missing RuleSpec identities visible instead of omitting status.
 - Passed the focused status/rail regression suite: 3 files, 21 tests.
+- Replaced the runtime `/certified` passthrough with the fail-closed local
+  mirror snapshot, including 503/no-store behavior for operational failures.
+- Added a strict browser-side snapshot validator so network, JSON, HTTP, or
+  schema failures remain visibly fail-closed.
+- Wired exact graph rule legal IDs into the shared certification status and
+  removed runtime certificate/status fields, certified counts, the invented
+  awaiting count, and runtime-ledger provenance copy.
+- Reused the deliberate ledger empty state when a program graph is empty and
+  the authoritative mirror confirms zero passing nodes.
+- Passed the focused certification data-path and UI suite: 7 files, 37 tests.
 
 ## Next
 
-- Replace the hosted certification passthrough with the local mirror and use it
-  in graph-node views without trusting runtime certification fields.
 - Run the production build and final focused test pass.
+- Verify the mirrored YAML is included in the production function trace.
+- Record final schema feedback, publication results, and handoff files.

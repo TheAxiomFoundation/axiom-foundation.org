@@ -33,6 +33,7 @@ import {
   programKey,
   programRefFromSummary,
 } from "./api";
+import { fetchCertificationSnapshot } from "./certification-client";
 import type { Country, DashboardSpec, LegalId, ParameterRule, ProgramGraph, ProgramRef, ProgramSummary, RuleNode, TraceNode } from "./types";
 import { SubtreeDoors, SubtreeSearch } from "./subtree-picker";
 import {
@@ -54,6 +55,12 @@ import {
 import { CorpusField } from "@/components/axiom/corpus-field";
 import { loadCorpusModules } from "@/lib/axiom/corpus-live";
 import type { CorpusModule } from "@/lib/axiom/corpus-field";
+import {
+  CertificationLedgerState,
+  CertificationOperationalWarning,
+  CertificationStatus,
+} from "@/components/axiom/certification-status";
+import type { CertificationSnapshot } from "@/lib/axiom/certification";
 
 export function GraphViewerApp({
   onBackToOverview,
@@ -99,6 +106,8 @@ export function GraphViewerApp({
   const [selectedOutputs, setSelectedOutputs] = useState<LegalId[]>([]);
   const surveyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [certification, setCertification] =
+    useState<CertificationSnapshot | null>(null);
   const [programsLoading, setProgramsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [outputSearch, setOutputSearch] = useState("");
@@ -265,12 +274,6 @@ export function GraphViewerApp({
       value: unknown;
       instances?: Array<{ entity_id: string; value: unknown }>;
     }>;
-    // Certified-serving provenance — the ledger and vintage the
-    // numbers were computed under, when the engine reports them.
-    provenance?: {
-      ledger_id: string;
-      vintage: { engine_release: string };
-    } | null;
   } | null>(null);
   // Deep-link params, consumed once: ?program=us-co/co-snap selects a
   // program as soon as the registry loads; ?focus=us:statutes/7/2017
@@ -595,6 +598,18 @@ export function GraphViewerApp({
     };
   }, []);
 
+  // Certification is a separate, generated source of truth. The graph payload
+  // may carry runtime status fields, but none of them can grant the mark.
+  useEffect(() => {
+    let cancelled = false;
+    fetchCertificationSnapshot().then((snapshot) => {
+      if (!cancelled) setCertification(snapshot);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadNonce]);
+
   // The picker's corpus loads only when the launcher is actually up —
   // a ?program= / ?compose= deep link never pays for it.
   useEffect(() => {
@@ -871,11 +886,10 @@ export function GraphViewerApp({
             }
             return response;
           }
-          // Certified serving refused the run (422 uncertified_node).
-          // Probing chunks can't help — the ledger, not a bad name, is
-          // the gate. Name what WE asked for; the API never names ids.
+          // The serving runtime refused the run. That is an execution
+          // constraint, not authority to publish certification status.
           throw new Error(
-            `Some requested rules aren't certified for serving yet: ${
+            `The serving runtime declined these requested rules: ${
               variables.length > 0
                 ? variables.join(", ")
                 : "the program's default outputs"
@@ -965,14 +979,10 @@ export function GraphViewerApp({
       const data = (await response.json()) as {
         outputs: Record<string, number | string | boolean | null>;
         trace: Array<{
-      variable: string;
-      value: unknown;
-      instances?: Array<{ entity_id: string; value: unknown }>;
-    }>;
-        provenance?: {
-          ledger_id: string;
-          vintage: { engine_release: string };
-        } | null;
+          variable: string;
+          value: unknown;
+          instances?: Array<{ entity_id: string; value: unknown }>;
+        }>;
       };
       setRunResult(data);
     } catch (err) {
@@ -2126,6 +2136,11 @@ export function GraphViewerApp({
               <span>{runBlocked}</span>
             </div>
           )}
+          {certification?.state === "unavailable" && (
+            <div className="absolute bottom-4 left-4 z-40 max-w-[36rem]">
+              <CertificationOperationalWarning snapshot={certification} />
+            </div>
+          )}
           {composeFocus && composedHiddenCount > 0 && (
             // The isolated-node filter's honesty note: tiny, muted,
             // out of the way — never a header.
@@ -2214,29 +2229,16 @@ export function GraphViewerApp({
               <span>Loading graph...</span>
             </div>
           ) : graph && graph.rules.length === 0 && !composeFocus ? (
-            // The certified-serving API answers 200 with no rules when
-            // a program's artifact exists but nothing in it is
-            // certified yet — a real state, not a failure. Say so
-            // instead of asking for an output selection that can't
-            // exist.
-            (() => {
-              const summary = program
-                ? allPrograms.find(
-                    (item) => programKey(item) === programKey(program),
-                  )
-                : null;
-              const awaiting = summary?.outputCount ?? summary?.inputCount;
-              return (
-                <div className="empty-state" role="status">
-                  Nothing certified yet for this program
-                  {awaiting != null && (
-                    <>
-                      <br />— {awaiting} nodes await the certification sweep
-                    </>
-                  )}
-                </div>
-              );
-            })()
+            certification?.state === "ready" &&
+            certification.ledger.nodes.length === 0 ? (
+              <div className="mx-auto w-full max-w-3xl overflow-auto p-4">
+                <CertificationLedgerState snapshot={certification} />
+              </div>
+            ) : (
+              <div className="empty-state" role="status">
+                No encoded rules are available in this program graph.
+              </div>
+            )
           ) : spec && Object.keys(structureTraces).length > 0 ? (
             <InputEditContext.Provider value={inputEditCtx}>
             <InteractiveRuleGraph
@@ -2445,38 +2447,19 @@ export function GraphViewerApp({
                   </dd>
                 </>
               ) : null}
-              {rule?.certificationStatus ? (
+              {rule ? (
                 <>
-                  {/* The four-status launch taxonomy: certification is a
-                      status, not a gate — the queue is public on every
-                      node. */}
-                  <dt>Status</dt>
+                  <dt>Certification</dt>
                   <dd>
-                    {rule.certificationStatus === "certified"
-                      ? "Certified"
-                      : rule.certificationStatus === "validated"
-                        ? "Validated, not certified"
-                        : rule.certificationStatus === "pending"
-                          ? "Pending — not yet encoded"
-                          : rule.incompleteByDeclaration
-                            ? "Encoded, incomplete by declaration"
-                            : "Encoded"}
-                  </dd>
-                </>
-              ) : null}
-              {rule?.certificateId ? (
-                <>
-                  {/* The verifier certificate is why this node is
-                      visible at all — show it, truncated, full id on
-                      hover. */}
-                  <dt>Certificate</dt>
-                  <dd
-                    className="node-inspector-mono"
-                    title={rule.certificateId}
-                  >
-                    {rule.certificateId.length > 28
-                      ? `${rule.certificateId.slice(0, 28)}…`
-                      : rule.certificateId}
+                    {certification ? (
+                      <CertificationStatus
+                        snapshot={certification}
+                        nodeId={rule.legalId}
+                        showWarning={false}
+                      />
+                    ) : (
+                      <span role="status">Checking the generated ledger…</span>
+                    )}
                   </dd>
                 </>
               ) : null}
@@ -2932,14 +2915,6 @@ export function GraphViewerApp({
               questions; the rest used this program's default values, so
               a "No" can mean "not asked", not "disqualified".
             </p>
-            {runResult.provenance && (
-              // The certification ledger is why these numbers may be
-              // served at all — name it under the results.
-              <p className="results-note">
-                Computed under ledger {runResult.provenance.ledger_id},
-                engine {runResult.provenance.vintage.engine_release}
-              </p>
-            )}
           </aside>
         )}
       </section>

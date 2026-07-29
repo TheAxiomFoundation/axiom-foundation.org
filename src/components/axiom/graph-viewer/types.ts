@@ -20,10 +20,6 @@ export interface ProgramSummary {
   outputCount?: number;
   entityCount?: number;
   inputCount?: number;
-  // Certified-serving counts: zero means "nothing certified yet",
-  // a real state distinct from a missing package.
-  certifiedNodeCount?: number;
-  certifiedOutputCount?: number;
 }
 
 export interface PeriodRef {
@@ -91,13 +87,6 @@ export interface RuleNode {
   inputDeps: string[];
   relationDeps: string[];
   formula?: string | null;
-  // The verifier certificate that makes this node servable at all —
-  // present on rules from the certified-serving API.
-  certificateId?: string;
-  // Launch taxonomy: certification is a status, not a gate.
-  certificationStatus?: "certified" | "validated" | "encoded" | "pending" | string;
-  // "Encoded, incomplete by declaration" — the module self-reports gaps.
-  incompleteByDeclaration?: boolean;
 }
 
 export interface InputNode {

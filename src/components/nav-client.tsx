@@ -10,11 +10,18 @@ interface NavClientProps {
   appUrl?: string;
 }
 
-/** App surfaces (jurisdiction-rooted paths + /axiom/*) get the
- *  search trigger in the nav's top right; marketing pages stay
+/** App surfaces (jurisdiction-rooted paths + /axiom/* + /app) get
+ *  the search trigger in the nav's top right; marketing pages stay
  *  clean. The palette itself is mounted globally by the root
- *  layout's provider, so ⌘K works everywhere. */
-const APP_PATH_RE = /^\/(?:axiom(?:\/|$)|(?:[a-z]{2}(?:-[a-z]{2})?|canada)(?:\/|$))/;
+ *  layout's provider, so ⌘K works everywhere.
+ *
+ *  /app MUST match: the proxy rewrites it to /axiom/graph, so during
+ *  SSR usePathname() reports the rewritten path (matches) while the
+ *  browser reports /app — if only one side matches, the trigger
+ *  renders on the server and not the client, and React throws a
+ *  hydration mismatch (#418) on every /app load. */
+const APP_PATH_RE =
+  /^\/(?:app(?:\/|$)|axiom(?:\/|$)|(?:[a-z]{2}(?:-[a-z]{2})?|canada)(?:\/|$))/;
 
 export function NavClient({ baseUrl, appUrl }: NavClientProps) {
   const pathname = usePathname();

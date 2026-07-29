@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
+import { trackAxiomEvent } from "@/lib/analytics";
 import { useTraceRun, type TraceRun } from "./trace-context";
 
 interface RunResponse {
@@ -47,6 +48,13 @@ export function useRunProgram() {
     ) => {
       setRunning(true);
       setError(false);
+      const track = (outcome: "ok" | "error" | "refused") =>
+        trackAxiomEvent("axiom_run_executed", {
+          program_id: target.programId,
+          jurisdiction: target.jurisdiction,
+          outcome,
+          surface: "reader",
+        });
       try {
         const response = await fetch("/api/axiom/runtime/run", {
           method: "POST",
@@ -59,6 +67,7 @@ export function useRunProgram() {
         });
         if (response.status === 422) {
           setError("uncertified");
+          track("refused");
           return;
         }
         if (!response.ok) throw new Error(String(response.status));
@@ -71,8 +80,10 @@ export function useRunProgram() {
           trace: data.trace,
         });
         syncRunParam(runParamFor(target));
+        track("ok");
       } catch {
         setError("generic");
+        track("error");
       } finally {
         setRunning(false);
       }

@@ -11,6 +11,8 @@ import type { ProvisionProgramCoverage } from "@/lib/axiom/runtime/coverage";
 import { RuleSpecTab } from "@/components/axiom/rulespec-tab";
 import { RuleCardList, type RuleCardDetail } from "./rule-cards";
 import { formatCitationLabel } from "@/components/axiom/references-panel";
+import { trackAxiomEvent } from "@/lib/analytics";
+import { isGitHubEncoding } from "@/lib/axiom-utils";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import { useMemo } from "react";
 import yaml from "js-yaml";
@@ -181,6 +183,13 @@ export function EncodingRail({
             rules={nodeRules}
             citationLabel={citationPath ? formatCitationLabel(citationPath) : ""}
             detailFor={(ruleName) => ruleDetails.get(ruleName) ?? null}
+            onExpand={() => {
+              if (!citationPath) return;
+              trackAxiomEvent("axiom_encoding_viewed", {
+                citation_path: citationPath,
+                source: isGitHubEncoding(encoding) ? "github" : "encoding_run",
+              });
+            }}
             hrefFor={(ruleName) => {
               const slug = citationPath?.split("/")[0] ?? null;
               const filePath = ruleFiles[ruleName];

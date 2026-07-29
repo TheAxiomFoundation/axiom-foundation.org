@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { BrowsePageData } from "@/lib/axiom/browse-page";
+import { TrackView } from "@/components/axiom/track-view";
 
 /** Source labels arrive in every shape — ALL-CAPS USC title names,
  *  section headings leaking into title rows. Title-case the shouty
@@ -157,6 +158,10 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pt-24 pb-16">
+      <TrackView
+        event="axiom_tree_navigated"
+        properties={{ depth, segment: data.segments.at(-1) ?? "" }}
+      />
       <header className="mb-8">
         <Breadcrumbs data={data} />
         <h1

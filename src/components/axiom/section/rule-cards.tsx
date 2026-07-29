@@ -20,6 +20,7 @@ export function RuleCardList({
   hrefFor,
   detailFor,
   citationLabel = "",
+  onExpand,
 }: {
   rules: EncodedRuleLink[];
   hrefFor: (ruleName: string) => string | null;
@@ -27,6 +28,9 @@ export function RuleCardList({
   /** Compact legal cite for the section ("7 USC § 2017") — grounds
    *  each card's second line without per-card glyph icons. */
   citationLabel?: string;
+  /** Fired when a card opens (not on close) — the "encoding viewed"
+   *  moment for analytics. Client parents only. */
+  onExpand?: (ruleName: string) => void;
 }) {
   if (rules.length === 0) return null;
   return (
@@ -43,7 +47,12 @@ export function RuleCardList({
             : "";
         return (
           <li key={rule.name}>
-            <details className="group rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] transition-colors open:border-[var(--color-accent)]/40 hover:border-[var(--color-accent)]">
+            <details
+              onToggle={(event) => {
+                if (event.currentTarget.open) onExpand?.(rule.name);
+              }}
+              className="group rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] transition-colors open:border-[var(--color-accent)]/40 hover:border-[var(--color-accent)]"
+            >
               <summary className="block cursor-pointer list-none px-3 py-2.5">
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-[var(--color-ink)]">

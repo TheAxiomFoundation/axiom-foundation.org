@@ -16,6 +16,7 @@ import { SubsectionActions } from "./subsection-actions";
 import { ActionStrip } from "./action-strip";
 import { CollapsibleText } from "./collapsible-text";
 import { primaryProgram } from "./primary-program";
+import { TrackView } from "@/components/axiom/track-view";
 import {
   builderUrlForRule,
   composeGraphViewerUrl,
@@ -595,6 +596,14 @@ export function SectionReader({ data }: { data: SectionPageData }) {
 
   return (
     <div className="mx-auto grid w-full max-w-[88rem] grid-cols-1 gap-10 px-4 pt-24 pb-16 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[210px_minmax(0,1fr)_400px]">
+      <TrackView
+        event="axiom_rule_viewed"
+        properties={{
+          citation_path: data.citationPath,
+          jurisdiction: data.root.jurisdiction,
+          has_rulespec: data.root.has_rulespec,
+        }}
+      />
       <aside className="hidden xl:block">
         <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <SectionToc entries={data.toc} />

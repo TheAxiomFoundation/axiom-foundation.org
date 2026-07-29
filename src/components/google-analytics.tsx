@@ -21,7 +21,11 @@ function GoogleAnalyticsPageView() {
   useEffect(() => {
     if (!GA_MEASUREMENT_ID || typeof window.gtag !== "function") return;
     const query = searchParams.toString();
-    window.gtag("config", GA_MEASUREMENT_ID, {
+    // Must be an explicit page_view event, not a config update: config
+    // parameters persist per measurement ID, so after the initial config set
+    // send_page_view: false, later config calls (even with a new page_path,
+    // even with send_page_view: true) never emit a page_view hit.
+    window.gtag("event", "page_view", {
       page_path: query ? `${pathname}?${query}` : pathname,
       tool_name: TOOL_NAME,
     });

@@ -152,4 +152,21 @@ describe("CertificationStatus", () => {
       })
     ).not.toBeInTheDocument();
   });
+
+  it("does not claim ledger absence when certification cannot be read", () => {
+    const snapshot: CertificationSnapshot = {
+      state: "unavailable",
+      ledger: null,
+      warning: {
+        kind: "parse",
+        message:
+          "Certification status warning: invalid YAML. Certification is fail-closed.",
+      },
+    };
+    render(<CertificationStatus snapshot={snapshot} nodeId={NODE_ID} />);
+
+    expect(screen.getByText("Certification not confirmed")).toBeInTheDocument();
+    expect(screen.queryByText(/does not appear/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Certified encoding")).not.toBeInTheDocument();
+  });
 });

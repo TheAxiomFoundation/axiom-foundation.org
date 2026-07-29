@@ -23,6 +23,12 @@ export type NonCertifiedReason =
       kind: "pending";
     }
   | {
+      kind: "operational";
+    }
+  | {
+      kind: "identity";
+    }
+  | {
       kind: "uncertified";
     };
 
@@ -119,6 +125,31 @@ export function NonCertifiedStatus({
       </div>
     );
   }
+  if (reason.kind === "operational") {
+    return (
+      <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
+        <span className="font-medium text-[var(--color-ink-secondary)]">
+          Certification not confirmed
+        </span>
+        <span className="text-[var(--color-ink-muted)]">
+          The generated ledger is unavailable. Fail-closed status applies.
+        </span>
+      </div>
+    );
+  }
+  if (reason.kind === "identity") {
+    return (
+      <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
+        <span className="font-medium text-[var(--color-ink-secondary)]">
+          Certification identity unavailable
+        </span>
+        <span className="text-[var(--color-ink-muted)]">
+          This card does not publish the exact RuleSpec legal ID needed for a
+          ledger lookup.
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed">
       <span className="font-medium text-[var(--color-ink-secondary)]">
@@ -150,14 +181,60 @@ export function CertificationStatus({
   showWarning?: boolean;
 }) {
   const entry = entryFor(snapshot, nodeId);
+  const statusReason: NonCertifiedReason =
+    snapshot.state === "unavailable" ? { kind: "operational" } : reason;
   return (
     <div
       data-testid="certification-status"
       className="flex flex-col items-start gap-1.5 text-[12px] leading-relaxed"
     >
       {showWarning && <CertificationOperationalWarning snapshot={snapshot} />}
-      {entry ? <CertifiedMark entry={entry} /> : <NonCertifiedStatus reason={reason} />}
+      {entry ? (
+        <CertifiedMark entry={entry} />
+      ) : (
+        <NonCertifiedStatus reason={statusReason} />
+      )}
     </div>
+  );
+}
+
+/**
+ * Phrasing-content variant for a closed rule-card summary. The rail owns the
+ * detailed operational alert, so this compact line reports only the lookup
+ * result and never nests flow content inside `<summary>`.
+ */
+export function CertificationSummaryStatus({
+  snapshot,
+  nodeId,
+}: {
+  snapshot: CertificationSnapshot;
+  nodeId: string | null;
+}) {
+  const entry = nodeId ? entryFor(snapshot, nodeId) : null;
+  if (entry) return <CertifiedMark entry={entry} />;
+
+  const [label, detail] =
+    snapshot.state === "unavailable"
+      ? [
+          "Certification not confirmed",
+          "The generated ledger is unavailable.",
+        ]
+      : nodeId
+        ? [
+            "Not certified",
+            "This node does not appear in the generated certification ledger.",
+          ]
+        : [
+            "Certification identity unavailable",
+            "No exact RuleSpec legal ID was published for this card.",
+          ];
+  return (
+    <span className="flex flex-col items-start gap-1 text-[12px] leading-relaxed">
+      <span className="font-medium text-[var(--color-ink-secondary)]">
+        {label}
+      </span>
+      <span className="text-[var(--color-ink-muted)]">{detail}</span>
+    </span>
   );
 }
 

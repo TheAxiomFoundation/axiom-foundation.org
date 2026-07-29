@@ -56,6 +56,9 @@ inspector and the local mirror API.
 - Added Library integration coverage for the valid empty state and an exact
   certified node.
 - Passed the focused Library integration suite: 6 files, 62 tests.
+- Distinguished an unavailable ledger from a confirmed ledger absence in node
+  copy, and made missing RuleSpec identities visible instead of omitting status.
+- Passed the focused status/rail regression suite: 3 files, 21 tests.
 
 ## Next
 

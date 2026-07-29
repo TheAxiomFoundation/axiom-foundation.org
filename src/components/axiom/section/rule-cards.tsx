@@ -1,6 +1,6 @@
 import type { EncodedRuleLink } from "@/lib/axiom/section-page";
 import CodeBlock from "@/components/code-block";
-import { CertificationStatus } from "@/components/axiom/certification-status";
+import { CertificationSummaryStatus } from "@/components/axiom/certification-status";
 import type { CertificationSnapshot } from "@/lib/axiom/certification";
 
 export interface RuleCardDetail {
@@ -68,14 +68,13 @@ export function RuleCardList({
                   {cite && rule.kind && " · "}
                   {rule.kind}
                 </span>
-                {certification && nodeId && (
-                  <div className="mt-2">
-                    <CertificationStatus
+                {certification && (
+                  <span className="mt-2 block">
+                    <CertificationSummaryStatus
                       snapshot={certification}
                       nodeId={nodeId}
-                      showWarning={false}
                     />
-                  </div>
+                  </span>
                 )}
               </summary>
               <div className="border-t border-[var(--color-rule)] px-3 py-2.5">

@@ -45,3 +45,8 @@ coverage/
 *.tgz
 .env.production.real
 .claude/
+
+# Agent-lane session state (sandboxed lanes write these at the repo root;
+# they are per-session handoff notes, never project documentation)
+/PROGRESS.md
+/FINAL_REPORT.md

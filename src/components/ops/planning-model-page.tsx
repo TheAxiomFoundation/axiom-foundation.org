@@ -627,7 +627,7 @@ tier generation     = system $/module × modules remaining   (Opus 4.8, Tier A: 
             from measured demand rather than a guess. Corrections are welcome
             —{" "}
             <a
-              href="https://github.com/TheAxiomFoundation/axiom-foundation.org/issues"
+              href="https://github.com/TheAxiomFoundation/axiom.org/issues"
               target="_blank"
               rel="noopener noreferrer"
             >

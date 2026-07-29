@@ -38,7 +38,15 @@ describe("Footer", () => {
     );
     expect(screen.getByLabelText("LinkedIn")).toHaveAttribute(
       "href",
-      "https://www.linkedin.com/company/axiom-foundation",
+      "https://www.linkedin.com/company/axiomfoundation",
+    );
+    expect(screen.getByLabelText("X")).toHaveAttribute(
+      "href",
+      "https://x.com/AxiomFdn",
+    );
+    expect(screen.getByLabelText("Bluesky")).toHaveAttribute(
+      "href",
+      "https://bsky.app/profile/axiom.org",
     );
   });
 

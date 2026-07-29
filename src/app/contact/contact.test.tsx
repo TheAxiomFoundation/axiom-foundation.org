@@ -21,8 +21,14 @@ describe('ContactPage', () => {
       screen.getByRole('link', { name: /axiom foundation/i }),
     ).toHaveAttribute(
       'href',
-      'https://www.linkedin.com/company/axiom-foundation',
+      'https://www.linkedin.com/company/axiomfoundation',
     )
+    expect(
+      screen.getByRole('link', { name: '@AxiomFdn' }),
+    ).toHaveAttribute('href', 'https://x.com/AxiomFdn')
+    expect(
+      screen.getByRole('link', { name: '@axiom.org' }),
+    ).toHaveAttribute('href', 'https://bsky.app/profile/axiom.org')
     expect(
       screen.getByRole('link', { name: /get updates/i }),
     ).toHaveAttribute('href', expect.stringContaining('list-manage.com'))

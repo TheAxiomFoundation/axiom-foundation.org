@@ -1,4 +1,4 @@
-import { GitHubIcon, LinkedInIcon } from "./icons";
+import { BlueskyIcon, GitHubIcon, LinkedInIcon, XIcon } from "./icons";
 import { resolveHref, type RenderLinkComponent } from "./link-utils";
 
 export interface FooterProps {
@@ -27,9 +27,19 @@ const SOCIALS = [
     Icon: GitHubIcon,
   },
   {
-    href: "https://www.linkedin.com/company/axiom-foundation",
+    href: "https://www.linkedin.com/company/axiomfoundation",
     label: "LinkedIn",
     Icon: LinkedInIcon,
+  },
+  {
+    href: "https://x.com/AxiomFdn",
+    label: "X",
+    Icon: XIcon,
+  },
+  {
+    href: "https://bsky.app/profile/axiom.org",
+    label: "Bluesky",
+    Icon: BlueskyIcon,
   },
 ];
 

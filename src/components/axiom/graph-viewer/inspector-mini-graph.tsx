@@ -76,10 +76,22 @@ export function InspectorMiniGraph({
       setWires(paths);
     };
     measure();
-    const observer = new ResizeObserver(measure);
+    // Coalesce observer bursts to one measure per frame: measure()'s
+    // setState resizes the observed elements, which re-fires the
+    // observer — unthrottled, that loop outruns the paint deadline and
+    // the browser reports "ResizeObserver loop completed with
+    // undelivered notifications" on every inspector open.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
     observer.observe(root);
     observer.observe(centerEl);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [deps, consumers, center.label, center.value]);
 
   const card = (node: MiniGraphNode, side: "dep" | "use") => (

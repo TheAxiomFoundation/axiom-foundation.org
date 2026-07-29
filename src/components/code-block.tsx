@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/prism-manual";
 import Prism from "prismjs";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-markup";
@@ -75,6 +76,18 @@ export default function CodeBlock({
   );
 }
 
+
+/** Prism's YAML `key` pattern requires whitespace after the colon, so a
+ *  key at end-of-line ("data_relation:") only tokenizes when its
+ *  newline is present. Highlight each line WITH its newline and strip
+ *  it after — per-line output then matches a whole-block pass. */
+function highlightYamlLine(line: string): string {
+  return Prism.highlight(line + "\n", Prism.languages.yaml, "yaml").replace(
+    /\n$/,
+    ""
+  );
+}
+
 function highlightYamlWithFormulaScalars(code: string): string {
   let formulaBlock: { keyIndent: number; bodyIndent: number | null } | null =
     null;
@@ -104,7 +117,7 @@ function highlightYamlWithFormulaScalars(code: string): string {
 
     const match = line.match(/^(\s*(?:-\s*)?formula\s*:\s*)(.+)$/);
     if (!match) {
-      highlighted.push(Prism.highlight(line, Prism.languages.yaml, "yaml"));
+      highlighted.push(highlightYamlLine(line));
       continue;
     }
 
@@ -112,7 +125,7 @@ function highlightYamlWithFormulaScalars(code: string): string {
     const trimmed = formula.trimStart();
     if (/^[>|][+-]?\d*\s*(?:#.*)?$/.test(trimmed)) {
       formulaBlock = { keyIndent: formulaKeyIndent(prefix), bodyIndent: null };
-      highlighted.push(Prism.highlight(line, Prism.languages.yaml, "yaml"));
+      highlighted.push(highlightYamlLine(line));
       continue;
     }
 

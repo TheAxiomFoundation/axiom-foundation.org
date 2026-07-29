@@ -190,6 +190,50 @@ rules: []
     expect(doc.module.source_verification).toEqual({ values: { foo: 1 } });
   });
 
+  it("types deferred output declarations and preserves their raw evidence", () => {
+    const doc = parseRuleSpec(`module:
+  deferred_outputs:
+    - output: us:statutes/26/32#eitc
+      reason: Filing-status inputs are not encoded.
+      source_values:
+        - us:statutes/26/32#phase_in_rate
+rules: []
+`);
+
+    expect(doc.parseErrors).toEqual([]);
+    expect(doc.module.deferred_outputs).toEqual([
+      {
+        output: "us:statutes/26/32#eitc",
+        reason: "Filing-status inputs are not encoded.",
+        source_values: ["us:statutes/26/32#phase_in_rate"],
+        raw: {
+          output: "us:statutes/26/32#eitc",
+          reason: "Filing-status inputs are not encoded.",
+          source_values: ["us:statutes/26/32#phase_in_rate"],
+        },
+      },
+    ]);
+  });
+
+  it("reports malformed deferred output declarations", () => {
+    const wrongList = parseRuleSpec(`module:
+  deferred_outputs: not-a-list
+rules: []
+`);
+    expect(wrongList.parseErrors).toContain(
+      "`module.deferred_outputs` is not a list"
+    );
+
+    const wrongEntry = parseRuleSpec(`module:
+  deferred_outputs:
+    - not-a-mapping
+rules: []
+`);
+    expect(wrongEntry.parseErrors).toContain(
+      "deferred output entry is not a mapping"
+    );
+  });
+
   it("coerces numeric scalars to strings in version fields", () => {
     const doc = parseRuleSpec(
       "rules:\n  - name: r\n    versions:\n      - effective_from: 2020\n        formula: 3\n"

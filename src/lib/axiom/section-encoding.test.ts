@@ -37,6 +37,28 @@ function ruleYaml(name: string, source: string): string {
   ].join("\n");
 }
 
+function ruleYamlWithDeferredOutput(
+  name: string,
+  source: string,
+  output: string,
+  reason: string
+): string {
+  return [
+    "format: rulespec/v1",
+    "module:",
+    "  deferred_outputs:",
+    `    - output: ${output}`,
+    `      reason: ${reason}`,
+    "rules:",
+    `  - name: ${name}`,
+    "    kind: derived",
+    `    source: ${source}`,
+    "    versions:",
+    "      - effective_from: '2026-01-01'",
+    "        formula: 'x'",
+  ].join("\n");
+}
+
 function encodingRow(filePath: string, content: string) {
   return {
     encoding_run_id: "run-1",
@@ -239,6 +261,36 @@ describe("getSectionEncoding", () => {
     expect(getRuleEncodingMock).not.toHaveBeenCalled();
     expect(findEncodedDescendantsMock).not.toHaveBeenCalled();
     expect(fetchEncodedFileMock).not.toHaveBeenCalled();
+  });
+
+  it("preserves deferred-output declarations while merging module files", async () => {
+    mirrorRows([
+      {
+        citation_path: SECTION,
+        file_path: "statutes/26/32.yaml",
+        raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+      },
+      {
+        citation_path: `${SECTION}/c/2`,
+        file_path: "statutes/26/32/c/2.yaml",
+        raw_yaml: ruleYamlWithDeferredOutput(
+          "earned_income",
+          "26 USC 32(c)(2)",
+          "us:statutes/26/32#eitc_amount",
+          "The filing-status classification is not encoded."
+        ),
+      },
+    ]);
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+
+    expect(doc.module.deferred_outputs).toMatchObject([
+      {
+        output: "us:statutes/26/32#eitc_amount",
+        reason: "The filing-status classification is not encoded.",
+      },
+    ]);
   });
 
   it("serves a lone mirror file directly with its real path", async () => {

@@ -43,6 +43,11 @@ the actual encoding and graph-node integrations.
   criteria, and an explicit statement that the schema does not publish
   per-node failed checks.
 - Passed the reader and status-component suites together: 2 files, 10 tests.
+- Typed RuleSpec `module.deferred_outputs` declarations, including their output,
+  reason, source values, and raw evidence.
+- Preserved deferred-output declarations when section rendering merges several
+  source modules, instead of silently dropping the incompleteness record.
+- Passed the RuleSpec parser and section-encoding suites: 2 files, 39 tests.
 
 ## Next
 

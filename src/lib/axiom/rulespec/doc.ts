@@ -58,6 +58,14 @@ export interface RuleSpecRule {
 export interface RuleSpecModule {
   summary: string | null;
   source_verification?: Record<string, unknown> | null;
+  deferred_outputs: RuleSpecDeferredOutput[];
+}
+
+export interface RuleSpecDeferredOutput {
+  output: string | null;
+  reason: string | null;
+  source_values: string[];
+  raw: Record<string, unknown>;
 }
 
 export interface RuleSpecDoc {
@@ -81,7 +89,10 @@ export interface RuleSpecTestCase {
   raw: Record<string, unknown>;
 }
 
-const DEFAULT_MODULE: RuleSpecModule = { summary: null };
+const DEFAULT_MODULE: RuleSpecModule = {
+  summary: null,
+  deferred_outputs: [],
+};
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   if (v && typeof v === "object" && !Array.isArray(v)) {
@@ -103,6 +114,28 @@ function asNumber(v: unknown): number | null {
     if (Number.isFinite(n)) return n;
   }
   return null;
+}
+
+function parseDeferredOutput(
+  value: unknown,
+  errors: string[]
+): RuleSpecDeferredOutput | null {
+  const rec = asRecord(value);
+  if (!rec) {
+    errors.push("deferred output entry is not a mapping");
+    return null;
+  }
+  const sourceValues = Array.isArray(rec.source_values)
+    ? rec.source_values
+        .map(asString)
+        .filter((item): item is string => item !== null)
+    : [];
+  return {
+    output: asString(rec.output),
+    reason: asString(rec.reason),
+    source_values: sourceValues,
+    raw: rec,
+  };
 }
 
 function parseVersion(v: unknown, errors: string[]): RuleSpecVersion {
@@ -250,11 +283,20 @@ export function parseRuleSpec(content: string): RuleSpecDoc {
   }
   const format = asString(root.format);
   const moduleRec = asRecord(root.module);
+  const deferredOutputsRaw = Array.isArray(moduleRec?.deferred_outputs)
+    ? moduleRec.deferred_outputs
+    : [];
+  if (moduleRec?.deferred_outputs && !Array.isArray(moduleRec.deferred_outputs)) {
+    errors.push("`module.deferred_outputs` is not a list");
+  }
   const moduleParsed: RuleSpecModule = moduleRec
     ? {
         summary: asString(moduleRec.summary),
         source_verification:
           asRecord(moduleRec.source_verification) ?? null,
+        deferred_outputs: deferredOutputsRaw
+          .map((entry) => parseDeferredOutput(entry, errors))
+          .filter((entry): entry is RuleSpecDeferredOutput => entry !== null),
       }
     : { ...DEFAULT_MODULE };
   const rulesRaw = Array.isArray(root.rules) ? root.rules : [];

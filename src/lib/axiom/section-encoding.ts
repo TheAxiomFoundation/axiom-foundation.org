@@ -114,12 +114,18 @@ function baseEncoding(
 
 function mergedContent(
   citationPath: string,
-  ruleRaws: Record<string, unknown>[]
+  ruleRaws: Record<string, unknown>[],
+  deferredOutputRaws: Record<string, unknown>[]
 ): string {
   return yaml.dump(
     {
       format: "rulespec/v1",
-      module: { name: citationPath.split("/").join(".") },
+      module: {
+        name: citationPath.split("/").join("."),
+        ...(deferredOutputRaws.length > 0
+          ? { deferred_outputs: deferredOutputRaws }
+          : {}),
+      },
       rules: ruleRaws,
     },
     { indent: 2, lineWidth: 100, noRefs: true, sortKeys: false }
@@ -141,8 +147,22 @@ function assembleSection(
   const ruleRaws: Record<string, unknown>[] = [];
   const fileAnchors: Record<string, string[]> = {};
   const ruleFiles: Record<string, string> = {};
+  const deferredOutputRaws: Record<string, unknown>[] = [];
+  const seenDeferredOutputs = new Set<string>();
+
+  const collectDeferredOutputs = (
+    doc: ReturnType<typeof parseRuleSpec> | null
+  ) => {
+    for (const declaration of doc?.module.deferred_outputs ?? []) {
+      const key = `${declaration.output ?? ""}\u0000${declaration.reason ?? ""}`;
+      if (seenDeferredOutputs.has(key)) continue;
+      seenDeferredOutputs.add(key);
+      deferredOutputRaws.push(declaration.raw);
+    }
+  };
 
   const sectionDoc = sectionFile ? parseRuleSpec(sectionFile.content) : null;
+  collectDeferredOutputs(sectionDoc);
   for (const rule of sectionDoc?.rules ?? []) {
     ruleFiles[rule.name] ??= sectionFile!.filePath;
     if (seenNames.has(rule.name)) continue;
@@ -154,6 +174,7 @@ function assembleSection(
   let descendantRuleCount = 0;
   for (const file of descendants) {
     const doc = parseRuleSpec(file.content);
+    collectDeferredOutputs(doc);
     const anchor = file.citationPath.slice(prefix.length).split("/")[0] || null;
     for (const rule of doc.rules) {
       ruleFiles[rule.name] ??= file.filePath;
@@ -170,7 +191,10 @@ function assembleSection(
 
   // Single-file sections need no synthetic doc — serve the file
   // directly so file_path (GitHub link, sibling tests) stays real.
-  if (sectionFile && descendantRuleCount === 0) {
+  const sectionDeferredCount = sectionDoc?.module.deferred_outputs.length ?? 0;
+  const hasDescendantDeclarations =
+    deferredOutputRaws.length > sectionDeferredCount;
+  if (sectionFile && descendantRuleCount === 0 && !hasDescendantDeclarations) {
     return {
       encodingRootPath: citationPath,
       encoding: {
@@ -212,7 +236,11 @@ function assembleSection(
       citation: citationPath,
       session_id: primaryMeta?.session_id ?? null,
       file_path: bucketDir,
-      rulespec_content: mergedContent(citationPath, ruleRaws),
+      rulespec_content: mergedContent(
+        citationPath,
+        ruleRaws,
+        deferredOutputRaws
+      ),
     },
     fileAnchors,
     ruleFiles,

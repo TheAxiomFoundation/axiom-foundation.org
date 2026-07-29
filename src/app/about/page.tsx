@@ -202,6 +202,14 @@ export default function AboutPage() {
             </a>
             . Our code, our data, and our encoding decisions are public.
           </p>
+          <a
+            href="https://github.com/TheAxiomFoundation"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-2 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors no-underline"
+          >
+            Browse the code on GitHub &rarr;
+          </a>
         </ProseBand>
 
         <ProseBand label="Founding team">

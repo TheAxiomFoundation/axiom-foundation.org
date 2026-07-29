@@ -263,7 +263,7 @@ python -m pytest -q python/tests`,
       "agent logs",
       "source document browser",
     ],
-    repos: ["axiom", "axiom-foundation.org"],
+    repos: ["axiom", "axiom.org"],
     outputs: ["public rule pages", "encoding views", "document browser"],
     snippetLabel: "live surface",
     snippetLanguage: "plain",
@@ -336,7 +336,7 @@ const repoLanes: RepoLane[] = [
     title: "Presentation and inspection",
     summary:
       "Axiom and the site expose source, encodings, provenance, and logs to users.",
-    repos: ["axiom", "axiom-foundation.org"],
+    repos: ["axiom", "axiom.org"],
   },
 ];
 

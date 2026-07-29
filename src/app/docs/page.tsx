@@ -26,7 +26,7 @@ const repoMap = [
     owns: "Jurisdiction RuleSpec corpora: checked-in .yaml rules and companion .test.yaml cases.",
   },
   {
-    repo: "axiom-foundation.org",
+    repo: "axiom.org",
     owns: "Public site, Axiom app shell, docs index, and cross-system presentation.",
   },
 ];

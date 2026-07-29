@@ -1,0 +1,65 @@
+# Certified nodes — the single source of truth for what the app shows as certified.
+#
+# RULING (Max, 2026-07-27 late): there is NO human review gate on certification.
+# Axiom's gates are deterministic checks, oracles, and adversarial verification
+# — never a person's signature. This file is therefore GENERATED OUTPUT ONLY:
+# when the certification harness computes all five criteria green for a node,
+# the node appears here automatically ("autogo"), and nothing else can add one.
+# The earlier attested_by/human-check pathway in this file's first draft is
+# deleted, not deferred: a hand-added entry is invalid by definition, whoever
+# adds it and however good the evidence looks.
+#
+# Autogo is live only when the harness is bulletproof. The named holes on that
+# critical path, tracked where listed:
+#   1. computed(executable): a sign-only CI producer that runs the PUBLISHED
+#      artifact on the RELEASED engine by the stranger path and emits the
+#      receipt deterministically (notary pattern — no model calls, no creds).
+#   2. computed(closed): closure harness lands (axiom-oracles#400) and runs
+#      per-node over declared roots.
+#   3. computed(exercised): census + evidence stack unparked — the two open
+#      category-(a) residues on #378/#379 must close first; they are exactly
+#      the kind of hole autogo cannot carry.
+#   4. provision_rooted as a computed field: engine#115 node-provenance
+#      annotations merged and artifacts rebuilt to carry them.
+#   5. Verifier governance (the self-certification question): the harness that
+#      grants certification must be separately governed from the lanes that
+#      produce candidates — protocol frozen before any candidate sha is known.
+#      Decision open with Max.
+#   6. Mutant discipline: every gate ships with the input it rejects, and the
+#      gate set survives adversarial review.
+#
+# Until autogo is live this file stays EMPTY — including for nodes whose
+# evidence packages look complete. Five nodes currently sit at 4-of-5 with
+# agent-assembled evidence (rulespec-us #1149 #1161 #1162 #1163 #1165); they
+# certify themselves the moment the harness goes green, and not before.
+# The five criteria are unchanged: provision_rooted, conformant, exercised,
+# closed, executable — all computed, zero defects.
+
+schema: axiom.certified_nodes.v1
+generated: true  # generated-only; manual entries are invalid by definition
+as_of: 2026-07-27
+
+nodes: []
+
+# Entry shape — written only by the harness. No mode field exists: every
+# criterion is computed, or the entry does not exist.
+#
+# - node: us:statutes/26/3101/b/1#medicare_wage_tax
+#   label: Employee Medicare payroll tax
+#   provision: 26 USC 3101(b)(1)
+#   corpus_citation_path: us/statute/26/3101
+#   certified_at: <UTC timestamp of the harness run>
+#   harness:
+#     run: <CI run id + workflow sha — the producer that computed this entry>
+#     certify_check: <sha of the certify --check pass>
+#   pinned:
+#     rulespec_us: <sha>
+#     corpus: <sha>
+#     engine: <released version>
+#     artifact: <content hash>
+#   criteria:   # every value computed; evidence = machine-checkable pointers
+#     provision_rooted: {holds: true, evidence: <artifact node-provenance field>}
+#     conformant:       {holds: true, evidence: <committed report + dispositions>}
+#     exercised:        {holds: true, evidence: <census rows>}
+#     closed:           {holds: true, evidence: <closure summary rows>}
+#     executable:       {holds: true, evidence: <stranger receipt from the CI producer>}

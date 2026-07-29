@@ -30,11 +30,12 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/PostHog and Google Analytics \(usage analytics\)/)).toBeInTheDocument()
   })
 
-  it('renders open source section without link-outs (Round 1)', () => {
+  it('renders open source section with GitHub link', () => {
     render(<PrivacyPage />)
     expect(screen.getByRole('heading', { name: /open source/i })).toBeInTheDocument()
     expect(screen.getByText(/all our code is open source/i)).toBeInTheDocument()
-    expect(screen.queryByText('github.com/TheAxiomFoundation')).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: 'github.com/TheAxiomFoundation' })
+    expect(link).toHaveAttribute('href', 'https://github.com/TheAxiomFoundation')
   })
 
   it('renders contact section with email', () => {

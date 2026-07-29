@@ -60,9 +60,16 @@ export default function PrivacyPage() {
             <h2 className="heading-sub mb-4">
               Open source
             </h2>
-            {/* Round 1 pull-back — GitHub link-out returns at the Jul 28 launch. */}
             <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed">
-              All our code is open source. Our code &mdash; the engines,
+              All our code is open source at{" "}
+              <a
+                href="https://github.com/TheAxiomFoundation"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                github.com/TheAxiomFoundation
+              </a>
+              . Our code &mdash; the engines,
               tooling, and this site &mdash; is released under the Apache
               License 2.0, and the published RuleSpec encodings are licensed
               under Creative Commons Attribution 4.0 (CC BY 4.0). Both permit

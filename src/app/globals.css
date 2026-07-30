@@ -773,6 +773,100 @@ canvas[aria-hidden] {
   font-size: 0.88em;
 }
 
+/* ── Ghost card system (kg-*) ─────────────────────────────────────
+   Post HTML arrives with Ghost's editor markup but none of Ghost's
+   theme CSS. Embeds carry the oEmbed default size (a 200×113 iframe
+   — the tiny webinar preview), galleries are bare flex-less divs,
+   and buttons/CTAs are unstyled links. Styled here in the site's own
+   voice; scope covers every kg- class the published posts use. */
+.blog-prose .kg-embed-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 2em 0;
+}
+.blog-prose .kg-embed-card iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 4px;
+}
+.blog-prose iframe {
+  max-width: 100%;
+}
+.blog-prose .kg-gallery-card {
+  margin: 2em 0;
+}
+.blog-prose .kg-gallery-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.blog-prose .kg-gallery-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+}
+.blog-prose .kg-gallery-image {
+  min-width: 0;
+  flex: 1 1 0;
+}
+.blog-prose .kg-gallery-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  margin: 0;
+}
+.blog-prose .kg-button-card {
+  display: flex;
+  margin: 2em 0;
+}
+.blog-prose .kg-button-card.kg-align-center {
+  justify-content: center;
+}
+.blog-prose .kg-btn,
+.blog-prose .kg-cta-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55em 1.4em;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-paper, #fff);
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.blog-prose .kg-btn:hover,
+.blog-prose .kg-cta-button:hover {
+  color: var(--color-paper, #fff);
+  opacity: 0.85;
+}
+.blog-prose .kg-cta-card {
+  margin: 2.2em 0;
+  padding: 1.5em 1.6em;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-paper-elevated);
+}
+.blog-prose .kg-cta-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em 1.5em;
+}
+.blog-prose .kg-cta-text p {
+  margin: 0 0 0.35em;
+}
+.blog-prose .kg-cta-text p:last-child {
+  margin-bottom: 0;
+}
+
 /* Embed mode: the Plane's law popup shows the page content with no
    chrome and no cross-navigation — the text and the code, read-only. */
 body:has(.embed-page) .nav-bar,

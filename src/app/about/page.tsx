@@ -71,6 +71,12 @@ export default function AboutPage() {
             </span>{" "}
             that anyone can run, audit, or reform.
           </p>
+          <Link
+            href="/overview"
+            className="mt-7 inline-flex items-center gap-2 rounded-md border border-[var(--color-rule)] px-5 py-2.5 font-mono text-[0.8rem] tracking-[0.12em] text-[var(--color-accent)] no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+          >
+            Read the one-page overview &rarr;
+          </Link>
         </Reveal>
 
         <ProseBand label="Why">

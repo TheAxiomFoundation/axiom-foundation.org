@@ -73,6 +73,14 @@
       "destination": "https://axiom-microsim.vercel.app/gallery/microsim/:path(.*)"
     },
     {
+      "source": "/gallery/guidance",
+      "destination": "https://guidance-impact-visualizer.vercel.app/guidance"
+    },
+    {
+      "source": "/gallery/guidance/:path(.*)",
+      "destination": "https://guidance-impact-visualizer.vercel.app/guidance/:path(.*)"
+    },
+    {
       "source": "/architecture",
       "destination": "https://axiom-architecture-one.vercel.app/architecture"
     },
@@ -222,12 +230,12 @@
     },
     {
       "source": "/guidance",
-      "destination": "https://guidance-impact-visualizer.vercel.app/",
+      "destination": "/gallery/guidance",
       "permanent": false
     },
     {
       "source": "/guidance/:path(.*)",
-      "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
+      "destination": "/gallery/guidance/:path(.*)",
       "permanent": false
     }
   ]

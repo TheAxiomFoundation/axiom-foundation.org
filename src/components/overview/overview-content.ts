@@ -127,40 +127,5 @@ export const AUDIENCES: readonly Audience[] = [
   },
 ] as const;
 
-export interface PreviewApp {
-  name: string;
-  body: string;
-  /** Public URL. Empty string renders the card unlinked. */
-  href: string;
-}
-
-/**
- * Product-tier vocabulary is exact: these are **Preview** surfaces
- * (usable, evolving) — not "demos" in public copy, and never promoted
- * to GA here before they are promoted in fact.
- */
-export const PREVIEW_APPS: readonly PreviewApp[] = [
-  {
-    name: "Get accurate answers",
-    body: "Policy questions answered from the encodings, with the citation attached and “not encoded” where coverage stops.",
-    href: "https://axiom.org/demos?d=chatbot",
-  },
-  {
-    name: "Build a form",
-    body: "Compose a tool from encoded inputs and outputs, inspect its computation graph, and export the definition.",
-    href: "https://axiom.org/demos?d=builder",
-  },
-  {
-    name: "Explore benefits cliffs",
-    body: "Trace how a household's benefits change across an income range, clause by clause, against the encoded rules.",
-    href: "https://axiom.org/demos?d=snap",
-  },
-  {
-    name: "Reconcile primary sources",
-    body: "See where an agency's guidance interprets the statute, tied back to the primary source the encoding is built on.",
-    href: "https://axiom.org/demos?d=guidance",
-  },
-] as const;
-
 export const ORG_STATUS =
   "The Axiom Foundation is a fiscally sponsored project of the PSL Foundation.";

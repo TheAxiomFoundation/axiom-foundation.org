@@ -1,11 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import {
-  AUDIENCES,
-  PREVIEW_APPS,
-  WHAT_WE_ENABLE_INTRO,
-} from "./overview-content";
+import { AUDIENCES, WHAT_WE_ENABLE_INTRO } from "./overview-content";
 
 /**
  * Audience switcher for "What we enable".
@@ -100,40 +96,6 @@ export function WhatWeEnable() {
           </p>
         </div>
       ))}
-
-      <h3 className="font-mono text-[0.65rem] tracking-[0.22em] uppercase text-[var(--color-ink-muted)] mt-12 mb-3">
-        Preview applications
-      </h3>
-      <p className="font-body text-[1rem] text-[var(--color-ink-secondary)] leading-relaxed mb-6">
-        These surfaces run on the encoded layer and show what partners can build
-        on top of it. They are usable and still evolving, and the layer
-        underneath them is the product.
-      </p>
-      {/* Two up rather than the auto-fit grid the other card rows use: four
-          cards in a three-column track leaves a lone orphan on the second. */}
-      <div className="grid gap-6 sm:grid-cols-2">
-        {PREVIEW_APPS.map((app) => (
-          <div key={app.name} className="card-edition p-6 flex flex-col">
-            <h4 className="font-body text-lg text-[var(--color-ink)] mb-2">
-              {app.name}
-            </h4>
-            <p className="font-body text-sm text-[var(--color-ink-secondary)] leading-relaxed grow">
-              {app.body}
-            </p>
-            {/* Cards stay unlinked until a public URL is set, so an
-                unfilled deploy shows a description rather than a dead link. */}
-            {app.href ? (
-              <a
-                href={app.href}
-                className="font-mono text-sm text-[var(--color-accent)] mt-4 self-start"
-              >
-                Open preview
-                <span className="sr-only"> — {app.name}</span>
-              </a>
-            ) : null}
-          </div>
-        ))}
-      </div>
     </section>
   );
 }

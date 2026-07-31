@@ -8,7 +8,6 @@ import {
   AUDIENCES,
   LICENSE_LINKS,
   OVERVIEW_PDF_PATH,
-  PREVIEW_APPS,
   SUBSCRIBE_URL,
   WHAT_WE_DO,
 } from '@/components/overview/overview-content'
@@ -141,30 +140,5 @@ describe('Overview page', () => {
     expect(SUBSCRIBE_URL).toContain('list-manage.com/subscribe')
     // Opens off-site, so it needs the tab-nabbing guard.
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
-  })
-
-  it('links every preview card to its own demo, disambiguated for screen readers', () => {
-    const { container } = render(<WhatWeEnable />)
-    for (const app of PREVIEW_APPS) {
-      const link = container.querySelector(`a[href="${app.href}"]`)
-      expect(link).toBeInTheDocument()
-      // Four links reading only "Open preview" are indistinguishable in a
-      // screen reader's link list, so each carries its own visually-hidden name.
-      expect(link).toHaveTextContent(app.name)
-    }
-    // Every card carries a real URL — a card that looks clickable but
-    // resolves nowhere is worse than a plain description.
-    expect(PREVIEW_APPS.every((app) => app.href.startsWith('https://'))).toBe(true)
-  })
-
-  it('names the previews with the action phrases the axiom.org nav uses', () => {
-    // These are the live nav labels, not our own paraphrases — a visitor
-    // arriving from /demos should see the same words on both surfaces.
-    expect(PREVIEW_APPS.map((app) => app.name)).toEqual([
-      'Get accurate answers',
-      'Build a form',
-      'Explore benefits cliffs',
-      'Reconcile primary sources',
-    ])
   })
 })

@@ -55,10 +55,13 @@ browser ([src/components/axiom/graph-viewer/launcher-mode.ts](../src/components/
 
 ## The compose viewer, and the journey
 
-Clicking a dot or a door zooms the camera into its territory and mounts the
-compose viewer in place over the field, with the URL pushed to the real
-compose deep link so reload and the back button stay honest; back unmounts
-the viewer and the camera pulls back out. Inside the viewer, the inspector
+On the /axiom landing, clicking a dot or a door zooms the camera into its
+territory and mounts the compose viewer in place over the field, with the
+URL pushed to the real compose deep link so reload and the back button stay
+honest; back unmounts the viewer and the camera pulls back out. Embedded as
+the viewer's launcher, the field instead reports the pick to its host
+(`onPick`) — the host is already the viewer, so there is no overlay and no
+history push. Inside the viewer, the inspector
 panel shows the selected rule with its immediate neighborhood
 ([src/components/axiom/graph-viewer/inspector-mini-graph.tsx](../src/components/axiom/graph-viewer/inspector-mini-graph.tsx));
 Escape closes the topmost surface. Reduced-motion preferences skip the

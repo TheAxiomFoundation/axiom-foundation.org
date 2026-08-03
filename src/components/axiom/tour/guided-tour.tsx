@@ -20,6 +20,11 @@ export type TourStep = {
    *  scrollbox so the anchor is in view and driver never scrolls the
    *  document (which would drag the footer into a full-viewport app). */
   prepare?: () => void;
+  /** Optional call-to-action rendered as a block button under the
+   *  description. Clicking it completes the tour, then runs the
+   *  handler — e.g. "Open the EITC" at the end of the launcher tour,
+   *  which hands off to the subgraph tour. */
+  action?: { label: string; onClick: () => void };
 };
 
 /** How long to wait for the first anchored element — the Plane's DOM
@@ -75,14 +80,28 @@ export function GuidedTour({
           popover: { title: step.title, description: step.description },
         })),
         // The × is easy to miss — every popover gets an explicit
-        // Skip, left of Back/Next.
-        onPopoverRender: (popover) => {
+        // Skip, left of Back/Next. Steps with an action also get
+        // their CTA as a block button under the description.
+        onPopoverRender: (popover, opts) => {
           const skip = document.createElement("button");
           skip.type = "button";
           skip.className = "axiom-tour-skip";
           skip.textContent = "Skip";
           skip.onclick = () => tour.destroy();
           popover.footerButtons.prepend(skip);
+          const action = present[opts.state.activeIndex ?? -1]?.action;
+          if (action) {
+            const cta = document.createElement("button");
+            cta.type = "button";
+            cta.className = "axiom-tour-action";
+            cta.textContent = action.label;
+            cta.onclick = () => {
+              completed = true;
+              tour.destroy();
+              action.onClick();
+            };
+            popover.description.insertAdjacentElement("afterend", cta);
+          }
         },
         onDestroyStarted: () => {
           completed = !!tour.isLastStep();

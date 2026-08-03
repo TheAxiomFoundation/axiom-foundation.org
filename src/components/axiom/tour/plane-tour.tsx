@@ -2,27 +2,40 @@
 
 import { GuidedTour, type TourStep } from "./guided-tour";
 
+/** The subtree the launcher tour's closing CTA opens — the EITC
+ *  (26 USC § 32), the corpus's most recognizable program. Opening it
+ *  hands the visitor straight to the subgraph tour. */
+export const TOUR_EXAMPLE_TARGET = "us:statutes/26/32";
+
 /** Three beats, launcher-screen only: what this place is, how to find
  *  a provision, what opening one gets you. Deep links skip the
  *  launcher, so the tour simply waits for a visit that shows it. */
-const PLANE_TOUR_STEPS: TourStep[] = [
-  {
-    title: "Welcome to the Plane",
-    description:
-      "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it. Open one to explore its rule graph — which rules feed which — and run it.",
-  },
-  {
-    element: '[data-testid="launcher-controls"]',
-    title: "Find a provision",
-    description:
-      "Search every encoded provision here, or switch views: the Field is the open map of everything encoded, the List is a searchable index by jurisdiction.",
-  },
-  {
-    title: "Open a law, then run it",
-    description:
-      "Inside a graph, click any node to inspect it and read the statute behind it. Set inputs on the left and “Run it all” computes a result traced back to the law.",
-  },
-];
+function launcherSteps(onOpenExample?: () => void): TourStep[] {
+  return [
+    {
+      title: "Welcome to the Plane",
+      description:
+        "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it. Open one to explore its rule graph — which rules feed which — and run it.",
+    },
+    {
+      element: '[data-testid="launcher-controls"]',
+      title: "Find a provision",
+      description:
+        "Search every encoded provision here, or switch views: the Field is the open map of everything encoded, the List is a searchable index by jurisdiction.",
+    },
+    {
+      title: "Open a law, then run it",
+      description:
+        "Inside a graph, click any node to inspect it and read the statute behind it. Set inputs on the left and “Run it all” computes a result traced back to the law.",
+      action: onOpenExample
+        ? {
+            label: "Open an example — the EITC →",
+            onClick: onOpenExample,
+          }
+        : undefined,
+    },
+  ];
+}
 
 /** Once per session, the first time a subgraph opens: the canvas is
  *  the navigation, the inspector walks it, the run toggle executes
@@ -73,10 +86,19 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
  * (once per session). One mount, so the replay "?" always replays
  * the tour for the view you're in.
  */
-export function PlaneTour({ stage }: { stage: "launcher" | "subgraph" }) {
+export function PlaneTour({
+  stage,
+  onOpenExample,
+}: {
+  stage: "launcher" | "subgraph";
+  /** Opens the example subtree (TOUR_EXAMPLE_TARGET) in compose
+   *  mode — the launcher tour's closing CTA. Omit if the example
+   *  isn't in the corpus. */
+  onOpenExample?: () => void;
+}) {
   return stage === "subgraph" ? (
     <GuidedTour surface="subgraph" steps={SUBGRAPH_TOUR_STEPS} />
   ) : (
-    <GuidedTour surface="graph" steps={PLANE_TOUR_STEPS} />
+    <GuidedTour surface="graph" steps={launcherSteps(onOpenExample)} />
   );
 }

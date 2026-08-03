@@ -49,6 +49,45 @@
   transition: background-color 150ms, color 150ms, border-color 150ms;
 }
 
+/* Step CTA — a full-width accent pill under the description (e.g.
+ * "Open an example — the EITC"). Completing action, not navigation
+ * chrome, so it outranks the footer buttons visually. */
+.axiom-tour button.axiom-tour-action {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.axiom-tour button.axiom-tour-action:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* When a CTA is present it is the primary — the footer's Done
+ * demotes to the ghost treatment so two accent pills don't compete. */
+.axiom-tour:has(.axiom-tour-action) .driver-popover-next-btn {
+  background: transparent;
+  border: 1px solid var(--color-rule);
+  color: var(--color-ink-secondary);
+}
+
+.axiom-tour:has(.axiom-tour-action) .driver-popover-next-btn:hover {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .axiom-tour .driver-popover-footer button.axiom-tour-skip {
   background: transparent;
   border: none;

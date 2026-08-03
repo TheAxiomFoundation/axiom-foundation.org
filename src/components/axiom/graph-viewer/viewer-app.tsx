@@ -16,7 +16,10 @@ import {
   humanizeSource,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
-import { PlaneTour } from "@/components/axiom/tour/plane-tour";
+import {
+  PlaneTour,
+  TOUR_EXAMPLE_TARGET,
+} from "@/components/axiom/tour/plane-tour";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -1955,7 +1958,14 @@ export function GraphViewerApp({
 
   return (
     <div className="graph-viewer-root">
-    <PlaneTour stage={launcher === "closed" ? "subgraph" : "launcher"} />
+    <PlaneTour
+      stage={launcher === "closed" ? "subgraph" : "launcher"}
+      onOpenExample={
+        corpusModules?.some((m) => m.target === TOUR_EXAMPLE_TARGET)
+          ? () => enterComposeMode(TOUR_EXAMPLE_TARGET)
+          : undefined
+      }
+    />
     {/* Desktop-only for now — a phone gets an honest notice instead
         of a broken layout. */}
     <div className="small-screen-notice" role="note">

@@ -28,9 +28,14 @@ export type TourStep = {
   /** Runs when the step is highlighted (not upfront like `prepare`) —
    *  e.g. asking the corpus field to zoom to the example subtree. */
   onEnter?: () => void;
-  /** Extra class for this step's popover (joined with the theme
-   *  class) — e.g. shifting a floating card off what it presents. */
-  popoverClass?: string;
+  /** Runs when Next is clicked on this step, before advancing — the
+   *  place to conjure what the NEXT step anchors to (driver resolves
+   *  the next anchor before any deselect hook would fire). */
+  onLeave?: () => void;
+  /** The anchor element appears mid-tour (a prior step's onLeave
+   *  conjures it): skip the present-at-start checks and let driver
+   *  wait for it at highlight time. */
+  deferred?: boolean;
 };
 
 /** How long to wait for the first anchored element — the Plane's DOM
@@ -71,7 +76,7 @@ export function GuidedTour({
     (replayed: boolean) => {
       if (activeRef.current?.isActive()) return;
       const present = stepsRef.current.filter(
-        (step) => !step.element || stepVisible(step.element)
+        (step) => !step.element || step.deferred || stepVisible(step.element)
       );
       // A tour of only floating popovers means the page lost every
       // anchor — nothing useful to point at.
@@ -95,14 +100,22 @@ export function GuidedTour({
                   step.onEnter?.();
                 }
               : undefined,
+          ...(step.deferred ? { waitForElement: 2000 } : {}),
           popover: {
             title: step.title,
             description: step.description,
-            // Per-popover class REPLACES the config's — carry the
-            // theme class along.
-            popoverClass: step.popoverClass
-              ? `axiom-tour ${step.popoverClass}`
-              : undefined,
+            // Providing onNextClick suspends auto-advance — run the
+            // hook, then advance ourselves. The key must be ABSENT
+            // otherwise: an explicit undefined still overrides
+            // driver's built-in advance and deadens the button.
+            ...(step.onLeave
+              ? {
+                  onNextClick: () => {
+                    step.onLeave?.();
+                    tour.moveNext();
+                  },
+                }
+              : {}),
           },
         })),
         // The × is easy to miss — every popover gets an explicit
@@ -164,6 +177,7 @@ export function GuidedTour({
     if (new URLSearchParams(window.location.search).get("embed") === "1")
       return;
     const anchors = stepsRef.current
+      .filter((step) => !step.deferred)
       .map((step) => step.element)
       .filter((el): el is string => !!el);
     if (anchors.length === 0) return;

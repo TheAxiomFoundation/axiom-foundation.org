@@ -18,7 +18,7 @@ function launcherSteps(
 ): TourStep[] {
   return [
     {
-      title: "Welcome to the Plane",
+      title: "Welcome to the graph",
       description:
         "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it. Open one to explore its rule graph — which rules feed which — and run it.",
     },
@@ -27,17 +27,25 @@ function launcherSteps(
       title: "Find a provision",
       description:
         "Search every encoded provision here, or switch views: the Field is the open map of everything encoded, the List is a searchable index by jurisdiction.",
+      // Leaving this step starts the camera's glide to the example —
+      // its landing anchor must exist before the next step resolves.
+      onLeave: onSpotlightExample
+        ? () => onSpotlightExample(true)
+        : undefined,
     },
     {
+      // Anchored to the field's spotlight mark: the overlay cuts its
+      // hole around the EITC while the rest of the field dims.
+      element: onSpotlightExample
+        ? '[data-testid="field-spotlight"]'
+        : undefined,
+      deferred: true,
       title: "Open a law, then run it",
       description:
         "Inside a graph, click any node to inspect it and read the statute behind it. Set inputs on the left and “Run it all” computes a result traced back to the law.",
       onEnter: onSpotlightExample
         ? () => onSpotlightExample(true)
         : undefined,
-      // The camera centers the spotlighted subtree — sit below it,
-      // not on it.
-      popoverClass: onSpotlightExample ? "axiom-tour-below" : undefined,
       action: onOpenExample
         ? {
             label: "Open an example — the EITC →",

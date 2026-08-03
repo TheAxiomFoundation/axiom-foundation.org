@@ -751,9 +751,15 @@ export function CorpusField({
   // ── Tour spotlight ──
   // Glide 80% of the flight to the spotlighted dot — near enough to
   // single it out, far enough to keep its neighborhood in frame —
-  // then pin its hover ring + label. Clearing glides back to where
-  // the visitor was.
+  // then pin its hover ring + label. An invisible anchor box renders
+  // at the dot's LANDING position so the tour overlay can cut its
+  // spotlight hole there. Clearing glides back to where the visitor
+  // was.
   const spotlightReturnRef = useRef<FieldTransform | null>(null);
+  const [spotlightMark, setSpotlightMark] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   useEffect(() => {
     if (!layout) return;
     if (spotlight) {
@@ -766,9 +772,11 @@ export function CorpusField({
         0.8,
         viewHeightRef.current
       );
+      setSpotlightMark(fieldToView(framing, dot.x, dot.y));
       animateTo(framing, ZOOM_IN_MS, () => setHovered(dot));
       return;
     }
+    setSpotlightMark(null);
     if (spotlightReturnRef.current) {
       setHovered(null);
       animateTo(spotlightReturnRef.current, ZOOM_IN_MS);
@@ -994,6 +1002,23 @@ export function CorpusField({
             </a>
           );
         })}
+
+        {/* Invisible anchor at the spotlighted dot's landing spot —
+            the guided tour's overlay cuts its hole around this box,
+            sized to cover the ring, pinned card, and label. */}
+        {spotlightMark && (
+          <div
+            data-testid="field-spotlight"
+            className="pointer-events-none absolute"
+            style={{
+              left: `${(spotlightMark.x / FIELD_WIDTH) * 100}%`,
+              top: `${(spotlightMark.y / viewHeight) * 100}%`,
+              width: 280,
+              height: 190,
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        )}
 
         {/* Hover tooltip: humanized citation + rule count */}
         {hovered &&

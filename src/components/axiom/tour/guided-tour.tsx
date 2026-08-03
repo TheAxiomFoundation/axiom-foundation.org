@@ -25,6 +25,12 @@ export type TourStep = {
    *  handler — e.g. "Open the EITC" at the end of the launcher tour,
    *  which hands off to the subgraph tour. */
   action?: { label: string; onClick: () => void };
+  /** Runs when the step is highlighted (not upfront like `prepare`) —
+   *  e.g. asking the corpus field to zoom to the example subtree. */
+  onEnter?: () => void;
+  /** Extra class for this step's popover (joined with the theme
+   *  class) — e.g. shifting a floating card off what it presents. */
+  popoverClass?: string;
 };
 
 /** How long to wait for the first anchored element — the Plane's DOM
@@ -47,13 +53,19 @@ function stepVisible(selector: string): boolean {
 export function GuidedTour({
   surface,
   steps,
+  onEnd,
 }: {
   surface: TourSurface;
   steps: TourStep[];
+  /** Runs when the tour tears down, however it ends — undoes anything
+   *  a step's onEnter set in motion (e.g. the field spotlight). */
+  onEnd?: () => void;
 }) {
   const activeRef = useRef<ReturnType<typeof driver> | null>(null);
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
 
   const start = useCallback(
     (replayed: boolean) => {
@@ -76,8 +88,22 @@ export function GuidedTour({
           .matches,
         steps: present.map((step) => ({
           element: step.element,
-          onHighlightStarted: step.prepare,
-          popover: { title: step.title, description: step.description },
+          onHighlightStarted:
+            step.prepare || step.onEnter
+              ? () => {
+                  step.prepare?.();
+                  step.onEnter?.();
+                }
+              : undefined,
+          popover: {
+            title: step.title,
+            description: step.description,
+            // Per-popover class REPLACES the config's — carry the
+            // theme class along.
+            popoverClass: step.popoverClass
+              ? `axiom-tour ${step.popoverClass}`
+              : undefined,
+          },
         })),
         // The × is easy to miss — every popover gets an explicit
         // Skip, left of Back/Next. Steps with an action also get
@@ -110,6 +136,7 @@ export function GuidedTour({
         onDestroyed: () => {
           activeRef.current = null;
           markTourSeen(surface);
+          onEndRef.current?.();
           trackAxiomEvent("axiom_tour", {
             surface,
             action: completed ? "completed" : "dismissed",

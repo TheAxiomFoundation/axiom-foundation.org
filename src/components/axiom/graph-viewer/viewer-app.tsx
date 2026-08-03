@@ -74,6 +74,11 @@ export function GraphViewerApp({
   const [corpusModules, setCorpusModules] = useState<CorpusModule[] | null>(
     null,
   );
+  // The launcher tour's closing step presents one real subtree: the
+  // field camera glides to it (spotlight), the CTA opens it.
+  const [tourSpotlight, setTourSpotlight] = useState<string | null>(null);
+  const tourExampleReady =
+    corpusModules?.some((m) => m.target === TOUR_EXAMPLE_TARGET) ?? false;
   // Field ⇄ List: the launcher opens on the open-world field by
   // default; the list picker is the alternate mode. Persisted.
   const [launcherMode, setLauncherMode] = useState<LauncherMode>(() =>
@@ -1961,8 +1966,11 @@ export function GraphViewerApp({
     <PlaneTour
       stage={launcher === "closed" ? "subgraph" : "launcher"}
       onOpenExample={
-        corpusModules?.some((m) => m.target === TOUR_EXAMPLE_TARGET)
-          ? () => enterComposeMode(TOUR_EXAMPLE_TARGET)
+        tourExampleReady ? () => enterComposeMode(TOUR_EXAMPLE_TARGET) : undefined
+      }
+      onSpotlightExample={
+        tourExampleReady
+          ? (on) => setTourSpotlight(on ? TOUR_EXAMPLE_TARGET : null)
           : undefined
       }
     />
@@ -1990,7 +1998,11 @@ export function GraphViewerApp({
                  landing mounts, full-bleed — pan, zoom, motifs,
                  doors; picking calls straight into compose mode. */
               <div className="launcher-field-stage" data-testid="launcher-field">
-                <CorpusField onPick={enterComposeMode} frame={false} />
+                <CorpusField
+                  onPick={enterComposeMode}
+                  frame={false}
+                  spotlight={tourSpotlight}
+                />
               </div>
             ) : (
               <div className="plane-launcher-inner has-picker launcher-list">

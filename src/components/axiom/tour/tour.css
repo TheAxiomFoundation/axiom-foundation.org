@@ -49,6 +49,12 @@
   transition: background-color 150ms, color 150ms, border-color 150ms;
 }
 
+/* Floating step that presents something at screen center (the field
+ * spotlight): slide the card below the center so the subject shows. */
+.driver-popover.axiom-tour.axiom-tour-below {
+  transform: translateY(180px);
+}
+
 /* Step CTA — a full-width accent pill under the description (e.g.
  * "Open an example — the EITC"). Completing action, not navigation
  * chrome, so it outranks the footer buttons visually. */

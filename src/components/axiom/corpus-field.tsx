@@ -111,6 +111,7 @@ function composeTargetFromLocation(): string | null {
 export function CorpusField({
   onPick,
   frame = true,
+  spotlight = null,
 }: {
   /** Embedded mode (the viewer's launcher): picking a subtree calls
    *  this instead of pushState + mounting the compose viewer overlay
@@ -120,6 +121,10 @@ export function CorpusField({
   /** frame=false: full-bleed — no border/panel chrome and no fixed
    *  aspect; the host sizes the box and the camera cover-fits it. */
   frame?: boolean;
+  /** A module target the guided tour wants presented: the camera
+   *  glides most of the way to its cluster and its hover ring + label
+   *  pin, without opening it. Clearing glides back. */
+  spotlight?: string | null;
 } = {}) {
   const embedded = Boolean(onPick);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -742,6 +747,34 @@ export function CorpusField({
     },
     [layout, openTarget, animateTo, openCompose, onPick]
   );
+
+  // ── Tour spotlight ──
+  // Glide 80% of the flight to the spotlighted dot — near enough to
+  // single it out, far enough to keep its neighborhood in frame —
+  // then pin its hover ring + label. Clearing glides back to where
+  // the visitor was.
+  const spotlightReturnRef = useRef<FieldTransform | null>(null);
+  useEffect(() => {
+    if (!layout) return;
+    if (spotlight) {
+      const dot = layout.dots.find((item) => item.target === spotlight);
+      if (!dot) return;
+      spotlightReturnRef.current ??= transformRef.current;
+      const framing = interpolateTransform(
+        transformRef.current,
+        zoomTransformForDot(layout, dot, viewHeightRef.current),
+        0.8,
+        viewHeightRef.current
+      );
+      animateTo(framing, ZOOM_IN_MS, () => setHovered(dot));
+      return;
+    }
+    if (spotlightReturnRef.current) {
+      setHovered(null);
+      animateTo(spotlightReturnRef.current, ZOOM_IN_MS);
+      spotlightReturnRef.current = null;
+    }
+  }, [spotlight, layout, animateTo]);
 
   const onClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {

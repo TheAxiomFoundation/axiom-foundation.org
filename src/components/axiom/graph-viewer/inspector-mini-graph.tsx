@@ -130,7 +130,7 @@ export function InspectorMiniGraph({
         ))}
       </svg>
       <div className="mini-graph-col mini-graph-deps">
-        <p className="mini-graph-label">Built from · {deps.length}</p>
+        <p className="mini-graph-label">Built from</p>
         {deps.map((node) => card(node, "dep"))}
         {deps.length === 0 && (
           <span className="mini-graph-empty">nothing — a leaf</span>
@@ -145,7 +145,7 @@ export function InspectorMiniGraph({
         </div>
       </div>
       <div className="mini-graph-col mini-graph-consumers">
-        <p className="mini-graph-label">Used by · {consumers.length}</p>
+        <p className="mini-graph-label">Used by</p>
         {consumers.map((node) => card(node, "use"))}
         {consumers.length === 0 && (
           <span className="mini-graph-empty">nothing — a final result</span>

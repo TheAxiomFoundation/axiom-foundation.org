@@ -37,7 +37,7 @@ function Breadcrumbs({ data }: { data: BrowsePageData }) {
             {index > 0 && <span aria-hidden>/</span>}
             <Link
               href={item.href}
-              className="hover:text-[var(--color-ink)] transition-colors"
+              className="text-[var(--color-ink-secondary)] underline decoration-[var(--color-rule)] underline-offset-[3px] hover:text-[var(--color-accent)] hover:decoration-current transition-colors"
             >
               {item.label}
             </Link>

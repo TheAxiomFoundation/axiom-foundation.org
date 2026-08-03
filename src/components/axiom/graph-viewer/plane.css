@@ -1954,6 +1954,12 @@
   gap: 6px 12px;
   margin: 10px 0 0;
 }
+/* Inside the Details disclosure the box supplies the frame — the
+   grid just needs breathing room instead of its outer margin. */
+.graph-viewer-root .node-inspector-code .node-inspector-meta {
+  margin: 0;
+  padding: 9px 12px 11px;
+}
 .graph-viewer-root .node-inspector-meta dt {
   font-family: var(--f-mono, monospace);
   font-size: 10px;

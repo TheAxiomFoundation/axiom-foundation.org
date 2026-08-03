@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   InputEditContext,
   InteractiveRuleGraph,
@@ -17,6 +16,7 @@ import {
   humanizeSource,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
+import { PlaneTour } from "@/components/axiom/tour/plane-tour";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -64,7 +64,6 @@ export function GraphViewerApp({
    *  journey instead of navigating. Omitted on standalone routes. */
   onBackToOverview?: () => void;
 } = {}) {
-  const router = useRouter();
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
   // The launcher's corpus: every subtree the mirror serves (live,
   // with the committed snapshot as ballast) — the picker searches
@@ -676,18 +675,14 @@ export function GraphViewerApp({
     launcherRef.current = "open";
   };
 
-  // One control, three surfaces: the landing's in-place overlay pops
-  // its own history entry (the host passed the handler); standalone
-  // /axiom/graph client-navigates to the /axiom landing (the field);
-  // /app reopens its launcher in place.
+  // One control, two behaviors: the landing's in-place overlay pops
+  // its own history entry (the host passed the handler); everywhere
+  // else — /app and standalone /axiom/graph — the overview is the
+  // graph's own field launcher, reopened in place. The /axiom corpus
+  // landing is deliberately not a destination from the graph app.
   const backToOverview = () => {
     if (onBackToOverview) {
       onBackToOverview();
-      return;
-    }
-    if (typeof window === "undefined") return;
-    if (/\/axiom\/graph$/.test(window.location.pathname)) {
-      router.push("/axiom");
       return;
     }
     exitToLauncher();
@@ -1960,6 +1955,7 @@ export function GraphViewerApp({
 
   return (
     <div className="graph-viewer-root">
+    <PlaneTour stage={launcher === "closed" ? "subgraph" : "launcher"} />
     {/* Desktop-only for now — a phone gets an honest notice instead
         of a broken layout. */}
     <div className="small-screen-notice" role="note">
@@ -2445,78 +2441,11 @@ export function GraphViewerApp({
                 </p>
               );
             })()}
+            {/* Answer rows stay in the open for question nodes; the
+                rest of the metadata lives in the Details disclosure
+                further down. */}
+            {("kind" in inspected && inspected.kind === "input") || input ? (
             <dl className="node-inspector-meta">
-              {citation ? (
-                <>
-                  <dt>Source</dt>
-                  <dd>
-                    {(meta?.sourceUrl ?? rule?.sourceUrl) ? (
-                      <a
-                        href={(meta?.sourceUrl ?? rule?.sourceUrl) as string}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {citation} ↗
-                      </a>
-                    ) : (
-                      citation
-                    )}
-                  </dd>
-                </>
-              ) : null}
-              {rule?.certificationStatus ? (
-                <>
-                  {/* The four-status launch taxonomy: certification is a
-                      status, not a gate — the queue is public on every
-                      node. */}
-                  <dt>Status</dt>
-                  <dd>
-                    {rule.certificationStatus === "certified"
-                      ? "Certified"
-                      : rule.certificationStatus === "validated"
-                        ? "Validated, not certified"
-                        : rule.certificationStatus === "pending"
-                          ? "Pending — not yet encoded"
-                          : rule.incompleteByDeclaration
-                            ? "Encoded, incomplete by declaration"
-                            : "Encoded"}
-                  </dd>
-                </>
-              ) : null}
-              {rule?.certificateId ? (
-                <>
-                  {/* The verifier certificate is why this node is
-                      visible at all — show it, truncated, full id on
-                      hover. */}
-                  <dt>Certificate</dt>
-                  <dd
-                    className="node-inspector-mono"
-                    title={rule.certificateId}
-                  >
-                    {rule.certificateId.length > 28
-                      ? `${rule.certificateId.slice(0, 28)}…`
-                      : rule.certificateId}
-                  </dd>
-                </>
-              ) : null}
-              {(rule?.entity ?? input?.entity) ? (
-                <>
-                  <dt>Entity</dt>
-                  <dd>{humanize((rule?.entity ?? input?.entity) as string)}</dd>
-                </>
-              ) : null}
-              {rule?.period ? (
-                <>
-                  <dt>Period</dt>
-                  <dd>{rule.period}</dd>
-                </>
-              ) : null}
-              {rule?.unit ? (
-                <>
-                  <dt>Unit</dt>
-                  <dd>{rule.unit}</dd>
-                </>
-              ) : null}
               {"kind" in inspected && inspected.kind === "input" ? (
                 <>
                   <dt>Answered</dt>
@@ -2562,14 +2491,8 @@ export function GraphViewerApp({
                   </dd>
                 </>
               ) : null}
-              {null}
-              {"hiddenCount" in inspected && inspected.hiddenCount ? (
-                <>
-                  <dt>Contains</dt>
-                  <dd>{inspected.hiddenCount} rules</dd>
-                </>
-              ) : null}
                           </dl>
+            ) : null}
             {/* The local lens: this rule as a one-hop graph — built
                 from on the left, used by on the right, wires converging
                 into the center. Same left-to-right flow as the canvas,
@@ -2675,6 +2598,99 @@ export function GraphViewerApp({
                 );
               })()
             ) : null}
+            {/* Provenance and typing, tucked behind a disclosure —
+                the mini graph and the actions are the working surface;
+                Source/Status/Entity/Period/Unit are reference. */}
+            {citation ||
+            rule?.certificationStatus ||
+            rule?.certificateId ||
+            (rule?.entity ?? input?.entity) ||
+            rule?.period ||
+            rule?.unit ||
+            ("hiddenCount" in inspected && inspected.hiddenCount) ? (
+              <details className="node-inspector-code">
+                <summary>Details</summary>
+                <dl className="node-inspector-meta">
+                  {citation ? (
+                    <>
+                      <dt>Source</dt>
+                      <dd>
+                        {(meta?.sourceUrl ?? rule?.sourceUrl) ? (
+                          <a
+                            href={(meta?.sourceUrl ?? rule?.sourceUrl) as string}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {citation} ↗
+                          </a>
+                        ) : (
+                          citation
+                        )}
+                      </dd>
+                    </>
+                  ) : null}
+                  {rule?.certificationStatus ? (
+                    <>
+                      {/* The four-status launch taxonomy: certification is a
+                          status, not a gate — the queue is public on every
+                          node. */}
+                      <dt>Status</dt>
+                      <dd>
+                        {rule.certificationStatus === "certified"
+                          ? "Certified"
+                          : rule.certificationStatus === "validated"
+                            ? "Validated, not certified"
+                            : rule.certificationStatus === "pending"
+                              ? "Pending — not yet encoded"
+                              : rule.incompleteByDeclaration
+                                ? "Encoded, incomplete by declaration"
+                                : "Encoded"}
+                      </dd>
+                    </>
+                  ) : null}
+                  {rule?.certificateId ? (
+                    <>
+                      {/* The verifier certificate is why this node is
+                          visible at all — show it, truncated, full id on
+                          hover. */}
+                      <dt>Certificate</dt>
+                      <dd
+                        className="node-inspector-mono"
+                        title={rule.certificateId}
+                      >
+                        {rule.certificateId.length > 28
+                          ? `${rule.certificateId.slice(0, 28)}…`
+                          : rule.certificateId}
+                      </dd>
+                    </>
+                  ) : null}
+                  {(rule?.entity ?? input?.entity) ? (
+                    <>
+                      <dt>Entity</dt>
+                      <dd>{humanize((rule?.entity ?? input?.entity) as string)}</dd>
+                    </>
+                  ) : null}
+                  {rule?.period ? (
+                    <>
+                      <dt>Period</dt>
+                      <dd>{rule.period}</dd>
+                    </>
+                  ) : null}
+                  {rule?.unit ? (
+                    <>
+                      <dt>Unit</dt>
+                      <dd>{rule.unit}</dd>
+                    </>
+                  ) : null}
+                  {"hiddenCount" in inspected && inspected.hiddenCount ? (
+                    <>
+                      <dt>Contains</dt>
+                      <dd>{inspected.hiddenCount} rules</dd>
+                    </>
+                  ) : null}
+                </dl>
+              </details>
+            ) : null}
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
@@ -2711,6 +2727,7 @@ export function GraphViewerApp({
               <button
                 type="button"
                 className="node-inspector-link"
+                data-testid="read-the-law"
                 onClick={() => {
                   // Encodings can be one level deeper than the corpus
                   // provisions (…/2014/e/6/A vs …/e/6) — resolve to the

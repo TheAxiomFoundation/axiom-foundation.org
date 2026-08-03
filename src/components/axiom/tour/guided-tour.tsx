@@ -1,0 +1,166 @@
+"use client";
+
+import { useCallback, useEffect, useRef } from "react";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
+import "./tour.css";
+import {
+  hasSeenTour,
+  markTourSeen,
+  type TourSurface,
+} from "./tour-state";
+import { trackAxiomEvent } from "@/lib/analytics";
+
+export type TourStep = {
+  /** CSS selector to spotlight; omit for a centered, un-anchored step. */
+  element?: string;
+  title: string;
+  description: string;
+  /** Runs before the step highlights — e.g. scroll a panel's inner
+   *  scrollbox so the anchor is in view and driver never scrolls the
+   *  document (which would drag the footer into a full-viewport app). */
+  prepare?: () => void;
+};
+
+/** How long to wait for the first anchored element — the Plane's DOM
+ *  appears well after mount (ssr:false + corpus fetch). */
+const ANCHOR_WAIT_MS = 8000;
+const ANCHOR_POLL_MS = 250;
+
+function stepVisible(selector: string): boolean {
+  const el = document.querySelector(selector);
+  return !!el && el.getClientRects().length > 0;
+}
+
+/**
+ * One-time guided tour for a surface, plus its replay affordance (a
+ * quiet "?" pinned bottom-left). Auto-runs on first visit only —
+ * never inside the embed iframe, never on small screens — and steps
+ * whose anchor is absent or hidden are dropped rather than shown
+ * floating in space.
+ */
+export function GuidedTour({
+  surface,
+  steps,
+}: {
+  surface: TourSurface;
+  steps: TourStep[];
+}) {
+  const activeRef = useRef<ReturnType<typeof driver> | null>(null);
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
+
+  const start = useCallback(
+    (replayed: boolean) => {
+      if (activeRef.current?.isActive()) return;
+      const present = stepsRef.current.filter(
+        (step) => !step.element || stepVisible(step.element)
+      );
+      // A tour of only floating popovers means the page lost every
+      // anchor — nothing useful to point at.
+      if (!present.some((step) => step.element)) return;
+      let completed = false;
+      const tour = driver({
+        popoverClass: "axiom-tour",
+        showProgress: present.length > 1,
+        progressText: "{{current}} / {{total}}",
+        nextBtnText: "Next",
+        prevBtnText: "Back",
+        doneBtnText: "Done",
+        animate: !window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches,
+        steps: present.map((step) => ({
+          element: step.element,
+          onHighlightStarted: step.prepare,
+          popover: { title: step.title, description: step.description },
+        })),
+        // The × is easy to miss — every popover gets an explicit
+        // Skip, left of Back/Next.
+        onPopoverRender: (popover) => {
+          const skip = document.createElement("button");
+          skip.type = "button";
+          skip.className = "axiom-tour-skip";
+          skip.textContent = "Skip";
+          skip.onclick = () => tour.destroy();
+          popover.footerButtons.prepend(skip);
+        },
+        onDestroyStarted: () => {
+          completed = !!tour.isLastStep();
+          tour.destroy();
+        },
+        onDestroyed: () => {
+          activeRef.current = null;
+          markTourSeen(surface);
+          trackAxiomEvent("axiom_tour", {
+            surface,
+            action: completed ? "completed" : "dismissed",
+          });
+        },
+      });
+      activeRef.current = tour;
+      trackAxiomEvent("axiom_tour", {
+        surface,
+        action: replayed ? "replayed" : "started",
+      });
+      // Driver measures anchor visibility before step hooks land, so
+      // panel scrollboxes must be positioned before the tour starts —
+      // otherwise it scrolls the document to reach them.
+      for (const step of present) step.prepare?.();
+      tour.drive();
+    },
+    [surface]
+  );
+
+  useEffect(() => {
+    if (hasSeenTour(surface)) return;
+    if (window.self !== window.top) return;
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+    if (new URLSearchParams(window.location.search).get("embed") === "1")
+      return;
+    const anchors = stepsRef.current
+      .map((step) => step.element)
+      .filter((el): el is string => !!el);
+    if (anchors.length === 0) return;
+    // Anchors trickle into the DOM (the graph fetch gates the run
+    // toggle) — start once they all exist, or with whichever showed
+    // up once the wait runs out. Present-but-hidden (the TOC below
+    // xl) counts as settled; the visibility filter drops it at start.
+    let waited = 0;
+    const timer = window.setInterval(() => {
+      const allSettled = anchors.every((sel) => document.querySelector(sel));
+      if (
+        (allSettled || waited >= ANCHOR_WAIT_MS) &&
+        anchors.some(stepVisible)
+      ) {
+        window.clearInterval(timer);
+        start(false);
+        return;
+      }
+      waited += ANCHOR_POLL_MS;
+      if (waited > ANCHOR_WAIT_MS) window.clearInterval(timer);
+    }, ANCHOR_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [start, surface]);
+
+  // Navigating away — or the surface changing under the same mount
+  // (launcher tour open, user picks a provision) — tears the overlay
+  // down (and counts as a dismissal via onDestroyed).
+  useEffect(
+    () => () => {
+      activeRef.current?.destroy();
+    },
+    [surface]
+  );
+
+  return (
+    <button
+      type="button"
+      className="axiom-tour-replay"
+      aria-label="Replay the guided tour"
+      title="Guided tour"
+      onClick={() => start(true)}
+    >
+      ?
+    </button>
+  );
+}

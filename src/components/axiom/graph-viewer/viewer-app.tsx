@@ -761,6 +761,120 @@ export function GraphViewerApp({
     return catalog;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, inputMeta]);
+  // The picker's computation outline: the law's own dependency tree —
+  // rules as branches, answerable questions as leaves. The graph is a
+  // DAG, so a shared input appears under EVERY branch that consumes
+  // it; the structure carries the fan-out that any flat partition
+  // hides. Linear pass-through rules collapse so chains read as one
+  // hop.
+  const inputOutline = useMemo<OutlineNode[]>(() => {
+    if (!graph) return [];
+    const ruleById = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
+    const catalogByName = new Map(inputCatalog.map((row) => [row.name, row]));
+    const leafById = new Map(
+      graph.inputs
+        .filter((input) => !ruleById.has(input.legalId))
+        .map((input) => [input.legalId, input]),
+    );
+    // Cross-module seams bridge by NAME: a rule consumes the input
+    // `earned_income` while the rule computing it lives in another
+    // module under its own id. Bridged chains nest where they're
+    // consumed instead of floating as extra roots; the seam input
+    // stays answerable at the top of the bridged branch (a direct
+    // answer short-circuits its sub-questions).
+    const ruleIdByName = new Map(
+      graph.rules.map((rule) => [rule.name, rule.legalId]),
+    );
+    const built = new Map<string, OutlineNode | null>();
+    const build = (id: string, path: Set<string>): OutlineNode | null => {
+      if (path.has(id)) return null;
+      const cached = built.get(id);
+      if (cached !== undefined) return cached;
+      const rule = ruleById.get(id);
+      if (!rule) return null;
+      const nextPath = new Set(path).add(id);
+      const inputs: OutlineInputRow[] = [];
+      const seenInputs = new Set<string>();
+      let children: OutlineNode[] = [];
+      for (const dep of [...rule.ruleDeps, ...rule.inputDeps]) {
+        if (ruleById.has(dep)) {
+          const child = build(dep, nextPath);
+          if (child) children.push(child);
+        } else {
+          const leaf = leafById.get(dep);
+          if (!leaf) continue;
+          // Bridge whether or not the seam is answerable — the chain
+          // belongs under its consumer either way.
+          const row = catalogByName.get(leaf.name);
+          if (row && seenInputs.has(row.name)) continue;
+          const bridged = ruleIdByName.get(leaf.name);
+          if (bridged && bridged !== id && !nextPath.has(bridged)) {
+            const child = build(bridged, nextPath);
+            if (child) {
+              if (row) {
+                seenInputs.add(row.name);
+                if (!child.inputs.some((r) => r.name === row.name)) {
+                  children.push({
+                    ...child,
+                    inputs: [row, ...child.inputs],
+                    count: child.count + 1,
+                  });
+                  continue;
+                }
+              }
+              children.push(child);
+              continue;
+            }
+          }
+          if (row) {
+            seenInputs.add(row.name);
+            inputs.push(row);
+          }
+        }
+      }
+      inputs.sort((a, b) => humanize(a.name).localeCompare(humanize(b.name)));
+      // A corridor — one child, no questions of its own — collapses:
+      // the outer (closer-to-result) name stays, the contents hoist.
+      if (inputs.length === 0 && children.length === 1) {
+        const inner = children[0]!;
+        inputs.push(...inner.inputs);
+        children = inner.children;
+      }
+      const names = new Set<string>();
+      const collect = (n: { inputs: OutlineInputRow[]; children: OutlineNode[] }) => {
+        n.inputs.forEach((row) => names.add(row.name));
+        n.children.forEach(collect);
+      };
+      collect({ inputs, children });
+      const node: OutlineNode | null =
+        names.size > 0
+          ? { id, label: humanize(rule.name), inputs, children, count: names.size }
+          : null;
+      built.set(id, node);
+      return node;
+    };
+    const consumed = new Set<string>();
+    for (const rule of graph.rules)
+      for (const dep of [...rule.ruleDeps, ...rule.inputDeps]) {
+        consumed.add(dep);
+        // A name-bridged chain is consumed too — it nests under its
+        // consumer rather than surfacing as a root.
+        const leaf = leafById.get(dep);
+        const bridged = leaf ? ruleIdByName.get(leaf.name) : undefined;
+        if (bridged) consumed.add(bridged);
+      }
+    return graph.rules
+      .filter((rule) => !consumed.has(rule.legalId))
+      .map((rule) => build(rule.legalId, new Set()))
+      .filter((node): node is OutlineNode => !!node)
+      .sort((a, b) => b.count - a.count);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, inputCatalog]);
+  // Explicit expand/collapse choices; anything unset falls back to
+  // "roots open, branches closed" (search opens everything).
+  const [outlineOpen, setOutlineOpen] = useState<Map<string, boolean>>(
+    new Map(),
+  );
   const scenarioFields = useMemo(
     () =>
       inputCatalog.map((input) => ({
@@ -1813,68 +1927,52 @@ export function GraphViewerApp({
             />
             <div className="run-picker-list">
               {(() => {
-                const candidates = inputCatalog.filter(
-                  (input) =>
-                    !active.includes(input.name) &&
-                    (!query ||
-                      humanize(input.name).toLowerCase().includes(query)),
-                );
-                // Group by declaring module — the one home every
-                // input has (downstream grouping is ill-posed: inputs
-                // fan out into several intermediate calcs). Headers
-                // are citations, the product's own vocabulary.
-                const byModule = new Map<string, typeof candidates>();
-                for (const input of candidates) {
-                  const rows = byModule.get(input.fileLegalId) ?? [];
-                  rows.push(input);
-                  byModule.set(input.fileLegalId, rows);
-                }
-                // The opened subtree's own questions lead; imported
-                // modules follow, largest first.
-                const focusFile = composeFocus?.split("#")[0] ?? null;
-                const order = [...byModule.keys()].sort((a, b) => {
-                  const aFocus = a === focusFile;
-                  const bFocus = b === focusFile;
-                  if (aFocus !== bFocus) return aFocus ? -1 : 1;
-                  return byModule.get(b)!.length - byModule.get(a)!.length;
-                });
-                let budget = 60;
-                return order.map((file) => {
-                  if (budget <= 0) return null;
-                  const rows = byModule
-                    .get(file)!
-                    .sort((a, b) =>
-                      humanize(a.name).localeCompare(humanize(b.name)),
-                    )
-                    .slice(0, budget);
-                  budget -= rows.length;
-                  return (
-                    <div key={file} className="run-picker-group">
-                      <p className="run-picker-group-label" title={file}>
-                        {humanizeCitation(file)}
-                      </p>
-                      {rows.map((input) => (
-                        <button
-                          type="button"
-                          key={input.legalId}
-                          className="run-picker-row is-lever"
-                          title="Add to your answers"
-                          onClick={() =>
-                            setSelectedLevers([...active, input.name])
-                          }
-                        >
-                          <span className="run-picker-icon">＋</span>
-                          <span className="run-picker-name">
-                            {humanize(input.name)}
-                          </span>
-                          <span className="run-picker-tag run-picker-tag-muted">
-                            {input.entity ? humanize(input.entity) : "—"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                // Prune the outline to what's addable and matching,
+                // recounting distinct questions per branch.
+                const prune = (node: OutlineNode): OutlineNode | null => {
+                  const inputs = node.inputs.filter(
+                    (row) =>
+                      !active.includes(row.name) &&
+                      (!query ||
+                        humanize(row.name).toLowerCase().includes(query)),
                   );
-                });
+                  const children = node.children
+                    .map(prune)
+                    .filter((child): child is OutlineNode => !!child);
+                  if (inputs.length === 0 && children.length === 0)
+                    return null;
+                  const names = new Set<string>();
+                  const collect = (n: OutlineNode) => {
+                    n.inputs.forEach((row) => names.add(row.name));
+                    n.children.forEach(collect);
+                  };
+                  collect({ ...node, inputs, children });
+                  return { ...node, inputs, children, count: names.size };
+                };
+                return inputOutline
+                  .map(prune)
+                  .filter((node): node is OutlineNode => !!node)
+                  .map((root, index) => (
+                    <InputOutlineBranch
+                      key={root.id}
+                      node={root}
+                      depth={0}
+                      pathKey={root.id}
+                      // The law itself opens; renamed-seam satellite
+                      // chains (and unrelated co-modules) start shut.
+                      defaultOpen={index === 0}
+                      searching={!!query}
+                      openOverrides={outlineOpen}
+                      onToggle={(key, fallback) =>
+                        setOutlineOpen((current) => {
+                          const next = new Map(current);
+                          next.set(key, !(current.get(key) ?? fallback));
+                          return next;
+                        })
+                      }
+                      onAdd={(name) => setSelectedLevers([...active, name])}
+                    />
+                  ));
               })()}
               {inputCatalog.length === 0 &&
                 (graph?.inputs.length ?? 0) > 0 && (
@@ -3228,6 +3326,108 @@ function humanize(value: string): string {
     value
       .replace(/^snap_/, "")
       .replace(/^universal_credit_/, "UC "),
+  );
+}
+
+// ── Input picker computation outline ──
+// The run panel's input list rendered as the law's own dependency
+// tree. Shared inputs appear under every branch that consumes them —
+// the point of the structure.
+
+interface OutlineInputRow {
+  name: string;
+  legalId: string;
+  fileLegalId: string;
+  entity: string | null;
+  isBool: boolean;
+  sample: number | boolean;
+}
+
+interface OutlineNode {
+  id: string;
+  label: string;
+  inputs: OutlineInputRow[];
+  children: OutlineNode[];
+  /** Distinct answerable questions in this subtree. */
+  count: number;
+}
+
+function InputOutlineBranch({
+  node,
+  depth,
+  pathKey,
+  defaultOpen,
+  searching,
+  openOverrides,
+  onToggle,
+  onAdd,
+}: {
+  node: OutlineNode;
+  depth: number;
+  /** Slash-joined ancestor ids — a DAG node recurs under several
+   *  parents, so expansion state keys on the occurrence, not the id. */
+  pathKey: string;
+  defaultOpen?: boolean;
+  searching: boolean;
+  openOverrides: Map<string, boolean>;
+  onToggle: (key: string, fallback: boolean) => void;
+  onAdd: (name: string) => void;
+}) {
+  const fallbackOpen = defaultOpen ?? false;
+  // A live search overrides stored collapses — hidden matches would
+  // read as "no results".
+  const isOpen = searching
+    ? true
+    : (openOverrides.get(pathKey) ?? fallbackOpen);
+  return (
+    <div
+      className="run-outline-branch"
+      style={{ "--outline-depth": depth } as React.CSSProperties}
+    >
+      <button
+        type="button"
+        className="run-outline-head"
+        aria-expanded={isOpen}
+        onClick={() => onToggle(pathKey, fallbackOpen)}
+      >
+        <span className="run-outline-caret" aria-hidden>
+          {isOpen ? "▾" : "▸"}
+        </span>
+        <span className="run-outline-name">{node.label}</span>
+        <span className="run-outline-count">{node.count}</span>
+      </button>
+      {isOpen && (
+        <div className="run-outline-body">
+          {node.inputs.map((row) => (
+            <button
+              type="button"
+              key={row.legalId}
+              className="run-picker-row is-lever"
+              title="Add to your answers"
+              onClick={() => onAdd(row.name)}
+            >
+              <span className="run-picker-icon">＋</span>
+              <span className="run-picker-name">{humanize(row.name)}</span>
+              <span className="run-picker-tag run-picker-tag-muted">
+                {row.entity ? humanize(row.entity) : "—"}
+              </span>
+            </button>
+          ))}
+          {node.children.map((child) => (
+            <InputOutlineBranch
+              key={`${pathKey}/${child.id}`}
+              node={child}
+              depth={depth + 1}
+              pathKey={`${pathKey}/${child.id}`}
+              searching={searching}
+              openOverrides={openOverrides}
+              onToggle={onToggle}
+              onAdd={onAdd}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

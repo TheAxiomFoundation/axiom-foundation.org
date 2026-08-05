@@ -2823,28 +2823,55 @@
   letter-spacing: 0.1em;
   color: var(--color-ink-muted);
 }
-/* Module headers inside the input picker: the citation each group of
-   questions is declared in — a quieter sibling of run-section-label,
-   with a hairline running to the right edge. */
-.graph-viewer-root .run-picker-group + .run-picker-group {
-  margin-top: 12px;
-}
-.graph-viewer-root .run-picker-group-label {
+/* Computation outline inside the input picker: branch heads are the
+   law's intermediate calcs (mono micro-caps, expandable), leaves are
+   the question rows. Depth indents through a custom property; each
+   open body carries a hairline spine. */
+.graph-viewer-root .run-outline-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
   font-family: var(--f-mono, monospace);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-ink-muted);
-  white-space: nowrap;
+  color: var(--color-ink-secondary);
 }
-.graph-viewer-root .run-picker-group-label::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--color-rule-subtle, var(--color-rule));
+.graph-viewer-root .run-outline-head:hover .run-outline-name {
+  color: var(--color-accent);
+}
+.graph-viewer-root .run-outline-caret {
+  color: var(--color-ink-muted);
+  font-size: 9px;
+}
+.graph-viewer-root .run-outline-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 150ms;
+}
+.graph-viewer-root .run-outline-count {
+  margin-left: auto;
+  color: var(--color-ink-muted);
+}
+.graph-viewer-root .run-outline-body {
+  /* Constant per level — bodies nest, so indentation compounds by
+     itself. Keep it small: the law nests deeper than a picker column
+     can afford. */
+  margin-left: 5px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-rule-subtle, var(--color-rule));
+}
+.graph-viewer-root .run-outline-body .run-picker-row {
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 .graph-viewer-root .run-overview {
   margin-top: 18px;

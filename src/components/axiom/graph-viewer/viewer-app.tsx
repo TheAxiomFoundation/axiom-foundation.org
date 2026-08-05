@@ -734,6 +734,7 @@ export function GraphViewerApp({
     const catalog: Array<{
       name: string;
       legalId: string;
+      fileLegalId: string;
       entity: string | null;
       isBool: boolean;
       sample: number | boolean;
@@ -746,6 +747,7 @@ export function GraphViewerApp({
       catalog.push({
         name: input.name,
         legalId: input.legalId,
+        fileLegalId: input.fileLegalId,
         entity: input.entity ?? null,
         isBool,
         sample: isBool
@@ -1810,31 +1812,70 @@ export function GraphViewerApp({
               placeholder={`Search ${inputCatalog.length} inputs...`}
             />
             <div className="run-picker-list">
-              {inputCatalog
-                .filter(
+              {(() => {
+                const candidates = inputCatalog.filter(
                   (input) =>
                     !active.includes(input.name) &&
                     (!query ||
                       humanize(input.name).toLowerCase().includes(query)),
-                )
-                .slice(0, 60)
-                .map((input) => (
-                  <button
-                    type="button"
-                    key={input.legalId}
-                    className="run-picker-row is-lever"
-                    title="Add to your answers"
-                    onClick={() => setSelectedLevers([...active, input.name])}
-                  >
-                    <span className="run-picker-icon">＋</span>
-                    <span className="run-picker-name">
-                      {humanize(input.name)}
-                    </span>
-                    <span className="run-picker-tag run-picker-tag-muted">
-                      {input.entity ? humanize(input.entity) : "—"}
-                    </span>
-                  </button>
-                ))}
+                );
+                // Group by declaring module — the one home every
+                // input has (downstream grouping is ill-posed: inputs
+                // fan out into several intermediate calcs). Headers
+                // are citations, the product's own vocabulary.
+                const byModule = new Map<string, typeof candidates>();
+                for (const input of candidates) {
+                  const rows = byModule.get(input.fileLegalId) ?? [];
+                  rows.push(input);
+                  byModule.set(input.fileLegalId, rows);
+                }
+                // The opened subtree's own questions lead; imported
+                // modules follow, largest first.
+                const focusFile = composeFocus?.split("#")[0] ?? null;
+                const order = [...byModule.keys()].sort((a, b) => {
+                  const aFocus = a === focusFile;
+                  const bFocus = b === focusFile;
+                  if (aFocus !== bFocus) return aFocus ? -1 : 1;
+                  return byModule.get(b)!.length - byModule.get(a)!.length;
+                });
+                let budget = 60;
+                return order.map((file) => {
+                  if (budget <= 0) return null;
+                  const rows = byModule
+                    .get(file)!
+                    .sort((a, b) =>
+                      humanize(a.name).localeCompare(humanize(b.name)),
+                    )
+                    .slice(0, budget);
+                  budget -= rows.length;
+                  return (
+                    <div key={file} className="run-picker-group">
+                      <p className="run-picker-group-label" title={file}>
+                        {humanizeCitation(file)}
+                      </p>
+                      {rows.map((input) => (
+                        <button
+                          type="button"
+                          key={input.legalId}
+                          className="run-picker-row is-lever"
+                          title="Add to your answers"
+                          onClick={() =>
+                            setSelectedLevers([...active, input.name])
+                          }
+                        >
+                          <span className="run-picker-icon">＋</span>
+                          <span className="run-picker-name">
+                            {humanize(input.name)}
+                          </span>
+                          <span className="run-picker-tag run-picker-tag-muted">
+                            {input.entity ? humanize(input.entity) : "—"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                });
+              })()}
               {inputCatalog.length === 0 &&
                 (graph?.inputs.length ?? 0) > 0 && (
                   <div className="output-empty">

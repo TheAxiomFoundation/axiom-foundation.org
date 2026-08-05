@@ -27,12 +27,14 @@ import {
   shapeRendersNodes,
   buildFieldLayout,
   computeFieldHighlights,
+  clampFieldTransform,
   countFootprintCollisions,
   groupSeparationStats,
   fieldComposeHref,
   fieldToView,
   hitTestDot,
   interpolateTransform,
+  MAX_FIELD_ZOOM,
   panField,
   viewToField,
   zoomFieldAt,
@@ -766,10 +768,16 @@ export function CorpusField({
       const dot = layout.dots.find((item) => item.target === spotlight);
       if (!dot) return;
       spotlightReturnRef.current ??= transformRef.current;
-      const framing = interpolateTransform(
-        transformRef.current,
-        zoomTransformForDot(layout, dot, viewHeightRef.current),
-        0.8,
+      // Well past the cluster framing — dot-level zoom, so the
+      // spotlight hole holds the subtree alone, not its neighborhood.
+      const cluster = zoomTransformForDot(layout, dot, viewHeightRef.current);
+      const k = Math.min(cluster.k * 3, MAX_FIELD_ZOOM);
+      const framing = clampFieldTransform(
+        {
+          k,
+          tx: FIELD_WIDTH / 2 - dot.x * k,
+          ty: viewHeightRef.current / 2 - dot.y * k,
+        },
         viewHeightRef.current
       );
       setSpotlightMark(fieldToView(framing, dot.x, dot.y));
@@ -1012,9 +1020,11 @@ export function CorpusField({
             className="pointer-events-none absolute"
             style={{
               left: `${(spotlightMark.x / FIELD_WIDTH) * 100}%`,
-              top: `${(spotlightMark.y / viewHeight) * 100}%`,
-              width: 280,
-              height: 190,
+              // The pinned card rides above the ring, so the content
+              // stack's visual center sits a touch above the dot.
+              top: `calc(${(spotlightMark.y / viewHeight) * 100}% - 25px)`,
+              width: 260,
+              height: 250,
               transform: "translate(-50%, -50%)",
             }}
           />

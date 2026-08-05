@@ -1970,7 +1970,15 @@ export function GraphViewerApp({
                           return next;
                         })
                       }
-                      onAdd={(name) => setSelectedLevers([...active, name])}
+                      // One input, many doorways: a shared input is
+                      // still ONE answer — adding from any branch
+                      // adds it once, and every occurrence leaves
+                      // the picker together.
+                      onAdd={(name) =>
+                        setSelectedLevers(
+                          active.includes(name) ? active : [...active, name],
+                        )
+                      }
                     />
                   ));
               })()}

@@ -1949,17 +1949,46 @@ export function GraphViewerApp({
                   collect({ ...node, inputs, children });
                   return { ...node, inputs, children, count: names.size };
                 };
-                return inputOutline
+                const pruned = inputOutline
                   .map(prune)
-                  .filter((node): node is OutlineNode => !!node)
-                  .map((root, index) => (
+                  .filter((node): node is OutlineNode => !!node);
+                if (pruned.length === 0) return null;
+                // One primary tree — the law that was opened — fully
+                // expanded; renamed-seam satellite chains and
+                // unrelated co-modules tuck under a single collapsed
+                // entry instead of crowding the top level.
+                const focusPrefix = composeFocus ? `${composeFocus}#` : null;
+                const primaryIndex = focusPrefix
+                  ? Math.max(
+                      0,
+                      pruned.findIndex((node) =>
+                        node.id.startsWith(focusPrefix),
+                      ),
+                    )
+                  : 0;
+                const rest = pruned.filter(
+                  (_, index) => index !== primaryIndex,
+                );
+                const nodes: OutlineNode[] = [
+                  pruned[primaryIndex]!,
+                  ...(rest.length
+                    ? [
+                        {
+                          id: "__outline-other__",
+                          label: "Other definitions in this module",
+                          inputs: [],
+                          children: rest,
+                          count: rest.reduce((sum, n) => sum + n.count, 0),
+                        },
+                      ]
+                    : []),
+                ];
+                return nodes.map((root, index) => (
                     <InputOutlineBranch
                       key={root.id}
                       node={root}
                       depth={0}
                       pathKey={root.id}
-                      // The law itself opens; renamed-seam satellite
-                      // chains (and unrelated co-modules) start shut.
                       defaultOpen={index === 0}
                       searching={!!query}
                       openOverrides={outlineOpen}
@@ -3381,7 +3410,9 @@ function InputOutlineBranch({
   onToggle: (key: string, fallback: boolean) => void;
   onAdd: (name: string) => void;
 }) {
-  const fallbackOpen = defaultOpen ?? false;
+  // Branches are open unless the visitor (or the synthetic "other
+  // definitions" wrapper) says otherwise — the outline shows itself.
+  const fallbackOpen = defaultOpen ?? true;
   // A live search overrides stored collapses — hidden matches would
   // read as "no results".
   const isOpen = searching

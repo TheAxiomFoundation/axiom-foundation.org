@@ -3402,7 +3402,6 @@ function InputOutlineBranch({
           {isOpen ? "▾" : "▸"}
         </span>
         <span className="run-outline-name">{node.label}</span>
-        <span className="run-outline-count">{node.count}</span>
       </button>
       {isOpen && (
         <div className="run-outline-body">

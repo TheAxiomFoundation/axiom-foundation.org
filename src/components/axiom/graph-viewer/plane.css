@@ -2857,10 +2857,6 @@
   white-space: nowrap;
   transition: color 150ms;
 }
-.graph-viewer-root .run-outline-count {
-  margin-left: auto;
-  color: var(--color-ink-muted);
-}
 .graph-viewer-root .run-outline-body {
   /* Constant per level — bodies nest, so indentation compounds by
      itself. Keep it small: the law nests deeper than a picker column

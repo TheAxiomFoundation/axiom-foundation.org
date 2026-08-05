@@ -55,7 +55,7 @@ export const WHAT_WE_DO: readonly DoCard[] = [
     label: "Verify",
     title: "A deterministic gauntlet decides what ships",
     body:
-      "Each draft encoding must clear grounding, compilation, tests, oracle agreement, and a signed manifest before it reaches the corpus. Oracles cross-check the result against external engines and datasets — PolicyEngine, TAXSIM, and program quality-control data — so the model that wrote the rules never grades its own work.",
+      "Each draft encoding must compile and pass its test suite before it merges. Oracles cross-check results against external engines and datasets — PolicyEngine, TAXSIM, and program quality-control data — so the model that wrote the rules never grades its own work.",
   },
   {
     n: "3",
@@ -78,7 +78,7 @@ export const LICENSE_LINKS = {
 } as const;
 
 export const WHAT_WE_ENABLE_INTRO =
-  "Encoding the law once, in the open, stops it from being re-implemented a thousand times in private — wrongly, expensively, and out of sight. Four groups carry the work forward, and each one uses the same underlying layer.";
+  "Encoding the law once, in the open, means no one has to re-implement it privately. Four groups carry the work forward, and each one uses the same underlying layer.";
 
 export interface Audience {
   id: string;

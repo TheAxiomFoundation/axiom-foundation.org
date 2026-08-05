@@ -116,6 +116,15 @@ export function GraphViewerApp({
   const [scenario, setScenario] = useState<Record<string, number | boolean>>(
     {},
   );
+  // Additional household members (person_2, …) for Person-entity
+  // answers. The flat scenario IS person_1 — the inspector, samples,
+  // and canvas flows keep writing it untouched; each extra member
+  // carries its own Person-level answers and rides the compose
+  // request as `people`.
+  const [extraMembers, setExtraMembers] = useState<string[]>([]);
+  const [memberScenario, setMemberScenario] = useState<
+    Record<string, Record<string, number | boolean>>
+  >({});
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   // Post-run edits mark the sheet stale until the NEXT explicit run
@@ -881,6 +890,7 @@ export function GraphViewerApp({
         name: input.name,
         label: input.name,
         sample: input.sample,
+        entity: input.entity,
       })),
     [inputCatalog],
   );
@@ -898,6 +908,8 @@ export function GraphViewerApp({
     setRunPanelOpen(false);
     setSelectedLevers(null);
     setScenario({});
+    setExtraMembers([]);
+    setMemberScenario({});
     setResultsStale(false);
     ranScenarioKey.current = null;
     setInputMeta({ dtypes: {}, defaults: {} });
@@ -928,7 +940,10 @@ export function GraphViewerApp({
     // An explicit run consumes the pending edits: the stale flag
     // clears and the edit tracker syncs to what this run computes.
     setResultsStale(false);
-    ranScenarioKey.current = scenarioKey(scenario);
+    ranScenarioKey.current = scenarioKey({
+      ...scenario,
+      ...flattenMemberAnswers(extraMembers, memberScenario),
+    });
     try {
       // Trace the selected outputs plus their reachable rules so the
       // execution lights intermediate nodes, not just the results.
@@ -954,8 +969,19 @@ export function GraphViewerApp({
       for (const id of traceRoots) walk(id);
       // Compose mode speaks the run-by-root shape (`{ root, facts }`);
       // package programs keep their coordinates. Same envelope back.
+      // Extra household members ride as `people` — empty records
+      // still travel: an added person with no answers is a person.
+      const people = Object.fromEntries(
+        extraMembers.map((member) => [member, memberScenario[member] ?? {}]),
+      );
       const requestBody = (variables: string[]): Record<string, unknown> =>
-        buildRunRequestBody(composeFocus, effectiveProgram, scenario, variables);
+        buildRunRequestBody(
+          composeFocus,
+          effectiveProgram,
+          scenario,
+          variables,
+          composeFocus ? people : undefined,
+        );
       const attempt = async (variables: string[]) => {
         const response = await fetch("/api/axiom/runtime/calculate", {
           method: "POST",
@@ -966,7 +992,15 @@ export function GraphViewerApp({
         });
         // The root endpoint vanished mid-session (deploy rollback):
         // fold the affordance back away instead of error-looping.
+        // With extra members aboard, a 404 more likely means the
+        // upstream predates the `people` shape — keep the affordance
+        // and say what to change.
         if (composeFocus && response.status === 404) {
+          if (extraMembers.length > 0) {
+            throw new Error(
+              "This deployment doesn't accept per-member answers yet — remove the added household members to run.",
+            );
+          }
           setComposeRunReady(false);
           throw new Error(
             "Running composed views isn't available on this deployment yet.",
@@ -1744,10 +1778,13 @@ export function GraphViewerApp({
   // change to the values marks it STALE ("values changed — Run
   // again") until the next explicit Run consumes the edits.
   useEffect(() => {
-    const key = scenarioKey(debouncedScenario);
+    const key = scenarioKey({
+      ...debouncedScenario,
+      ...flattenMemberAnswers(extraMembers, memberScenario),
+    });
     if (ranScenarioKey.current === null) return; // nothing ran yet
     setResultsStale(runResult !== null && key !== ranScenarioKey.current);
-  }, [debouncedScenario, runResult]);
+  }, [debouncedScenario, extraMembers, memberScenario, runResult]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -2043,10 +2080,60 @@ export function GraphViewerApp({
           </div>
           <div className="run-col">
             <p className="run-section-label">Your answers</p>
+            {(extraMembers.length > 0 ||
+              activeFields.some((field) => field.entity === "Person")) && (
+              <div className="scenario-members">
+                <span className="scenario-members-label">Household</span>
+                <span className="scenario-member-chip">Person 1</span>
+                {extraMembers.map((member) => (
+                  <span key={member} className="scenario-member-chip">
+                    {memberLabel(member)}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${memberLabel(member)}`}
+                      onClick={() => {
+                        setExtraMembers((current) =>
+                          current.filter((id) => id !== member),
+                        );
+                        setMemberScenario((current) => {
+                          const { [member]: _gone, ...rest } = current;
+                          return rest;
+                        });
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  className="scenario-member-add"
+                  onClick={() =>
+                    setExtraMembers((current) => {
+                      const next =
+                        Math.max(
+                          1,
+                          ...current.map(
+                            (id) => Number(id.split("_")[1]) || 1,
+                          ),
+                        ) + 1;
+                      return [...current, `person_${next}`];
+                    })
+                  }
+                >
+                  ＋ Add person
+                </button>
+              </div>
+            )}
             <div className="scenario-fields">
               {activeFields.map((field) => (
                 <label key={field.name} className="scenario-field">
-                  <span>{humanize(field.label)}</span>
+                  <span>
+                    {humanize(field.label)}
+                    {field.entity === "Person" && extraMembers.length > 0 && (
+                      <span className="scenario-field-member">Person 1</span>
+                    )}
+                  </span>
                   <span className="scenario-field-controls">
                     <AnswerControl
                       name={field.name}
@@ -2076,11 +2163,50 @@ export function GraphViewerApp({
                           const { [field.name]: _gone, ...rest } = current;
                           return rest;
                         });
+                        setMemberScenario((current) =>
+                          Object.fromEntries(
+                            Object.entries(current).map(([id, answers]) => {
+                              const { [field.name]: _gone, ...rest } = answers;
+                              return [id, rest];
+                            }),
+                          ),
+                        );
                       }}
                     >
                       ×
                     </button>
                   </span>
+                  {/* Person-level questions repeat per additional
+                      member — one answer per person, same control. */}
+                  {field.entity === "Person" &&
+                    extraMembers.map((member) => (
+                      <span
+                        key={member}
+                        className="scenario-field-controls scenario-subfield"
+                      >
+                        <span className="scenario-field-member">
+                          {memberLabel(member)}
+                        </span>
+                        <AnswerControl
+                          name={field.name}
+                          value={memberScenario[member]?.[field.name]}
+                          meta={inputMeta}
+                          selectClassName="scenario-field-select"
+                          placeholder={`e.g. ${field.sample}`}
+                          onChange={(next) =>
+                            setMemberScenario((current) => {
+                              const answers = { ...(current[member] ?? {}) };
+                              if (next === undefined) {
+                                delete answers[field.name];
+                              } else {
+                                answers[field.name] = next;
+                              }
+                              return { ...current, [member]: answers };
+                            })
+                          }
+                        />
+                      </span>
+                    ))}
                 </label>
               ))}
               {activeFields.length === 0 && (
@@ -3364,6 +3490,29 @@ function humanize(value: string): string {
       .replace(/^snap_/, "")
       .replace(/^universal_credit_/, "UC "),
   );
+}
+
+/** Member answers folded into a flat record for scenario-identity
+ *  keys. Membership itself dirties the key — an added person with no
+ *  answers still changes the household. */
+function flattenMemberAnswers(
+  members: string[],
+  memberScenario: Record<string, Record<string, number | boolean>>,
+): Record<string, number | boolean> {
+  const flat: Record<string, number | boolean> = {};
+  for (const member of members) {
+    flat[`${member}:__present`] = true;
+    for (const [name, value] of Object.entries(memberScenario[member] ?? {})) {
+      flat[`${member}:${name}`] = value;
+    }
+  }
+  return flat;
+}
+
+/** "person_3" → "Person 3" — ids are stable across removals, so the
+ *  label follows the id, not the position. */
+function memberLabel(id: string): string {
+  return humanize(id);
 }
 
 // ── Input picker computation outline ──

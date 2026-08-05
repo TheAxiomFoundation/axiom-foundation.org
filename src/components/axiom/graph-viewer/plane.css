@@ -2993,6 +2993,76 @@
   align-items: center;
   gap: 6px;
 }
+/* Household strip: who the Person-level answers are about. */
+.graph-viewer-root .scenario-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.graph-viewer-root .scenario-members-label {
+  font-family: var(--f-mono, monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  margin-right: 2px;
+}
+.graph-viewer-root .scenario-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+  background: var(--color-paper);
+}
+.graph-viewer-root .scenario-member-chip button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1;
+}
+.graph-viewer-root .scenario-member-chip button:hover {
+  color: var(--color-accent);
+}
+.graph-viewer-root .scenario-member-add {
+  padding: 3px 10px;
+  border: 1px dashed var(--color-rule);
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  transition: color 150ms, border-color 150ms;
+}
+.graph-viewer-root .scenario-member-add:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+/* Per-member answer rows under a Person-level question. */
+.graph-viewer-root .scenario-subfield {
+  margin-left: 10px;
+}
+.graph-viewer-root .scenario-field-member {
+  font-family: var(--f-mono, monospace);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.graph-viewer-root .scenario-subfield .scenario-field-member {
+  margin-left: 0;
+  min-width: 64px;
+}
 .graph-viewer-root .scenario-field-remove {
   width: 22px;
   height: 22px;

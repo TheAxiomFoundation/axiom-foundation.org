@@ -39,6 +39,10 @@ function sanitizeValues(raw: unknown): {
 
 const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const INPUT_NAME_RE = /^[a-z0-9_]{1,80}$/;
+// Additional household members: person_2 … person_12 (person_1 IS
+// the flat facts). Bounded so a hostile request can't fan out.
+const MEMBER_ID_RE = /^person_(?:[2-9]|1[0-2])$/;
+const MAX_MEMBERS = 11;
 const VARIABLE_RE = /^[\w.:#/–-]{1,140}$/;
 // A file legal id: `us:statutes/7/2014/e/6/A` — no #fragment; run-by-root
 // roots a whole subtree, not a single rule.
@@ -71,6 +75,7 @@ export async function POST(request: Request) {
     values?: unknown;
     root?: unknown;
     facts?: unknown;
+    people?: unknown;
     variables?: unknown;
   };
   try {
@@ -101,7 +106,26 @@ export async function POST(request: Request) {
     const { sanitized: facts, rejected: droppedFacts } = sanitizeValues(
       body.facts
     );
-    const outcome = await runCalculateRoot({ root, facts, variables });
+    // Extra household members: `people.person_N` records sanitized
+    // exactly like facts; malformed member ids are dropped whole.
+    let people: Record<string, Record<string, number | boolean>> | undefined;
+    if (body.people && typeof body.people === "object") {
+      people = {};
+      for (const [member, values] of Object.entries(
+        body.people as Record<string, unknown>
+      )) {
+        if (!MEMBER_ID_RE.test(member)) {
+          droppedFacts.push(member);
+          continue;
+        }
+        if (Object.keys(people).length >= MAX_MEMBERS) break;
+        const { sanitized, rejected } = sanitizeValues(values);
+        people[member] = sanitized;
+        droppedFacts.push(...rejected.map((name) => `${member}:${name}`));
+      }
+      if (Object.keys(people).length === 0) people = undefined;
+    }
+    const outcome = await runCalculateRoot({ root, facts, people, variables });
     if (outcome.kind === "unsupported") {
       return NextResponse.json(
         { error: "root_calculate_unsupported" },

@@ -285,6 +285,10 @@ export type RootCalculateOutcome =
 export async function runCalculateRoot(request: {
   root: string;
   facts: Record<string, number | boolean>;
+  /** Additional household members (person_2, …) with their own
+   *  Person-level answers; the flat facts remain person_1. Omitted
+   *  for single-filer runs so older upstreams see the old shape. */
+  people?: Record<string, Record<string, number | boolean>>;
   variables?: string[];
 }): Promise<RootCalculateOutcome> {
   if (!isRuntimeApiConfigured()) return { kind: "failed" };

@@ -5,17 +5,25 @@ import { fileLegalIdOf } from "./citations";
  * run-by-root shape — every value the user typed travels verbatim
  * as `facts` — while package programs keep their coordinates and
  * `values`. One pure builder so the round trip is testable.
+ *
+ * `people` extends the compose shape for multi-member households:
+ * facts stay the first person (and the unit) exactly as before, and
+ * each additional member travels as `people.person_N` with their own
+ * Person-level answers. Omitted entirely for the single-filer case,
+ * so an upstream that predates the shape sees an unchanged request.
  */
 export function buildRunRequestBody(
   composeFocus: string | null,
   program: { jurisdiction: string; programId: string } | null,
   scenario: Record<string, number | boolean>,
   variables: string[],
+  people?: Record<string, Record<string, number | boolean>>,
 ): Record<string, unknown> {
   if (composeFocus) {
     return {
       root: fileLegalIdOf(composeFocus),
       facts: scenario,
+      ...(people && Object.keys(people).length > 0 ? { people } : {}),
       variables,
     };
   }

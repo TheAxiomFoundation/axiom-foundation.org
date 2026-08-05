@@ -2905,9 +2905,10 @@
   grid-template-columns: minmax(0, 1fr) 80px 64px;
 }
 
-/* Run sheet: pick left, answer right, run at the bottom. */
+/* Run sheet: pick left, answer right, run at the bottom. Wide — the
+   input outline nests deep and answer rows carry controls. */
 .graph-viewer-root .run-panel > * {
-  width: min(940px, calc(100vw - 48px));
+  width: min(1240px, calc(100vw - 64px));
   display: flex;
   flex-direction: column;
 }

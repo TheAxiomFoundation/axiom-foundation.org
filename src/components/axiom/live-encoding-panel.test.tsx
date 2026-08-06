@@ -363,6 +363,32 @@ describe("LiveEncodingPanel", () => {
     expect(screen.getByText(/last heartbeat 5m 30s ago/i)).toBeInTheDocument();
   });
 
+  it("drops stale rows an hour after their last heartbeat", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-01T12:00:30.000Z"));
+    render(
+      <LiveEncodingPanel
+        initial={artifact(
+          encodingStatus({
+            live_runs: [
+              liveRun({
+                id: "live-long-dead",
+                citation: "us/statute/26/long-dead",
+                last_heartbeat_at: "2026-07-01T10:45:00.000Z",
+              }),
+            ],
+          })
+        )}
+      />
+    );
+
+    expect(screen.queryByText("us/statute/26/long-dead")).not.toBeInTheDocument();
+    expect(screen.queryByText("Machines")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/no encoding sessions running/i)
+    ).toBeInTheDocument();
+  });
+
   it("shows recently finished runs and ages out old ones", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-01T12:00:30.000Z"));

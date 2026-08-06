@@ -15,6 +15,8 @@ const CLOCK_TICK_MS = 5_000;
 const STALE_HEARTBEAT_MS = 2 * 60 * 1000;
 /** Finished runs stay on the machine board this long after completion. */
 const FINISHED_DISPLAY_WINDOW_MS = 60 * 60 * 1000;
+/** Stale (presumed dead) runs drop off the board this long after their last heartbeat. */
+const STALE_DISPLAY_WINDOW_MS = 60 * 60 * 1000;
 
 interface LiveEncodingPanelProps {
   initial: CorpusStatusArtifact<EncodingOpsStatus>;
@@ -308,13 +310,22 @@ function groupLiveRunsByMachine(
   const groups = new Map<string, MachineGroup>();
   for (const run of liveRuns) {
     const state = classifyLiveRun(run, referenceMs);
-    // Finished runs age off the board; running (live or stale) rows never do.
+    // Finished and long-dead runs age off the board; live rows never do.
     if (state === "completed" || state === "failed") {
       const finishedMs = Date.parse(run.finished_at ?? run.last_heartbeat_at);
       if (
         Number.isNaN(finishedMs) ||
         Number.isNaN(referenceMs) ||
         referenceMs - finishedMs > FINISHED_DISPLAY_WINDOW_MS
+      ) {
+        continue;
+      }
+    } else if (state === "stale") {
+      const heartbeatMs = Date.parse(run.last_heartbeat_at);
+      if (
+        Number.isNaN(heartbeatMs) ||
+        Number.isNaN(referenceMs) ||
+        referenceMs - heartbeatMs > STALE_DISPLAY_WINDOW_MS
       ) {
         continue;
       }

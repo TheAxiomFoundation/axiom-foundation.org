@@ -17,6 +17,8 @@ const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
 const RULESPEC_REPO_ACTIVITY_KEY = "github://TheAxiomFoundation/rulespec-repos";
 const COMPILED_ARTIFACTS_KEY = "github://TheAxiomFoundation/compiled-artifacts";
 const ENCODING_LOOKBACK_DAYS = 7;
+/** How far back live_encoding_runs rows stay in the ops payload (by heartbeat). */
+const LIVE_RUN_WINDOW_HOURS = 24;
 const RULESPEC_ACTIVITY_LOOKBACK_DAYS = 30;
 const GITHUB_REPOS_PAGE_SIZE = 100;
 const GITHUB_REPOS_MAX_PAGES = 10;
@@ -229,6 +231,36 @@ export interface EncodingStatusSession {
   encoder_version: string | null;
 }
 
+/** Machine identity attached by axiom-encode to a live run. */
+export interface LiveEncodingRunner {
+  hostname?: string;
+  username?: string;
+  platform?: string;
+  pid?: number;
+  is_ci?: boolean;
+}
+
+/**
+ * One in-flight (or recently finished) `axiom-encode encode` invocation,
+ * heartbeated by the encoder while it runs. A `running` row whose heartbeat
+ * has gone stale means the encoder died mid-run.
+ */
+export interface LiveEncodingRun {
+  id: string;
+  citation: string;
+  status: string;
+  started_at: string;
+  last_heartbeat_at: string;
+  finished_at: string | null;
+  phase: string | null;
+  attempt: number | null;
+  backend: string | null;
+  model: string | null;
+  encoder_version: string | null;
+  run_id: string | null;
+  runner: LiveEncodingRunner | null;
+}
+
 export interface EncodingOpsStatus {
   refreshed_at: string;
   lookback_days: number;
@@ -241,6 +273,7 @@ export interface EncodingOpsStatus {
   latest_runs: EncodingStatusRun[];
   latest_sessions: EncodingStatusSession[];
   latest_source_counts: Record<string, number>;
+  live_runs: LiveEncodingRun[];
 }
 
 export interface RulespecRepoLatestCommit {
@@ -958,6 +991,9 @@ async function readEncodingStatusFromSupabase(
   const since = new Date(
     Date.now() - ENCODING_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
+  const liveWindowStart = new Date(
+    Date.now() - LIVE_RUN_WINDOW_HOURS * 60 * 60 * 1000
+  ).toISOString();
 
   const [
     runCount,
@@ -967,6 +1003,7 @@ async function readEncodingStatusFromSupabase(
     earliestRuns,
     latestRuns,
     latestSessions,
+    liveRuns,
   ] = await Promise.all([
     readSupabaseCount(config, "encodings", "encoding_runs", {}, fetchOptions),
     readSupabaseCount(
@@ -1025,6 +1062,21 @@ async function readEncodingStatusFromSupabase(
       },
       fetchOptions
     ),
+    // Live-run presence is written by newer encoders only; a missing table or
+    // read failure must not take down the rest of the encoding status.
+    readSupabaseRows<LiveEncodingRun>(
+      config,
+      "encodings",
+      "live_encoding_runs",
+      {
+        select:
+          "id,citation,status,started_at,last_heartbeat_at,finished_at,phase,attempt,backend,model,encoder_version,run_id,runner",
+        last_heartbeat_at: `gte.${liveWindowStart}`,
+        order: "started_at.desc",
+        limit: "40",
+      },
+      fetchOptions
+    ).catch(() => [] as LiveEncodingRun[]),
   ]);
 
   const resolvedRunCount =
@@ -1046,6 +1098,7 @@ async function readEncodingStatusFromSupabase(
     latest_runs: latestRuns,
     latest_sessions: latestSessions,
     latest_source_counts: summarizeLatestSources(latestRuns),
+    live_runs: liveRuns,
   };
 }
 

@@ -3329,14 +3329,6 @@ export function GraphViewerApp({
               questions; the rest used this program's default values, so
               a "No" can mean "not asked", not "disqualified".
             </p>
-            {runResult.provenance && (
-              // The certification ledger is why these numbers may be
-              // served at all — name it under the results.
-              <p className="results-note">
-                Computed under ledger {runResult.provenance.ledger_id},
-                engine {runResult.provenance.vintage.engine_release}
-              </p>
-            )}
           </aside>
         )}
       </section>

@@ -1625,6 +1625,25 @@ export function GraphViewerApp({
             typeof entry[1] === "number" || typeof entry[1] === "boolean",
         ),
       ),
+      // Person-level cards show every member's answer (read-only
+      // beyond Person 1 — the inspector and run panel edit members).
+      memberValues:
+        extraMembers.length > 0
+          ? Object.fromEntries(
+              inputCatalog
+                .filter((input) => input.entity === "Person")
+                .map((input) => [
+                  input.name,
+                  [
+                    { label: "P1", value: scenario[input.name] ?? null },
+                    ...extraMembers.map((member) => ({
+                      label: `P${member.split("_")[1] ?? "?"}`,
+                      value: memberScenario[member]?.[input.name] ?? null,
+                    })),
+                  ],
+                ]),
+            )
+          : undefined,
       onChange: (name: string, value: number | boolean) =>
         setScenario((current) => {
           if (typeof value === "number" && Number.isNaN(value)) {
@@ -1635,7 +1654,7 @@ export function GraphViewerApp({
           return { ...current, [name]: value };
         }),
     }),
-    [inputEditValues, scenario, inputMeta],
+    [inputEditValues, scenario, inputMeta, inputCatalog, extraMembers, memberScenario],
   );
 
   const structureTraces = useMemo(
@@ -2831,24 +2850,81 @@ export function GraphViewerApp({
                 <>
                   <dt>Your answer</dt>
                   <dd>
-                    <AnswerControl
-                      name={input.name}
-                      value={scenario[input.name]}
-                      meta={inputMeta}
-                      selectClassName="node-inspector-answer"
-                      inputClassName="node-inspector-answer"
-                      placeholder="answer…"
-                      onChange={(next) =>
-                        setScenario((current) => {
-                          if (next === undefined) {
-                            const cleaned = { ...current };
-                            delete cleaned[input.name];
-                            return cleaned;
-                          }
-                          return { ...current, [input.name]: next };
-                        })
-                      }
-                    />
+                    {input.entity === "Person" && extraMembers.length > 0 ? (
+                      // One row per member, Person 1 included — the
+                      // same uniform stack the run panel uses.
+                      <div className="scenario-member-rows">
+                        {[null, ...extraMembers].map((member) => (
+                          <label
+                            key={member ?? "person_1"}
+                            className="scenario-member-row"
+                          >
+                            <span className="scenario-field-member">
+                              {member ? memberLabel(member) : "Person 1"}
+                            </span>
+                            <AnswerControl
+                              name={input.name}
+                              value={
+                                member
+                                  ? memberScenario[member]?.[input.name]
+                                  : scenario[input.name]
+                              }
+                              meta={inputMeta}
+                              selectClassName="node-inspector-answer"
+                              inputClassName="node-inspector-answer"
+                              placeholder="answer…"
+                              onChange={(next) =>
+                                member
+                                  ? setMemberScenario((current) => {
+                                      const answers = {
+                                        ...(current[member] ?? {}),
+                                      };
+                                      if (next === undefined) {
+                                        delete answers[input.name];
+                                      } else {
+                                        answers[input.name] = next;
+                                      }
+                                      return {
+                                        ...current,
+                                        [member]: answers,
+                                      };
+                                    })
+                                  : setScenario((current) => {
+                                      if (next === undefined) {
+                                        const cleaned = { ...current };
+                                        delete cleaned[input.name];
+                                        return cleaned;
+                                      }
+                                      return {
+                                        ...current,
+                                        [input.name]: next,
+                                      };
+                                    })
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <AnswerControl
+                        name={input.name}
+                        value={scenario[input.name]}
+                        meta={inputMeta}
+                        selectClassName="node-inspector-answer"
+                        inputClassName="node-inspector-answer"
+                        placeholder="answer…"
+                        onChange={(next) =>
+                          setScenario((current) => {
+                            if (next === undefined) {
+                              const cleaned = { ...current };
+                              delete cleaned[input.name];
+                              return cleaned;
+                            }
+                            return { ...current, [input.name]: next };
+                          })
+                        }
+                      />
+                    )}
                   </dd>
                 </>
               ) : null}

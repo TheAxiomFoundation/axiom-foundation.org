@@ -1352,8 +1352,41 @@ export const InputEditContext = createContext<{
   /** Registry defaults by bare name — an unanswered card names the
    *  value that held for the run. */
   defaults?: Record<string, number | boolean>;
+  /** Person-level answers per household member (present only when
+   *  the scenario carries extra members): the card shows every
+   *  member's value; editing beyond Person 1 lives in the inspector
+   *  and the run panel. */
+  memberValues?: Record<
+    string,
+    Array<{ label: string; value: number | boolean | null }>
+  >;
   onChange: ((name: string, value: number | boolean) => void) | null;
 }>({ values: {}, answered: new Set(), onChange: null });
+
+/** Compact per-member answer line on a question card: "P1 40 · P2 38
+ *  · P3 —". Read-only — the inspector edits members. */
+function MemberAnswers({ name }: { name: string | null }) {
+  const { memberValues } = useContext(InputEditContext);
+  const rows = name ? memberValues?.[name] : undefined;
+  if (!rows) return null;
+  return (
+    <div className="irg-members">
+      {rows.map((row) => (
+        <span key={row.label}>
+          {row.label}{" "}
+          {row.value === null ||
+          (typeof row.value === "number" && Number.isNaN(row.value))
+            ? "—"
+            : typeof row.value === "boolean"
+              ? row.value
+                ? "✓"
+                : "✗"
+              : row.value.toLocaleString("en-US")}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 const InputNode = ({ data }: NodeProps) => {
   const d = data as Extract<IrgNodeData, { kind: "input" }>;
@@ -1385,6 +1418,7 @@ const InputNode = ({ data }: NodeProps) => {
       </div>
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
+      <MemberAnswers name={inputName} />
       {!answerPopulated && d.showValues && d.value && (
         <div className="irg-value">{d.value}</div>
       )}

@@ -2126,89 +2126,126 @@ export function GraphViewerApp({
               </div>
             )}
             <div className="scenario-fields">
-              {activeFields.map((field) => (
-                <label key={field.name} className="scenario-field">
-                  <span>
-                    {humanize(field.label)}
-                    {field.entity === "Person" && extraMembers.length > 0 && (
-                      <span className="scenario-field-member">Person 1</span>
-                    )}
-                  </span>
-                  <span className="scenario-field-controls">
-                    <AnswerControl
-                      name={field.name}
-                      value={scenario[field.name]}
-                      meta={inputMeta}
-                      selectClassName="scenario-field-select"
-                      placeholder={`e.g. ${field.sample}`}
-                      onChange={(next) =>
-                        setScenario((current) => {
-                          if (next === undefined) {
-                            const { [field.name]: _gone, ...rest } = current;
-                            return rest;
-                          }
-                          return { ...current, [field.name]: next };
-                        })
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="scenario-field-remove"
-                      aria-label={`Remove ${humanize(field.label)}`}
-                      onClick={() => {
-                        setSelectedLevers(
-                          active.filter((name) => name !== field.name),
-                        );
-                        setScenario((current) => {
-                          const { [field.name]: _gone, ...rest } = current;
-                          return rest;
-                        });
-                        setMemberScenario((current) =>
-                          Object.fromEntries(
-                            Object.entries(current).map(([id, answers]) => {
-                              const { [field.name]: _gone, ...rest } = answers;
-                              return [id, rest];
-                            }),
-                          ),
-                        );
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                  {/* Person-level questions repeat per additional
-                      member — one answer per person, same control. */}
-                  {field.entity === "Person" &&
-                    extraMembers.map((member) => (
-                      <span
-                        key={member}
-                        className="scenario-field-controls scenario-subfield"
-                      >
-                        <span className="scenario-field-member">
-                          {memberLabel(member)}
-                        </span>
-                        <AnswerControl
-                          name={field.name}
-                          value={memberScenario[member]?.[field.name]}
-                          meta={inputMeta}
-                          selectClassName="scenario-field-select"
-                          placeholder={`e.g. ${field.sample}`}
-                          onChange={(next) =>
-                            setMemberScenario((current) => {
-                              const answers = { ...(current[member] ?? {}) };
-                              if (next === undefined) {
-                                delete answers[field.name];
-                              } else {
-                                answers[field.name] = next;
-                              }
-                              return { ...current, [member]: answers };
-                            })
-                          }
-                        />
+              {activeFields.map((field) => {
+                const removeField = () => {
+                  setSelectedLevers(
+                    active.filter((name) => name !== field.name),
+                  );
+                  setScenario((current) => {
+                    const { [field.name]: _gone, ...rest } = current;
+                    return rest;
+                  });
+                  setMemberScenario((current) =>
+                    Object.fromEntries(
+                      Object.entries(current).map(([id, answers]) => {
+                        const { [field.name]: _gone, ...rest } = answers;
+                        return [id, rest];
+                      }),
+                    ),
+                  );
+                };
+                // A Person-level question with members present becomes
+                // a uniform stack: title row, then one identical
+                // label-beside-box row per member (Person 1 included).
+                if (field.entity === "Person" && extraMembers.length > 0) {
+                  return (
+                    <div key={field.name} className="scenario-field">
+                      <span className="scenario-field-title">
+                        {humanize(field.label)}
+                        <button
+                          type="button"
+                          className="scenario-field-remove"
+                          aria-label={`Remove ${humanize(field.label)}`}
+                          onClick={removeField}
+                        >
+                          ×
+                        </button>
                       </span>
-                    ))}
-                </label>
-              ))}
+                      <div className="scenario-member-rows">
+                        {[null, ...extraMembers].map((member) => (
+                          <label
+                            key={member ?? "person_1"}
+                            className="scenario-member-row"
+                          >
+                            <span className="scenario-field-member">
+                              {member ? memberLabel(member) : "Person 1"}
+                            </span>
+                            <AnswerControl
+                              name={field.name}
+                              value={
+                                member
+                                  ? memberScenario[member]?.[field.name]
+                                  : scenario[field.name]
+                              }
+                              meta={inputMeta}
+                              selectClassName="scenario-field-select"
+                              placeholder={`e.g. ${field.sample}`}
+                              onChange={(next) =>
+                                member
+                                  ? setMemberScenario((current) => {
+                                      const answers = {
+                                        ...(current[member] ?? {}),
+                                      };
+                                      if (next === undefined) {
+                                        delete answers[field.name];
+                                      } else {
+                                        answers[field.name] = next;
+                                      }
+                                      return { ...current, [member]: answers };
+                                    })
+                                  : setScenario((current) => {
+                                      if (next === undefined) {
+                                        const {
+                                          [field.name]: _gone,
+                                          ...rest
+                                        } = current;
+                                        return rest;
+                                      }
+                                      return {
+                                        ...current,
+                                        [field.name]: next,
+                                      };
+                                    })
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <label key={field.name} className="scenario-field">
+                    <span>{humanize(field.label)}</span>
+                    <span className="scenario-field-controls">
+                      <AnswerControl
+                        name={field.name}
+                        value={scenario[field.name]}
+                        meta={inputMeta}
+                        selectClassName="scenario-field-select"
+                        placeholder={`e.g. ${field.sample}`}
+                        onChange={(next) =>
+                          setScenario((current) => {
+                            if (next === undefined) {
+                              const { [field.name]: _gone, ...rest } = current;
+                              return rest;
+                            }
+                            return { ...current, [field.name]: next };
+                          })
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="scenario-field-remove"
+                        aria-label={`Remove ${humanize(field.label)}`}
+                        onClick={removeField}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </label>
+                );
+              })}
               {activeFields.length === 0 && (
                 <>
                   {inputCatalog.some(
@@ -3595,9 +3632,6 @@ function InputOutlineBranch({
             >
               <span className="run-picker-icon">＋</span>
               <span className="run-picker-name">{humanize(row.name)}</span>
-              <span className="run-picker-tag run-picker-tag-muted">
-                {row.entity ? humanize(row.entity) : "—"}
-              </span>
             </button>
           ))}
           {node.children.map((child) => (

@@ -3046,9 +3046,27 @@
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
-/* Per-member answer rows under a Person-level question. */
-.graph-viewer-root .scenario-subfield {
-  margin-left: 10px;
+/* Person-level question with members: title row (name + quiet ×),
+   then one identical row per member — mono micro-caps label beside
+   the box, boxes filling to the same right edge, the group held by
+   the same hairline spine the outline uses. */
+.graph-viewer-root .scenario-field-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.graph-viewer-root .scenario-member-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-rule-subtle, var(--color-rule));
+}
+.graph-viewer-root .scenario-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .graph-viewer-root .scenario-field-member {
   font-family: var(--f-mono, monospace);
@@ -3056,12 +3074,13 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink-muted);
-  margin-left: 6px;
   white-space: nowrap;
-}
-.graph-viewer-root .scenario-subfield .scenario-field-member {
-  margin-left: 0;
   min-width: 64px;
+}
+.graph-viewer-root .scenario-member-row input,
+.graph-viewer-root .scenario-member-row .scenario-field-select {
+  flex: 1;
+  min-width: 0;
 }
 .graph-viewer-root .scenario-field-remove {
   width: 22px;

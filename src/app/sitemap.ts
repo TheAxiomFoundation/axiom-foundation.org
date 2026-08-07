@@ -48,6 +48,11 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
     changeFrequency: "daily",
   },
   {
+    url: `${SITE_URL}/overview`,
+    priority: 0.8,
+    changeFrequency: "monthly",
+  },
+  {
     url: `${SITE_URL}/about`,
     priority: 0.5,
     changeFrequency: "monthly",
@@ -55,6 +60,11 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   {
     url: `${SITE_URL}/team`,
     priority: 0.5,
+    changeFrequency: "monthly",
+  },
+  {
+    url: `${SITE_URL}/slides`,
+    priority: 0.4,
     changeFrequency: "monthly",
   },
   {

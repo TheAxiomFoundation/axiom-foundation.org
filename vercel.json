@@ -13,6 +13,10 @@
       "destination": "https://proposal.axiom-foundation.org/"
     },
     {
+      "source": "/slides/:path(.*)",
+      "destination": "https://axiom-slides.vercel.app/slides/:path(.*)"
+    },
+    {
       "source": "/demos",
       "destination": "https://axiom-demo-shell.vercel.app/demos"
     },
@@ -67,6 +71,14 @@
     {
       "source": "/gallery/microsim/:path(.*)",
       "destination": "https://axiom-microsim.vercel.app/gallery/microsim/:path(.*)"
+    },
+    {
+      "source": "/gallery/guidance",
+      "destination": "https://guidance-impact-visualizer.vercel.app/guidance"
+    },
+    {
+      "source": "/gallery/guidance/:path(.*)",
+      "destination": "https://guidance-impact-visualizer.vercel.app/guidance/:path(.*)"
     },
     {
       "source": "/architecture",
@@ -218,12 +230,12 @@
     },
     {
       "source": "/guidance",
-      "destination": "https://guidance-impact-visualizer.vercel.app/",
+      "destination": "/gallery/guidance",
       "permanent": false
     },
     {
       "source": "/guidance/:path(.*)",
-      "destination": "https://guidance-impact-visualizer.vercel.app/:path(.*)",
+      "destination": "/gallery/guidance/:path(.*)",
       "permanent": false
     }
   ]

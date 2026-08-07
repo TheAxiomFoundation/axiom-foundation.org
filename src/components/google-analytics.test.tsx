@@ -68,7 +68,7 @@ describe("GoogleAnalytics", () => {
       "G-TEST123",
     );
     await waitFor(() =>
-      expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
+      expect(gtag).toHaveBeenCalledWith("event", "page_view", {
         page_path: "/axiom?q=snap",
         tool_name: "axiom-app",
       }),
@@ -85,7 +85,7 @@ describe("GoogleAnalytics", () => {
     render(<GoogleAnalytics />);
 
     await waitFor(() =>
-      expect(gtag).toHaveBeenCalledWith("config", "G-TEST123", {
+      expect(gtag).toHaveBeenCalledWith("event", "page_view", {
         page_path: "/axiom",
         tool_name: "axiom-app",
       }),

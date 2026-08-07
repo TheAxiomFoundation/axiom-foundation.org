@@ -7,6 +7,14 @@ export const metadata: Metadata = {
   description:
     "A receipt is the record you keep so anyone can check it later. The receipt package writes them for agent-produced records — one offline verification command.",
   alternates: { canonical: `${SITE_URL}/receipt` },
+  // Without a page-level block, shares inherit the root layout's
+  // generic brand card; give the package its own title and description.
+  openGraph: {
+    title: "receipt — verifiable custody of agent-produced records",
+    description:
+      "A receipt is the record you keep so anyone can check it later. The receipt package writes them for agent-produced records — one offline verification command.",
+    url: `${SITE_URL}/receipt`,
+  },
 };
 
 // The package homepage — receipt is an auxiliary open-source package for

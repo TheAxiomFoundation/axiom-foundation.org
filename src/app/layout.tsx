@@ -45,6 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     site: "@AxiomFdn",
+    // The brand share card is 1200×630; without this Next emits the
+    // small summary card and shares render a thumbnail.
+    card: "summary_large_image",
   },
 };
 

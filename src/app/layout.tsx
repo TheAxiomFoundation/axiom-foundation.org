@@ -35,9 +35,10 @@ export const metadata: Metadata = {
   openGraph: {
     url: "./",
     title: "Axiom Foundation",
-    // Round 1 tease — shares should carry the launch date. Update at launch.
+    // Post-launch share copy — the Message House top line (launch repo,
+    // Message-House.md). Keep in sync if the house changes.
     description:
-      "Launching publicly July 28, 2026. Open, machine-readable encodings of the world's rules — starting with tax and benefit policy.",
+      "The rules that decide who gets food assistance, health coverage, and tax credits live in closed code that no one can check — the Axiom Foundation publishes them in the open: cited, computable, and verified.",
     // Official brand share card (axiom-brand png/social/og-paper-full.png,
     // 1200×630, w350 lockup on paper).
     images: ["/og-image.png"],

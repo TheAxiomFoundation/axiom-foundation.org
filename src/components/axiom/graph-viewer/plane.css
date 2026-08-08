@@ -2917,6 +2917,19 @@
   overflow-y: auto;
   max-height: 100%;
   padding-right: 4px;
+  padding-bottom: 20px;
+  /* Rows dissolve at the scroll edge instead of being guillotined
+     against the run bar. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 24px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 24px),
+    transparent
+  );
 }
 .graph-viewer-root .run-overview-list {
   max-height: none;

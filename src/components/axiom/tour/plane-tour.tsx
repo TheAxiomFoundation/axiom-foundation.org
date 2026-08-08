@@ -67,13 +67,13 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
   {
     title: "This is the law, as a graph",
     description:
-      "Every node is a provision or a rule derived from one, wired the way the statute wires them. Click any node to explore it.",
+      "Every node is a concept from the law. Click one to see how it's defined, what it depends on, and the statute text behind it.",
   },
   {
     element: '[data-tour="mini-graph"]',
-    title: "Built from, used by",
+    title: "Concept dependencies",
     description:
-      "The selected rule between what feeds it and what depends on it. These lists are navigation — click a neighbor to walk the graph.",
+      "What the selected rule is built from, and what uses it. Click any neighbor to move through the graph.",
   },
   {
     element: '[data-testid="read-the-law"]',

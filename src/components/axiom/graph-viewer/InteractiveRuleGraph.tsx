@@ -1381,7 +1381,7 @@ function MemberAnswers({ name }: { name: string | null }) {
               ? row.value
                 ? "✓"
                 : "✗"
-              : row.value.toLocaleString("en-US")}
+              : row.value.toLocaleString("en-US", { maximumFractionDigits: 6 })}
         </span>
       ))}
     </div>
@@ -2837,7 +2837,9 @@ function formatValue(v: unknown): string {
   if (v === "undetermined") return "?";
   if (typeof v === "boolean") return v ? "✓ true" : "✗ false";
   if (typeof v === "number") {
-    return v.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    // Wide enough that encoded rates (0.062, 0.00765) survive intact;
+    // computed floats with genuine long tails still get trimmed.
+    return v.toLocaleString(undefined, { maximumFractionDigits: 6 });
   }
   return String(v);
 }

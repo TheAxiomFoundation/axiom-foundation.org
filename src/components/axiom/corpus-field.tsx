@@ -972,45 +972,106 @@ export function CorpusField({
         })}
 
         {/* The computed doors: the corpus's own largest subtrees */}
-        {highlights.map((dot, index) => {
-          const pos = fieldToView(transform, dot.x, dot.y);
-          if (!inView(pos.x, pos.y, 40)) return null;
-          return (
-            <a
-              key={dot.target}
-              href={fieldComposeHref(dot.target)}
-              data-testid="corpus-field-highlight"
-              title={`${humanizeCitation(dot.target)} · ${dot.ruleCount} rules`}
-              onClick={(event) => {
-                // Zoom in, don't navigate away — plain left-click
-                // enters in place; modified clicks keep link behavior.
-                if (
-                  event.metaKey ||
-                  event.ctrlKey ||
-                  event.shiftKey ||
-                  event.altKey
-                ) {
-                  return;
-                }
-                event.preventDefault();
-                enterDot(dot);
-              }}
-              // NOTE: centering lives in the inline transform only —
-              // Tailwind's -translate-x-1/2 uses the separate
-              // `translate` property and would compose (double-shift).
-              className="absolute z-10 max-w-[240px] truncate rounded border border-[var(--color-accent)] bg-[var(--color-paper)] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-[var(--color-ink)] no-underline shadow-sm hover:bg-[var(--color-accent-light)] sm:px-2 sm:py-1 sm:text-[10px]"
-              style={{
-                // Clamped so a door on a cluster's rim never bleeds
-                // past the panel edge (the chip is centered on its dot).
-                left: `clamp(130px, ${(pos.x / FIELD_WIDTH) * 100}%, calc(100% - 130px))`,
-                top: `${(pos.y / viewHeight) * 100}%`,
-                transform: `translate(-50%, ${index % 2 === 0 ? "-160%" : "70%"})`,
-              }}
-            >
-              {dot.highlightLabel}
-            </a>
-          );
-        })}
+        {(() => {
+          // Full names, no truncation: chips wrap to the max width
+          // and claim real space. Placement is collision-aware —
+          // each chip tries above its dot, then below, then further
+          // tiers, against the boxes already placed — so long names
+          // stack instead of overlapping each other.
+          const hostEl = containerRef.current;
+          const widthPx = hostEl?.clientWidth ?? FIELD_WIDTH;
+          const heightPx = hostEl?.clientHeight ?? viewHeight;
+          const CHAR_W = 6.9; // 10px mono uppercase + tracking, approx.
+          const LINE_H = 13;
+          const PAD_H = 18;
+          const PAD_V = 9;
+          const MAX_W = 220;
+          const GAP = 4;
+          const placedChips: Array<{
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+          }> = [];
+          // The launcher's search/mode controls own the top-right
+          // corner — chips route around them like any other chip.
+          if (embedded) {
+            placedChips.push({
+              x: widthPx - 250,
+              y: 70,
+              w: 500,
+              h: 140,
+            });
+          }
+          const collides = (box: (typeof placedChips)[number]) =>
+            placedChips.some(
+              (p) =>
+                Math.abs(p.x - box.x) < (p.w + box.w) / 2 + GAP &&
+                Math.abs(p.y - box.y) < (p.h + box.h) / 2 + GAP,
+            );
+          return highlights.map((dot) => {
+            const pos = fieldToView(transform, dot.x, dot.y);
+            if (!inView(pos.x, pos.y, 40)) return null;
+            const label = dot.highlightLabel ?? "";
+            const textW = label.length * CHAR_W;
+            const lineCount = Math.max(1, Math.ceil(textW / (MAX_W - PAD_H)));
+            const w = Math.min(MAX_W, textW + PAD_H);
+            const h = lineCount * LINE_H + PAD_V;
+            const rPx = dot.r * transform.k * (widthPx / FIELD_WIDTH);
+            const cx = Math.min(
+              Math.max((pos.x / FIELD_WIDTH) * widthPx, 130),
+              widthPx - 130,
+            );
+            const dotY = (pos.y / viewHeight) * heightPx;
+            const base = rPx + GAP + h / 2;
+            const tiers = [-base, base];
+            for (let extra = 1; extra <= 3; extra += 1) {
+              tiers.push(-base - extra * (h + GAP), base + extra * (h + GAP));
+            }
+            let cy = dotY + tiers[0]!;
+            for (const tier of tiers) {
+              const candidate = { x: cx, y: dotY + tier, w, h };
+              if (!collides(candidate)) {
+                cy = candidate.y;
+                break;
+              }
+            }
+            placedChips.push({ x: cx, y: cy, w, h });
+            return (
+              <a
+                key={dot.target}
+                href={fieldComposeHref(dot.target)}
+                data-testid="corpus-field-highlight"
+                title={humanizeCitation(dot.target)}
+                onClick={(event) => {
+                  // Zoom in, don't navigate away — plain left-click
+                  // enters in place; modified clicks keep link behavior.
+                  if (
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  enterDot(dot);
+                }}
+                // NOTE: centering lives in the inline transform only —
+                // Tailwind's -translate-x-1/2 uses the separate
+                // `translate` property and would compose (double-shift).
+                className="absolute z-10 max-w-[220px] whitespace-normal text-center leading-[1.3] rounded border border-[var(--color-accent)] bg-[var(--color-paper)] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-[var(--color-ink)] no-underline shadow-sm hover:bg-[var(--color-accent-light)] sm:px-2 sm:py-1 sm:text-[10px]"
+                style={{
+                  left: `${cx}px`,
+                  top: `${cy}px`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {dot.highlightLabel}
+              </a>
+            );
+          });
+        })()}
 
         {/* Invisible anchor at the spotlighted dot's landing spot —
             the guided tour's overlay cuts its hole around this box,

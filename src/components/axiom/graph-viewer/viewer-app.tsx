@@ -2736,7 +2736,7 @@ export function GraphViewerApp({
                     ? "Yes"
                     : "No"
                   : typeof liveRaw === "number"
-                    ? liveRaw.toLocaleString("en-US")
+                    ? liveRaw.toLocaleString("en-US", { maximumFractionDigits: 6 })
                     : String(liveRaw);
             // The provision to read: a rule's own home file. A question
             // has no home in the law (it lives in the synthetic package
@@ -2975,7 +2975,7 @@ export function GraphViewerApp({
                   if (typeof raw === "boolean")
                     return raw ? "✓ true" : "✗ false";
                   if (typeof raw === "number")
-                    return raw.toLocaleString("en-US");
+                    return raw.toLocaleString("en-US", { maximumFractionDigits: 6 });
                   return String(raw);
                 };
                 const deps = [
@@ -3007,7 +3007,7 @@ export function GraphViewerApp({
                         ? raw
                           ? "✓ true"
                           : "✗ false"
-                        : raw.toLocaleString("en-US");
+                        : raw.toLocaleString("en-US", { maximumFractionDigits: 6 });
                     const fallback = inputMeta.defaults[bareName];
                     const answered =
                       miniValue(depId) ??
@@ -3289,7 +3289,7 @@ export function GraphViewerApp({
                             ? "Yes"
                             : "No"
                           : typeof value === "number"
-                            ? value.toLocaleString("en-US")
+                            ? value.toLocaleString("en-US", { maximumFractionDigits: 6 })
                             : String(value ?? "—")}
                       </span>
                     </button>
@@ -4007,10 +4007,12 @@ const FORMULA_KEYWORDS = new Set([
 function formatParameterValue(raw: string, unit: string | null): string {
   const trimmed = raw.trim();
   if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
-    const numeric = Number(trimmed);
-    const pretty = numeric.toLocaleString("en-US", {
-      maximumFractionDigits: 2,
-    });
+    // Exactly as encoded: group the integer part for readability but
+    // keep the fraction verbatim — a 0.062 rate must never display
+    // as 0.06.
+    const [whole, fraction] = trimmed.split(".");
+    const grouped = Number(whole).toLocaleString("en-US");
+    const pretty = fraction ? `${grouped}.${fraction}` : grouped;
     if (unit === "USD") return `$${pretty}`;
     return unit ? `${pretty} ${unit.toLowerCase()}` : pretty;
   }

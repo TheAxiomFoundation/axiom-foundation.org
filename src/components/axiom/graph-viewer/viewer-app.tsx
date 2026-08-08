@@ -907,47 +907,112 @@ export function GraphViewerApp({
   const outlineView = useMemo<OutlineNode[]>(() => {
     const active = selectedLevers ?? [];
     const query = runBrowseSearch.trim().toLowerCase();
-    const prune = (node: OutlineNode): OutlineNode | null => {
-      const inputs = node.inputs.filter(
-        (row) =>
-          !active.includes(row.name) &&
-          (!query || humanize(row.name).toLowerCase().includes(query)),
+    const rowVisible = (row: OutlineInputRow) =>
+      !active.includes(row.name) &&
+      (!query || humanize(row.name).toLowerCase().includes(query));
+    // Node identity is the whole game here: shared sub-computations
+    // are the SAME object under each consumer (the builder caches by
+    // id), so all structural passes run on the original outline —
+    // cloning first would sever the sharing they detect. The
+    // active/query filter applies at input-collection time instead.
+    const pruned = inputOutline;
+    if (pruned.length === 0) return [];
+    // ── One MEANINGFUL home per node and per input ──
+    // The fan-out is real, but repeating rows under every consumer
+    // buries an 8-question law under 40 add-buttons, and "first
+    // occurrence" is order trivia. Dominator placement, two passes:
+    //   1. A shared SUB-COMPUTATION (a subtree consumed by several
+    //      calcs) renders once, at the narrowest node all of its
+    //      consumers sit beneath, internal structure intact.
+    //   2. A shared INPUT then renders once, at the narrowest node
+    //      all of its (now unique) consumers sit beneath.
+    // Used everywhere → the law's root; scoped → inside its section.
+    // Placement itself carries information.
+    const commonPrefix = (paths: OutlineNode[][]): OutlineNode[] => {
+      let prefix = paths[0] ?? [];
+      for (const path of paths.slice(1)) {
+        let i = 0;
+        while (i < prefix.length && i < path.length && prefix[i] === path[i]) {
+          i += 1;
+        }
+        prefix = prefix.slice(0, i);
+      }
+      return prefix;
+    };
+    // Pass 1: where does every node live? Unique parent → in place;
+    // several distinct parents → the LCA of its occurrence trails.
+    const nodeParents = new Map<OutlineNode, Set<OutlineNode>>();
+    const nodeTrails = new Map<OutlineNode, OutlineNode[][]>();
+    const record = (node: OutlineNode, trail: OutlineNode[]) => {
+      const parents = nodeParents.get(node) ?? new Set<OutlineNode>();
+      if (trail.length > 0) parents.add(trail[trail.length - 1]!);
+      nodeParents.set(node, parents);
+      const trails = nodeTrails.get(node) ?? [];
+      trails.push(trail);
+      nodeTrails.set(node, trails);
+      node.children.forEach((child) => record(child, [...trail, node]));
+    };
+    pruned.forEach((root) => record(root, []));
+    const homeOf = new Map<OutlineNode, OutlineNode | null>();
+    for (const [node, parents] of nodeParents) {
+      if (parents.size === 0) {
+        homeOf.set(node, null);
+      } else if (parents.size === 1) {
+        homeOf.set(node, [...parents][0]!);
+      } else {
+        const prefix = commonPrefix(nodeTrails.get(node)!);
+        homeOf.set(node, prefix.length > 0 ? prefix[prefix.length - 1]! : null);
+      }
+    }
+    const childrenOf = new Map<OutlineNode | null, OutlineNode[]>();
+    for (const [node, home] of homeOf) {
+      const list = childrenOf.get(home) ?? [];
+      list.push(node);
+      childrenOf.set(home, list);
+    }
+    const topLevel = childrenOf.get(null) ?? [];
+    // Pass 2: input homes over the deduplicated structure.
+    const inputPaths = new Map<string, OutlineNode[][]>();
+    const rowByName = new Map<string, OutlineInputRow>();
+    const walkPlaced = (node: OutlineNode, trail: OutlineNode[]) => {
+      const here = [...trail, node];
+      for (const row of node.inputs) {
+        if (!rowVisible(row)) continue;
+        rowByName.set(row.name, row);
+        const list = inputPaths.get(row.name) ?? [];
+        list.push(here);
+        inputPaths.set(row.name, list);
+      }
+      (childrenOf.get(node) ?? []).forEach((child) => walkPlaced(child, here));
+    };
+    topLevel.forEach((root) => walkPlaced(root, []));
+    const inputHomes = new Map<OutlineNode, OutlineInputRow[]>();
+    for (const [name, occurrences] of inputPaths) {
+      const prefix = commonPrefix(occurrences);
+      // Occurrences in different trees share no prefix — the primary
+      // law takes law-wide questions.
+      const home =
+        prefix.length > 0 ? prefix[prefix.length - 1]! : topLevel[0]!;
+      const list = inputHomes.get(home) ?? [];
+      list.push(rowByName.get(name)!);
+      inputHomes.set(home, list);
+    }
+    const rebuild = (node: OutlineNode): OutlineNode | null => {
+      const inputs = (inputHomes.get(node) ?? []).sort((a, b) =>
+        humanize(a.name).localeCompare(humanize(b.name)),
       );
-      const children = node.children
-        .map(prune)
+      const children = (childrenOf.get(node) ?? [])
+        .map(rebuild)
         .filter((child): child is OutlineNode => !!child);
       if (inputs.length === 0 && children.length === 0) return null;
       const names = new Set<string>();
       collectOutlineInputNames({ inputs, children }, names);
       return { ...node, inputs, children, count: names.size };
     };
-    // One row per input: the fan-out is real (a shared input feeds
-    // many calcs) but repeating the row under every consumer buries
-    // an 8-question law under 40 add-buttons. Each input renders at
-    // its FIRST point of use in display order; branches left with
-    // nothing to show fold away.
-    const dedupe = (
-      node: OutlineNode,
-      seen: Set<string>,
-    ): OutlineNode | null => {
-      const inputs = node.inputs.filter((row) => {
-        if (seen.has(row.name)) return false;
-        seen.add(row.name);
-        return true;
-      });
-      const children = node.children
-        .map((child) => dedupe(child, seen))
-        .filter((child): child is OutlineNode => !!child);
-      if (inputs.length === 0 && children.length === 0) return null;
-      return { ...node, inputs, children };
-    };
-    const seenRows = new Set<string>();
-    const pruned = inputOutline
-      .map(prune)
-      .filter((node): node is OutlineNode => !!node)
-      .map((node) => dedupe(node, seenRows))
+    const placed = topLevel
+      .map(rebuild)
       .filter((node): node is OutlineNode => !!node);
-    if (pruned.length === 0) return [];
+    if (placed.length === 0) return [];
     // One primary tree — the law that was opened — fully expanded;
     // renamed-seam satellite chains and unrelated co-modules tuck
     // under a single collapsed entry. File-level comparison: the
@@ -956,12 +1021,12 @@ export function GraphViewerApp({
     const primaryIndex = focusFile
       ? Math.max(
           0,
-          pruned.findIndex((node) => fileLegalIdOf(node.id) === focusFile),
+          placed.findIndex((node) => fileLegalIdOf(node.id) === focusFile),
         )
       : 0;
-    const rest = pruned.filter((_, index) => index !== primaryIndex);
+    const rest = placed.filter((_, index) => index !== primaryIndex);
     return [
-      pruned[primaryIndex]!,
+      placed[primaryIndex]!,
       ...(rest.length
         ? [
             {

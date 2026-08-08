@@ -921,8 +921,31 @@ export function GraphViewerApp({
       collectOutlineInputNames({ inputs, children }, names);
       return { ...node, inputs, children, count: names.size };
     };
+    // One row per input: the fan-out is real (a shared input feeds
+    // many calcs) but repeating the row under every consumer buries
+    // an 8-question law under 40 add-buttons. Each input renders at
+    // its FIRST point of use in display order; branches left with
+    // nothing to show fold away.
+    const dedupe = (
+      node: OutlineNode,
+      seen: Set<string>,
+    ): OutlineNode | null => {
+      const inputs = node.inputs.filter((row) => {
+        if (seen.has(row.name)) return false;
+        seen.add(row.name);
+        return true;
+      });
+      const children = node.children
+        .map((child) => dedupe(child, seen))
+        .filter((child): child is OutlineNode => !!child);
+      if (inputs.length === 0 && children.length === 0) return null;
+      return { ...node, inputs, children };
+    };
+    const seenRows = new Set<string>();
     const pruned = inputOutline
       .map(prune)
+      .filter((node): node is OutlineNode => !!node)
+      .map((node) => dedupe(node, seenRows))
       .filter((node): node is OutlineNode => !!node);
     if (pruned.length === 0) return [];
     // One primary tree — the law that was opened — fully expanded;

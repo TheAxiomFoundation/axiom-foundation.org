@@ -20,7 +20,7 @@ function launcherSteps(
     {
       title: "Welcome to the graph",
       description:
-        "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it. Open one to explore its rule graph — which rules feed which — and run it.",
+        "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it.",
     },
     {
       element: '[data-testid="launcher-controls"]',
@@ -39,16 +39,18 @@ function launcherSteps(
       element: onSpotlightExample
         ? '[data-testid="field-spotlight"]'
         : undefined,
-      deferred: true,
+      // Deferred only when there IS an anchor to wait for — an
+      // element-less step must not carry a wait.
+      deferred: onSpotlightExample ? true : undefined,
       title: "Open a law, then run it",
       description:
-        "Inside a graph, click any node to inspect it and read the statute behind it. Set inputs on the left and “Run it all” computes a result traced back to the law.",
+        "Inside a graph you can inspect how rules relate, read the law at any node, and run a scenario with your own answers.",
       onEnter: onSpotlightExample
         ? () => onSpotlightExample(true)
         : undefined,
       action: onOpenExample
         ? {
-            label: "Open an example — the EITC →",
+            label: "Open the EITC subtree →",
             onClick: onOpenExample,
           }
         : undefined,
@@ -68,7 +70,7 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
       "Every node is a provision or a rule derived from one, wired the way the statute wires them. Click any node to explore it.",
   },
   {
-    element: ".node-inspector .mini-graph",
+    element: '[data-tour="mini-graph"]',
     title: "Built from, used by",
     description:
       "The selected rule between what feeds it and what depends on it. These lists are navigation — click a neighbor to walk the graph.",
@@ -86,7 +88,7 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
         ?.scrollIntoView({ block: "nearest" }),
   },
   {
-    element: ".run-toggle",
+    element: '[data-tour="run-scenario"]',
     title: "Run a scenario",
     description:
       "Answer a household's questions and execute the law — unanswered inputs use the program's defaults, and results trace through the graph.",

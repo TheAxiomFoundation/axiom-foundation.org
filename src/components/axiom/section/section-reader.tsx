@@ -170,7 +170,7 @@ function Breadcrumbs({ data }: { data: SectionPageData }) {
   // section-depth paths to this reader and browse levels to the v1
   // tree browser.
   return (
-    <nav aria-label="Breadcrumb">
+    <nav aria-label="Breadcrumb" data-tour="breadcrumbs">
       <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
         {data.breadcrumbs.map((item, index) => (
           <li key={item.href} className="flex items-center gap-1">

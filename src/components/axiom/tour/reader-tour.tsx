@@ -8,7 +8,7 @@ import { GuidedTour, type TourStep } from "./guided-tour";
  *  no rail without encodings) drop out automatically. */
 const READER_TOUR_STEPS: TourStep[] = [
   {
-    element: 'nav[aria-label="Breadcrumb"]',
+    element: '[data-tour="breadcrumbs"]',
     title: "You are inside a citation",
     description:
       "The path mirrors the URL — every level is a link, from the jurisdiction down to this section.",

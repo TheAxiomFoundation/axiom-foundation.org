@@ -78,7 +78,7 @@ describe("PlaneTour", () => {
     window.sessionStorage.setItem(tourSeenKey("subgraph"), "1");
     visible("back-to-overview");
     const toggle = document.createElement("div");
-    toggle.className = "run-toggle";
+    toggle.setAttribute("data-tour", "run-scenario");
     toggle.getClientRects = () =>
       [{ width: 10, height: 10 }] as unknown as DOMRectList;
     document.body.appendChild(toggle);
@@ -88,7 +88,9 @@ describe("PlaneTour", () => {
     expect(driven.map((step) => step.element)).toContain(
       '[data-testid="back-to-overview"]',
     );
-    expect(driven.map((step) => step.element)).toContain(".run-toggle");
+    expect(driven.map((step) => step.element)).toContain(
+      '[data-tour="run-scenario"]',
+    );
   });
 });
 
@@ -103,7 +105,7 @@ describe("ReaderTour", () => {
   it("tours the reading surfaces that exist on the page", () => {
     window.localStorage.setItem(tourSeenKey("reader"), "1");
     const crumbs = document.createElement("nav");
-    crumbs.setAttribute("aria-label", "Breadcrumb");
+    crumbs.setAttribute("data-tour", "breadcrumbs");
     crumbs.getClientRects = () =>
       [{ width: 10, height: 10 }] as unknown as DOMRectList;
     document.body.appendChild(crumbs);
@@ -113,7 +115,7 @@ describe("ReaderTour", () => {
     const driven = lastConfig().steps as Array<{ element?: string }>;
     // Breadcrumbs + action strip present; TOC and rail dropped (absent).
     expect(driven.map((step) => step.element)).toEqual([
-      'nav[aria-label="Breadcrumb"]',
+      '[data-tour="breadcrumbs"]',
       '[data-testid="action-strip"]',
     ]);
   });

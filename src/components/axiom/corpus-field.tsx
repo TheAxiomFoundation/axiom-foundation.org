@@ -770,8 +770,9 @@ export function CorpusField({
       spotlightReturnRef.current ??= transformRef.current;
       // Well past the cluster framing — dot-level zoom, so the
       // spotlight hole holds the subtree alone, not its neighborhood.
+      // No pinned hover: the subtree and its label ARE the show.
       const cluster = zoomTransformForDot(layout, dot, viewHeightRef.current);
-      const k = Math.min(cluster.k * 3, MAX_FIELD_ZOOM);
+      const k = Math.min(cluster.k * 4, MAX_FIELD_ZOOM);
       const framing = clampFieldTransform(
         {
           k,
@@ -781,7 +782,7 @@ export function CorpusField({
         viewHeightRef.current
       );
       setSpotlightMark(fieldToView(framing, dot.x, dot.y));
-      animateTo(framing, ZOOM_IN_MS, () => setHovered(dot));
+      animateTo(framing, ZOOM_IN_MS);
       return;
     }
     setSpotlightMark(null);
@@ -1020,11 +1021,9 @@ export function CorpusField({
             className="pointer-events-none absolute"
             style={{
               left: `${(spotlightMark.x / FIELD_WIDTH) * 100}%`,
-              // The pinned card rides above the ring, so the content
-              // stack's visual center sits a touch above the dot.
-              top: `calc(${(spotlightMark.y / viewHeight) * 100}% - 25px)`,
-              width: 260,
-              height: 250,
+              top: `${(spotlightMark.y / viewHeight) * 100}%`,
+              width: 300,
+              height: 280,
               transform: "translate(-50%, -50%)",
             }}
           />

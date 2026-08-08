@@ -107,14 +107,23 @@ export async function POST(request: Request) {
       body.facts
     );
     // Extra household members: `people.person_N` records sanitized
-    // exactly like facts; malformed member ids are dropped whole.
+    // exactly like facts; malformed member ids — and non-object
+    // records — are dropped whole. An EMPTY object is kept: by the
+    // members contract an added person with no answers is still a
+    // person, but only when the caller actually sent an object (a
+    // scalar must never fabricate a household member).
     let people: Record<string, Record<string, number | boolean>> | undefined;
     if (body.people && typeof body.people === "object") {
       people = {};
       for (const [member, values] of Object.entries(
         body.people as Record<string, unknown>
       )) {
-        if (!MEMBER_ID_RE.test(member)) {
+        if (
+          !MEMBER_ID_RE.test(member) ||
+          !values ||
+          typeof values !== "object" ||
+          Array.isArray(values)
+        ) {
           droppedFacts.push(member);
           continue;
         }

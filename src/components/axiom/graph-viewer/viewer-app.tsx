@@ -850,11 +850,7 @@ export function GraphViewerApp({
         children = inner.children;
       }
       const names = new Set<string>();
-      const collect = (n: { inputs: OutlineInputRow[]; children: OutlineNode[] }) => {
-        n.inputs.forEach((row) => names.add(row.name));
-        n.children.forEach(collect);
-      };
-      collect({ inputs, children });
+      collectOutlineInputNames({ inputs, children }, names);
       const node: OutlineNode | null =
         names.size > 0
           ? { id, label: humanize(rule.name), inputs, children, count: names.size }
@@ -862,21 +858,31 @@ export function GraphViewerApp({
       built.set(id, node);
       return node;
     };
+    const idConsumed = new Set<string>();
     const consumed = new Set<string>();
     for (const rule of graph.rules)
       for (const dep of [...rule.ruleDeps, ...rule.inputDeps]) {
+        idConsumed.add(dep);
         consumed.add(dep);
         // A name-bridged chain is consumed too — it nests under its
-        // consumer rather than surfacing as a root.
+        // consumer rather than surfacing as a root. Never by ITSELF:
+        // a rule whose subtree consumes a seam input bearing its own
+        // name (a prior-period self-reference) must stay a root.
         const leaf = leafById.get(dep);
         const bridged = leaf ? ruleIdByName.get(leaf.name) : undefined;
-        if (bridged) consumed.add(bridged);
+        if (bridged && bridged !== rule.legalId) consumed.add(bridged);
       }
-    return graph.rules
-      .filter((rule) => !consumed.has(rule.legalId))
-      .map((rule) => build(rule.legalId, new Set()))
-      .filter((node): node is OutlineNode => !!node)
-      .sort((a, b) => b.count - a.count);
+    const rootsFrom = (unconsumed: Set<string>) =>
+      graph.rules
+        .filter((rule) => !unconsumed.has(rule.legalId))
+        .map((rule) => build(rule.legalId, new Set()))
+        .filter((node): node is OutlineNode => !!node)
+        .sort((a, b) => b.count - a.count);
+    const roots = rootsFrom(consumed);
+    // Mutually-bridged chains can consume every root away; a picker
+    // with rules but no tree is strictly worse than extra roots —
+    // fall back to id-only consumption.
+    return roots.length > 0 ? roots : rootsFrom(idConsumed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, inputCatalog]);
   // Explicit expand/collapse choices; anything unset falls back to
@@ -884,6 +890,57 @@ export function GraphViewerApp({
   const [outlineOpen, setOutlineOpen] = useState<Map<string, boolean>>(
     new Map(),
   );
+  // The picker's view of the outline: pruned to what's addable and
+  // matching, primary tree first, satellites folded. Memoized — the
+  // DAG walk must not re-run on unrelated panel re-renders.
+  const outlineView = useMemo<OutlineNode[]>(() => {
+    const active = selectedLevers ?? [];
+    const query = runBrowseSearch.trim().toLowerCase();
+    const prune = (node: OutlineNode): OutlineNode | null => {
+      const inputs = node.inputs.filter(
+        (row) =>
+          !active.includes(row.name) &&
+          (!query || humanize(row.name).toLowerCase().includes(query)),
+      );
+      const children = node.children
+        .map(prune)
+        .filter((child): child is OutlineNode => !!child);
+      if (inputs.length === 0 && children.length === 0) return null;
+      const names = new Set<string>();
+      collectOutlineInputNames({ inputs, children }, names);
+      return { ...node, inputs, children, count: names.size };
+    };
+    const pruned = inputOutline
+      .map(prune)
+      .filter((node): node is OutlineNode => !!node);
+    if (pruned.length === 0) return [];
+    // One primary tree — the law that was opened — fully expanded;
+    // renamed-seam satellite chains and unrelated co-modules tuck
+    // under a single collapsed entry. File-level comparison: the
+    // compose focus may carry a #rule fragment.
+    const focusFile = composeFocus ? fileLegalIdOf(composeFocus) : null;
+    const primaryIndex = focusFile
+      ? Math.max(
+          0,
+          pruned.findIndex((node) => fileLegalIdOf(node.id) === focusFile),
+        )
+      : 0;
+    const rest = pruned.filter((_, index) => index !== primaryIndex);
+    return [
+      pruned[primaryIndex]!,
+      ...(rest.length
+        ? [
+            {
+              id: "__outline-other__",
+              label: "Other definitions in this module",
+              inputs: [],
+              children: rest,
+              count: rest.reduce((sum, n) => sum + n.count, 0),
+            },
+          ]
+        : []),
+    ];
+  }, [inputOutline, selectedLevers, runBrowseSearch, composeFocus]);
   const scenarioFields = useMemo(
     () =>
       inputCatalog.map((input) => ({
@@ -1591,6 +1648,13 @@ export function GraphViewerApp({
     [graph, selectedOutputs],
   );
   const runModeActive = runPanelOpen || Boolean(runResult);
+  // The Person-entity subset, stable across member edits — the
+  // member-values map must not refilter the whole catalog (and
+  // invalidate every canvas card) on each keystroke.
+  const personCatalog = useMemo(
+    () => inputCatalog.filter((input) => input.entity === "Person"),
+    [inputCatalog],
+  );
   const inputEditValues = useMemo(() => {
     // Every registry input is genuinely settable (grafted onto its
     // owning entity server-side) — so every one gets a live field.
@@ -1630,8 +1694,7 @@ export function GraphViewerApp({
       memberValues:
         extraMembers.length > 0
           ? Object.fromEntries(
-              inputCatalog
-                .filter((input) => input.entity === "Person")
+              personCatalog
                 .map((input) => [
                   input.name,
                   [
@@ -1654,7 +1717,7 @@ export function GraphViewerApp({
           return { ...current, [name]: value };
         }),
     }),
-    [inputEditValues, scenario, inputMeta, inputCatalog, extraMembers, memberScenario],
+    [inputEditValues, scenario, inputMeta, personCatalog, extraMembers, memberScenario],
   );
 
   const structureTraces = useMemo(
@@ -1982,64 +2045,7 @@ export function GraphViewerApp({
               placeholder={`Search ${inputCatalog.length} inputs...`}
             />
             <div className="run-picker-list">
-              {(() => {
-                // Prune the outline to what's addable and matching,
-                // recounting distinct questions per branch.
-                const prune = (node: OutlineNode): OutlineNode | null => {
-                  const inputs = node.inputs.filter(
-                    (row) =>
-                      !active.includes(row.name) &&
-                      (!query ||
-                        humanize(row.name).toLowerCase().includes(query)),
-                  );
-                  const children = node.children
-                    .map(prune)
-                    .filter((child): child is OutlineNode => !!child);
-                  if (inputs.length === 0 && children.length === 0)
-                    return null;
-                  const names = new Set<string>();
-                  const collect = (n: OutlineNode) => {
-                    n.inputs.forEach((row) => names.add(row.name));
-                    n.children.forEach(collect);
-                  };
-                  collect({ ...node, inputs, children });
-                  return { ...node, inputs, children, count: names.size };
-                };
-                const pruned = inputOutline
-                  .map(prune)
-                  .filter((node): node is OutlineNode => !!node);
-                if (pruned.length === 0) return null;
-                // One primary tree — the law that was opened — fully
-                // expanded; renamed-seam satellite chains and
-                // unrelated co-modules tuck under a single collapsed
-                // entry instead of crowding the top level.
-                const focusPrefix = composeFocus ? `${composeFocus}#` : null;
-                const primaryIndex = focusPrefix
-                  ? Math.max(
-                      0,
-                      pruned.findIndex((node) =>
-                        node.id.startsWith(focusPrefix),
-                      ),
-                    )
-                  : 0;
-                const rest = pruned.filter(
-                  (_, index) => index !== primaryIndex,
-                );
-                const nodes: OutlineNode[] = [
-                  pruned[primaryIndex]!,
-                  ...(rest.length
-                    ? [
-                        {
-                          id: "__outline-other__",
-                          label: "Other definitions in this module",
-                          inputs: [],
-                          children: rest,
-                          count: rest.reduce((sum, n) => sum + n.count, 0),
-                        },
-                      ]
-                    : []),
-                ];
-                return nodes.map((root, index) => (
+              {outlineView.map((root, index) => (
                     <InputOutlineBranch
                       key={root.id}
                       node={root}
@@ -2065,8 +2071,7 @@ export function GraphViewerApp({
                         )
                       }
                     />
-                  ));
-              })()}
+              ))}
               {inputCatalog.length === 0 &&
                 (graph?.inputs.length ?? 0) > 0 && (
                   <div className="output-empty">
@@ -2099,8 +2104,12 @@ export function GraphViewerApp({
           </div>
           <div className="run-col">
             <p className="run-section-label">Your answers</p>
-            {(extraMembers.length > 0 ||
-              activeFields.some((field) => field.entity === "Person")) && (
+            {/* Members are a compose-mode contract (run-by-root
+                `people`); package-program runs have no channel for
+                them, so the strip never renders there. */}
+            {composeFocus &&
+              (extraMembers.length > 0 ||
+                activeFields.some((field) => field.entity === "Person")) && (
               <div className="scenario-members">
                 <span className="scenario-members-label">Household</span>
                 <span className="scenario-member-chip">Person 1</span>
@@ -2124,24 +2133,29 @@ export function GraphViewerApp({
                     </button>
                   </span>
                 ))}
-                <button
-                  type="button"
-                  className="scenario-member-add"
-                  onClick={() =>
-                    setExtraMembers((current) => {
-                      const next =
-                        Math.max(
-                          1,
-                          ...current.map(
-                            (id) => Number(id.split("_")[1]) || 1,
-                          ),
-                        ) + 1;
-                      return [...current, `person_${next}`];
-                    })
-                  }
-                >
-                  ＋ Add person
-                </button>
+                {/* Ids reuse the lowest free slot and stop at
+                    person_12 — the proxy's member-id bound; minting
+                    past it would silently drop the member's answers. */}
+                {extraMembers.length < 11 && (
+                  <button
+                    type="button"
+                    className="scenario-member-add"
+                    onClick={() =>
+                      setExtraMembers((current) => {
+                        const used = new Set(
+                          current.map((id) => Number(id.split("_")[1])),
+                        );
+                        let next = 2;
+                        while (used.has(next)) next += 1;
+                        return next > 12
+                          ? current
+                          : [...current, `person_${next}`];
+                      })
+                    }
+                  >
+                    ＋ Add person
+                  </button>
+                )}
               </div>
             )}
             <div className="scenario-fields">
@@ -2326,8 +2340,12 @@ export function GraphViewerApp({
       onOpenExample={
         tourExampleReady ? () => enterComposeMode(TOUR_EXAMPLE_TARGET) : undefined
       }
+      // The spotlight lives in the corpus FIELD — with the list
+      // launcher persisted, offering it would anchor the closing step
+      // to an element that never mounts (a ~2s driver stall, then a
+      // floating popover about a spotlight nobody sees).
       onSpotlightExample={
-        tourExampleReady
+        tourExampleReady && launcherMode === "field"
           ? (on) => setTourSpotlight(on ? TOUR_EXAMPLE_TARGET : null)
           : undefined
       }
@@ -2548,6 +2566,7 @@ export function GraphViewerApp({
             <button
               type="button"
               className={`run-toggle ${resultsStale ? "is-stale" : ""}`}
+              data-tour="run-scenario"
               disabled={running}
               onClick={() => setRunPanelOpen((open) => !open)}
               aria-expanded={runPanelOpen}
@@ -3641,6 +3660,16 @@ interface OutlineNode {
   children: OutlineNode[];
   /** Distinct answerable questions in this subtree. */
   count: number;
+}
+
+/** Distinct input names in a subtree — shared by the outline builder
+ *  and the picker's pruned view so the two counts can't drift. */
+function collectOutlineInputNames(
+  node: { inputs: OutlineInputRow[]; children: OutlineNode[] },
+  names: Set<string>,
+): void {
+  node.inputs.forEach((row) => names.add(row.name));
+  node.children.forEach((child) => collectOutlineInputNames(child, names));
 }
 
 function InputOutlineBranch({

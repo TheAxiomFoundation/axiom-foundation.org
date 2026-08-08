@@ -118,7 +118,7 @@ export function InspectorMiniGraph({
   );
 
   return (
-    <div className="mini-graph" ref={rootRef}>
+    <div className="mini-graph" data-tour="mini-graph" ref={rootRef}>
       <svg
         className="mini-graph-wires"
         width={size.w}

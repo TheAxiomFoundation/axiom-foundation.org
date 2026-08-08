@@ -19,7 +19,8 @@ function displayLabel(label: string): string {
  * v2 browse page — the levels above a section (jurisdiction, doc
  * type, title) rendered in the reader's visual language: breadcrumb
  * row, a quiet header, and a single reading-width list of children.
- * Search lives in the nav's top right. Bare citation-path hrefs are canonical;
+ * No search affordance for now — corpus search is deliberately
+ * unreachable outside the /axiom landing. Bare citation-path hrefs are canonical;
  * the proxy sends section depth to the reader and browse depth back
  * here.
  */

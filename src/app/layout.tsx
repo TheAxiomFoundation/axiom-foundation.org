@@ -70,7 +70,11 @@ export default function RootLayout({
         <GradientSync />
         <CommandPaletteProvider>
           <NavWrapper />
-          <main className="relative z-10">{children}</main>
+          {/* Above the footer's z-10: fixed overlays inside main (the
+              run sheet, the law popup) are trapped in main's stacking
+              context, and a later same-level footer would paint over
+              them once the page scrolls to it. */}
+          <main className="relative z-20">{children}</main>
         </CommandPaletteProvider>
         <Footer renderLink={Link} appUrl={axiomAppHref()} updatesUrl={UPDATES_URL} />
       </body>

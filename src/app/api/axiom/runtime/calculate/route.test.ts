@@ -78,6 +78,53 @@ describe("POST /api/axiom/runtime/calculate (run-by-root)", () => {
     expect(getRuntimePackageMock).not.toHaveBeenCalled();
   });
 
+  it("sanitizes extra members like facts and forwards them as people", async () => {
+    runCalculateRootMock.mockResolvedValue({
+      kind: "ok",
+      result: { outputs: {}, trace: [] },
+    });
+    const response = await POST(
+      post({
+        root: "us:statutes/26/32",
+        facts: { age: 40 },
+        people: {
+          person_2: { age: 38, bogus: "nope" },
+          person_13: { age: 1 }, // beyond the member-id bound
+          "not-a-member": { age: 2 },
+        },
+        variables: ["eitc"],
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(runCalculateRootMock).toHaveBeenCalledWith({
+      root: "us:statutes/26/32",
+      facts: { age: 40 },
+      people: { person_2: { age: 38 } },
+      variables: ["eitc"],
+    });
+  });
+
+  it("omits people entirely when no valid member survives", async () => {
+    runCalculateRootMock.mockResolvedValue({
+      kind: "ok",
+      result: { outputs: {}, trace: [] },
+    });
+    await POST(
+      post({
+        root: "us:statutes/26/32",
+        facts: { age: 40 },
+        people: { intruder: { age: 9 } },
+        variables: [],
+      })
+    );
+    expect(runCalculateRootMock).toHaveBeenCalledWith({
+      root: "us:statutes/26/32",
+      facts: { age: 40 },
+      people: undefined,
+      variables: [],
+    });
+  });
+
   it("404s root_calculate_unsupported when the upstream lacks the endpoint", async () => {
     runCalculateRootMock.mockResolvedValue({ kind: "unsupported" });
     const response = await POST(

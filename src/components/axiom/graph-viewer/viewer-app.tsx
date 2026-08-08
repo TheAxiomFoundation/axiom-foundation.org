@@ -882,7 +882,18 @@ export function GraphViewerApp({
     // Mutually-bridged chains can consume every root away; a picker
     // with rules but no tree is strictly worse than extra roots —
     // fall back to id-only consumption.
-    return roots.length > 0 ? roots : rootsFrom(idConsumed);
+    const kept = roots.length > 0 ? roots : rootsFrom(idConsumed);
+    // Whole-module serving drags in co-resident chains that feed no
+    // computed output (import § 151 for one definition, receive its
+    // senior-deduction machinery too). Answering those questions
+    // cannot change any result — drop chains that touch no terminal
+    // output. The systematic fix is upstream: compose should serve
+    // the exercised closure, not whole files.
+    const terminal = new Set(graph.terminalOutputs ?? []);
+    if (terminal.size === 0) return kept;
+    const touchesTerminal = (node: OutlineNode): boolean =>
+      terminal.has(node.id) || node.children.some(touchesTerminal);
+    return kept.filter(touchesTerminal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, inputCatalog]);
   // Explicit expand/collapse choices; anything unset falls back to

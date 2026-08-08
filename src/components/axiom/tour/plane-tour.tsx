@@ -20,13 +20,13 @@ function launcherSteps(
     {
       title: "Welcome to the graph",
       description:
-        "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it.",
+        "Each entry here is a provision-rooted subtree: a provision and the interconnected rules encoded from it. Pan and zoom to explore the corpus.",
     },
     {
       element: '[data-testid="launcher-controls"]',
       title: "Find a provision",
       description:
-        "Search every encoded provision here, or switch views: the Field is the open map of everything encoded, the List is a searchable index by jurisdiction.",
+        "Search here to find any encoded provision, or switch views: the Field to see the open map, the List to browse by jurisdiction.",
       // Leaving this step starts the camera's glide to the example —
       // its landing anchor must exist before the next step resolves.
       onLeave: onSpotlightExample
@@ -44,7 +44,7 @@ function launcherSteps(
       deferred: onSpotlightExample ? true : undefined,
       title: "Open a law, then run it",
       description:
-        "Inside a graph you can inspect how rules relate, read the law at any node, and run a scenario with your own answers.",
+        "Open any subtree to inspect how its rules relate, read the law at each node, and run scenarios with your own answers.",
       onEnter: onSpotlightExample
         ? () => onSpotlightExample(true)
         : undefined,
@@ -73,13 +73,13 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
     element: '[data-tour="mini-graph"]',
     title: "Concept dependencies",
     description:
-      "What the selected rule is built from, and what uses it. Click any neighbor to move through the graph.",
+      "See what the selected rule is built from and what uses it. Click any neighbor to move through the graph.",
   },
   {
     element: '[data-testid="read-the-law"]',
     title: "Read the law",
     description:
-      "Every rule traces to statute. This opens the section text at this exact node, without leaving the graph.",
+      "Click here to read the section of law behind this node — without leaving the graph.",
     // The button sits at the bottom of the inspector's scrollbox —
     // reveal it there so driver doesn't scroll the whole document.
     prepare: () =>
@@ -91,7 +91,7 @@ const SUBGRAPH_TOUR_STEPS: TourStep[] = [
     element: '[data-tour="run-scenario"]',
     title: "Run a scenario",
     description:
-      "Answer a household's questions and execute the law — unanswered inputs use the program's defaults, and results trace through the graph.",
+      "Answer a household's questions to execute the law — every result traces back through the graph. Unanswered questions use the program's defaults.",
   },
   {
     element: '[data-testid="back-to-overview"]',

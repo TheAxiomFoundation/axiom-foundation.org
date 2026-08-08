@@ -11,13 +11,13 @@ const READER_TOUR_STEPS: TourStep[] = [
     element: '[data-tour="breadcrumbs"]',
     title: "You are inside a citation",
     description:
-      "The path mirrors the URL — every level is a link, from the jurisdiction down to this section.",
+      "Click any level of the path to jump there — it mirrors the citation, from the jurisdiction down to this section.",
   },
   {
     element: '[data-testid="section-toc"]',
     title: "Move within the section",
     description:
-      "The contents rail follows your scroll and jumps straight to any subsection.",
+      "Use the contents rail to jump to any subsection — it follows along as you scroll.",
   },
   {
     element: '[data-testid="action-strip"]',
@@ -29,7 +29,7 @@ const READER_TOUR_STEPS: TourStep[] = [
     element: '[data-testid="rail-header"]',
     title: "The encoding rail",
     description:
-      "The machine-readable encodings behind this section, alongside everything it cites and everything that cites it.",
+      "Open the rail's entries to see the machine-readable encodings behind this section — and everything it cites or is cited by.",
   },
 ];
 

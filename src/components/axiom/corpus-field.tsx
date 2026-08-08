@@ -1053,10 +1053,6 @@ export function CorpusField({
                 <span className="block font-mono text-[11px] text-[var(--color-ink)]">
                   {humanizeCitation(hovered.target)}
                 </span>
-                <span className="block font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                  {hovered.ruleCount} rule
-                  {hovered.ruleCount === 1 ? "" : "s"} · {hovered.bucket}
-                </span>
               </div>
             );
           })()}

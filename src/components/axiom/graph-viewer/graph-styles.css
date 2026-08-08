@@ -2891,6 +2891,17 @@
   text-align: center;
 }
 
+/* Per-member answers on a question card: "P1 40 · P2 38 · P3 —". */
+.graph-viewer-root .irg-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-family: var(--f-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+}
 .graph-viewer-root .irg-value{
   flex-shrink: 0;
   font-family: var(--f-display);

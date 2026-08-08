@@ -17,6 +17,7 @@ import { ActionStrip } from "./action-strip";
 import { CollapsibleText } from "./collapsible-text";
 import { primaryProgram } from "./primary-program";
 import { TrackView } from "@/components/axiom/track-view";
+import { ReaderTour } from "@/components/axiom/tour/reader-tour";
 import {
   builderUrlForRule,
   composeGraphViewerUrl,
@@ -169,19 +170,19 @@ function Breadcrumbs({ data }: { data: SectionPageData }) {
   // section-depth paths to this reader and browse levels to the v1
   // tree browser.
   return (
-    <nav aria-label="Breadcrumb">
+    <nav aria-label="Breadcrumb" data-tour="breadcrumbs">
       <ol className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-muted)]">
         {data.breadcrumbs.map((item, index) => (
           <li key={item.href} className="flex items-center gap-1">
             {index > 0 && <span aria-hidden>/</span>}
             {index === data.breadcrumbs.length - 1 ? (
-              <span aria-current="page" className="text-[var(--color-ink-secondary)]">
+              <span aria-current="page" className="text-[var(--color-ink)]">
                 {item.label}
               </span>
             ) : (
               <Link
                 href={item.href}
-                className="hover:text-[var(--color-ink)] transition-colors"
+                className="text-[var(--color-ink-secondary)] underline decoration-[var(--color-rule)] underline-offset-[3px] hover:text-[var(--color-accent)] hover:decoration-current transition-colors"
               >
                 {item.label}
               </Link>
@@ -611,6 +612,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
       </aside>
 
       <article data-testid="section-reader">
+        <ReaderTour />
         <CitationPreviewLayer />
         {data.focusAnchor && <FocusScroll anchor={data.focusAnchor} />}
         <div className="mb-4">

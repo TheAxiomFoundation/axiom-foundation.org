@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   InputEditContext,
   InteractiveRuleGraph,
@@ -17,6 +16,10 @@ import {
   humanizeSource,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
+import {
+  PlaneTour,
+  TOUR_EXAMPLE_TARGET,
+} from "@/components/axiom/tour/plane-tour";
 import "./styles.css";
 import "./graph-styles.css";
 import "./plane.css";
@@ -64,7 +67,6 @@ export function GraphViewerApp({
    *  journey instead of navigating. Omitted on standalone routes. */
   onBackToOverview?: () => void;
 } = {}) {
-  const router = useRouter();
   const [allPrograms, setAllPrograms] = useState<ProgramSummary[]>([]);
   // The launcher's corpus: every subtree the mirror serves (live,
   // with the committed snapshot as ballast) — the picker searches
@@ -72,6 +74,11 @@ export function GraphViewerApp({
   const [corpusModules, setCorpusModules] = useState<CorpusModule[] | null>(
     null,
   );
+  // The launcher tour's closing step presents one real subtree: the
+  // field camera glides to it (spotlight), the CTA opens it.
+  const [tourSpotlight, setTourSpotlight] = useState<string | null>(null);
+  const tourExampleReady =
+    corpusModules?.some((m) => m.target === TOUR_EXAMPLE_TARGET) ?? false;
   // Field ⇄ List: the launcher opens on the open-world field by
   // default; the list picker is the alternate mode. Persisted.
   const [launcherMode, setLauncherMode] = useState<LauncherMode>(() =>
@@ -109,6 +116,15 @@ export function GraphViewerApp({
   const [scenario, setScenario] = useState<Record<string, number | boolean>>(
     {},
   );
+  // Additional household members (person_2, …) for Person-entity
+  // answers. The flat scenario IS person_1 — the inspector, samples,
+  // and canvas flows keep writing it untouched; each extra member
+  // carries its own Person-level answers and rides the compose
+  // request as `people`.
+  const [extraMembers, setExtraMembers] = useState<string[]>([]);
+  const [memberScenario, setMemberScenario] = useState<
+    Record<string, Record<string, number | boolean>>
+  >({});
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   // Post-run edits mark the sheet stale until the NEXT explicit run
@@ -676,18 +692,14 @@ export function GraphViewerApp({
     launcherRef.current = "open";
   };
 
-  // One control, three surfaces: the landing's in-place overlay pops
-  // its own history entry (the host passed the handler); standalone
-  // /axiom/graph client-navigates to the /axiom landing (the field);
-  // /app reopens its launcher in place.
+  // One control, two behaviors: the landing's in-place overlay pops
+  // its own history entry (the host passed the handler); everywhere
+  // else — /app and standalone /axiom/graph — the overview is the
+  // graph's own field launcher, reopened in place. The /axiom corpus
+  // landing is deliberately not a destination from the graph app.
   const backToOverview = () => {
     if (onBackToOverview) {
       onBackToOverview();
-      return;
-    }
-    if (typeof window === "undefined") return;
-    if (/\/axiom\/graph$/.test(window.location.pathname)) {
-      router.push("/axiom");
       return;
     }
     exitToLauncher();
@@ -731,6 +743,7 @@ export function GraphViewerApp({
     const catalog: Array<{
       name: string;
       legalId: string;
+      fileLegalId: string;
       entity: string | null;
       isBool: boolean;
       sample: number | boolean;
@@ -743,6 +756,7 @@ export function GraphViewerApp({
       catalog.push({
         name: input.name,
         legalId: input.legalId,
+        fileLegalId: input.fileLegalId,
         entity: input.entity ?? null,
         isBool,
         sample: isBool
@@ -756,12 +770,283 @@ export function GraphViewerApp({
     return catalog;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, inputMeta]);
+  // The picker's computation outline: the law's own dependency tree —
+  // rules as branches, answerable questions as leaves. The graph is a
+  // DAG, so a shared input appears under EVERY branch that consumes
+  // it; the structure carries the fan-out that any flat partition
+  // hides. Linear pass-through rules collapse so chains read as one
+  // hop.
+  const inputOutline = useMemo<OutlineNode[]>(() => {
+    if (!graph) return [];
+    const ruleById = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
+    const catalogByName = new Map(inputCatalog.map((row) => [row.name, row]));
+    const leafById = new Map(
+      graph.inputs
+        .filter((input) => !ruleById.has(input.legalId))
+        .map((input) => [input.legalId, input]),
+    );
+    // Cross-module seams bridge by NAME: a rule consumes the input
+    // `earned_income` while the rule computing it lives in another
+    // module under its own id. Bridged chains nest where they're
+    // consumed instead of floating as extra roots; the seam input
+    // stays answerable at the top of the bridged branch (a direct
+    // answer short-circuits its sub-questions).
+    const ruleIdByName = new Map(
+      graph.rules.map((rule) => [rule.name, rule.legalId]),
+    );
+    const built = new Map<string, OutlineNode | null>();
+    const build = (id: string, path: Set<string>): OutlineNode | null => {
+      if (path.has(id)) return null;
+      const cached = built.get(id);
+      if (cached !== undefined) return cached;
+      const rule = ruleById.get(id);
+      if (!rule) return null;
+      const nextPath = new Set(path).add(id);
+      const inputs: OutlineInputRow[] = [];
+      const seenInputs = new Set<string>();
+      let children: OutlineNode[] = [];
+      for (const dep of [...rule.ruleDeps, ...rule.inputDeps]) {
+        if (ruleById.has(dep)) {
+          const child = build(dep, nextPath);
+          if (child) children.push(child);
+        } else {
+          const leaf = leafById.get(dep);
+          if (!leaf) continue;
+          // Bridge whether or not the seam is answerable — the chain
+          // belongs under its consumer either way.
+          const row = catalogByName.get(leaf.name);
+          if (row && seenInputs.has(row.name)) continue;
+          const bridged = ruleIdByName.get(leaf.name);
+          if (bridged && bridged !== id && !nextPath.has(bridged)) {
+            const child = build(bridged, nextPath);
+            if (child) {
+              if (row) {
+                seenInputs.add(row.name);
+                if (!child.inputs.some((r) => r.name === row.name)) {
+                  children.push({
+                    ...child,
+                    inputs: [row, ...child.inputs],
+                    count: child.count + 1,
+                  });
+                  continue;
+                }
+              }
+              children.push(child);
+              continue;
+            }
+          }
+          if (row) {
+            seenInputs.add(row.name);
+            inputs.push(row);
+          }
+        }
+      }
+      inputs.sort((a, b) => humanize(a.name).localeCompare(humanize(b.name)));
+      // A corridor — one child, no questions of its own — collapses:
+      // the outer (closer-to-result) name stays, the contents hoist.
+      if (inputs.length === 0 && children.length === 1) {
+        const inner = children[0]!;
+        inputs.push(...inner.inputs);
+        children = inner.children;
+      }
+      const names = new Set<string>();
+      collectOutlineInputNames({ inputs, children }, names);
+      const node: OutlineNode | null =
+        names.size > 0
+          ? { id, label: humanize(rule.name), inputs, children, count: names.size }
+          : null;
+      built.set(id, node);
+      return node;
+    };
+    const idConsumed = new Set<string>();
+    const consumed = new Set<string>();
+    for (const rule of graph.rules)
+      for (const dep of [...rule.ruleDeps, ...rule.inputDeps]) {
+        idConsumed.add(dep);
+        consumed.add(dep);
+        // A name-bridged chain is consumed too — it nests under its
+        // consumer rather than surfacing as a root. Never by ITSELF:
+        // a rule whose subtree consumes a seam input bearing its own
+        // name (a prior-period self-reference) must stay a root.
+        const leaf = leafById.get(dep);
+        const bridged = leaf ? ruleIdByName.get(leaf.name) : undefined;
+        if (bridged && bridged !== rule.legalId) consumed.add(bridged);
+      }
+    const rootsFrom = (unconsumed: Set<string>) =>
+      graph.rules
+        .filter((rule) => !unconsumed.has(rule.legalId))
+        .map((rule) => build(rule.legalId, new Set()))
+        .filter((node): node is OutlineNode => !!node)
+        .sort((a, b) => b.count - a.count);
+    const roots = rootsFrom(consumed);
+    // Mutually-bridged chains can consume every root away; a picker
+    // with rules but no tree is strictly worse than extra roots —
+    // fall back to id-only consumption.
+    const kept = roots.length > 0 ? roots : rootsFrom(idConsumed);
+    // Whole-module serving drags in co-resident chains that feed no
+    // computed output (import § 151 for one definition, receive its
+    // senior-deduction machinery too). Answering those questions
+    // cannot change any result — drop chains that touch no terminal
+    // output. The systematic fix is upstream: compose should serve
+    // the exercised closure, not whole files.
+    const terminal = new Set(graph.terminalOutputs ?? []);
+    if (terminal.size === 0) return kept;
+    const touchesTerminal = (node: OutlineNode): boolean =>
+      terminal.has(node.id) || node.children.some(touchesTerminal);
+    return kept.filter(touchesTerminal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, inputCatalog]);
+  // Explicit expand/collapse choices; anything unset falls back to
+  // "roots open, branches closed" (search opens everything).
+  const [outlineOpen, setOutlineOpen] = useState<Map<string, boolean>>(
+    new Map(),
+  );
+  // The picker's view of the outline: pruned to what's addable and
+  // matching, primary tree first, satellites folded. Memoized — the
+  // DAG walk must not re-run on unrelated panel re-renders.
+  const outlineView = useMemo<OutlineNode[]>(() => {
+    const active = selectedLevers ?? [];
+    const query = runBrowseSearch.trim().toLowerCase();
+    const rowVisible = (row: OutlineInputRow) =>
+      !active.includes(row.name) &&
+      (!query || humanize(row.name).toLowerCase().includes(query));
+    // Node identity is the whole game here: shared sub-computations
+    // are the SAME object under each consumer (the builder caches by
+    // id), so all structural passes run on the original outline —
+    // cloning first would sever the sharing they detect. The
+    // active/query filter applies at input-collection time instead.
+    const pruned = inputOutline;
+    if (pruned.length === 0) return [];
+    // ── One MEANINGFUL home per node and per input ──
+    // The fan-out is real, but repeating rows under every consumer
+    // buries an 8-question law under 40 add-buttons, and "first
+    // occurrence" is order trivia. Dominator placement, two passes:
+    //   1. A shared SUB-COMPUTATION (a subtree consumed by several
+    //      calcs) renders once, at the narrowest node all of its
+    //      consumers sit beneath, internal structure intact.
+    //   2. A shared INPUT then renders once, at the narrowest node
+    //      all of its (now unique) consumers sit beneath.
+    // Used everywhere → the law's root; scoped → inside its section.
+    // Placement itself carries information.
+    const commonPrefix = (paths: OutlineNode[][]): OutlineNode[] => {
+      let prefix = paths[0] ?? [];
+      for (const path of paths.slice(1)) {
+        let i = 0;
+        while (i < prefix.length && i < path.length && prefix[i] === path[i]) {
+          i += 1;
+        }
+        prefix = prefix.slice(0, i);
+      }
+      return prefix;
+    };
+    // Pass 1: where does every node live? Unique parent → in place;
+    // several distinct parents → the LCA of its occurrence trails.
+    const nodeParents = new Map<OutlineNode, Set<OutlineNode>>();
+    const nodeTrails = new Map<OutlineNode, OutlineNode[][]>();
+    const record = (node: OutlineNode, trail: OutlineNode[]) => {
+      const parents = nodeParents.get(node) ?? new Set<OutlineNode>();
+      if (trail.length > 0) parents.add(trail[trail.length - 1]!);
+      nodeParents.set(node, parents);
+      const trails = nodeTrails.get(node) ?? [];
+      trails.push(trail);
+      nodeTrails.set(node, trails);
+      node.children.forEach((child) => record(child, [...trail, node]));
+    };
+    pruned.forEach((root) => record(root, []));
+    const homeOf = new Map<OutlineNode, OutlineNode | null>();
+    for (const [node, parents] of nodeParents) {
+      if (parents.size === 0) {
+        homeOf.set(node, null);
+      } else if (parents.size === 1) {
+        homeOf.set(node, [...parents][0]!);
+      } else {
+        const prefix = commonPrefix(nodeTrails.get(node)!);
+        homeOf.set(node, prefix.length > 0 ? prefix[prefix.length - 1]! : null);
+      }
+    }
+    const childrenOf = new Map<OutlineNode | null, OutlineNode[]>();
+    for (const [node, home] of homeOf) {
+      const list = childrenOf.get(home) ?? [];
+      list.push(node);
+      childrenOf.set(home, list);
+    }
+    const topLevel = childrenOf.get(null) ?? [];
+    // Pass 2: input homes over the deduplicated structure.
+    const inputPaths = new Map<string, OutlineNode[][]>();
+    const rowByName = new Map<string, OutlineInputRow>();
+    const walkPlaced = (node: OutlineNode, trail: OutlineNode[]) => {
+      const here = [...trail, node];
+      for (const row of node.inputs) {
+        if (!rowVisible(row)) continue;
+        rowByName.set(row.name, row);
+        const list = inputPaths.get(row.name) ?? [];
+        list.push(here);
+        inputPaths.set(row.name, list);
+      }
+      (childrenOf.get(node) ?? []).forEach((child) => walkPlaced(child, here));
+    };
+    topLevel.forEach((root) => walkPlaced(root, []));
+    const inputHomes = new Map<OutlineNode, OutlineInputRow[]>();
+    for (const [name, occurrences] of inputPaths) {
+      const prefix = commonPrefix(occurrences);
+      // Occurrences in different trees share no prefix — the primary
+      // law takes law-wide questions.
+      const home =
+        prefix.length > 0 ? prefix[prefix.length - 1]! : topLevel[0]!;
+      const list = inputHomes.get(home) ?? [];
+      list.push(rowByName.get(name)!);
+      inputHomes.set(home, list);
+    }
+    const rebuild = (node: OutlineNode): OutlineNode | null => {
+      const inputs = (inputHomes.get(node) ?? []).sort((a, b) =>
+        humanize(a.name).localeCompare(humanize(b.name)),
+      );
+      const children = (childrenOf.get(node) ?? [])
+        .map(rebuild)
+        .filter((child): child is OutlineNode => !!child);
+      if (inputs.length === 0 && children.length === 0) return null;
+      const names = new Set<string>();
+      collectOutlineInputNames({ inputs, children }, names);
+      return { ...node, inputs, children, count: names.size };
+    };
+    const placed = topLevel
+      .map(rebuild)
+      .filter((node): node is OutlineNode => !!node);
+    if (placed.length === 0) return [];
+    // One primary tree — the law that was opened — fully expanded;
+    // renamed-seam satellite chains and unrelated co-modules tuck
+    // under a single collapsed entry. File-level comparison: the
+    // compose focus may carry a #rule fragment.
+    const focusFile = composeFocus ? fileLegalIdOf(composeFocus) : null;
+    const primaryIndex = focusFile
+      ? Math.max(
+          0,
+          placed.findIndex((node) => fileLegalIdOf(node.id) === focusFile),
+        )
+      : 0;
+    const rest = placed.filter((_, index) => index !== primaryIndex);
+    return [
+      placed[primaryIndex]!,
+      ...(rest.length
+        ? [
+            {
+              id: "__outline-other__",
+              label: "Other definitions in this module",
+              inputs: [],
+              children: rest,
+              count: rest.reduce((sum, n) => sum + n.count, 0),
+            },
+          ]
+        : []),
+    ];
+  }, [inputOutline, selectedLevers, runBrowseSearch, composeFocus]);
   const scenarioFields = useMemo(
     () =>
       inputCatalog.map((input) => ({
         name: input.name,
         label: input.name,
         sample: input.sample,
+        entity: input.entity,
       })),
     [inputCatalog],
   );
@@ -779,6 +1064,8 @@ export function GraphViewerApp({
     setRunPanelOpen(false);
     setSelectedLevers(null);
     setScenario({});
+    setExtraMembers([]);
+    setMemberScenario({});
     setResultsStale(false);
     ranScenarioKey.current = null;
     setInputMeta({ dtypes: {}, defaults: {} });
@@ -809,7 +1096,10 @@ export function GraphViewerApp({
     // An explicit run consumes the pending edits: the stale flag
     // clears and the edit tracker syncs to what this run computes.
     setResultsStale(false);
-    ranScenarioKey.current = scenarioKey(scenario);
+    ranScenarioKey.current = scenarioKey({
+      ...scenario,
+      ...flattenMemberAnswers(extraMembers, memberScenario),
+    });
     try {
       // Trace the selected outputs plus their reachable rules so the
       // execution lights intermediate nodes, not just the results.
@@ -835,8 +1125,19 @@ export function GraphViewerApp({
       for (const id of traceRoots) walk(id);
       // Compose mode speaks the run-by-root shape (`{ root, facts }`);
       // package programs keep their coordinates. Same envelope back.
+      // Extra household members ride as `people` — empty records
+      // still travel: an added person with no answers is a person.
+      const people = Object.fromEntries(
+        extraMembers.map((member) => [member, memberScenario[member] ?? {}]),
+      );
       const requestBody = (variables: string[]): Record<string, unknown> =>
-        buildRunRequestBody(composeFocus, effectiveProgram, scenario, variables);
+        buildRunRequestBody(
+          composeFocus,
+          effectiveProgram,
+          scenario,
+          variables,
+          composeFocus ? people : undefined,
+        );
       const attempt = async (variables: string[]) => {
         const response = await fetch("/api/axiom/runtime/calculate", {
           method: "POST",
@@ -847,7 +1148,15 @@ export function GraphViewerApp({
         });
         // The root endpoint vanished mid-session (deploy rollback):
         // fold the affordance back away instead of error-looping.
+        // With extra members aboard, a 404 more likely means the
+        // upstream predates the `people` shape — keep the affordance
+        // and say what to change.
         if (composeFocus && response.status === 404) {
+          if (extraMembers.length > 0) {
+            throw new Error(
+              "This deployment doesn't accept per-member answers yet — remove the added household members to run.",
+            );
+          }
           setComposeRunReady(false);
           throw new Error(
             "Running composed views isn't available on this deployment yet.",
@@ -1438,6 +1747,13 @@ export function GraphViewerApp({
     [graph, selectedOutputs],
   );
   const runModeActive = runPanelOpen || Boolean(runResult);
+  // The Person-entity subset, stable across member edits — the
+  // member-values map must not refilter the whole catalog (and
+  // invalidate every canvas card) on each keystroke.
+  const personCatalog = useMemo(
+    () => inputCatalog.filter((input) => input.entity === "Person"),
+    [inputCatalog],
+  );
   const inputEditValues = useMemo(() => {
     // Every registry input is genuinely settable (grafted onto its
     // owning entity server-side) — so every one gets a live field.
@@ -1472,6 +1788,24 @@ export function GraphViewerApp({
             typeof entry[1] === "number" || typeof entry[1] === "boolean",
         ),
       ),
+      // Person-level cards show every member's answer (read-only
+      // beyond Person 1 — the inspector and run panel edit members).
+      memberValues:
+        extraMembers.length > 0
+          ? Object.fromEntries(
+              personCatalog
+                .map((input) => [
+                  input.name,
+                  [
+                    { label: "P1", value: scenario[input.name] ?? null },
+                    ...extraMembers.map((member) => ({
+                      label: `P${member.split("_")[1] ?? "?"}`,
+                      value: memberScenario[member]?.[input.name] ?? null,
+                    })),
+                  ],
+                ]),
+            )
+          : undefined,
       onChange: (name: string, value: number | boolean) =>
         setScenario((current) => {
           if (typeof value === "number" && Number.isNaN(value)) {
@@ -1482,7 +1816,7 @@ export function GraphViewerApp({
           return { ...current, [name]: value };
         }),
     }),
-    [inputEditValues, scenario, inputMeta],
+    [inputEditValues, scenario, inputMeta, personCatalog, extraMembers, memberScenario],
   );
 
   const structureTraces = useMemo(
@@ -1625,10 +1959,13 @@ export function GraphViewerApp({
   // change to the values marks it STALE ("values changed — Run
   // again") until the next explicit Run consumes the edits.
   useEffect(() => {
-    const key = scenarioKey(debouncedScenario);
+    const key = scenarioKey({
+      ...debouncedScenario,
+      ...flattenMemberAnswers(extraMembers, memberScenario),
+    });
     if (ranScenarioKey.current === null) return; // nothing ran yet
     setResultsStale(runResult !== null && key !== ranScenarioKey.current);
-  }, [debouncedScenario, runResult]);
+  }, [debouncedScenario, extraMembers, memberScenario, runResult]);
 
   // Execution overlay: clone the structural traces and light them
   // with the run's computed values (rules by durable id or bare
@@ -1807,31 +2144,33 @@ export function GraphViewerApp({
               placeholder={`Search ${inputCatalog.length} inputs...`}
             />
             <div className="run-picker-list">
-              {inputCatalog
-                .filter(
-                  (input) =>
-                    !active.includes(input.name) &&
-                    (!query ||
-                      humanize(input.name).toLowerCase().includes(query)),
-                )
-                .slice(0, 60)
-                .map((input) => (
-                  <button
-                    type="button"
-                    key={input.legalId}
-                    className="run-picker-row is-lever"
-                    title="Add to your answers"
-                    onClick={() => setSelectedLevers([...active, input.name])}
-                  >
-                    <span className="run-picker-icon">＋</span>
-                    <span className="run-picker-name">
-                      {humanize(input.name)}
-                    </span>
-                    <span className="run-picker-tag run-picker-tag-muted">
-                      {input.entity ? humanize(input.entity) : "—"}
-                    </span>
-                  </button>
-                ))}
+              {outlineView.map((root, index) => (
+                    <InputOutlineBranch
+                      key={root.id}
+                      node={root}
+                      depth={0}
+                      pathKey={root.id}
+                      defaultOpen={index === 0}
+                      searching={!!query}
+                      openOverrides={outlineOpen}
+                      onToggle={(key, fallback) =>
+                        setOutlineOpen((current) => {
+                          const next = new Map(current);
+                          next.set(key, !(current.get(key) ?? fallback));
+                          return next;
+                        })
+                      }
+                      // One input, many doorways: a shared input is
+                      // still ONE answer — adding from any branch
+                      // adds it once, and every occurrence leaves
+                      // the picker together.
+                      onAdd={(name) =>
+                        setSelectedLevers(
+                          active.includes(name) ? active : [...active, name],
+                        )
+                      }
+                    />
+              ))}
               {inputCatalog.length === 0 &&
                 (graph?.inputs.length ?? 0) > 0 && (
                   <div className="output-empty">
@@ -1864,37 +2203,27 @@ export function GraphViewerApp({
           </div>
           <div className="run-col">
             <p className="run-section-label">Your answers</p>
-            <div className="scenario-fields">
-              {activeFields.map((field) => (
-                <label key={field.name} className="scenario-field">
-                  <span>{humanize(field.label)}</span>
-                  <span className="scenario-field-controls">
-                    <AnswerControl
-                      name={field.name}
-                      value={scenario[field.name]}
-                      meta={inputMeta}
-                      selectClassName="scenario-field-select"
-                      placeholder={`e.g. ${field.sample}`}
-                      onChange={(next) =>
-                        setScenario((current) => {
-                          if (next === undefined) {
-                            const { [field.name]: _gone, ...rest } = current;
-                            return rest;
-                          }
-                          return { ...current, [field.name]: next };
-                        })
-                      }
-                    />
+            {/* Members are a compose-mode contract (run-by-root
+                `people`); package-program runs have no channel for
+                them, so the strip never renders there. */}
+            {composeFocus &&
+              (extraMembers.length > 0 ||
+                activeFields.some((field) => field.entity === "Person")) && (
+              <div className="scenario-members">
+                <span className="scenario-members-label">Household</span>
+                <span className="scenario-member-chip">Person 1</span>
+                {extraMembers.map((member) => (
+                  <span key={member} className="scenario-member-chip">
+                    {memberLabel(member)}
                     <button
                       type="button"
-                      className="scenario-field-remove"
-                      aria-label={`Remove ${humanize(field.label)}`}
+                      aria-label={`Remove ${memberLabel(member)}`}
                       onClick={() => {
-                        setSelectedLevers(
-                          active.filter((name) => name !== field.name),
+                        setExtraMembers((current) =>
+                          current.filter((id) => id !== member),
                         );
-                        setScenario((current) => {
-                          const { [field.name]: _gone, ...rest } = current;
+                        setMemberScenario((current) => {
+                          const { [member]: _gone, ...rest } = current;
                           return rest;
                         });
                       }}
@@ -1902,8 +2231,153 @@ export function GraphViewerApp({
                       ×
                     </button>
                   </span>
-                </label>
-              ))}
+                ))}
+                {/* Ids reuse the lowest free slot and stop at
+                    person_12 — the proxy's member-id bound; minting
+                    past it would silently drop the member's answers. */}
+                {extraMembers.length < 11 && (
+                  <button
+                    type="button"
+                    className="scenario-member-add"
+                    onClick={() =>
+                      setExtraMembers((current) => {
+                        const used = new Set(
+                          current.map((id) => Number(id.split("_")[1])),
+                        );
+                        let next = 2;
+                        while (used.has(next)) next += 1;
+                        return next > 12
+                          ? current
+                          : [...current, `person_${next}`];
+                      })
+                    }
+                  >
+                    ＋ Add person
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="scenario-fields">
+              {activeFields.map((field) => {
+                const removeField = () => {
+                  setSelectedLevers(
+                    active.filter((name) => name !== field.name),
+                  );
+                  setScenario((current) => {
+                    const { [field.name]: _gone, ...rest } = current;
+                    return rest;
+                  });
+                  setMemberScenario((current) =>
+                    Object.fromEntries(
+                      Object.entries(current).map(([id, answers]) => {
+                        const { [field.name]: _gone, ...rest } = answers;
+                        return [id, rest];
+                      }),
+                    ),
+                  );
+                };
+                // A Person-level question with members present becomes
+                // a uniform stack: title row, then one identical
+                // label-beside-box row per member (Person 1 included).
+                if (field.entity === "Person" && extraMembers.length > 0) {
+                  return (
+                    <div key={field.name} className="scenario-field">
+                      <span className="scenario-field-title">
+                        {humanize(field.label)}
+                        <button
+                          type="button"
+                          className="scenario-field-remove"
+                          aria-label={`Remove ${humanize(field.label)}`}
+                          onClick={removeField}
+                        >
+                          ×
+                        </button>
+                      </span>
+                      <div className="scenario-member-rows">
+                        {[null, ...extraMembers].map((member) => (
+                          <label
+                            key={member ?? "person_1"}
+                            className="scenario-member-row"
+                          >
+                            <span className="scenario-field-member">
+                              {member ? memberLabel(member) : "Person 1"}
+                            </span>
+                            <AnswerControl
+                              name={field.name}
+                              value={
+                                member
+                                  ? memberScenario[member]?.[field.name]
+                                  : scenario[field.name]
+                              }
+                              meta={inputMeta}
+                              selectClassName="scenario-field-select"
+                              placeholder={`e.g. ${field.sample}`}
+                              onChange={(next) =>
+                                member
+                                  ? setMemberScenario((current) => {
+                                      const answers = {
+                                        ...(current[member] ?? {}),
+                                      };
+                                      if (next === undefined) {
+                                        delete answers[field.name];
+                                      } else {
+                                        answers[field.name] = next;
+                                      }
+                                      return { ...current, [member]: answers };
+                                    })
+                                  : setScenario((current) => {
+                                      if (next === undefined) {
+                                        const {
+                                          [field.name]: _gone,
+                                          ...rest
+                                        } = current;
+                                        return rest;
+                                      }
+                                      return {
+                                        ...current,
+                                        [field.name]: next,
+                                      };
+                                    })
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <label key={field.name} className="scenario-field">
+                    <span>{humanize(field.label)}</span>
+                    <span className="scenario-field-controls">
+                      <AnswerControl
+                        name={field.name}
+                        value={scenario[field.name]}
+                        meta={inputMeta}
+                        selectClassName="scenario-field-select"
+                        placeholder={`e.g. ${field.sample}`}
+                        onChange={(next) =>
+                          setScenario((current) => {
+                            if (next === undefined) {
+                              const { [field.name]: _gone, ...rest } = current;
+                              return rest;
+                            }
+                            return { ...current, [field.name]: next };
+                          })
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="scenario-field-remove"
+                        aria-label={`Remove ${humanize(field.label)}`}
+                        onClick={removeField}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </label>
+                );
+              })}
               {activeFields.length === 0 && (
                 <>
                   {inputCatalog.some(
@@ -1960,6 +2434,21 @@ export function GraphViewerApp({
 
   return (
     <div className="graph-viewer-root">
+    <PlaneTour
+      stage={launcher === "closed" ? "subgraph" : "launcher"}
+      onOpenExample={
+        tourExampleReady ? () => enterComposeMode(TOUR_EXAMPLE_TARGET) : undefined
+      }
+      // The spotlight lives in the corpus FIELD — with the list
+      // launcher persisted, offering it would anchor the closing step
+      // to an element that never mounts (a ~2s driver stall, then a
+      // floating popover about a spotlight nobody sees).
+      onSpotlightExample={
+        tourExampleReady && launcherMode === "field"
+          ? (on) => setTourSpotlight(on ? TOUR_EXAMPLE_TARGET : null)
+          : undefined
+      }
+    />
     {/* Desktop-only for now — a phone gets an honest notice instead
         of a broken layout. */}
     <div className="small-screen-notice" role="note">
@@ -1984,7 +2473,11 @@ export function GraphViewerApp({
                  landing mounts, full-bleed — pan, zoom, motifs,
                  doors; picking calls straight into compose mode. */
               <div className="launcher-field-stage" data-testid="launcher-field">
-                <CorpusField onPick={enterComposeMode} frame={false} />
+                <CorpusField
+                  onPick={enterComposeMode}
+                  frame={false}
+                  spotlight={tourSpotlight}
+                />
               </div>
             ) : (
               <div className="plane-launcher-inner has-picker launcher-list">
@@ -2172,6 +2665,7 @@ export function GraphViewerApp({
             <button
               type="button"
               className={`run-toggle ${resultsStale ? "is-stale" : ""}`}
+              data-tour="run-scenario"
               disabled={running}
               onClick={() => setRunPanelOpen((open) => !open)}
               aria-expanded={runPanelOpen}
@@ -2330,7 +2824,7 @@ export function GraphViewerApp({
                     ? "Yes"
                     : "No"
                   : typeof liveRaw === "number"
-                    ? liveRaw.toLocaleString("en-US")
+                    ? liveRaw.toLocaleString("en-US", { maximumFractionDigits: 6 })
                     : String(liveRaw);
             // The provision to read: a rule's own home file. A question
             // has no home in the law (it lives in the synthetic package
@@ -2445,78 +2939,11 @@ export function GraphViewerApp({
                 </p>
               );
             })()}
+            {/* Answer rows stay in the open for question nodes; the
+                rest of the metadata lives in the Details disclosure
+                further down. */}
+            {("kind" in inspected && inspected.kind === "input") || input ? (
             <dl className="node-inspector-meta">
-              {citation ? (
-                <>
-                  <dt>Source</dt>
-                  <dd>
-                    {(meta?.sourceUrl ?? rule?.sourceUrl) ? (
-                      <a
-                        href={(meta?.sourceUrl ?? rule?.sourceUrl) as string}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {citation} ↗
-                      </a>
-                    ) : (
-                      citation
-                    )}
-                  </dd>
-                </>
-              ) : null}
-              {rule?.certificationStatus ? (
-                <>
-                  {/* The four-status launch taxonomy: certification is a
-                      status, not a gate — the queue is public on every
-                      node. */}
-                  <dt>Status</dt>
-                  <dd>
-                    {rule.certificationStatus === "certified"
-                      ? "Certified"
-                      : rule.certificationStatus === "validated"
-                        ? "Validated, not certified"
-                        : rule.certificationStatus === "pending"
-                          ? "Pending — not yet encoded"
-                          : rule.incompleteByDeclaration
-                            ? "Encoded, incomplete by declaration"
-                            : "Encoded"}
-                  </dd>
-                </>
-              ) : null}
-              {rule?.certificateId ? (
-                <>
-                  {/* The verifier certificate is why this node is
-                      visible at all — show it, truncated, full id on
-                      hover. */}
-                  <dt>Certificate</dt>
-                  <dd
-                    className="node-inspector-mono"
-                    title={rule.certificateId}
-                  >
-                    {rule.certificateId.length > 28
-                      ? `${rule.certificateId.slice(0, 28)}…`
-                      : rule.certificateId}
-                  </dd>
-                </>
-              ) : null}
-              {(rule?.entity ?? input?.entity) ? (
-                <>
-                  <dt>Entity</dt>
-                  <dd>{humanize((rule?.entity ?? input?.entity) as string)}</dd>
-                </>
-              ) : null}
-              {rule?.period ? (
-                <>
-                  <dt>Period</dt>
-                  <dd>{rule.period}</dd>
-                </>
-              ) : null}
-              {rule?.unit ? (
-                <>
-                  <dt>Unit</dt>
-                  <dd>{rule.unit}</dd>
-                </>
-              ) : null}
               {"kind" in inspected && inspected.kind === "input" ? (
                 <>
                   <dt>Answered</dt>
@@ -2541,35 +2968,86 @@ export function GraphViewerApp({
                 <>
                   <dt>Your answer</dt>
                   <dd>
-                    <AnswerControl
-                      name={input.name}
-                      value={scenario[input.name]}
-                      meta={inputMeta}
-                      selectClassName="node-inspector-answer"
-                      inputClassName="node-inspector-answer"
-                      placeholder="answer…"
-                      onChange={(next) =>
-                        setScenario((current) => {
-                          if (next === undefined) {
-                            const cleaned = { ...current };
-                            delete cleaned[input.name];
-                            return cleaned;
-                          }
-                          return { ...current, [input.name]: next };
-                        })
-                      }
-                    />
+                    {input.entity === "Person" && extraMembers.length > 0 ? (
+                      // One row per member, Person 1 included — the
+                      // same uniform stack the run panel uses.
+                      <div className="scenario-member-rows">
+                        {[null, ...extraMembers].map((member) => (
+                          <label
+                            key={member ?? "person_1"}
+                            className="scenario-member-row"
+                          >
+                            <span className="scenario-field-member">
+                              {member ? memberLabel(member) : "Person 1"}
+                            </span>
+                            <AnswerControl
+                              name={input.name}
+                              value={
+                                member
+                                  ? memberScenario[member]?.[input.name]
+                                  : scenario[input.name]
+                              }
+                              meta={inputMeta}
+                              selectClassName="node-inspector-answer"
+                              inputClassName="node-inspector-answer"
+                              placeholder="answer…"
+                              onChange={(next) =>
+                                member
+                                  ? setMemberScenario((current) => {
+                                      const answers = {
+                                        ...(current[member] ?? {}),
+                                      };
+                                      if (next === undefined) {
+                                        delete answers[input.name];
+                                      } else {
+                                        answers[input.name] = next;
+                                      }
+                                      return {
+                                        ...current,
+                                        [member]: answers,
+                                      };
+                                    })
+                                  : setScenario((current) => {
+                                      if (next === undefined) {
+                                        const cleaned = { ...current };
+                                        delete cleaned[input.name];
+                                        return cleaned;
+                                      }
+                                      return {
+                                        ...current,
+                                        [input.name]: next,
+                                      };
+                                    })
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <AnswerControl
+                        name={input.name}
+                        value={scenario[input.name]}
+                        meta={inputMeta}
+                        selectClassName="node-inspector-answer"
+                        inputClassName="node-inspector-answer"
+                        placeholder="answer…"
+                        onChange={(next) =>
+                          setScenario((current) => {
+                            if (next === undefined) {
+                              const cleaned = { ...current };
+                              delete cleaned[input.name];
+                              return cleaned;
+                            }
+                            return { ...current, [input.name]: next };
+                          })
+                        }
+                      />
+                    )}
                   </dd>
                 </>
               ) : null}
-              {null}
-              {"hiddenCount" in inspected && inspected.hiddenCount ? (
-                <>
-                  <dt>Contains</dt>
-                  <dd>{inspected.hiddenCount} rules</dd>
-                </>
-              ) : null}
                           </dl>
+            ) : null}
             {/* The local lens: this rule as a one-hop graph — built
                 from on the left, used by on the right, wires converging
                 into the center. Same left-to-right flow as the canvas,
@@ -2585,7 +3063,7 @@ export function GraphViewerApp({
                   if (typeof raw === "boolean")
                     return raw ? "✓ true" : "✗ false";
                   if (typeof raw === "number")
-                    return raw.toLocaleString("en-US");
+                    return raw.toLocaleString("en-US", { maximumFractionDigits: 6 });
                   return String(raw);
                 };
                 const deps = [
@@ -2617,7 +3095,7 @@ export function GraphViewerApp({
                         ? raw
                           ? "✓ true"
                           : "✗ false"
-                        : raw.toLocaleString("en-US");
+                        : raw.toLocaleString("en-US", { maximumFractionDigits: 6 });
                     const fallback = inputMeta.defaults[bareName];
                     const answered =
                       miniValue(depId) ??
@@ -2675,6 +3153,99 @@ export function GraphViewerApp({
                 );
               })()
             ) : null}
+            {/* Provenance and typing, tucked behind a disclosure —
+                the mini graph and the actions are the working surface;
+                Source/Status/Entity/Period/Unit are reference. */}
+            {citation ||
+            rule?.certificationStatus ||
+            rule?.certificateId ||
+            (rule?.entity ?? input?.entity) ||
+            rule?.period ||
+            rule?.unit ||
+            ("hiddenCount" in inspected && inspected.hiddenCount) ? (
+              <details className="node-inspector-code">
+                <summary>Details</summary>
+                <dl className="node-inspector-meta">
+                  {citation ? (
+                    <>
+                      <dt>Source</dt>
+                      <dd>
+                        {(meta?.sourceUrl ?? rule?.sourceUrl) ? (
+                          <a
+                            href={(meta?.sourceUrl ?? rule?.sourceUrl) as string}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {citation} ↗
+                          </a>
+                        ) : (
+                          citation
+                        )}
+                      </dd>
+                    </>
+                  ) : null}
+                  {rule?.certificationStatus ? (
+                    <>
+                      {/* The four-status launch taxonomy: certification is a
+                          status, not a gate — the queue is public on every
+                          node. */}
+                      <dt>Status</dt>
+                      <dd>
+                        {rule.certificationStatus === "certified"
+                          ? "Certified"
+                          : rule.certificationStatus === "validated"
+                            ? "Validated, not certified"
+                            : rule.certificationStatus === "pending"
+                              ? "Pending — not yet encoded"
+                              : rule.incompleteByDeclaration
+                                ? "Encoded, incomplete by declaration"
+                                : "Encoded"}
+                      </dd>
+                    </>
+                  ) : null}
+                  {rule?.certificateId ? (
+                    <>
+                      {/* The verifier certificate is why this node is
+                          visible at all — show it, truncated, full id on
+                          hover. */}
+                      <dt>Certificate</dt>
+                      <dd
+                        className="node-inspector-mono"
+                        title={rule.certificateId}
+                      >
+                        {rule.certificateId.length > 28
+                          ? `${rule.certificateId.slice(0, 28)}…`
+                          : rule.certificateId}
+                      </dd>
+                    </>
+                  ) : null}
+                  {(rule?.entity ?? input?.entity) ? (
+                    <>
+                      <dt>Entity</dt>
+                      <dd>{humanize((rule?.entity ?? input?.entity) as string)}</dd>
+                    </>
+                  ) : null}
+                  {rule?.period ? (
+                    <>
+                      <dt>Period</dt>
+                      <dd>{rule.period}</dd>
+                    </>
+                  ) : null}
+                  {rule?.unit ? (
+                    <>
+                      <dt>Unit</dt>
+                      <dd>{rule.unit}</dd>
+                    </>
+                  ) : null}
+                  {"hiddenCount" in inspected && inspected.hiddenCount ? (
+                    <>
+                      <dt>Contains</dt>
+                      <dd>{inspected.hiddenCount} rules</dd>
+                    </>
+                  ) : null}
+                </dl>
+              </details>
+            ) : null}
             {formula && rule?.kind !== "parameter" ? (
               <details className="node-inspector-code">
                 <summary>Formula</summary>
@@ -2711,6 +3282,7 @@ export function GraphViewerApp({
               <button
                 type="button"
                 className="node-inspector-link"
+                data-testid="read-the-law"
                 onClick={() => {
                   // Encodings can be one level deeper than the corpus
                   // provisions (…/2014/e/6/A vs …/e/6) — resolve to the
@@ -2805,7 +3377,7 @@ export function GraphViewerApp({
                             ? "Yes"
                             : "No"
                           : typeof value === "number"
-                            ? value.toLocaleString("en-US")
+                            ? value.toLocaleString("en-US", { maximumFractionDigits: 6 })
                             : String(value ?? "—")}
                       </span>
                     </button>
@@ -2951,14 +3523,6 @@ export function GraphViewerApp({
               questions; the rest used this program's default values, so
               a "No" can mean "not asked", not "disqualified".
             </p>
-            {runResult.provenance && (
-              // The certification ledger is why these numbers may be
-              // served at all — name it under the results.
-              <p className="results-note">
-                Computed under ledger {runResult.provenance.ledger_id},
-                engine {runResult.provenance.vintage.engine_release}
-              </p>
-            )}
           </aside>
         )}
       </section>
@@ -3148,6 +3712,139 @@ function humanize(value: string): string {
     value
       .replace(/^snap_/, "")
       .replace(/^universal_credit_/, "UC "),
+  );
+}
+
+/** Member answers folded into a flat record for scenario-identity
+ *  keys. Membership itself dirties the key — an added person with no
+ *  answers still changes the household. */
+function flattenMemberAnswers(
+  members: string[],
+  memberScenario: Record<string, Record<string, number | boolean>>,
+): Record<string, number | boolean> {
+  const flat: Record<string, number | boolean> = {};
+  for (const member of members) {
+    flat[`${member}:__present`] = true;
+    for (const [name, value] of Object.entries(memberScenario[member] ?? {})) {
+      flat[`${member}:${name}`] = value;
+    }
+  }
+  return flat;
+}
+
+/** "person_3" → "Person 3" — ids are stable across removals, so the
+ *  label follows the id, not the position. */
+function memberLabel(id: string): string {
+  return humanize(id);
+}
+
+// ── Input picker computation outline ──
+// The run panel's input list rendered as the law's own dependency
+// tree. Shared inputs appear under every branch that consumes them —
+// the point of the structure.
+
+interface OutlineInputRow {
+  name: string;
+  legalId: string;
+  fileLegalId: string;
+  entity: string | null;
+  isBool: boolean;
+  sample: number | boolean;
+}
+
+interface OutlineNode {
+  id: string;
+  label: string;
+  inputs: OutlineInputRow[];
+  children: OutlineNode[];
+  /** Distinct answerable questions in this subtree. */
+  count: number;
+}
+
+/** Distinct input names in a subtree — shared by the outline builder
+ *  and the picker's pruned view so the two counts can't drift. */
+function collectOutlineInputNames(
+  node: { inputs: OutlineInputRow[]; children: OutlineNode[] },
+  names: Set<string>,
+): void {
+  node.inputs.forEach((row) => names.add(row.name));
+  node.children.forEach((child) => collectOutlineInputNames(child, names));
+}
+
+function InputOutlineBranch({
+  node,
+  depth,
+  pathKey,
+  defaultOpen,
+  searching,
+  openOverrides,
+  onToggle,
+  onAdd,
+}: {
+  node: OutlineNode;
+  depth: number;
+  /** Slash-joined ancestor ids — a DAG node recurs under several
+   *  parents, so expansion state keys on the occurrence, not the id. */
+  pathKey: string;
+  defaultOpen?: boolean;
+  searching: boolean;
+  openOverrides: Map<string, boolean>;
+  onToggle: (key: string, fallback: boolean) => void;
+  onAdd: (name: string) => void;
+}) {
+  // Branches are open unless the visitor (or the synthetic "other
+  // definitions" wrapper) says otherwise — the outline shows itself.
+  const fallbackOpen = defaultOpen ?? true;
+  // A live search overrides stored collapses — hidden matches would
+  // read as "no results".
+  const isOpen = searching
+    ? true
+    : (openOverrides.get(pathKey) ?? fallbackOpen);
+  return (
+    <div
+      className="run-outline-branch"
+      style={{ "--outline-depth": depth } as React.CSSProperties}
+    >
+      <button
+        type="button"
+        className="run-outline-head"
+        aria-expanded={isOpen}
+        onClick={() => onToggle(pathKey, fallbackOpen)}
+      >
+        <span className="run-outline-caret" aria-hidden>
+          {isOpen ? "▾" : "▸"}
+        </span>
+        <span className="run-outline-name">{node.label}</span>
+      </button>
+      {isOpen && (
+        <div className="run-outline-body">
+          {node.inputs.map((row) => (
+            <button
+              type="button"
+              key={row.legalId}
+              className="run-picker-row is-lever"
+              title="Add to your answers"
+              onClick={() => onAdd(row.name)}
+            >
+              <span className="run-picker-icon">＋</span>
+              <span className="run-picker-name">{humanize(row.name)}</span>
+            </button>
+          ))}
+          {node.children.map((child) => (
+            <InputOutlineBranch
+              key={`${pathKey}/${child.id}`}
+              node={child}
+              depth={depth + 1}
+              pathKey={`${pathKey}/${child.id}`}
+              searching={searching}
+              openOverrides={openOverrides}
+              onToggle={onToggle}
+              onAdd={onAdd}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -3398,10 +4095,12 @@ const FORMULA_KEYWORDS = new Set([
 function formatParameterValue(raw: string, unit: string | null): string {
   const trimmed = raw.trim();
   if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
-    const numeric = Number(trimmed);
-    const pretty = numeric.toLocaleString("en-US", {
-      maximumFractionDigits: 2,
-    });
+    // Exactly as encoded: group the integer part for readability but
+    // keep the fraction verbatim — a 0.062 rate must never display
+    // as 0.06.
+    const [whole, fraction] = trimmed.split(".");
+    const grouped = Number(whole).toLocaleString("en-US");
+    const pretty = fraction ? `${grouped}.${fraction}` : grouped;
     if (unit === "USD") return `$${pretty}`;
     return unit ? `${pretty} ${unit.toLowerCase()}` : pretty;
   }

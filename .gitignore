@@ -50,3 +50,4 @@ coverage/
 # they are per-session handoff notes, never project documentation)
 /PROGRESS.md
 /FINAL_REPORT.md
+supabase/.temp/

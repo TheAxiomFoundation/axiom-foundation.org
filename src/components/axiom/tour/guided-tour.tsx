@@ -28,6 +28,11 @@ export type TourStep = {
   /** Runs when the step is highlighted (not upfront like `prepare`) —
    *  e.g. asking the corpus field to zoom to the example subtree. */
   onEnter?: () => void;
+  /** Highlight-time selector override, re-evaluated each time the
+   *  step highlights — for anchors whose best target changes with
+   *  app state (the law popup swallowing its own trigger). Falls
+   *  back to `element` when it resolves to nothing. */
+  resolveElement?: () => string;
   /** Runs when Next is clicked on this step, before advancing — the
    *  place to conjure what the NEXT step anchors to (driver resolves
    *  the next anchor before any deselect hook would fire). */
@@ -92,7 +97,13 @@ export function GuidedTour({
         animate: !window.matchMedia("(prefers-reduced-motion: reduce)")
           .matches,
         steps: present.map((step) => ({
-          element: step.element,
+          element: step.resolveElement
+            ? () =>
+                (document.querySelector(step.resolveElement!()) ??
+                  (step.element
+                    ? document.querySelector(step.element)
+                    : null)) as Element
+            : step.element,
           onHighlightStarted:
             step.prepare || step.onEnter
               ? () => {
@@ -202,6 +213,22 @@ export function GuidedTour({
     return () => window.clearInterval(timer);
   }, [start, surface]);
 
+  // App-state changes can invalidate the active step's anchor (the
+  // law popup opening over its own trigger). The host dispatches
+  // this event; re-driving the current step re-evaluates dynamic
+  // anchors (`resolveElement`). No-op without an active tour.
+  useEffect(() => {
+    const rehighlight = () => {
+      const tour = activeRef.current;
+      if (!tour?.isActive()) return;
+      const index = tour.getActiveIndex();
+      if (typeof index === "number") tour.moveTo(index);
+    };
+    window.addEventListener("axiom:tour-rehighlight", rehighlight);
+    return () =>
+      window.removeEventListener("axiom:tour-rehighlight", rehighlight);
+  }, []);
+
   // Navigating away — or the surface changing under the same mount
   // (launcher tour open, user picks a provision) — tears the overlay
   // down (and counts as a dismissal via onDestroyed).
@@ -217,10 +244,10 @@ export function GuidedTour({
       type="button"
       className="axiom-tour-replay"
       aria-label="Replay the guided tour"
-      title="Guided tour"
+      title="Replay the guided tour"
       onClick={() => start(true)}
     >
-      ?
+      Tour
     </button>
   );
 }

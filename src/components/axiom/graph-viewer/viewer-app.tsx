@@ -343,6 +343,12 @@ export function GraphViewerApp({
   // The law popup: the provision page at the node's level, embedded
   // read-only — the Plane is the only surface that navigates.
   const [lawPopup, setLawPopup] = useState<string | null>(null);
+  // The popup opens over its own tour-spotlit trigger — tell an
+  // active tour to re-resolve its anchor (it highlights the whole
+  // modal instead of the buried button). No-op without a tour.
+  useEffect(() => {
+    if (lawPopup) window.dispatchEvent(new Event("axiom:tour-rehighlight"));
+  }, [lawPopup]);
   const graphJustLoaded = useRef(false);
   const surveyPendingRef = useRef(false);
   const pendingOpeningRef = useRef<string | null>(null);
@@ -2448,6 +2454,7 @@ export function GraphViewerApp({
           ? (on) => setTourSpotlight(on ? TOUR_EXAMPLE_TARGET : null)
           : undefined
       }
+      onCloseLawPopup={() => setLawPopup(null)}
     />
     {/* Desktop-only for now — a phone gets an honest notice instead
         of a broken layout. */}

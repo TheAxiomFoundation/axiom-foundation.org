@@ -238,6 +238,9 @@ export interface LiveEncodingRunner {
   platform?: string;
   pid?: number;
   is_ci?: boolean;
+  /** "public_ingest" when the row arrived via the credential-free ingest
+   *  route (self-reported); absent for trusted direct writes. */
+  reported_via?: string;
 }
 
 /**

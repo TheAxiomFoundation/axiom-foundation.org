@@ -84,6 +84,11 @@ export function GraphViewerApp({
   const [launcherMode, setLauncherMode] = useState<LauncherMode>(() =>
     readLauncherMode(),
   );
+  // Live view for callbacks the tour captured at start — the mode
+  // can flip mid-tour, and a stale closure would offer the field's
+  // spotlight with the field unmounted.
+  const launcherModeRef = useRef(launcherMode);
+  launcherModeRef.current = launcherMode;
   const pickLauncherMode = (mode: LauncherMode) => {
     setLauncherMode(mode);
     storeLauncherMode(mode);
@@ -343,20 +348,21 @@ export function GraphViewerApp({
   // The law popup: the provision page at the node's level, embedded
   // read-only — the Plane is the only surface that navigates.
   const [lawPopup, setLawPopup] = useState<string | null>(null);
-  // Overlays open over their own tour-spotlit triggers, and the
-  // launcher's controls resize when the Field/List view flips — tell
-  // an active tour to re-resolve and refit its anchor. No-op without
-  // a tour.
-  useEffect(() => {
-    if (lawPopup) window.dispatchEvent(new Event("axiom:tour-rehighlight"));
-  }, [lawPopup]);
-  useEffect(() => {
-    if (runPanelOpen)
-      window.dispatchEvent(new Event("axiom:tour-rehighlight"));
-  }, [runPanelOpen]);
+  // Anything that moves or resizes a tour-spotlit target asks an
+  // active tour to re-resolve and refit its anchor (no-op without
+  // one): overlays opening AND closing over their own triggers, the
+  // launcher's controls growing through Field/List and scope flips,
+  // and the inspector's mini-graph reshaping as neighbors are
+  // clicked (its size tracks the dependency count).
   useEffect(() => {
     window.dispatchEvent(new Event("axiom:tour-rehighlight"));
-  }, [launcherMode]);
+  }, [lawPopup, launcherMode, listScope, listState, inspected]);
+  // Opening the run sheet is engaging, not touring — the sheet is
+  // dense, interactive, and a tour card floating over it would cover
+  // its own Run button. End any active tour.
+  useEffect(() => {
+    if (runPanelOpen) window.dispatchEvent(new Event("axiom:tour-end"));
+  }, [runPanelOpen]);
   const graphJustLoaded = useRef(false);
   const surveyPendingRef = useRef(false);
   const pendingOpeningRef = useRef<string | null>(null);
@@ -1105,6 +1111,9 @@ export function GraphViewerApp({
     if (!effectiveProgram || running) return;
     // Compose mode runs only through the feature-detected root shape.
     if (composeFocus && composeRunReady !== true) return;
+    // Executing a run outgrows the tour — end it rather than talking
+    // over the results.
+    window.dispatchEvent(new Event("axiom:tour-end"));
     setRunning(true);
     setRunError(null);
     // An explicit run consumes the pending edits: the stale flag
@@ -2457,9 +2466,16 @@ export function GraphViewerApp({
       // launcher persisted, offering it would anchor the closing step
       // to an element that never mounts (a ~2s driver stall, then a
       // floating popover about a spotlight nobody sees).
+      // Gated LIVE inside the callback: the tour captures it at
+      // start, and the user can flip to the list view mid-tour.
       onSpotlightExample={
-        tourExampleReady && launcherMode === "field"
-          ? (on) => setTourSpotlight(on ? TOUR_EXAMPLE_TARGET : null)
+        tourExampleReady
+          ? (on) =>
+              setTourSpotlight(
+                on && launcherModeRef.current === "field"
+                  ? TOUR_EXAMPLE_TARGET
+                  : null,
+              )
           : undefined
       }
       onCloseLawPopup={() => setLawPopup(null)}

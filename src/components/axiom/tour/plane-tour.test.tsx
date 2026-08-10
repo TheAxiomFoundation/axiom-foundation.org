@@ -77,6 +77,7 @@ describe("PlaneTour", () => {
   it("subgraph stage: five steps anchored to the working surfaces", () => {
     window.sessionStorage.setItem(tourSeenKey("subgraph"), "1");
     visible("back-to-overview");
+    visible("read-the-law");
     const toggle = document.createElement("div");
     toggle.setAttribute("data-tour", "run-scenario");
     toggle.getClientRects = () =>
@@ -90,13 +91,17 @@ describe("PlaneTour", () => {
     expect(driven.map((step) => step.element)).toContain(
       '[data-testid="back-to-overview"]',
     );
-    // The run step's anchor is dynamic (toggle → whole sheet when
-    // open); with no sheet in the DOM it resolves to the toggle.
-    const runStep = driven.find((step) => typeof step.element === "function");
-    expect(runStep).toBeTruthy();
+    expect(driven.map((step) => step.element)).toContain(
+      '[data-tour="run-scenario"]',
+    );
+    // The reading step's anchor is dynamic (button → whole law
+    // popup when open); with no popup in the DOM it resolves to
+    // the button.
+    const readStep = driven.find((step) => typeof step.element === "function");
+    expect(readStep).toBeTruthy();
     expect(
-      (runStep!.element as () => Element)()?.getAttribute("data-tour"),
-    ).toBe("run-scenario");
+      (readStep!.element as () => Element)()?.getAttribute("data-testid"),
+    ).toBe("read-the-law");
   });
 });
 

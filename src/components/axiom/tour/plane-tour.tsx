@@ -114,12 +114,9 @@ function subgraphSteps(
       description:
         "Answer a household's questions to execute the law — every result traces back through the graph. Unanswered questions use the program's defaults.",
       onEnter: onCloseLaw,
-      // Same treatment as the law popup: opening the run sheet from
-      // the spotlit toggle shifts the spotlight to the whole sheet.
-      resolveElement: () =>
-        document.querySelector(".run-panel")
-          ? ".run-panel > div"
-          : '[data-tour="run-scenario"]',
+      // No modal-spotlight here (unlike the law popup): opening the
+      // run sheet means the visitor is DOING the thing — the viewer
+      // ends the tour instead of floating a card over the sheet.
     },
     {
       element: '[data-testid="back-to-overview"]',

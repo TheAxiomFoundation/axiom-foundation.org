@@ -111,7 +111,12 @@ export function GuidedTour({
                   step.onEnter?.();
                 }
               : undefined,
-          ...(step.deferred ? { waitForElement: 2000 } : {}),
+          // Deferred anchors bridge a React commit (the spotlight
+          // mark renders the frame after the previous step's hook
+          // sets state) — not a fetch. Keep the wait short so a
+          // mode where the anchor never comes (list view) reads as
+          // a beat, not a hang.
+          ...(step.deferred ? { waitForElement: 600 } : {}),
           popover: {
             title: step.title,
             description: step.description,
@@ -224,9 +229,15 @@ export function GuidedTour({
       const index = tour.getActiveIndex();
       if (typeof index === "number") tour.moveTo(index);
     };
+    // …and some app actions outgrow the tour entirely (executing a
+    // run): the host ends it rather than talking over the results.
+    const end = () => activeRef.current?.destroy();
     window.addEventListener("axiom:tour-rehighlight", rehighlight);
-    return () =>
+    window.addEventListener("axiom:tour-end", end);
+    return () => {
       window.removeEventListener("axiom:tour-rehighlight", rehighlight);
+      window.removeEventListener("axiom:tour-end", end);
+    };
   }, []);
 
   // Navigating away — or the surface changing under the same mount

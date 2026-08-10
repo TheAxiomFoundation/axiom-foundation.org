@@ -96,10 +96,11 @@ function subgraphSteps(
       onEnter: onCloseRunPanel,
       // The button sits at the bottom of the inspector's scrollbox —
       // reveal it there so driver doesn't scroll the whole document.
+      // Optional call: jsdom has no scrollIntoView.
       prepare: () =>
         document
           .querySelector('[data-testid="read-the-law"]')
-          ?.scrollIntoView({ block: "nearest" }),
+          ?.scrollIntoView?.({ block: "nearest" }),
       // Clicking the highlighted button opens the law popup ON TOP
       // of the spotlit button — if it's open, the popup itself is
       // what deserves the spotlight.

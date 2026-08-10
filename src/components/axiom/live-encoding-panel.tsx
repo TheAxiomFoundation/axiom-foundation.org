@@ -451,6 +451,7 @@ function MachineRunRow({
         {run.model ?? "Unknown model"}
         {run.attempt != null && run.attempt > 1 ? ` · attempt ${run.attempt}` : ""}
         {elapsed != null ? ` · ${formatDuration(elapsed)}` : ""}
+        {run.runner?.reported_via === "public_ingest" ? " · self-reported" : ""}
       </div>
       {state === "stale" && heartbeatAge != null && (
         <div className="mt-1 text-[10px] font-mono uppercase tracking-wider text-[var(--color-error)]">

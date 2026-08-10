@@ -63,26 +63,37 @@ function launcherSteps(
  *  it, Overview is the way back. Inspector steps only appear when a
  *  node is inspected (compose focus opens one); the run toggle waits
  *  on the graph fetch and the tour waits with it. */
-function subgraphSteps(onCloseLaw?: () => void): TourStep[] {
+function subgraphSteps(
+  onCloseLaw?: () => void,
+  onCloseRunPanel?: () => void,
+): TourStep[] {
+  // Overlays opened along the way (the law popup, the run sheet)
+  // must never sit over a later step's target and swallow its
+  // clicks — entering any step closes what that step doesn't own.
+  const closeAll = () => {
+    onCloseLaw?.();
+    onCloseRunPanel?.();
+  };
   return [
     {
       title: "This is the law, as a graph",
       description:
         "Every node is a concept from the law. Click one to see how it's defined, what it depends on, and the statute text behind it.",
-      onEnter: onCloseLaw,
+      onEnter: closeAll,
     },
     {
       element: '[data-tour="mini-graph"]',
       title: "Concept dependencies",
       description:
         "See what the selected rule is built from and what uses it. Click any neighbor to move through the graph.",
-      onEnter: onCloseLaw,
+      onEnter: closeAll,
     },
     {
       element: '[data-testid="read-the-law"]',
       title: "Read the law",
       description:
         "Click here to read the section of law behind this node — without leaving the graph.",
+      onEnter: onCloseRunPanel,
       // The button sits at the bottom of the inspector's scrollbox —
       // reveal it there so driver doesn't scroll the whole document.
       prepare: () =>
@@ -102,16 +113,20 @@ function subgraphSteps(onCloseLaw?: () => void): TourStep[] {
       title: "Run a scenario",
       description:
         "Answer a household's questions to execute the law — every result traces back through the graph. Unanswered questions use the program's defaults.",
-      // The law popup would sit over the run toggle and swallow the
-      // click — advancing past the reading step closes it.
       onEnter: onCloseLaw,
+      // Same treatment as the law popup: opening the run sheet from
+      // the spotlit toggle shifts the spotlight to the whole sheet.
+      resolveElement: () =>
+        document.querySelector(".run-panel")
+          ? ".run-panel > div"
+          : '[data-tour="run-scenario"]',
     },
     {
       element: '[data-testid="back-to-overview"]',
       title: "Back to the overview",
       description:
         "Return to the field any time to pick another provision.",
-      onEnter: onCloseLaw,
+      onEnter: closeAll,
     },
   ];
 }
@@ -127,6 +142,7 @@ export function PlaneTour({
   onOpenExample,
   onSpotlightExample,
   onCloseLawPopup,
+  onCloseRunPanel,
 }: {
   stage: "launcher" | "subgraph";
   /** Opens the example subtree (TOUR_EXAMPLE_TARGET) in compose
@@ -139,12 +155,15 @@ export function PlaneTour({
   /** Closes the law popup — stepping through the subgraph tour must
    *  never leave the modal covering the next step's target. */
   onCloseLawPopup?: () => void;
+  /** Same for the run sheet. */
+  onCloseRunPanel?: () => void;
 }) {
   return stage === "subgraph" ? (
+    // No onEnd cleanup: someone who opens the law or the run sheet
+    // during its step and then exits the tour means to keep using it.
     <GuidedTour
       surface="subgraph"
-      steps={subgraphSteps(onCloseLawPopup)}
-      onEnd={onCloseLawPopup}
+      steps={subgraphSteps(onCloseLawPopup, onCloseRunPanel)}
     />
   ) : (
     <GuidedTour

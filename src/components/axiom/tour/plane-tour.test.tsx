@@ -84,13 +84,19 @@ describe("PlaneTour", () => {
     document.body.appendChild(toggle);
     render(<PlaneTour stage="subgraph" />);
     fireEvent.click(screen.getByRole("button", { name: /replay/i }));
-    const driven = lastConfig().steps as Array<{ element?: string }>;
+    const driven = lastConfig().steps as Array<{
+      element?: string | (() => Element);
+    }>;
     expect(driven.map((step) => step.element)).toContain(
       '[data-testid="back-to-overview"]',
     );
-    expect(driven.map((step) => step.element)).toContain(
-      '[data-tour="run-scenario"]',
-    );
+    // The run step's anchor is dynamic (toggle → whole sheet when
+    // open); with no sheet in the DOM it resolves to the toggle.
+    const runStep = driven.find((step) => typeof step.element === "function");
+    expect(runStep).toBeTruthy();
+    expect(
+      (runStep!.element as () => Element)()?.getAttribute("data-tour"),
+    ).toBe("run-scenario");
   });
 });
 

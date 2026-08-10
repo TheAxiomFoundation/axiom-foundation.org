@@ -343,12 +343,20 @@ export function GraphViewerApp({
   // The law popup: the provision page at the node's level, embedded
   // read-only — the Plane is the only surface that navigates.
   const [lawPopup, setLawPopup] = useState<string | null>(null);
-  // The popup opens over its own tour-spotlit trigger — tell an
-  // active tour to re-resolve its anchor (it highlights the whole
-  // modal instead of the buried button). No-op without a tour.
+  // Overlays open over their own tour-spotlit triggers, and the
+  // launcher's controls resize when the Field/List view flips — tell
+  // an active tour to re-resolve and refit its anchor. No-op without
+  // a tour.
   useEffect(() => {
     if (lawPopup) window.dispatchEvent(new Event("axiom:tour-rehighlight"));
   }, [lawPopup]);
+  useEffect(() => {
+    if (runPanelOpen)
+      window.dispatchEvent(new Event("axiom:tour-rehighlight"));
+  }, [runPanelOpen]);
+  useEffect(() => {
+    window.dispatchEvent(new Event("axiom:tour-rehighlight"));
+  }, [launcherMode]);
   const graphJustLoaded = useRef(false);
   const surveyPendingRef = useRef(false);
   const pendingOpeningRef = useRef<string | null>(null);
@@ -2455,6 +2463,7 @@ export function GraphViewerApp({
           : undefined
       }
       onCloseLawPopup={() => setLawPopup(null)}
+      onCloseRunPanel={() => setRunPanelOpen(false)}
     />
     {/* Desktop-only for now — a phone gets an honest notice instead
         of a broken layout. */}

@@ -151,24 +151,26 @@
   border-bottom-color: var(--color-paper-elevated);
 }
 
-/* Replay affordance — a quiet mono "?" pinned to the corner the
- * Plane's results sheet leaves free (it starts at left: 60px). */
+/* Replay affordance — a quiet labeled pill pinned to the corner the
+ * Plane's results sheet leaves free (it starts at left: 60px). The
+ * bare "?" read as decoration; the word says what it does. */
 .axiom-tour-replay {
   position: fixed;
   bottom: 16px;
   left: 16px;
   z-index: 90;
-  width: 28px;
-  height: 28px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--color-rule);
   background: var(--color-paper-elevated);
   color: var(--color-ink-muted);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 13px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.75;
+  opacity: 0.85;
   transition: color 150ms, border-color 150ms, opacity 150ms;
 }
 

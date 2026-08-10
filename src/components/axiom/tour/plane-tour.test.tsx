@@ -77,6 +77,7 @@ describe("PlaneTour", () => {
   it("subgraph stage: five steps anchored to the working surfaces", () => {
     window.sessionStorage.setItem(tourSeenKey("subgraph"), "1");
     visible("back-to-overview");
+    visible("read-the-law");
     const toggle = document.createElement("div");
     toggle.setAttribute("data-tour", "run-scenario");
     toggle.getClientRects = () =>
@@ -84,13 +85,23 @@ describe("PlaneTour", () => {
     document.body.appendChild(toggle);
     render(<PlaneTour stage="subgraph" />);
     fireEvent.click(screen.getByRole("button", { name: /replay/i }));
-    const driven = lastConfig().steps as Array<{ element?: string }>;
+    const driven = lastConfig().steps as Array<{
+      element?: string | (() => Element);
+    }>;
     expect(driven.map((step) => step.element)).toContain(
       '[data-testid="back-to-overview"]',
     );
     expect(driven.map((step) => step.element)).toContain(
       '[data-tour="run-scenario"]',
     );
+    // The reading step's anchor is dynamic (button → whole law
+    // popup when open); with no popup in the DOM it resolves to
+    // the button.
+    const readStep = driven.find((step) => typeof step.element === "function");
+    expect(readStep).toBeTruthy();
+    expect(
+      (readStep!.element as () => Element)()?.getAttribute("data-testid"),
+    ).toBe("read-the-law");
   });
 });
 

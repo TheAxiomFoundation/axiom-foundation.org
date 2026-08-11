@@ -26,20 +26,15 @@ import {
   graphFocusForCitationPath,
 } from "@/lib/axiom/runtime/graph-links";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const POLL_INTERVAL_MS = 30_000;
 const CLOCK_TICK_MS = 15_000;
@@ -240,7 +235,6 @@ export function OpsDashboard({
   const labels = status?.citation_labels ?? {};
 
   return (
-    <TooltipProvider>
     <div className="min-h-screen pt-28 pb-16">
       <div className="max-w-[960px] mx-auto px-6 md:px-8">
         <header>
@@ -272,7 +266,6 @@ export function OpsDashboard({
         </div>
       </div>
     </div>
-    </TooltipProvider>
   );
 }
 
@@ -840,22 +833,6 @@ export function sectionRowsForGroup(
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 }
 
-/**
- * Chip text for a completed section: the designator with generic trailing
- * segments (block-1, document-1) stripped — `704/230/block-1` reads as
- * `704/230`.
- */
-export function chipDesignator(designator: string): string {
-  const segments = designator.split("/");
-  while (
-    segments.length > 1 &&
-    /^(block|document|page)-\d+$/.test(segments[segments.length - 1])
-  ) {
-    segments.pop();
-  }
-  return segments.join("/");
-}
-
 function LatestEncodings({
   documents,
   referenceMs,
@@ -878,27 +855,45 @@ function LatestEncodings({
           reports one.
         </p>
       ) : (
-        <div className="mt-6 grid gap-5 md:grid-cols-2 items-start">
+        <Table className="mt-2">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                Section
+              </TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                Provision
+              </TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                Status
+              </TableHead>
+              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                Attempts
+              </TableHead>
+              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                Last run
+              </TableHead>
+            </TableRow>
+          </TableHeader>
           {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
-            <DocumentCard
+            <DocumentRows
               key={group.key}
               group={group}
               referenceMs={referenceMs}
               labels={labels}
             />
           ))}
-        </div>
+        </Table>
       )}
     </section>
   );
 }
 
 /**
- * One law, one card: the document's human name leads, active work reads as
- * sentences, and completed sections compress into a row of linked chips —
- * each one a runnable node in the graph.
+ * One law as a table band: a full-width header row carrying the
+ * jurisdiction and the document\'s human name, then one row per section.
  */
-function DocumentCard({
+function DocumentRows({
   group,
   referenceMs,
   labels,
@@ -908,145 +903,70 @@ function DocumentCard({
   labels: Record<string, string>;
 }) {
   const rows = sectionRowsForGroup(group, labels);
-  const active = rows.filter((row) => row.status !== "completed");
-  const done = rows
-    .filter((row) => row.status === "completed")
-    .sort((a, b) =>
-      a.designator.localeCompare(b.designator, undefined, { numeric: true })
-    );
   const documentLabel = documentGroupLabel(group, labels);
   const colon = group.key.indexOf(":");
   const scope = colon > 0 ? group.key.slice(0, colon) : "";
   const rest = colon > 0 ? group.key.slice(colon + 1) : group.key;
-  const docClass = rest.split("/")[0];
 
   return (
-    <Card>
-      <CardHeader>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-          {docClass && ` · ${docClass}`}
-        </p>
-        <CardAction>
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {relativeTime(group.lastAt, referenceMs)}
+    <TableBody>
+      <TableRow className="border-b-0 hover:bg-transparent">
+        <TableCell colSpan={5} className="pt-6 pb-1 px-2">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
           </span>
-        </CardAction>
-        {documentLabel ? (
-          <>
-            <CardTitle className="font-serif text-lg font-normal leading-snug">
+          {documentLabel ? (
+            <span className="ml-3 font-serif text-base text-foreground">
               {documentLabel}
-            </CardTitle>
-            <p className="font-mono text-[11px] text-muted-foreground break-all">
-              {rest}
-            </p>
-          </>
-        ) : (
-          <CardTitle className="font-mono text-base font-normal leading-snug break-all">
+            </span>
+          ) : null}
+          <span className="ml-3 font-mono text-[11px] text-muted-foreground">
             {rest}
-          </CardTitle>
-        )}
-      </CardHeader>
-
-      {(active.length > 0 || done.length > 0) && (
-        <CardContent className="flex flex-col gap-4">
-          {active.length > 0 && (
-            <ul className="space-y-2">
-              {active.map((row) => (
-                <li
-                  key={row.citation}
-                  className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
-                >
-                  <p className="min-w-0 text-xs break-words">
-                    <span className="font-mono text-foreground">
-                      {row.designator}
-                    </span>
-                    {row.label && row.label !== documentLabel && (
-                      <span className="font-serif italic text-[var(--color-ink-secondary)]">
-                        {" "}
-                        — {row.label}
-                      </span>
-                    )}
-                  </p>
-                  <Badge
-                    variant="secondary"
-                    className={`shrink-0 font-mono text-[11px] font-normal ${
-                      row.status === "flagged"
-                        ? "bg-[rgba(146,64,14,0.08)] text-[var(--color-warning)]"
-                        : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
-                    }`}
-                  >
-                    {row.status === "flagged"
-                      ? "flagged for review"
-                      : `in progress · ${row.attempts} attempt${
-                          row.attempts === 1 ? "" : "s"
-                        }`}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {done.length > 0 && (
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-success)]">
-                {done.length} encoded
-              </p>
-              <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                {done.map((row) => (
-                  <li key={row.citation}>
-                    <SectionChip row={row} documentLabel={documentLabel} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
-/**
- * One encoded section as a chip. Linked chips open the compose graph
- * viewer; the tooltip carries the full designator and provision name.
- */
-function SectionChip({
-  row,
-  documentLabel,
-}: {
-  row: { designator: string; label: string | null; graphUrl: string | null };
-  documentLabel: string | null;
-}) {
-  const chip = chipDesignator(row.designator);
-  const label =
-    row.label && row.label !== documentLabel ? row.label : null;
-  const badge = row.graphUrl ? (
-    <Badge
-      render={<a href={row.graphUrl} />}
-      variant="secondary"
-      className="bg-[var(--color-accent-light)] font-mono text-[11px] font-normal text-[var(--color-accent)] no-underline hover:underline"
-    >
-      {chip}
-    </Badge>
-  ) : (
-    <Badge
-      variant="outline"
-      className="font-mono text-[11px] font-normal text-[var(--color-ink-secondary)]"
-    >
-      {chip}
-    </Badge>
-  );
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={badge} />
-      <TooltipContent>
-        <span className="font-mono">{row.designator}</span>
-        {label && ` — ${label}`}
-        {row.graphUrl && " · view the rule graph"}
-      </TooltipContent>
-    </Tooltip>
+          </span>
+        </TableCell>
+      </TableRow>
+      {rows.map((row) => (
+        <TableRow key={row.citation}>
+          <TableCell className="font-mono text-xs whitespace-normal break-all align-top">
+            {row.graphUrl ? (
+              <a
+                href={row.graphUrl}
+                title="View the encoded rule graph"
+                className="text-[var(--color-accent)] no-underline hover:underline"
+              >
+                {row.designator}
+                <span aria-hidden> ↗</span>
+              </a>
+            ) : (
+              row.designator
+            )}
+          </TableCell>
+          <TableCell className="font-serif italic text-xs text-[var(--color-ink-secondary)] whitespace-normal align-top max-w-[38ch]">
+            {row.label && row.label !== documentLabel ? row.label : ""}
+          </TableCell>
+          <TableCell className="align-top">
+            <Badge
+              variant="secondary"
+              className={`font-mono text-[11px] font-normal ${
+                row.status === "completed"
+                  ? "bg-[rgba(22,101,52,0.08)] text-[var(--color-success)]"
+                  : row.status === "flagged"
+                    ? "bg-[rgba(146,64,14,0.08)] text-[var(--color-warning)]"
+                    : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+              }`}
+            >
+              {row.status}
+            </Badge>
+          </TableCell>
+          <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground align-top">
+            {row.attempts > 1 ? row.attempts : ""}
+          </TableCell>
+          <TableCell className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground align-top">
+            {relativeTime(row.lastAt, referenceMs)}
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
   );
 }
 

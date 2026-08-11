@@ -39,6 +39,28 @@ const KIND_SINGULAR: Record<string, string> = {
   manual: "manual",
 };
 
+/** Every repo bucket the corpus reader can render — the same set
+ *  axiomAppUrl builds links for. Single source of truth for "is this
+ *  file readable law": gates that admit fewer buckets than this are the
+ *  bug class behind #191 (27% of rules losing "Read the law"). */
+const READABLE_BUCKETS = Object.keys(KIND_SINGULAR).join("|");
+
+const READABLE_FILE = new RegExp(`:(?:${READABLE_BUCKETS})/`);
+const READABLE_SOURCE = new RegExp(
+  `^[a-z]{2}(?:-[a-z]{2})?:(?:${READABLE_BUCKETS})/`
+);
+
+/** True when a file legal id ("us:policies/usda/snap/fy-2026-cola")
+ *  points at a document the corpus reader can render. */
+export function isReadableLawFile(fileLegalId: string): boolean {
+  return READABLE_FILE.test(fileLegalId);
+}
+
+/** True when a rule's raw `source` legal id points at readable law. */
+export function isReadableLawSource(source: string): boolean {
+  return READABLE_SOURCE.test(source);
+}
+
 /** Encoding-only leaves ("block-1") that never exist as corpus nodes. */
 const ENCODING_LEAF = /^block-\d+$/i;
 

@@ -14,6 +14,7 @@ import {
   type SectionProvision,
   mapRulesToDeepPath,
   joinedSegmentPaths,
+  docTypeCrosswalk,
 } from "./section-page";
 
 const ROOT = "us/statute/26/32";
@@ -458,5 +459,15 @@ describe("mapRulesToDeepPath", () => {
   it("returns nothing without content or relative depth", () => {
     expect(mapRulesToDeepPath("us/regulation/7/273/10", ["e"], null)).toEqual([]);
     expect(mapRulesToDeepPath("us/regulation/7/273/10", [], yaml)).toEqual([]);
+  });
+});
+
+describe("docTypeCrosswalk", () => {
+  it("maps policy-adjacent classes to their siblings and nothing else", () => {
+    expect(docTypeCrosswalk("policy")).toEqual(["manual", "guidance"]);
+    expect(docTypeCrosswalk("manual")).toEqual(["policy", "guidance"]);
+    expect(docTypeCrosswalk("guidance")).toEqual(["policy", "manual"]);
+    expect(docTypeCrosswalk("statute")).toEqual([]);
+    expect(docTypeCrosswalk(undefined)).toEqual([]);
   });
 });

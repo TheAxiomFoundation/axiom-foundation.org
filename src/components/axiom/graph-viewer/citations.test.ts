@@ -5,6 +5,8 @@ import {
   humanizeCitation,
   humanizeRuleName,
   humanizeSource,
+  isReadableLawFile,
+  isReadableLawSource,
 } from "./citations";
 
 describe("axiomAppUrlForCitation", () => {
@@ -183,5 +185,29 @@ describe("humanizeRuleName", () => {
   it("survives odd input", () => {
     expect(humanizeRuleName("")).toBe("");
     expect(humanizeRuleName("__x__")).toBe("X");
+  });
+});
+
+describe("readable-law gate (#191)", () => {
+  it("admits every bucket the reader can render", () => {
+    for (const file of [
+      "us:statutes/26/32",
+      "us-co:regulations/10-ccr-2506-1/4.110",
+      "us-nc:policies/dhhs/fns/appendix-3300-glossary/page-12",
+      "us:guidance/ssa/cola/2026",
+      "us:bills/hr-1234",
+      "us-fl:manual/dcf/ess-program-policy-manual",
+    ]) {
+      expect(isReadableLawFile(file)).toBe(true);
+    }
+  });
+
+  it("rejects non-law buckets and admits sources by the same set", () => {
+    expect(isReadableLawFile("us:packages/snap/composed")).toBe(false);
+    expect(isReadableLawSource("us:statutes/7/2014#a")).toBe(true);
+    expect(isReadableLawSource("us-ak:policies/dpa/apa/standards/2026")).toBe(
+      true
+    );
+    expect(isReadableLawSource("2026 APA Payment Standards, A1E")).toBe(false);
   });
 });

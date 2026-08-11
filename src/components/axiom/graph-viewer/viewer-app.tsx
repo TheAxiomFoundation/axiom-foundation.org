@@ -14,6 +14,8 @@ import {
   humanizeCitation,
   humanizeRuleName,
   humanizeSource,
+  isReadableLawFile,
+  isReadableLawSource,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
 import {
@@ -2865,16 +2867,11 @@ export function GraphViewerApp({
             const lawFileLegalId = (() => {
               if (!legalId) return null;
               const own = fileLegalIdOf(legalId);
-              if (/:(statutes|regulations|manual)\//.test(own)) return own;
+              if (isReadableLawFile(own)) return own;
               // Synthesized package rules cite their statute in
               // `source` as a raw legal id — that IS the law to read.
               const source = rule?.source;
-              if (
-                source &&
-                /^[a-z]{2}(?:-[a-z]{2})?:(statutes|regulations|manual)\//.test(
-                  source,
-                )
-              ) {
+              if (source && isReadableLawSource(source)) {
                 return source.split("#")[0] ?? null;
               }
               // Only questions borrow a consumer's provision — they
@@ -2886,7 +2883,7 @@ export function GraphViewerApp({
               if (!rule) {
                 for (const consumer of consumers) {
                   const file = fileLegalIdOf(consumer.legalId);
-                  if (/:(statutes|regulations|manual)\//.test(file)) {
+                  if (isReadableLawFile(file)) {
                     return file;
                   }
                 }

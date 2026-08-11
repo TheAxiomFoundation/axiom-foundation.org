@@ -1,5 +1,6 @@
 import {
   supabaseCorpus,
+  supabaseEncodings,
   getRuleReferences,
   type Rule,
   type RuleReference,
@@ -686,6 +687,49 @@ export function joinedSegmentPaths(
   return paths;
 }
 
+/** Document classes the corpus files interchangeably for policy-adjacent
+ *  material. An encoding under policies/ may live in the corpus as
+ *  manual/ or guidance/ — same document, different classification. */
+const DOC_TYPE_SIBLINGS: Record<string, string[]> = {
+  policy: ["manual", "guidance"],
+  manual: ["policy", "guidance"],
+  guidance: ["policy", "manual"],
+};
+
+export function docTypeCrosswalk(docType: string | undefined): string[] {
+  return docType ? (DOC_TYPE_SIBLINGS[docType] ?? []) : [];
+}
+
+/**
+ * The corpus home an encoding module attests for itself:
+ * `module.source_verification.corpus_citation_path` from the rulespec
+ * mirror. Looked up by the reader path (mirror rows are keyed by the
+ * file's citation path); subsection tails are trimmed until a row
+ * matches, since page-structured sources can't anchor subsections.
+ */
+export async function rulespecSourceCitationPath(
+  slug: string,
+  ruleSegments: string[]
+): Promise<string | null> {
+  for (let end = ruleSegments.length; end >= 3; end--) {
+    const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
+    const { data, error } = await supabaseEncodings
+      .from("rulespec_files")
+      .select("raw_yaml")
+      .eq("citation_path", candidate)
+      .limit(3);
+    if (error) return null;
+    for (const row of data ?? []) {
+      const yaml = (row as { raw_yaml: string | null }).raw_yaml;
+      const match = yaml?.match(
+        /corpus_citation_path:\s*["']?([\w./-]+)["']?/
+      );
+      if (match?.[1]) return match[1];
+    }
+  }
+  return null;
+}
+
 export async function resolveSection(
   segments: string[]
 ): Promise<SectionResolution | null> {
@@ -792,6 +836,61 @@ export async function resolveSection(
         focusAnchor = anchored ? anchor : null;
         prefetchedSubtree = subtree;
         break;
+      }
+    }
+  }
+  if (!root) {
+    // Encoding file paths and corpus paths disagree on document class
+    // for policy-adjacent material: a rulespec filed under policies/
+    // may be ingested as manual/ or guidance/. Retry the same tail
+    // under the sibling classes before giving up (#191).
+    for (const sibling of docTypeCrosswalk(ruleSegments[0])) {
+      const candidate = [slug, sibling, ...ruleSegments.slice(1)].join("/");
+      const rule = await getProvisionByCitationPath(candidate).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = candidate;
+        break;
+      }
+      const probe = await getSubtreeProvisions(candidate);
+      if (probe.provisions.length > 0) {
+        const navNode = await getNavigationNode(candidate);
+        root = synthesizeSectionRoot(candidate, resolved, navNode?.label);
+        citationPath = candidate;
+        synthetic = true;
+        prefetchedSubtree = probe;
+        break;
+      }
+    }
+  }
+  if (!root) {
+    // Last rung: the encodings mirror records each module's true corpus
+    // home (module.source_verification.corpus_citation_path). A reader
+    // URL built from a rule-file legal id — the graph inspector's
+    // "Read the law" — resolves through it even when the file and
+    // corpus paths diverge entirely (…/capital-gains vs …/page-25).
+    const sourcePath = await rulespecSourceCitationPath(
+      slug,
+      ruleSegments
+    ).catch(() => null);
+    if (sourcePath && sourcePath !== requestedPath) {
+      const rule = await getProvisionByCitationPath(sourcePath).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = sourcePath;
+      } else {
+        const probe = await getSubtreeProvisions(sourcePath);
+        if (probe.provisions.length > 0) {
+          const navNode = await getNavigationNode(sourcePath);
+          root = synthesizeSectionRoot(sourcePath, resolved, navNode?.label);
+          citationPath = sourcePath;
+          synthetic = true;
+          prefetchedSubtree = probe;
+        }
       }
     }
   }

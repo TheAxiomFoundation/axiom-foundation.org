@@ -92,7 +92,8 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function readEncodingQueues(): Promise<EncodingQueueSummary[]> {
+/** Exported for tests; production callers use the cached getEncodingQueues. */
+export async function readEncodingQueues(): Promise<EncodingQueueSummary[]> {
   let names: string[];
   try {
     const listing = await fetchJson<Array<{ name?: string }>>(QUEUE_DIR_URL);

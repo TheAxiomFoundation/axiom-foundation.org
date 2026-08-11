@@ -854,53 +854,49 @@ function LatestEncodings({
   labels: Record<string, string>;
 }) {
   return (
-    <Card className="mt-10">
-      <CardHeader className="border-b [.border-b]:pb-4">
-        <CardTitle>Latest encodings</CardTitle>
-        <CardDescription>
-          Newest first, grouped by document. Completed sections link to their
-          rule graph.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-0">
-        {documents.length === 0 ? (
-          <p className="px-6 text-sm text-muted-foreground">
-            No encodings recorded yet. Runs appear here the moment an encoder
-            reports one.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-6 text-xs text-muted-foreground">
-                  Section
-                </TableHead>
-                <TableHead className="text-xs text-muted-foreground">
-                  Provision
-                </TableHead>
-                <TableHead className="text-xs text-muted-foreground">
-                  Status
-                </TableHead>
-                <TableHead className="text-right text-xs text-muted-foreground">
-                  Attempts
-                </TableHead>
-                <TableHead className="pr-6 text-right text-xs text-muted-foreground">
-                  Last run
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
-              <DocumentRows
-                key={group.key}
-                group={group}
-                referenceMs={referenceMs}
-                labels={labels}
-              />
-            ))}
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+    <section aria-label="Latest encodings" className="mt-12">
+      <div className="border-b border-[var(--color-rule)] pb-3">
+        <h2 className="heading-sub text-[var(--color-ink)]">
+          Latest encodings
+        </h2>
+      </div>
+      {documents.length === 0 ? (
+        <p className="mt-4 text-sm text-[var(--color-ink-secondary)]">
+          No encodings recorded yet. Runs appear here the moment an encoder
+          reports one.
+        </p>
+      ) : (
+        <Table className="text-xs">
+          <TableHeader>
+            <TableRow className="border-b border-[var(--color-rule)] hover:bg-transparent">
+              <TableHead className="h-8 w-[34%] px-0 font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Section
+              </TableHead>
+              <TableHead className="h-8 px-2 font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Provision
+              </TableHead>
+              <TableHead className="h-8 w-28 px-2 font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Status
+              </TableHead>
+              <TableHead className="h-8 w-16 px-2 text-right font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Attempts
+              </TableHead>
+              <TableHead className="h-8 w-20 px-0 text-right font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Last run
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
+            <DocumentRows
+              key={group.key}
+              group={group}
+              referenceMs={referenceMs}
+              labels={labels}
+            />
+          ))}
+        </Table>
+      )}
+    </section>
   );
 }
 
@@ -911,9 +907,9 @@ const STATUS_DOT: Record<"completed" | "in progress" | "flagged", string> = {
 };
 
 /**
- * One law as a table band: a quiet full-width header row naming the
- * jurisdiction and document, then one row per section. Hierarchy comes
- * from type and whitespace, not rules or fills.
+ * One law as a table band: a document line (jurisdiction, name, path)
+ * ruled underneath, then its sections indented beneath it — compact
+ * statute-paper rows, hairline rules only.
  */
 function DocumentRows({
   group,
@@ -932,26 +928,27 @@ function DocumentRows({
 
   return (
     <TableBody>
-      <TableRow className="border-0 hover:bg-transparent">
-        <TableCell colSpan={5} className="pt-7 pb-1.5 pl-6 pr-6">
-          <p className="text-xs text-muted-foreground">
+      <TableRow className="border-b border-[var(--color-rule)] hover:bg-transparent">
+        <TableCell colSpan={5} className="px-0 pt-4 pb-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
             {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-          </p>
-          <p className="mt-0.5">
-            <span className="text-sm font-medium text-foreground">
-              {documentLabel ?? rest}
+          </span>
+          <span className="ml-2.5 text-sm font-medium text-[var(--color-ink)]">
+            {documentLabel ?? rest}
+          </span>
+          {documentLabel && (
+            <span className="ml-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
+              {rest}
             </span>
-            {documentLabel && (
-              <span className="ml-2.5 font-mono text-xs text-muted-foreground">
-                {rest}
-              </span>
-            )}
-          </p>
+          )}
         </TableCell>
       </TableRow>
       {rows.map((row) => (
-        <TableRow key={row.citation} className="border-0">
-          <TableCell className="pl-6 py-2 align-middle font-mono text-xs whitespace-normal break-all">
+        <TableRow
+          key={row.citation}
+          className="border-b border-[var(--color-rule-subtle)] hover:bg-[var(--color-rule-subtle)]"
+        >
+          <TableCell className="py-1.5 pl-5 pr-2 align-baseline font-mono whitespace-normal break-all">
             {row.graphUrl ? (
               <a
                 href={row.graphUrl}
@@ -962,23 +959,25 @@ function DocumentRows({
                 <span aria-hidden> ↗</span>
               </a>
             ) : (
-              row.designator
+              <span className="text-[var(--color-ink)]">{row.designator}</span>
             )}
           </TableCell>
-          <TableCell className="max-w-[40ch] py-2 align-middle text-xs text-muted-foreground whitespace-normal">
+          <TableCell className="px-2 py-1.5 align-baseline whitespace-normal text-[var(--color-ink-secondary)]">
             {row.label && row.label !== documentLabel ? row.label : ""}
           </TableCell>
-          <TableCell className="py-2 align-middle whitespace-nowrap">
+          <TableCell className="px-2 py-1.5 align-baseline whitespace-nowrap">
             <span
               aria-hidden
-              className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${STATUS_DOT[row.status]}`}
+              className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[row.status]}`}
             />
-            <span className="text-xs text-muted-foreground">{row.status}</span>
+            <span className="text-[var(--color-ink-secondary)]">
+              {row.status}
+            </span>
           </TableCell>
-          <TableCell className="py-2 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground">
+          <TableCell className="px-2 py-1.5 text-right align-baseline font-mono tabular-nums text-[var(--color-ink-muted)]">
             {row.attempts > 1 ? row.attempts : ""}
           </TableCell>
-          <TableCell className="pr-6 py-2 text-right align-middle text-xs whitespace-nowrap text-muted-foreground">
+          <TableCell className="px-0 py-1.5 text-right align-baseline whitespace-nowrap text-[var(--color-ink-muted)]">
             {relativeTime(row.lastAt, referenceMs)}
           </TableCell>
         </TableRow>

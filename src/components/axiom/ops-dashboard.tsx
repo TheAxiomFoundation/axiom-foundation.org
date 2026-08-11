@@ -930,17 +930,19 @@ function DocumentRows({
     <TableBody>
       <TableRow className="border-b border-[var(--color-rule)] hover:bg-transparent">
         <TableCell colSpan={5} className="px-0 pt-4 pb-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-          </span>
-          <span className="ml-2.5 text-sm font-medium text-[var(--color-ink)]">
-            {documentLabel ?? rest}
-          </span>
-          {documentLabel && (
-            <span className="ml-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
-              {rest}
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+              {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
             </span>
-          )}
+            <span className="text-sm font-medium text-[var(--color-ink)]">
+              {documentLabel ?? rest}
+            </span>
+            {documentLabel && (
+              <span className="font-mono text-[11px] text-[var(--color-ink-muted)]">
+                {rest}
+              </span>
+            )}
+          </div>
         </TableCell>
       </TableRow>
       {rows.map((row) => (

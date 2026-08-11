@@ -25,6 +25,21 @@ import {
   composeGraphViewerUrl,
   graphFocusForCitationPath,
 } from "@/lib/axiom/runtime/graph-links";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const POLL_INTERVAL_MS = 30_000;
 const CLOCK_TICK_MS = 15_000;
@@ -225,6 +240,7 @@ export function OpsDashboard({
   const labels = status?.citation_labels ?? {};
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen pt-28 pb-16">
       <div className="max-w-[960px] mx-auto px-6 md:px-8">
         <header>
@@ -256,6 +272,7 @@ export function OpsDashboard({
         </div>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -359,19 +376,11 @@ function QueueRow({ queue }: { queue: EncodingQueueSummary }) {
           {queue.description}
         </p>
       )}
-      <div
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={queue.total}
-        aria-valuenow={dispositioned}
+      <Progress
+        value={Math.max(fraction > 0 ? 1 : 0, Math.round(fraction * 100))}
         aria-label={`${queue.queueId}: ${dispositioned} of ${queue.total} items dispositioned`}
-        className="mt-2.5 h-1.5 rounded-full bg-[var(--color-rule)]"
-      >
-        <div
-          className="h-full rounded-full bg-[var(--color-accent)]"
-          style={{ width: `${Math.max(fraction > 0 ? 1 : 0, Math.round(fraction * 100))}%` }}
-        />
-      </div>
+        className="mt-2.5"
+      />
       <p className="mt-2 font-mono text-xs text-[var(--color-ink-muted)]">
         {dispositionLine || `${queue.pending.toLocaleString("en-US")} pending`}
         {queue.pauseReason && (
@@ -912,105 +921,132 @@ function DocumentCard({
   const docClass = rest.split("/")[0];
 
   return (
-    <article className="rounded-sm border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-5 flex flex-col gap-4">
-      <header>
-        <div className="flex items-baseline justify-between gap-4">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-            {docClass && ` · ${docClass}`}
-          </p>
-          <p className="shrink-0 font-mono text-[10px] text-[var(--color-ink-muted)]">
+    <Card>
+      <CardHeader>
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
+          {docClass && ` · ${docClass}`}
+        </p>
+        <CardAction>
+          <span className="font-mono text-[10px] text-muted-foreground">
             {relativeTime(group.lastAt, referenceMs)}
-          </p>
-        </div>
+          </span>
+        </CardAction>
         {documentLabel ? (
           <>
-            <h3 className="mt-1.5 font-serif text-lg leading-snug text-[var(--color-ink)]">
+            <CardTitle className="font-serif text-lg font-normal leading-snug">
               {documentLabel}
-            </h3>
-            <p className="mt-1 font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
+            </CardTitle>
+            <p className="font-mono text-[11px] text-muted-foreground break-all">
               {rest}
             </p>
           </>
         ) : (
-          <h3 className="mt-1.5 font-mono text-base leading-snug text-[var(--color-ink)] break-all">
+          <CardTitle className="font-mono text-base font-normal leading-snug break-all">
             {rest}
-          </h3>
+          </CardTitle>
         )}
-      </header>
+      </CardHeader>
 
-      {active.length > 0 && (
-        <ul className="space-y-2">
-          {active.map((row) => (
-            <li
-              key={row.citation}
-              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
-            >
-              <p className="min-w-0 text-xs break-words">
-                <span className="font-mono text-[var(--color-ink)]">
-                  {row.designator}
-                </span>
-                {row.label && row.label !== documentLabel && (
-                  <span className="font-serif italic text-[var(--color-ink-secondary)]">
-                    {" "}
-                    — {row.label}
-                  </span>
-                )}
-              </p>
-              <p
-                className={`shrink-0 font-mono text-[11px] ${
-                  row.status === "flagged"
-                    ? "text-[var(--color-warning)]"
-                    : "text-[var(--color-accent)]"
-                }`}
-              >
-                {row.status === "flagged"
-                  ? "flagged for review"
-                  : `in progress · ${row.attempts} attempt${
-                      row.attempts === 1 ? "" : "s"
-                    }`}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {done.length > 0 && (
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-success)]">
-            {done.length} encoded
-          </p>
-          <ul className="mt-1.5 flex flex-wrap gap-1.5">
-            {done.map((row) => {
-              const chip = chipDesignator(row.designator);
-              const title = row.label
-                ? `${row.designator} — ${row.label}`
-                : row.designator;
-              return (
-                <li key={row.citation}>
-                  {row.graphUrl ? (
-                    <a
-                      href={row.graphUrl}
-                      title={`${title} — view the rule graph`}
-                      className="inline-block rounded-sm bg-[var(--color-accent-light)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-accent)] no-underline hover:underline"
-                    >
-                      {chip}
-                    </a>
-                  ) : (
-                    <span
-                      title={title}
-                      className="inline-block rounded-sm border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)]"
-                    >
-                      {chip}
+      {(active.length > 0 || done.length > 0) && (
+        <CardContent className="flex flex-col gap-4">
+          {active.length > 0 && (
+            <ul className="space-y-2">
+              {active.map((row) => (
+                <li
+                  key={row.citation}
+                  className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+                >
+                  <p className="min-w-0 text-xs break-words">
+                    <span className="font-mono text-foreground">
+                      {row.designator}
                     </span>
-                  )}
+                    {row.label && row.label !== documentLabel && (
+                      <span className="font-serif italic text-[var(--color-ink-secondary)]">
+                        {" "}
+                        — {row.label}
+                      </span>
+                    )}
+                  </p>
+                  <Badge
+                    variant="secondary"
+                    className={`shrink-0 font-mono text-[11px] font-normal ${
+                      row.status === "flagged"
+                        ? "bg-[rgba(146,64,14,0.08)] text-[var(--color-warning)]"
+                        : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                    }`}
+                  >
+                    {row.status === "flagged"
+                      ? "flagged for review"
+                      : `in progress · ${row.attempts} attempt${
+                          row.attempts === 1 ? "" : "s"
+                        }`}
+                  </Badge>
                 </li>
-              );
-            })}
-          </ul>
-        </div>
+              ))}
+            </ul>
+          )}
+
+          {done.length > 0 && (
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-success)]">
+                {done.length} encoded
+              </p>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {done.map((row) => (
+                  <li key={row.citation}>
+                    <SectionChip row={row} documentLabel={documentLabel} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
       )}
-    </article>
+    </Card>
+  );
+}
+
+/**
+ * One encoded section as a chip. Linked chips open the compose graph
+ * viewer; the tooltip carries the full designator and provision name.
+ */
+function SectionChip({
+  row,
+  documentLabel,
+}: {
+  row: { designator: string; label: string | null; graphUrl: string | null };
+  documentLabel: string | null;
+}) {
+  const chip = chipDesignator(row.designator);
+  const label =
+    row.label && row.label !== documentLabel ? row.label : null;
+  const badge = row.graphUrl ? (
+    <Badge
+      render={<a href={row.graphUrl} />}
+      variant="secondary"
+      className="bg-[var(--color-accent-light)] font-mono text-[11px] font-normal text-[var(--color-accent)] no-underline hover:underline"
+    >
+      {chip}
+    </Badge>
+  ) : (
+    <Badge
+      variant="outline"
+      className="font-mono text-[11px] font-normal text-[var(--color-ink-secondary)]"
+    >
+      {chip}
+    </Badge>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={badge} />
+      <TooltipContent>
+        <span className="font-mono">{row.designator}</span>
+        {label && ` — ${label}`}
+        {row.graphUrl && " · view the rule graph"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

@@ -3319,6 +3319,11 @@ export function GraphViewerApp({
                   // when the resolved row is just an ancestor of the
                   // cited path, keep the deep path: the reader resolves
                   // it itself and focuses the cited subsection.
+                  // Carry the rule's identity so the reader can spotlight
+                  // the card you came from in its encodings rail.
+                  const ruleParam = liveFragment
+                    ? `&rule=${encodeURIComponent(liveFragment)}`
+                    : "";
                   void fetch(`/api/axiom/resolve${lawHref}`)
                     .then((response) =>
                       response.ok ? response.json() : null,
@@ -3327,9 +3332,11 @@ export function GraphViewerApp({
                       const href = resolved?.href ?? null;
                       const target =
                         href && !lawHref.startsWith(href) ? href : lawHref;
-                      setLawPopup(`${target}?embed=1`);
+                      setLawPopup(`${target}?embed=1${ruleParam}`);
                     })
-                    .catch(() => setLawPopup(`${lawHref}?embed=1`));
+                    .catch(() =>
+                      setLawPopup(`${lawHref}?embed=1${ruleParam}`),
+                    );
                 }}
               >
                 Read the law →

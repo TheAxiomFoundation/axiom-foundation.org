@@ -154,6 +154,18 @@ describe("demo zone rewrites", () => {
     }
   });
 
+  it("rewrites the working-paper manuscript tree to the receipt Pages deployment", () => {
+    expect(config.rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "/receipt/paper/web/:path(.*)",
+          destination:
+            "https://theaxiomfoundation.github.io/receipt/paper/web/:path(.*)",
+        }),
+      ]),
+    );
+  });
+
   it("redirects the bare receipt API reference path and rewrites only the tree", () => {
     expect(config.redirects).toEqual(
       expect.arrayContaining([

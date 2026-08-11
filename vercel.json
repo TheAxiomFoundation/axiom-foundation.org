@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/receipt/paper/web/:path(.*)",
+      "destination": "https://theaxiomfoundation.github.io/receipt/paper/web/:path(.*)"
+    },
+    {
       "source": "/receipt/api/:path(.*)",
       "destination": "https://theaxiomfoundation.github.io/receipt/:path(.*)"
     },

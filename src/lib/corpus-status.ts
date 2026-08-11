@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { corpusLookupPathsForCitation } from "@/lib/axiom/ops-citations";
 
 const STATUS_REVALIDATE_SECONDS = 300;
 
@@ -17,8 +18,10 @@ const ENCODING_STATUS_KEY = "supabase://encodings.encoding_runs";
 const RULESPEC_REPO_ACTIVITY_KEY = "github://TheAxiomFoundation/rulespec-repos";
 const COMPILED_ARTIFACTS_KEY = "github://TheAxiomFoundation/compiled-artifacts";
 const ENCODING_LOOKBACK_DAYS = 7;
-/** How far back live_encoding_runs rows stay in the ops payload (by heartbeat). */
-const LIVE_RUN_WINDOW_HOURS = 24;
+/** How far back live_encoding_runs rows stay in the ops payload (by
+ *  heartbeat). Generous because the ledger leans on live rows for history
+ *  until manifest syncs land in encoding_runs. */
+const LIVE_RUN_WINDOW_HOURS = 7 * 24;
 const RULESPEC_ACTIVITY_LOOKBACK_DAYS = 30;
 const GITHUB_REPOS_PAGE_SIZE = 100;
 const GITHUB_REPOS_MAX_PAGES = 10;
@@ -277,6 +280,10 @@ export interface EncodingOpsStatus {
   latest_sessions: EncodingStatusSession[];
   latest_source_counts: Record<string, number>;
   live_runs: LiveEncodingRun[];
+  /** Human-readable corpus labels keyed by navigation path
+   *  (`us/statute/26` → "INTERNAL REVENUE CODE") for the citations that
+   *  appear in latest_runs and live_runs. Best-effort. */
+  citation_labels?: Record<string, string>;
 }
 
 export interface RulespecRepoLatestCommit {
@@ -1049,7 +1056,7 @@ async function readEncodingStatusFromSupabase(
         select:
           "id,timestamp,citation,total_duration_ms,agent_type,agent_model,data_source,has_issues,session_id,encoder_version",
         order: "timestamp.desc",
-        limit: "12",
+        limit: "60",
       },
       fetchOptions
     ),
@@ -1076,11 +1083,20 @@ async function readEncodingStatusFromSupabase(
           "id,citation,status,started_at,last_heartbeat_at,finished_at,phase,attempt,backend,model,encoder_version,run_id,runner",
         last_heartbeat_at: `gte.${liveWindowStart}`,
         order: "started_at.desc",
-        limit: "40",
+        limit: "200",
       },
       fetchOptions
     ).catch(() => [] as LiveEncodingRun[]),
   ]);
+
+  const citationLabels = await readCitationLabels(
+    config,
+    [
+      ...latestRuns.map((run) => run.citation),
+      ...liveRuns.map((run) => run.citation),
+    ],
+    fetchOptions
+  );
 
   const resolvedRunCount =
     runCount == null ? latestRuns.length : Math.max(runCount, latestRuns.length);
@@ -1102,7 +1118,116 @@ async function readEncodingStatusFromSupabase(
     latest_sessions: latestSessions,
     latest_source_counts: summarizeLatestSources(latestRuns),
     live_runs: liveRuns,
+    citation_labels: citationLabels,
   };
+}
+
+export interface RecentCorpusScope {
+  jurisdiction: string;
+  document_class: string;
+  version: string;
+  synced_at: string | null;
+}
+
+const RECENT_SCOPE_LIMIT = 8;
+
+/**
+ * The most recently synced scopes of the active corpus release — the ops
+ * dashboard's "recently ingested" feed. Scope versions are the ingest
+ * batches themselves (e.g. `2026-08-04-dk-full-parity-tier1`). Best-effort:
+ * failures return an empty list.
+ */
+export async function getRecentCorpusScopes(): Promise<RecentCorpusScope[]> {
+  const config = getSupabaseRestConfig();
+  if (!config) return [];
+  try {
+    return await readSupabaseRows<RecentCorpusScope>(
+      config,
+      "corpus",
+      "current_release_scopes",
+      {
+        select: "jurisdiction,document_class,version,synced_at",
+        order: "synced_at.desc.nullslast",
+        limit: String(RECENT_SCOPE_LIMIT),
+      }
+    );
+  } catch {
+    return [];
+  }
+}
+
+const CITATION_LABEL_LOOKUP_LIMIT = 200;
+
+/**
+ * Resolve human-readable labels for run citations from corpus navigation
+ * nodes. Best-effort: label coverage is partial and a lookup failure never
+ * takes down the encoding status.
+ */
+async function readCitationLabels(
+  config: SupabaseRestConfig,
+  citations: Array<string | null>,
+  options: SupabaseFetchOptions
+): Promise<Record<string, string>> {
+  const paths = new Set<string>();
+  for (const citation of citations) {
+    if (!citation) continue;
+    for (const path of corpusLookupPathsForCitation(citation)) {
+      paths.add(path);
+    }
+  }
+  const list = [...paths].slice(0, CITATION_LABEL_LOOKUP_LIMIT);
+  if (list.length === 0) return {};
+
+  const rows = await readSupabaseRows<{ path: string; label: string | null }>(
+    config,
+    "corpus",
+    "navigation_nodes",
+    {
+      select: "path,label",
+      // navigation_nodes.path is the indexed lookup column (citation_path
+      // is not indexed and times out on filtered reads).
+      path: `in.(${list.map((p) => `"${p}"`).join(",")})`,
+      limit: String(CITATION_LABEL_LOOKUP_LIMIT),
+    },
+    options
+  ).catch(() => [] as Array<{ path: string; label: string | null }>);
+
+  const labels: Record<string, string> = {};
+  for (const row of rows) {
+    const label = row.label?.trim();
+    if (label) labels[row.path] = label;
+  }
+
+  // Navigation nodes lag behind the provision table for freshly ingested
+  // documents — fall back to the provisions' own headings for anything the
+  // navigation index couldn't name.
+  const missing = list.filter((path) => !labels[path]);
+  if (missing.length > 0) {
+    const provisionRows = await readSupabaseRows<{
+      citation_path: string | null;
+      heading: string | null;
+    }>(
+      config,
+      "corpus",
+      "current_provisions",
+      {
+        select: "citation_path,heading",
+        citation_path: `in.(${missing.map((p) => `"${p}"`).join(",")})`,
+        limit: String(CITATION_LABEL_LOOKUP_LIMIT),
+      },
+      options
+    ).catch(
+      () => [] as Array<{ citation_path: string | null; heading: string | null }>
+    );
+    for (const row of provisionRows) {
+      const heading = row.heading?.trim();
+      if (heading && row.citation_path && !labels[row.citation_path]) {
+        labels[row.citation_path] = heading;
+      }
+    }
+  }
+
+  return labels;
 }
 
 async function readCorpusStatsFromSupabase(): Promise<CorpusStats> {

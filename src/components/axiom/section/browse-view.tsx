@@ -258,71 +258,98 @@ export function BrowseView({ data }: { data: BrowsePageData }) {
             if (showKey && /^subpart-/i.test(node.segment)) {
               label = label.replace(/^subpart\s+\S+\s*[-—–]\s*/i, "");
             }
+            // A rulespec-only leaf has an encoding but no ingested
+            // source text: its section URL cannot resolve, so linking
+            // it would promise a page that 404s.
+            const encodingOnlyLeaf =
+              Boolean(node.rulespecOnly) && !node.hasChildren;
+            const rowInner = (
+              <>
+                {showKey && (
+                  <span
+                    aria-hidden
+                    className="w-10 shrink-0 text-right text-[1.15rem] leading-none text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors sm:w-14"
+                    style={{
+                      fontFamily: "var(--f-serif)",
+                      fontFeatureSettings: "'onum'",
+                    }}
+                  >
+                    {key}
+                  </span>
+                )}
+                <span
+                  className={`min-w-0 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors ${
+                    hasGutter && !showKey ? "ml-[3.25rem] sm:ml-[4.5rem]" : ""
+                  }`}
+                >
+                  {label}
+                </span>
+                {/* Dotted leader, exactly as a printed table of
+                    contents runs the eye to the page number. */}
+                <span
+                  aria-hidden
+                  className="min-w-6 flex-1 border-b border-dotted border-[var(--color-rule)] group-hover:border-[var(--color-ink-muted)] transition-colors"
+                />
+                <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
+                  {data.encodedCounts?.[node.segment] ? (
+                    <CoverageMark
+                      encoded={data.encodedCounts?.[node.segment]}
+                      // Synthetic branches count RuleSpec files, not
+                      // ingested entries — an "N of N ingested" ratio
+                      // there would assert ingestion that never
+                      // happened.
+                      total={node.rulespecOnly ? undefined : node.childCount}
+                    />
+                  ) : (
+                    node.hasRuleSpec && ENCODED_MARK
+                  )}
+                  {encodingOnlyLeaf ? (
+                    <span className="hidden sm:inline">not yet ingested</span>
+                  ) : (
+                    !data.encodedCounts?.[node.segment] &&
+                    typeof node.childCount === "number" &&
+                    node.childCount > 0 && (
+                      <span className="hidden sm:inline">
+                        {node.childCount}{" "}
+                        {childNoun(depth + 1, undefined).replace(
+                          /s$/,
+                          node.childCount === 1 ? "" : "s"
+                        )}
+                      </span>
+                    )
+                  )}
+                </span>
+              </>
+            );
             return (
               <li
                 key={node.segment}
                 className="border-b border-[var(--color-rule)]"
               >
-                <Link
-                  // Canonical citation-path hrefs where known: deep
-                  // containers flatten children out of their own path
-                  // (…/subpart-C lists …/1302/30), so appending the
-                  // segment would 404.
-                  href={
-                    node.rule?.citation_path
-                      ? `/${node.rule.citation_path}`
-                      : `/${basePath}/${node.segment}`
-                  }
-                  title={node.label}
-                  className="group flex items-baseline gap-3 py-3 no-underline sm:gap-4"
-                >
-                  {showKey && (
-                    <span
-                      aria-hidden
-                      className="w-10 shrink-0 text-right text-[1.15rem] leading-none text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors sm:w-14"
-                      style={{
-                        fontFamily: "var(--f-serif)",
-                        fontFeatureSettings: "'onum'",
-                      }}
-                    >
-                      {key}
-                    </span>
-                  )}
+                {encodingOnlyLeaf ? (
                   <span
-                    className={`min-w-0 truncate text-[15px] text-[var(--color-ink-secondary)] group-hover:text-[var(--color-ink)] transition-colors ${
-                      hasGutter && !showKey ? "ml-[3.25rem] sm:ml-[4.5rem]" : ""
-                    }`}
+                    title="Encoded in RuleSpec; the source text has not been ingested, so there is no section page yet."
+                    className="flex items-baseline gap-3 py-3 sm:gap-4"
                   >
-                    {label}
+                    {rowInner}
                   </span>
-                  {/* Dotted leader, exactly as a printed table of
-                      contents runs the eye to the page number. */}
-                  <span
-                    aria-hidden
-                    className="min-w-6 flex-1 border-b border-dotted border-[var(--color-rule)] group-hover:border-[var(--color-ink-muted)] transition-colors"
-                  />
-                  <span className="flex shrink-0 items-baseline gap-2.5 font-mono text-[11px] text-[var(--color-ink-muted)]">
-                    {data.encodedCounts?.[node.segment] ? (
-                      <CoverageMark
-                        encoded={data.encodedCounts?.[node.segment]}
-                        total={node.childCount}
-                      />
-                    ) : (
-                      node.hasRuleSpec && ENCODED_MARK
-                    )}
-                    {!data.encodedCounts?.[node.segment] &&
-                      typeof node.childCount === "number" &&
-                      node.childCount > 0 && (
-                        <span className="hidden sm:inline">
-                          {node.childCount}{" "}
-                          {childNoun(depth + 1, undefined).replace(
-                            /s$/,
-                            node.childCount === 1 ? "" : "s"
-                          )}
-                        </span>
-                      )}
-                  </span>
-                </Link>
+                ) : (
+                  <Link
+                    // Canonical citation-path hrefs where known: deep
+                    // containers flatten children out of their own path
+                    // (…/subpart-C lists …/1302/30), so appending the
+                    // segment would 404.
+                    href={
+                      node.rule?.citation_path
+                        ? `/${node.rule.citation_path}`
+                        : `/${basePath}/${node.segment}`
+                    }
+                    title={node.label}
+                    className="group flex items-baseline gap-3 py-3 no-underline sm:gap-4"
+                  >
+                    {rowInner}
+                  </Link>
+                )}
               </li>
             );
           });

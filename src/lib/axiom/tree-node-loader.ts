@@ -622,7 +622,9 @@ function rulespecOnlyChildren(
   }
 
   return Array.from(bySegment.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    // Numeric-aware ordering: legal designators sort by value ("8"
+    // before "141"), not lexicographically ("141" before "8").
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
     .map(([segment, entry]) => {
       const exactOnly = Boolean(entry.exact) && !entry.hasDeeper;
       return {
@@ -632,6 +634,7 @@ function rulespecOnlyChildren(
         childCount: entry.hasDeeper ? entry.descendantCount : undefined,
         nodeType: "section",
         hasRuleSpec: true,
+        rulespecOnly: true,
         ...(exactOnly && {
           rule: rulespecOnlyMinimalRule(
             jurisdiction,

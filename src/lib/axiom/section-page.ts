@@ -610,6 +610,10 @@ async function getNavigationNode(
 export interface SectionResolution {
   root: Rule;
   citationPath: string;
+  /** The path the URL actually asked for, before any fallback rewrote
+   *  it. When it differs from citationPath (doc-type crosswalk, mirror
+   *  source lookup), encodings may still be keyed by it. */
+  requestedPath: string;
   focusAnchor: string | null;
   /** True when no corpus row exists at the path itself and the root
    *  was synthesized over descendant rows — the signal that the path
@@ -903,6 +907,7 @@ export async function resolveSection(
   return {
     root,
     citationPath,
+    requestedPath,
     focusAnchor,
     synthetic,
     containerCandidate,
@@ -940,6 +945,63 @@ export async function getSectionPageData(
   return getSectionPageDataFromResolution(resolution);
 }
 
+/**
+ * Encoding paths for a section, most likely first: the resolved corpus
+ * path, the originally requested path when a fallback rewrote it, and
+ * the doc-type crosswalk siblings of both. Rulespec mirror rows are
+ * keyed by encoding-file paths, which classify policy-adjacent
+ * documents differently from the corpus (#191) — a guidance page's
+ * rules may be keyed under policy/, whichever URL the reader arrived
+ * from.
+ */
+export function encodingPathCandidates(
+  resolution: Pick<SectionResolution, "citationPath" | "requestedPath">
+): string[] {
+  const candidates: string[] = [];
+  for (const path of [resolution.citationPath, resolution.requestedPath]) {
+    if (!path || candidates.includes(path)) continue;
+    candidates.push(path);
+    const segments = path.split("/");
+    for (const sibling of docTypeCrosswalk(segments[1])) {
+      const variant = [segments[0], sibling, ...segments.slice(2)].join("/");
+      if (!candidates.includes(variant)) candidates.push(variant);
+    }
+  }
+  return candidates;
+}
+
+function hasEncodingContent(
+  section: Awaited<ReturnType<typeof getSectionEncoding>>
+): boolean {
+  return section.encoding != null || Object.keys(section.ruleFiles).length > 0;
+}
+
+async function getSectionEncodingAcrossPaths(
+  rootId: string,
+  resolution: Pick<SectionResolution, "citationPath" | "requestedPath">
+): Promise<Awaited<ReturnType<typeof getSectionEncoding>>> {
+  const candidates = encodingPathCandidates(resolution);
+  let first: Awaited<ReturnType<typeof getSectionEncoding>> | null = null;
+  for (const candidate of candidates) {
+    const section = await getSectionEncoding(rootId, candidate).catch(() => ({
+      encoding: null,
+      encodingRootPath: null,
+      fileAnchors: {},
+      ruleFiles: {},
+    }));
+    if (hasEncodingContent(section)) return section;
+    first = first ?? section;
+  }
+  return (
+    first ?? {
+      encoding: null,
+      encodingRootPath: null,
+      fileAnchors: {},
+      ruleFiles: {},
+    }
+  );
+}
+
 export async function getSectionPageDataFromResolution(
   resolution: SectionResolution
 ): Promise<SectionPageData | null> {
@@ -951,7 +1013,7 @@ export async function getSectionPageDataFromResolution(
       prefetchedSubtree ?? getSubtreeProvisions(citationPath),
       getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
       getNavigationNode(citationPath),
-      getSectionEncoding(root.id, citationPath).catch(() => ({
+      getSectionEncodingAcrossPaths(root.id, resolution).catch(() => ({
         encoding: null,
         encodingRootPath: null,
         fileAnchors: {},

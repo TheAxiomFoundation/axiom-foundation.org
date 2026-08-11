@@ -16,12 +16,6 @@ import { isGitHubEncoding } from "@/lib/axiom-utils";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import { useMemo } from "react";
 import yaml from "js-yaml";
-import { primaryProgram } from "./primary-program";
-import {
-  composeGraphViewerUrl,
-  graphViewerUrl,
-  ruleGraphFocus,
-} from "@/lib/axiom/runtime/graph-links";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
 
@@ -189,16 +183,6 @@ export function EncodingRail({
                 citation_path: citationPath,
                 source: isGitHubEncoding(encoding) ? "github" : "encoding_run",
               });
-            }}
-            hrefFor={(ruleName) => {
-              const slug = citationPath?.split("/")[0] ?? null;
-              const filePath = ruleFiles[ruleName];
-              if (!slug || !filePath) return null;
-              const focus = ruleGraphFocus(slug, filePath, ruleName);
-              const program = primaryProgram(programs);
-              return program
-                ? graphViewerUrl(program, focus)
-                : composeGraphViewerUrl(focus);
             }}
           />
         </section>

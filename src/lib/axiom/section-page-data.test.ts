@@ -8,19 +8,20 @@ import type { Rule } from "@/lib/supabase";
  * resolution, encoding mapping) runs for real.
  */
 
-const { fromMock, getRuleReferencesMock, getRuleEncodingMock } = vi.hoisted(
-  () => ({
+const { fromMock, encodingsFromMock, getRuleReferencesMock, getRuleEncodingMock } =
+  vi.hoisted(() => ({
     fromMock: vi.fn(),
+    encodingsFromMock: vi.fn(),
     getRuleReferencesMock: vi.fn(),
     getRuleEncodingMock: vi.fn(),
-  })
-);
+  }));
 const { getProvisionByCitationPathMock } = vi.hoisted(() => ({
   getProvisionByCitationPathMock: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase", () => ({
   supabaseCorpus: { from: fromMock },
+  supabaseEncodings: { from: encodingsFromMock },
   getRuleReferences: getRuleReferencesMock,
   getRuleEncoding: getRuleEncodingMock,
 }));
@@ -53,7 +54,7 @@ vi.mock("@/lib/tree-data", () => ({
     })),
 }));
 
-import { getSectionPageData } from "./section-page";
+import { getSectionPageData, resolveSection } from "./section-page";
 
 /** Chainable query stub: every builder method returns the chain, the
  *  chain is thenable, and maybeSingle resolves the same result. */
@@ -141,6 +142,9 @@ function queueTables(queues: Record<string, Array<{ data: unknown; error: unknow
 
 beforeEach(() => {
   fromMock.mockReset();
+  encodingsFromMock
+    .mockReset()
+    .mockImplementation(() => chain({ data: [], error: null }));
   getRuleReferencesMock.mockReset().mockResolvedValue([]);
   getRuleEncodingMock.mockReset().mockResolvedValue(null);
   getProvisionByCitationPathMock.mockReset();
@@ -347,5 +351,129 @@ describe("getSectionPageData", () => {
     expect(data!.encoding).toBeNull();
     expect(data!.prev).toBeNull();
     expect(data!.next).toBeNull();
+  });
+});
+
+describe("resolveSection policy-adjacent fallbacks (#191)", () => {
+  it("crosswalks a policy path to its manual-classified corpus home", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
+      path === "us-nc/manual/dhhs/glossary"
+        ? rule("us-nc/manual/dhhs/glossary", { doc_type: "manual" })
+        : null
+    );
+    queueTables({
+      // Subtree probes along the miss ladder come back empty.
+      current_provisions: [
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+      ],
+    });
+
+    const resolution = await resolveSection([
+      "us-nc",
+      "policy",
+      "dhhs",
+      "glossary",
+    ]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe("us-nc/manual/dhhs/glossary");
+    expect(resolution!.synthetic).toBe(false);
+  });
+
+  it("resolves through the rulespec mirror's corpus_citation_path", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
+      path === "us-ak/guidance/dpa/standards/page-1"
+        ? rule("us-ak/guidance/dpa/standards/page-1", { doc_type: "guidance" })
+        : null
+    );
+    encodingsFromMock.mockImplementation(() =>
+      chain({
+        data: [
+          {
+            raw_yaml: [
+              "module:",
+              "  source_verification:",
+              "    corpus_citation_path: us-ak/guidance/dpa/standards/page-1",
+            ].join("\n"),
+          },
+        ],
+        error: null,
+      })
+    );
+    queueTables({
+      current_provisions: [
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+      ],
+    });
+
+    const resolution = await resolveSection([
+      "us-ak",
+      "policy",
+      "dpa",
+      "standards",
+    ]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe("us-ak/guidance/dpa/standards/page-1");
+  });
+
+  it("survives rejecting lookups at every rung of the ladder", async () => {
+    // Every provision lookup rejects outright — the .catch guards on
+    // each rung must swallow the failure and keep walking.
+    getProvisionByCitationPathMock.mockRejectedValue(new Error("boom"));
+    encodingsFromMock.mockImplementation(() => {
+      throw new Error("mirror down");
+    });
+    queueTables({
+      current_provisions: Array.from({ length: 8 }, () => ({
+        data: [],
+        error: null,
+      })),
+    });
+    expect(
+      // A hyphen past the first segment exercises the en-dash retry too.
+      await resolveSection(["us-nc", "policy", "dhh-s", "glossary"])
+    ).toBeNull();
+
+    // Mirror answers with a corpus path whose provision lookup rejects:
+    // the source-path guard swallows that as well.
+    encodingsFromMock.mockImplementation(() =>
+      chain({
+        data: [
+          {
+            raw_yaml:
+              "module:\n  source_verification:\n    corpus_citation_path: us-nc/guidance/x/y",
+          },
+        ],
+        error: null,
+      })
+    );
+    queueTables({
+      current_provisions: Array.from({ length: 8 }, () => ({
+        data: [],
+        error: null,
+      })),
+    });
+    expect(
+      await resolveSection(["us-nc", "policy", "dhh-s", "glossary"])
+    ).toBeNull();
+  });
+
+  it("still 404s a policy path with no crosswalk, mirror, or corpus home", async () => {
+    getProvisionByCitationPathMock.mockResolvedValue(null);
+    queueTables({
+      current_provisions: [
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+      ],
+    });
+    expect(
+      await resolveSection(["us-zz", "policy", "nowhere", "at-all"])
+    ).toBeNull();
   });
 });

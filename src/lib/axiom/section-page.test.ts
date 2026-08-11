@@ -14,6 +14,8 @@ import {
   type SectionProvision,
   mapRulesToDeepPath,
   joinedSegmentPaths,
+  docTypeCrosswalk,
+  encodingPathCandidates,
 } from "./section-page";
 
 const ROOT = "us/statute/26/32";
@@ -458,5 +460,39 @@ describe("mapRulesToDeepPath", () => {
   it("returns nothing without content or relative depth", () => {
     expect(mapRulesToDeepPath("us/regulation/7/273/10", ["e"], null)).toEqual([]);
     expect(mapRulesToDeepPath("us/regulation/7/273/10", [], yaml)).toEqual([]);
+  });
+});
+
+describe("docTypeCrosswalk", () => {
+  it("maps policy-adjacent classes to their siblings and nothing else", () => {
+    expect(docTypeCrosswalk("policy")).toEqual(["manual", "guidance"]);
+    expect(docTypeCrosswalk("manual")).toEqual(["policy", "guidance"]);
+    expect(docTypeCrosswalk("guidance")).toEqual(["policy", "manual"]);
+    expect(docTypeCrosswalk("statute")).toEqual([]);
+    expect(docTypeCrosswalk(undefined)).toEqual([]);
+  });
+});
+
+describe("encodingPathCandidates", () => {
+  it("tries resolved, requested, and crosswalk sibling paths in order", () => {
+    expect(
+      encodingPathCandidates({
+        citationPath: "us-ca/guidance/dor/spotlight/block-7",
+        requestedPath: "us-ca/policy/dor/spotlight/block-7",
+      })
+    ).toEqual([
+      "us-ca/guidance/dor/spotlight/block-7",
+      "us-ca/policy/dor/spotlight/block-7",
+      "us-ca/manual/dor/spotlight/block-7",
+    ]);
+  });
+
+  it("stays a single candidate for statute paths with no rewrite", () => {
+    expect(
+      encodingPathCandidates({
+        citationPath: "us/statute/26/32",
+        requestedPath: "us/statute/26/32",
+      })
+    ).toEqual(["us/statute/26/32"]);
   });
 });

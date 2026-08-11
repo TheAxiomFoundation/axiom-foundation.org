@@ -12,18 +12,16 @@ export interface RuleCardDetail {
  * Expandable card list for encoded rules — the face of the rail's
  * encodings section. The summary row identifies the rule (kind
  * glyph, name, the subsection it implements); expanding reveals its
- * source citation, its RuleSpec YAML, and the graph action. Kind
+ * source citation and its RuleSpec YAML. Kind
  * glyphs: ƒ derived rule, □ parameter.
  */
 export function RuleCardList({
   rules,
-  hrefFor,
   detailFor,
   citationLabel = "",
   onExpand,
 }: {
   rules: EncodedRuleLink[];
-  hrefFor: (ruleName: string) => string | null;
   detailFor?: (ruleName: string) => RuleCardDetail | null;
   /** Compact legal cite for the section ("7 USC § 2017") — grounds
    *  each card's second line without per-card glyph icons. */
@@ -36,7 +34,6 @@ export function RuleCardList({
   return (
     <ol data-testid="rule-cards" className="grid grid-cols-1 gap-1.5">
       {rules.map((rule) => {
-        const href = hrefFor(rule.name);
         const detail = detailFor?.(rule.name) ?? null;
         const cite = citationLabel
           ? `${citationLabel}${
@@ -85,14 +82,6 @@ export function RuleCardList({
                       className="!m-0 text-[11px] leading-relaxed"
                     />
                   </div>
-                )}
-                {href && (
-                  <a
-                    href={href}
-                    className="mt-2.5 inline-block rounded border border-[var(--color-rule)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-secondary)] no-underline transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-                  >
-                    open in graph ↗
-                  </a>
                 )}
               </div>
             </details>

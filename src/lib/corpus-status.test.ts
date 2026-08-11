@@ -12,6 +12,7 @@ import {
   supabaseRestUrl,
   type R2Config,
   type SupabaseRestConfig,
+  getRecentCorpusScopes,
 } from "./corpus-status";
 
 const stateReport = {
@@ -249,6 +250,15 @@ describe("corpus status helpers", () => {
     expect(status.encodingStatus.value?.latest_source_counts).toEqual({
       reviewer_agent: 1,
       unknown: 1,
+    });
+    // Live runs surface, and their citations resolve labels via the
+    // provisions-heading fallback (the navigation node's label is blank).
+    expect(status.encodingStatus.value?.live_runs).toHaveLength(1);
+    expect(status.encodingStatus.value?.live_runs[0]?.runner?.reported_via).toBe(
+      "public_ingest"
+    );
+    expect(status.encodingStatus.value?.citation_labels).toEqual({
+      "us-ms/statute/27-7-5": "Rate of tax",
     });
     expect(status.corpusStats?.source).toBe("supabase");
     expect(status.corpusStats?.value?.document_classes).toEqual([
@@ -663,7 +673,47 @@ function mockStatusFetch(input: RequestInfo | URL) {
       );
     }
 
+    if (url.pathname.endsWith("/navigation_nodes")) {
+      return Promise.resolve(
+        jsonResponse([
+          { path: "us-ms/statute/27-7-5", label: "   " },
+          { path: "us-ms/statute", label: null },
+        ])
+      );
+    }
+
+    if (url.pathname.endsWith("/live_encoding_runs")) {
+      return Promise.resolve(
+        jsonResponse([
+          {
+            id: "live-1",
+            citation: "us-ms/statute/27-7-5",
+            status: "failed",
+            started_at: "2026-05-03T12:30:00.000Z",
+            last_heartbeat_at: "2026-05-03T12:31:00.000Z",
+            finished_at: "2026-05-03T12:31:00.000Z",
+            phase: null,
+            attempt: 4,
+            backend: "openai",
+            model: "gpt-5.4",
+            encoder_version: "0.4.2",
+            run_id: null,
+            runner: { hostname: "ci-1", reported_via: "public_ingest" },
+          },
+        ])
+      );
+    }
+
     if (url.pathname.endsWith("/current_provisions")) {
+      if (url.searchParams.get("select") === "citation_path,heading") {
+        return Promise.resolve(
+          jsonResponse([
+            { citation_path: "us-ms/statute/27-7-5", heading: "Rate of tax" },
+            { citation_path: null, heading: "orphan heading" },
+            { citation_path: "us-ms/statute/27-7-5", heading: "duplicate" },
+          ])
+        );
+      }
       const version = url.searchParams.get("version");
       if (version === "eq.2026-04-29") {
         return Promise.resolve(
@@ -906,3 +956,26 @@ function jsonResponse(
     headers,
   });
 }
+
+describe("getRecentCorpusScopes", () => {
+  it("returns the newest release scopes and empty on missing config", async () => {
+    vi.unstubAllEnvs();
+    expect(await getRecentCorpusScopes()).toEqual([]);
+
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubGlobal("fetch", vi.fn(mockStatusFetch));
+    const scopes = await getRecentCorpusScopes();
+    expect(scopes).toHaveLength(3);
+    expect(scopes[0]).toMatchObject({
+      jurisdiction: "us",
+      document_class: "guidance",
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: true }, { status: 500 }))
+    );
+    expect(await getRecentCorpusScopes()).toEqual([]);
+  });
+});

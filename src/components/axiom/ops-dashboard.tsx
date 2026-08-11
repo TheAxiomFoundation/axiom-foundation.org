@@ -930,11 +930,11 @@ function DocumentRows({
     <TableBody>
       <TableRow className="border-b border-[var(--color-rule)] hover:bg-transparent">
         <TableCell colSpan={5} className="px-0 pt-4 pb-1.5">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 font-bold">
             <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
               {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
             </span>
-            <span className="text-sm font-medium text-[var(--color-ink)]">
+            <span className="text-sm text-[var(--color-ink)]">
               {documentLabel ?? rest}
             </span>
             {documentLabel && (

@@ -759,6 +759,38 @@ export async function resolveSection(
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
+  if (root) {
+    // A childless deep leaf (…/26/21/c/1) is one item of an
+    // enumeration — its text reads as a fragment ("$3,000 …, or")
+    // without the parent's chapeau. When the parent is itself a
+    // body-bearing provision, render the parent focused on the leaf
+    // instead. Leaves with their own subtrees keep their page.
+    const leaf = ruleSegments[ruleSegments.length - 1] ?? "";
+    if (ruleSegments.length >= 4 && /^[a-z0-9]{1,4}$/i.test(leaf)) {
+      const probe = await getSubtreeProvisions(requestedPath);
+      if (probe.provisions.length > 0) {
+        prefetchedSubtree = probe;
+      } else {
+        const parentPath = [slug, ...ruleSegments.slice(0, -1)].join("/");
+        const parent = await getProvisionByCitationPath(parentPath).catch(
+          () => null
+        );
+        if (parent?.body) {
+          const parentSubtree = await getSubtreeProvisions(parentPath);
+          if (anchorExistsUnder(parent, parentPath, leaf, parentSubtree)) {
+            root = parent;
+            citationPath = parentPath;
+            focusAnchor = leaf;
+            prefetchedSubtree = parentSubtree;
+          } else {
+            prefetchedSubtree = probe;
+          }
+        } else {
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
   if (!root) {
     // Some sections are ingested subsection-granular with no section
     // row at all (42 USC 1396a: …/1396a/e/15 exists, …/1396a does
@@ -941,7 +973,13 @@ export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
   const needle = firstChildBody.slice(0, 60);
   const index = body.indexOf(needle);
   if (index < 0) return root;
-  const intro = body.slice(0, index).trim();
+  // Child rows store their text without the enumeration marker, so the
+  // kept chapeau would end with a dangling "(1)" — strip it.
+  const intro = body
+    .slice(0, index)
+    .trim()
+    .replace(/\(\s*[\w.]{1,4}\s*\)\s*$/, "")
+    .trim();
   return { ...root, body: intro.length > 0 ? intro : null };
 }
 

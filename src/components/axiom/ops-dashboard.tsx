@@ -831,47 +831,20 @@ export function sectionRowsForGroup(
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 }
 
-const SECTION_STATUS_DOT: Record<SectionRow["status"], string> = {
-  completed: "bg-[var(--color-success)]",
-  "in progress": "bg-[var(--color-accent)]",
-  flagged: "bg-[var(--color-warning)]",
-};
-
-export interface JurisdictionGroup {
-  scope: string;
-  name: string | null;
-  documents: DocumentGroup[];
-  lastAt: string;
-}
-
-/** Top table tier: country/state, newest activity first. */
-export function groupDocumentsByJurisdiction(
-  documents: DocumentGroup[]
-): JurisdictionGroup[] {
-  const groups = new Map<string, JurisdictionGroup>();
-  for (const document of documents) {
-    const colon = document.key.indexOf(":");
-    const scope = colon > 0 ? document.key.slice(0, colon) : "";
-    const group = groups.get(scope) ?? {
-      scope,
-      name: JURISDICTION_NAMES[scope] ?? null,
-      documents: [],
-      lastAt: document.lastAt,
-    };
-    group.documents.push(document);
-    if (document.lastAt > group.lastAt) group.lastAt = document.lastAt;
-    groups.set(scope, group);
+/**
+ * Chip text for a completed section: the designator with generic trailing
+ * segments (block-1, document-1) stripped — `704/230/block-1` reads as
+ * `704/230`.
+ */
+export function chipDesignator(designator: string): string {
+  const segments = designator.split("/");
+  while (
+    segments.length > 1 &&
+    /^(block|document|page)-\d+$/.test(segments[segments.length - 1])
+  ) {
+    segments.pop();
   }
-  return [...groups.values()].sort((a, b) =>
-    b.lastAt.localeCompare(a.lastAt)
-  );
-}
-
-/** The document key without its jurisdiction prefix — the jurisdiction row
- *  above already names it. */
-function documentKeyWithinJurisdiction(key: string): string {
-  const colon = key.indexOf(":");
-  return colon > 0 ? key.slice(colon + 1) : key;
+  return segments.join("/");
 }
 
 function LatestEncodings({
@@ -896,118 +869,148 @@ function LatestEncodings({
           reports one.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
-                <th className="py-2 pr-6 text-left font-normal">Provision</th>
-                <th className="py-2 pr-5 text-left font-normal">Status</th>
-                <th className="py-2 pr-5 text-right font-normal">Attempts</th>
-                <th className="py-2 text-right font-normal">Last run</th>
-              </tr>
-            </thead>
-            {groupDocumentsByJurisdiction(
-              documents.slice(0, LEDGER_DOCUMENT_LIMIT)
-            ).map((jurisdiction) => (
-              <tbody key={jurisdiction.scope || "other"}>
-                <tr>
-                  <th
-                    colSpan={4}
-                    className="pt-7 pb-2 text-left border-b border-[var(--color-rule)] align-baseline"
-                  >
-                    <span className="text-sm font-semibold text-[var(--color-ink)]">
-                      {jurisdiction.name ?? jurisdiction.scope ?? "Other"}
-                    </span>
-                    {jurisdiction.scope && (
-                      <span className="ml-2.5 font-mono text-xs font-normal text-[var(--color-ink-muted)]">
-                        {jurisdiction.scope}
-                      </span>
-                    )}
-                  </th>
-                </tr>
-                {jurisdiction.documents.map((group) => {
-                  const documentLabel = documentGroupLabel(group, labels);
-                  return [
-                    <tr key={group.key}>
-                      <th
-                        colSpan={4}
-                        className="pt-4 pb-1.5 pl-5 text-left align-baseline"
-                      >
-                        <span className="font-mono text-sm font-normal text-[var(--color-ink)]">
-                          <Citation
-                            citation={documentKeyWithinJurisdiction(group.key)}
-                            surface="paper"
-                          />
-                        </span>
-                        {documentLabel && (
-                          <span className="ml-3 font-serif italic font-normal text-xs text-[var(--color-ink-secondary)]">
-                            {documentLabel}
-                          </span>
-                        )}
-                      </th>
-                    </tr>,
-                    ...sectionRowsForGroup(group, labels).map(
-                      (row, index, rows) => (
-                    <tr key={`${group.key}:${row.citation}`}>
-                      {/* Sections hang indented under their document with a
-                          left rule carrying the hierarchy. */}
-                      <td
-                        className={`pr-6 align-top ${index === rows.length - 1 ? "" : "border-b border-[var(--color-rule-subtle)]"}`}
-                      >
-                        <div className="ml-5 border-l border-[var(--color-rule)] pl-4 py-2.5">
-                          {row.graphUrl ? (
-                            <a
-                              href={row.graphUrl}
-                              className="font-mono text-[var(--color-accent)] no-underline hover:underline"
-                              title="View the encoded rule graph"
-                            >
-                              {row.designator}
-                              <span aria-hidden> ↗</span>
-                            </a>
-                          ) : (
-                            <span className="font-mono text-[var(--color-ink)]">
-                              {row.designator}
-                            </span>
-                          )}
-                          {row.label && row.label !== documentLabel && (
-                            <span className="block font-serif italic text-[var(--color-ink-secondary)] mt-0.5 max-w-[46ch]">
-                              {row.label}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td
-                        className={`py-2.5 pr-5 align-top whitespace-nowrap ${index === rows.length - 1 ? "" : "border-b border-[var(--color-rule-subtle)]"}`}
-                      >
-                        <span
-                          aria-hidden
-                          className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle ${SECTION_STATUS_DOT[row.status]}`}
-                        />
-                        <span className="font-mono text-[var(--color-ink-secondary)]">
-                          {row.status}
-                        </span>
-                      </td>
-                      <td
-                        className={`py-2.5 pr-5 align-top font-mono tabular-nums text-right text-[var(--color-ink-muted)] ${index === rows.length - 1 ? "" : "border-b border-[var(--color-rule-subtle)]"}`}
-                      >
-                        {row.attempts > 1 ? row.attempts : ""}
-                      </td>
-                      <td
-                        className={`py-2.5 align-top font-mono whitespace-nowrap text-right text-[var(--color-ink-muted)] ${index === rows.length - 1 ? "" : "border-b border-[var(--color-rule-subtle)]"}`}
-                      >
-                        {relativeTime(row.lastAt, referenceMs)}
-                      </td>
-                    </tr>
-                      )
-                    ),
-                  ];
-                })}
-              </tbody>
-            ))}
-          </table>
+        <div className="mt-6 grid gap-5 md:grid-cols-2 items-start">
+          {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
+            <DocumentCard
+              key={group.key}
+              group={group}
+              referenceMs={referenceMs}
+              labels={labels}
+            />
+          ))}
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * One law, one card: the document's human name leads, active work reads as
+ * sentences, and completed sections compress into a row of linked chips —
+ * each one a runnable node in the graph.
+ */
+function DocumentCard({
+  group,
+  referenceMs,
+  labels,
+}: {
+  group: DocumentGroup;
+  referenceMs: number;
+  labels: Record<string, string>;
+}) {
+  const rows = sectionRowsForGroup(group, labels);
+  const active = rows.filter((row) => row.status !== "completed");
+  const done = rows
+    .filter((row) => row.status === "completed")
+    .sort((a, b) =>
+      a.designator.localeCompare(b.designator, undefined, { numeric: true })
+    );
+  const documentLabel = documentGroupLabel(group, labels);
+  const colon = group.key.indexOf(":");
+  const scope = colon > 0 ? group.key.slice(0, colon) : "";
+  const rest = colon > 0 ? group.key.slice(colon + 1) : group.key;
+  const docClass = rest.split("/")[0];
+
+  return (
+    <article className="rounded-sm border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-5 flex flex-col gap-4">
+      <header>
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-muted)]">
+            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
+            {docClass && ` · ${docClass}`}
+          </p>
+          <p className="shrink-0 font-mono text-[10px] text-[var(--color-ink-muted)]">
+            {relativeTime(group.lastAt, referenceMs)}
+          </p>
+        </div>
+        {documentLabel ? (
+          <>
+            <h3 className="mt-1.5 font-serif text-lg leading-snug text-[var(--color-ink)]">
+              {documentLabel}
+            </h3>
+            <p className="mt-1 font-mono text-[11px] text-[var(--color-ink-muted)] break-all">
+              {rest}
+            </p>
+          </>
+        ) : (
+          <h3 className="mt-1.5 font-mono text-base leading-snug text-[var(--color-ink)] break-all">
+            {rest}
+          </h3>
+        )}
+      </header>
+
+      {active.length > 0 && (
+        <ul className="space-y-2">
+          {active.map((row) => (
+            <li
+              key={row.citation}
+              className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+            >
+              <p className="min-w-0 text-xs break-words">
+                <span className="font-mono text-[var(--color-ink)]">
+                  {row.designator}
+                </span>
+                {row.label && row.label !== documentLabel && (
+                  <span className="font-serif italic text-[var(--color-ink-secondary)]">
+                    {" "}
+                    — {row.label}
+                  </span>
+                )}
+              </p>
+              <p
+                className={`shrink-0 font-mono text-[11px] ${
+                  row.status === "flagged"
+                    ? "text-[var(--color-warning)]"
+                    : "text-[var(--color-accent)]"
+                }`}
+              >
+                {row.status === "flagged"
+                  ? "flagged for review"
+                  : `in progress · ${row.attempts} attempt${
+                      row.attempts === 1 ? "" : "s"
+                    }`}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {done.length > 0 && (
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-success)]">
+            {done.length} encoded
+          </p>
+          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+            {done.map((row) => {
+              const chip = chipDesignator(row.designator);
+              const title = row.label
+                ? `${row.designator} — ${row.label}`
+                : row.designator;
+              return (
+                <li key={row.citation}>
+                  {row.graphUrl ? (
+                    <a
+                      href={row.graphUrl}
+                      title={`${title} — view the rule graph`}
+                      className="inline-block rounded-sm bg-[var(--color-accent-light)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-accent)] no-underline hover:underline"
+                    >
+                      {chip}
+                    </a>
+                  ) : (
+                    <span
+                      title={title}
+                      className="inline-block rounded-sm border border-[var(--color-rule)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-secondary)]"
+                    >
+                      {chip}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </article>
   );
 }
 

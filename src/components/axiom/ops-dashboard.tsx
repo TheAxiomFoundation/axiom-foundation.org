@@ -25,7 +25,6 @@ import {
   composeGraphViewerUrl,
   graphFocusForCitationPath,
 } from "@/lib/axiom/runtime/graph-links";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -905,27 +904,16 @@ function LatestEncodings({
   );
 }
 
-const STATUS_BADGE: Record<
-  "completed" | "in progress" | "flagged",
-  { variant: "secondary" | "outline" | "destructive"; className: string }
-> = {
-  completed: {
-    variant: "secondary",
-    className: "bg-[rgba(22,101,52,0.1)] text-[var(--color-success)]",
-  },
-  "in progress": {
-    variant: "secondary",
-    className: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
-  },
-  flagged: {
-    variant: "secondary",
-    className: "bg-[rgba(146,64,14,0.1)] text-[var(--color-warning)]",
-  },
+const STATUS_DOT: Record<"completed" | "in progress" | "flagged", string> = {
+  completed: "bg-[var(--color-success)]",
+  "in progress": "bg-[var(--color-accent)]",
+  flagged: "bg-[var(--color-warning)]",
 };
 
 /**
- * One law as a table band: a muted full-width header row naming the
- * jurisdiction and document, then one row per section.
+ * One law as a table band: a quiet full-width header row naming the
+ * jurisdiction and document, then one row per section. Hierarchy comes
+ * from type and whitespace, not rules or fills.
  */
 function DocumentRows({
   group,
@@ -944,26 +932,26 @@ function DocumentRows({
 
   return (
     <TableBody>
-      <TableRow className="bg-muted/60 hover:bg-muted/60 border-b-0">
-        <TableCell colSpan={5} className="py-2.5 pl-6 pr-6">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <Badge variant="outline" className="text-[11px] font-medium">
-              {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-            </Badge>
+      <TableRow className="border-0 hover:bg-transparent">
+        <TableCell colSpan={5} className="pt-7 pb-1.5 pl-6 pr-6">
+          <p className="text-xs text-muted-foreground">
+            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
+          </p>
+          <p className="mt-0.5">
             <span className="text-sm font-medium text-foreground">
               {documentLabel ?? rest}
             </span>
             {documentLabel && (
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="ml-2.5 font-mono text-xs text-muted-foreground">
                 {rest}
               </span>
             )}
-          </div>
+          </p>
         </TableCell>
       </TableRow>
       {rows.map((row) => (
-        <TableRow key={row.citation}>
-          <TableCell className="pl-6 align-middle font-mono text-xs whitespace-normal break-all">
+        <TableRow key={row.citation} className="border-0">
+          <TableCell className="pl-6 py-2 align-middle font-mono text-xs whitespace-normal break-all">
             {row.graphUrl ? (
               <a
                 href={row.graphUrl}
@@ -977,21 +965,20 @@ function DocumentRows({
               row.designator
             )}
           </TableCell>
-          <TableCell className="max-w-[40ch] align-middle text-xs text-muted-foreground whitespace-normal">
+          <TableCell className="max-w-[40ch] py-2 align-middle text-xs text-muted-foreground whitespace-normal">
             {row.label && row.label !== documentLabel ? row.label : ""}
           </TableCell>
-          <TableCell className="align-middle">
-            <Badge
-              variant={STATUS_BADGE[row.status].variant}
-              className={`text-[11px] font-medium ${STATUS_BADGE[row.status].className}`}
-            >
-              {row.status}
-            </Badge>
+          <TableCell className="py-2 align-middle whitespace-nowrap">
+            <span
+              aria-hidden
+              className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${STATUS_DOT[row.status]}`}
+            />
+            <span className="text-xs text-muted-foreground">{row.status}</span>
           </TableCell>
-          <TableCell className="text-right align-middle font-mono text-xs tabular-nums text-muted-foreground">
+          <TableCell className="py-2 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground">
             {row.attempts > 1 ? row.attempts : ""}
           </TableCell>
-          <TableCell className="pr-6 text-right align-middle text-xs whitespace-nowrap text-muted-foreground">
+          <TableCell className="pr-6 py-2 text-right align-middle text-xs whitespace-nowrap text-muted-foreground">
             {relativeTime(row.lastAt, referenceMs)}
           </TableCell>
         </TableRow>

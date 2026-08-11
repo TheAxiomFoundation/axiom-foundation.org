@@ -9,6 +9,8 @@
  * ever leaves the server.
  */
 
+import { unstable_cache } from "next/cache";
+
 const QUEUE_REVALIDATE_SECONDS = 300;
 const QUEUE_DIR_URL =
   "https://api.github.com/repos/TheAxiomFoundation/axiom-encode/contents/data/encoding-queues";
@@ -66,7 +68,10 @@ export function summarizeQueue(file: QueueFile): EncodingQueueSummary | null {
   };
 }
 
-async function cachedJson<T>(url: string): Promise<T> {
+/** Uncached fetch: the all-state queue file is ~5 MB — over Next's 2 MB
+ *  data-cache item cap — so the raw payloads are never cached. Only the
+ *  small summaries are (see the unstable_cache wrapper below). */
+async function fetchJson<T>(url: string): Promise<T> {
   const token = (
     process.env.AXIOM_GITHUB_TOKEN ??
     process.env.GITHUB_TOKEN ??
@@ -79,7 +84,7 @@ async function cachedJson<T>(url: string): Promise<T> {
         ? { Authorization: `Bearer ${token}` }
         : {}),
     },
-    next: { revalidate: QUEUE_REVALIDATE_SECONDS },
+    cache: "no-store",
   } as RequestInit);
   if (!response.ok) {
     throw new Error(`${response.status} for ${url}`);
@@ -87,16 +92,10 @@ async function cachedJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/**
- * All queues, largest first. Best-effort: if the directory listing is
- * unavailable the known queue files still load from raw fetches, and an
- * unreadable individual queue is skipped — the ops page renders a smaller
- * section rather than failing.
- */
-export async function getEncodingQueues(): Promise<EncodingQueueSummary[]> {
+async function readEncodingQueues(): Promise<EncodingQueueSummary[]> {
   let names: string[];
   try {
-    const listing = await cachedJson<Array<{ name?: string }>>(QUEUE_DIR_URL);
+    const listing = await fetchJson<Array<{ name?: string }>>(QUEUE_DIR_URL);
     names = listing
       .map((entry) => entry.name ?? "")
       .filter((name) => name.endsWith(".json"));
@@ -108,7 +107,7 @@ export async function getEncodingQueues(): Promise<EncodingQueueSummary[]> {
     names.map(async (name) => {
       try {
         return summarizeQueue(
-          await cachedJson<QueueFile>(`${QUEUE_RAW_BASE}${name}`)
+          await fetchJson<QueueFile>(`${QUEUE_RAW_BASE}${name}`)
         );
       } catch {
         return null;
@@ -119,3 +118,17 @@ export async function getEncodingQueues(): Promise<EncodingQueueSummary[]> {
     .filter((queue): queue is EncodingQueueSummary => queue != null)
     .sort((a, b) => b.total - a.total);
 }
+
+/**
+ * All queues, largest first, with the aggregated summaries cached for
+ * QUEUE_REVALIDATE_SECONDS so the multi-megabyte queue files are fetched at
+ * most once per window, never per request. Best-effort throughout: if the
+ * directory listing is unavailable the known queue files still load, and an
+ * unreadable individual queue is skipped — the ops page renders a smaller
+ * section rather than failing.
+ */
+export const getEncodingQueues = unstable_cache(
+  readEncodingQueues,
+  ["ops-encoding-queues"],
+  { revalidate: QUEUE_REVALIDATE_SECONDS }
+);

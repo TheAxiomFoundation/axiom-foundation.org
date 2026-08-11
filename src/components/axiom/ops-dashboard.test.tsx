@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EncodingStatusRun, LiveEncodingRun } from "@/lib/corpus-status";
 import {
   classifyLiveRun,
+  graphUrlForSection,
   groupRunsByDocument,
   mergeLiveRunsIntoHistory,
   relativeTime,
@@ -313,6 +314,35 @@ describe("classifyLiveRun", () => {
     expect(
       classifyLiveRun(finished, Date.parse("2026-08-10T02:00:00Z"))
     ).toBe("expired");
+  });
+});
+
+describe("graphUrlForSection", () => {
+  it("links recorded completions to the compose graph viewer", () => {
+    expect(
+      graphUrlForSection(
+        "us:statutes/26/3121/b/8",
+        run({ id: "a", has_issues: false })
+      )
+    ).toBe("/app?compose=us%3Astatutes%2F26%2F3121%2Fb%2F8");
+  });
+
+  it("maps human-readable citations through the corpus path", () => {
+    expect(
+      graphUrlForSection("26 USC 1(j)(2)", run({ id: "a" }))
+    ).toBe("/app?compose=us%3Astatutes%2F26%2F1");
+  });
+
+  it("never links live-board completions, failures, or unparseable citations", () => {
+    const live = run({ id: "a" }) as ReturnType<typeof run> & {
+      live?: boolean;
+    };
+    live.live = true;
+    expect(graphUrlForSection("us:statutes/26/24", live)).toBeNull();
+    expect(
+      graphUrlForSection("us:statutes/26/24", run({ id: "b", has_issues: true }))
+    ).toBeNull();
+    expect(graphUrlForSection("Pub. L. 117-169", run({ id: "c" }))).toBeNull();
   });
 });
 

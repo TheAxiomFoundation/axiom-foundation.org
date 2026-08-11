@@ -10,6 +10,7 @@ import type {
 import {
   corpusLookupPathsForCitation,
   corpusPathForDocumentKey,
+  corpusPathsForCitation,
   documentKeyFromCitation,
   parseCitation,
   sectionWithinDocument,
@@ -20,6 +21,10 @@ import {
 } from "@/lib/axiom/jurisdictions-seed";
 import type { EncodingQueueSummary } from "@/lib/axiom/encoding-queues";
 import type { RecentCorpusScope } from "@/lib/corpus-status";
+import {
+  composeGraphViewerUrl,
+  graphFocusForCitationPath,
+} from "@/lib/axiom/runtime/graph-links";
 
 const POLL_INTERVAL_MS = 30_000;
 const CLOCK_TICK_MS = 15_000;
@@ -759,6 +764,27 @@ interface SectionRow {
   attempts: number;
   lastAt: string;
   status: "completed" | "in progress" | "flagged";
+  /** Rule-graph deep link — set only when the encoding is verifiably in the
+   *  mirror (recorded history), so the link always renders a graph. */
+  graphUrl: string | null;
+}
+
+/**
+ * Graph link for a section whose encoding has landed. Live-board
+ * completions stay unlinked — the applied RuleSpec may still be in an
+ * unmerged PR, so composing its graph could come up empty; once a manifest
+ * sync records the run, the row upgrades to linked automatically.
+ */
+export function graphUrlForSection(
+  citation: string,
+  latest: LedgerRun
+): string | null {
+  if (latest.live || latest.has_issues) return null;
+  const { section, document } = corpusPathsForCitation(citation);
+  const path = section ?? document;
+  if (!path) return null;
+  const focus = graphFocusForCitationPath(path);
+  return focus ? composeGraphViewerUrl(focus) : null;
 }
 
 /**
@@ -799,6 +825,7 @@ export function sectionRowsForGroup(
             ? ("in progress" as const)
             : ("flagged" as const)
           : ("completed" as const),
+        graphUrl: graphUrlForSection(citation, latest),
       };
     })
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
@@ -928,9 +955,20 @@ function LatestEncodings({
                         className={`pr-6 align-top ${index === rows.length - 1 ? "" : "border-b border-[var(--color-rule-subtle)]"}`}
                       >
                         <div className="ml-5 border-l border-[var(--color-rule)] pl-4 py-2.5">
-                          <span className="font-mono text-[var(--color-ink)]">
-                            {row.designator}
-                          </span>
+                          {row.graphUrl ? (
+                            <a
+                              href={row.graphUrl}
+                              className="font-mono text-[var(--color-accent)] no-underline hover:underline"
+                              title="View the encoded rule graph"
+                            >
+                              {row.designator}
+                              <span aria-hidden> ↗</span>
+                            </a>
+                          ) : (
+                            <span className="font-mono text-[var(--color-ink)]">
+                              {row.designator}
+                            </span>
+                          )}
                           {row.label && row.label !== documentLabel && (
                             <span className="block font-serif italic text-[var(--color-ink-secondary)] mt-0.5 max-w-[46ch]">
                               {row.label}

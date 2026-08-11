@@ -964,15 +964,30 @@ export async function resolveSection(
  * it.
  */
 export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
+  return splitRootBodyAroundChildren(root, descendants).root;
+}
+
+/**
+ * Split a root body that repeats its descendants' text into the intro
+ * (chapeau before the first child) and the flush text after the LAST
+ * child — the trailing sentence enumerations often carry ("The amount
+ * determined under paragraph (1) or (2) … shall be reduced …"), which
+ * plain intro-trimming silently dropped.
+ */
+export function splitRootBodyAroundChildren(
+  root: Rule,
+  descendants: Rule[]
+): { root: Rule; flush: string | null } {
   const body = root.body;
-  if (!body) return root;
-  const firstChildBody = descendants
+  if (!body) return { root, flush: null };
+  const childBodies = descendants
     .map((rule) => rule.body?.trim() ?? "")
-    .find((text) => text.length >= 20);
-  if (!firstChildBody) return root;
+    .filter((text) => text.length >= 20);
+  const firstChildBody = childBodies[0];
+  if (!firstChildBody) return { root, flush: null };
   const needle = firstChildBody.slice(0, 60);
   const index = body.indexOf(needle);
-  if (index < 0) return root;
+  if (index < 0) return { root, flush: null };
   // Child rows store their text without the enumeration marker, so the
   // kept chapeau would end with a dangling "(1)" — strip it.
   const intro = body
@@ -980,7 +995,22 @@ export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
     .trim()
     .replace(/\(\s*[\w.]{1,4}\s*\)\s*$/, "")
     .trim();
-  return { ...root, body: intro.length > 0 ? intro : null };
+
+  // Locate the end of the last child's text inside the root body; what
+  // follows is flush text belonging to the root, not to any child.
+  let flush: string | null = null;
+  const lastChildBody = childBodies[childBodies.length - 1]!;
+  const lastNeedle = lastChildBody.slice(0, 60);
+  const lastAt = body.lastIndexOf(lastNeedle);
+  if (lastAt >= 0) {
+    const tail = body.slice(lastAt + lastChildBody.length).trim();
+    if (tail.length >= 20) flush = tail;
+  }
+
+  return {
+    root: { ...root, body: intro.length > 0 ? intro : null },
+    flush,
+  };
 }
 
 export async function getSectionPageData(
@@ -1073,7 +1103,8 @@ export async function getSectionPageDataFromResolution(
   const encoding = sectionEncoding.encoding;
 
   const refBody = root.body;
-  root = dedupeRootBody(root, subtree.provisions);
+  const split = splitRootBodyAroundChildren(root, subtree.provisions);
+  root = split.root;
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -1082,6 +1113,16 @@ export async function getSectionPageDataFromResolution(
     designator: relativeDesignator(citationPath, rule.citation_path as string),
     relativeDepth: (rule.citation_path as string).split("/").length - rootDepth,
   }));
+  // Flush text after the last enumerated child belongs to the section,
+  // not to any child — render it at the end of the last child's block,
+  // where section-granular corpora place it.
+  if (split.flush && provisions.length > 0) {
+    const last = provisions[provisions.length - 1]!;
+    last.rule = {
+      ...last.rule,
+      body: [last.rule.body, split.flush].filter(Boolean).join("\n\n"),
+    };
+  }
 
   const [prev, next] = node
     ? await Promise.all([

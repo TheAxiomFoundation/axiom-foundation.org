@@ -26,6 +26,13 @@ import {
   graphFocusForCitationPath,
 } from "@/lib/axiom/runtime/graph-links";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -280,40 +287,44 @@ function RecentlyIngested({
 }) {
   if (scopes.length === 0) return null;
   return (
-    <section aria-label="Recently ingested">
-      <div className="border-b border-[var(--color-rule)] pb-3">
-        <h2 className="heading-sub text-[var(--color-ink)]">
-          Recently ingested
-        </h2>
-      </div>
-      <ul className="mt-1 divide-y divide-[var(--color-rule-subtle)]">
-        {scopes.map((scope) => (
-          <li
-            key={`${scope.jurisdiction}/${scope.document_class}/${scope.version}`}
-            className="py-2.5 flex items-baseline justify-between gap-4"
-          >
-            <div className="min-w-0">
-              <p className="text-sm text-[var(--color-ink)]">
-                <span className="font-medium">
-                  {JURISDICTION_NAMES[scope.jurisdiction] ?? scope.jurisdiction}
-                </span>{" "}
-                <span className="text-[var(--color-ink-secondary)]">
-                  {pluralizeDocumentClass(scope.document_class)}
-                </span>
+    <Card>
+      <CardHeader className="border-b [.border-b]:pb-4">
+        <CardTitle>Recently ingested</CardTitle>
+        <CardDescription>
+          The newest additions to the signed corpus release.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border">
+          {scopes.map((scope) => (
+            <li
+              key={`${scope.jurisdiction}/${scope.document_class}/${scope.version}`}
+              className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">
+                    {JURISDICTION_NAMES[scope.jurisdiction] ??
+                      scope.jurisdiction}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    {pluralizeDocumentClass(scope.document_class)}
+                  </span>
+                </p>
+                <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                  {scope.version}
+                </p>
+              </div>
+              <p className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                {scope.synced_at
+                  ? relativeTime(scope.synced_at, referenceMs)
+                  : "—"}
               </p>
-              <p className="mt-0.5 font-mono text-[11px] text-[var(--color-ink-muted)] truncate">
-                {scope.version}
-              </p>
-            </div>
-            <p className="shrink-0 font-mono text-xs text-[var(--color-ink-muted)]">
-              {scope.synced_at
-                ? relativeTime(scope.synced_at, referenceMs)
-                : "—"}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </section>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -330,16 +341,19 @@ function pluralizeDocumentClass(documentClass: string): string {
 function QueuedWork({ queues }: { queues: EncodingQueueSummary[] }) {
   if (queues.length === 0) return null;
   return (
-    <section aria-label="Queued work">
-      <div className="border-b border-[var(--color-rule)] pb-3">
-        <h2 className="heading-sub text-[var(--color-ink)]">Queued work</h2>
-      </div>
-      <div className="mt-6 space-y-8">
+    <Card>
+      <CardHeader className="border-b [.border-b]:pb-4">
+        <CardTitle>Queued work</CardTitle>
+        <CardDescription>
+          Durable encoding queues awaiting dispatch.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
         {queues.map((queue) => (
           <QueueRow key={queue.queueId} queue={queue} />
         ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -354,10 +368,8 @@ function QueueRow({ queue }: { queue: EncodingQueueSummary }) {
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h3 className="font-mono text-sm text-[var(--color-ink)]">
-          {queue.queueId}
-        </h3>
-        <p className="font-mono text-xs tabular-nums text-[var(--color-ink-secondary)]">
+        <h3 className="font-mono text-sm text-foreground">{queue.queueId}</h3>
+        <p className="text-xs tabular-nums text-muted-foreground">
           {dispositioned.toLocaleString("en-US")} of{" "}
           {queue.total.toLocaleString("en-US")} dispositioned
           {queue.jurisdictionCount > 1 &&
@@ -365,16 +377,16 @@ function QueueRow({ queue }: { queue: EncodingQueueSummary }) {
         </p>
       </div>
       {queue.description && (
-        <p className="mt-1 font-serif italic text-xs text-[var(--color-ink-secondary)] max-w-[72ch]">
+        <p className="mt-1 text-xs text-muted-foreground max-w-[72ch]">
           {queue.description}
         </p>
       )}
       <Progress
         value={Math.max(fraction > 0 ? 1 : 0, Math.round(fraction * 100))}
         aria-label={`${queue.queueId}: ${dispositioned} of ${queue.total} items dispositioned`}
-        className="mt-2.5"
+        className="mt-3"
       />
-      <p className="mt-2 font-mono text-xs text-[var(--color-ink-muted)]">
+      <p className="mt-2 text-xs text-muted-foreground">
         {dispositionLine || `${queue.pending.toLocaleString("en-US")} pending`}
         {queue.pauseReason && (
           <span className="text-[var(--color-warning)]">
@@ -843,55 +855,77 @@ function LatestEncodings({
   labels: Record<string, string>;
 }) {
   return (
-    <section aria-label="Latest encodings" className="mt-12">
-      <div className="border-b border-[var(--color-rule)] pb-3">
-        <h2 className="heading-sub text-[var(--color-ink)]">
-          Latest encodings
-        </h2>
-      </div>
-      {documents.length === 0 ? (
-        <p className="mt-4 text-sm text-[var(--color-ink-secondary)]">
-          No encodings recorded yet. Runs appear here the moment an encoder
-          reports one.
-        </p>
-      ) : (
-        <Table className="mt-2">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                Section
-              </TableHead>
-              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                Provision
-              </TableHead>
-              <TableHead className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                Status
-              </TableHead>
-              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                Attempts
-              </TableHead>
-              <TableHead className="text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                Last run
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
-            <DocumentRows
-              key={group.key}
-              group={group}
-              referenceMs={referenceMs}
-              labels={labels}
-            />
-          ))}
-        </Table>
-      )}
-    </section>
+    <Card className="mt-10">
+      <CardHeader className="border-b [.border-b]:pb-4">
+        <CardTitle>Latest encodings</CardTitle>
+        <CardDescription>
+          Newest first, grouped by document. Completed sections link to their
+          rule graph.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-0">
+        {documents.length === 0 ? (
+          <p className="px-6 text-sm text-muted-foreground">
+            No encodings recorded yet. Runs appear here the moment an encoder
+            reports one.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-6 text-xs text-muted-foreground">
+                  Section
+                </TableHead>
+                <TableHead className="text-xs text-muted-foreground">
+                  Provision
+                </TableHead>
+                <TableHead className="text-xs text-muted-foreground">
+                  Status
+                </TableHead>
+                <TableHead className="text-right text-xs text-muted-foreground">
+                  Attempts
+                </TableHead>
+                <TableHead className="pr-6 text-right text-xs text-muted-foreground">
+                  Last run
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            {documents.slice(0, LEDGER_DOCUMENT_LIMIT).map((group) => (
+              <DocumentRows
+                key={group.key}
+                group={group}
+                referenceMs={referenceMs}
+                labels={labels}
+              />
+            ))}
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
+const STATUS_BADGE: Record<
+  "completed" | "in progress" | "flagged",
+  { variant: "secondary" | "outline" | "destructive"; className: string }
+> = {
+  completed: {
+    variant: "secondary",
+    className: "bg-[rgba(22,101,52,0.1)] text-[var(--color-success)]",
+  },
+  "in progress": {
+    variant: "secondary",
+    className: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  },
+  flagged: {
+    variant: "secondary",
+    className: "bg-[rgba(146,64,14,0.1)] text-[var(--color-warning)]",
+  },
+};
+
 /**
- * One law as a table band: a full-width header row carrying the
- * jurisdiction and the document\'s human name, then one row per section.
+ * One law as a table band: a muted full-width header row naming the
+ * jurisdiction and document, then one row per section.
  */
 function DocumentRows({
   group,
@@ -910,24 +944,26 @@ function DocumentRows({
 
   return (
     <TableBody>
-      <TableRow className="border-b-0 hover:bg-transparent">
-        <TableCell colSpan={5} className="pt-6 pb-1 px-2">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
-          </span>
-          {documentLabel ? (
-            <span className="ml-3 font-serif text-base text-foreground">
-              {documentLabel}
+      <TableRow className="bg-muted/60 hover:bg-muted/60 border-b-0">
+        <TableCell colSpan={5} className="py-2.5 pl-6 pr-6">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <Badge variant="outline" className="text-[11px] font-medium">
+              {JURISDICTION_NAMES[scope] ?? scope ?? "unknown"}
+            </Badge>
+            <span className="text-sm font-medium text-foreground">
+              {documentLabel ?? rest}
             </span>
-          ) : null}
-          <span className="ml-3 font-mono text-[11px] text-muted-foreground">
-            {rest}
-          </span>
+            {documentLabel && (
+              <span className="font-mono text-xs text-muted-foreground">
+                {rest}
+              </span>
+            )}
+          </div>
         </TableCell>
       </TableRow>
       {rows.map((row) => (
         <TableRow key={row.citation}>
-          <TableCell className="font-mono text-xs whitespace-normal break-all align-top">
+          <TableCell className="pl-6 align-middle font-mono text-xs whitespace-normal break-all">
             {row.graphUrl ? (
               <a
                 href={row.graphUrl}
@@ -941,27 +977,21 @@ function DocumentRows({
               row.designator
             )}
           </TableCell>
-          <TableCell className="font-serif italic text-xs text-[var(--color-ink-secondary)] whitespace-normal align-top max-w-[38ch]">
+          <TableCell className="max-w-[40ch] align-middle text-xs text-muted-foreground whitespace-normal">
             {row.label && row.label !== documentLabel ? row.label : ""}
           </TableCell>
-          <TableCell className="align-top">
+          <TableCell className="align-middle">
             <Badge
-              variant="secondary"
-              className={`font-mono text-[11px] font-normal ${
-                row.status === "completed"
-                  ? "bg-[rgba(22,101,52,0.08)] text-[var(--color-success)]"
-                  : row.status === "flagged"
-                    ? "bg-[rgba(146,64,14,0.08)] text-[var(--color-warning)]"
-                    : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
-              }`}
+              variant={STATUS_BADGE[row.status].variant}
+              className={`text-[11px] font-medium ${STATUS_BADGE[row.status].className}`}
             >
               {row.status}
             </Badge>
           </TableCell>
-          <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground align-top">
+          <TableCell className="text-right align-middle font-mono text-xs tabular-nums text-muted-foreground">
             {row.attempts > 1 ? row.attempts : ""}
           </TableCell>
-          <TableCell className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground align-top">
+          <TableCell className="pr-6 text-right align-middle text-xs whitespace-nowrap text-muted-foreground">
             {relativeTime(row.lastAt, referenceMs)}
           </TableCell>
         </TableRow>

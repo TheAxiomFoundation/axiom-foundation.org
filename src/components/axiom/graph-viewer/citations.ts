@@ -195,18 +195,64 @@ export function axiomAppUrl(fileLegalId: string): string | null {
  * the rest. A citation without trailing parentheticals (or with
  * URL-hostile content) links the file home as before.
  */
+/**
+ * The parenthetical run that locates a citation inside the file's own
+ * section — tolerant of the spellings encodings actually use (#190).
+ * Prefers the run attached to a base path segment ("…152(c)(1)(E),
+ * 6013" with base …/152 → c/1/E, ignoring the trailing co-citation;
+ * "21(a)(2)(A), 21(g)(3)" with base …/21 → the first, primary run),
+ * allows whitespace between groups ("(a) (5)"), and only then falls
+ * back to a trailing run at the end of the string.
+ */
+export function citationTailSegments(
+  baseSegments: string[],
+  citation: string,
+): string[] | null {
+  const run = /(?:\(\s*[^()]{1,8}\s*\)\s*)+/y;
+  for (let i = baseSegments.length - 1; i >= 0; i--) {
+    const segment = baseSegments[i]!;
+    // Only designator-shaped segments anchor the search — jurisdiction
+    // and bucket words ("us", "statute") would false-match inside prose.
+    if (!/^[\w.-]+$/.test(segment) || !/\d/.test(segment)) continue;
+    let from = 0;
+    while (from < citation.length) {
+      const at = citation.indexOf(segment, from);
+      if (at < 0) break;
+      const after = at + segment.length;
+      const parenAt = citation.slice(after).match(/^\s*\(/);
+      if (parenAt) {
+        run.lastIndex = after + (parenAt[0].length - 1);
+        const matched = run.exec(citation);
+        if (matched) return parenGroups(matched[0]);
+      }
+      from = after;
+    }
+  }
+  const trailing = citation.match(/(?:\(\s*[^()]{1,8}\s*\)\s*)+$/);
+  return trailing ? parenGroups(trailing[0]) : null;
+}
+
+function parenGroups(rawRun: string): string[] | null {
+  const segments = [...rawRun.matchAll(/\(\s*([^()]+?)\s*\)/g)].map(
+    (m) => m[1]!,
+  );
+  if (segments.length === 0) return null;
+  return segments.every((segment) => /^[\w.-]+$/.test(segment))
+    ? segments
+    : null;
+}
+
 export function axiomAppUrlForCitation(
   fileLegalId: string,
   citation: string | null | undefined,
 ): string | null {
   const base = axiomAppUrl(fileLegalId);
   if (!base || !citation) return base;
-  const trailing = citation.match(/(?:\([^()]{1,8}\))+\s*$/);
-  if (!trailing) return base;
-  const segments = [...trailing[0].matchAll(/\(([^()]+)\)/g)].map(
-    (m) => m[1]!,
+  const segments = citationTailSegments(
+    base.split("/").filter(Boolean),
+    citation,
   );
-  if (!segments.every((segment) => /^[\w.-]+$/.test(segment))) return base;
+  if (!segments) return base;
   // A file id that already carries subsection depth ("us:statutes/
   // 7/2017/a" cited as "2017(a)") must not double it — drop the
   // overlap between the base's tail and the citation's segments.

@@ -835,6 +835,14 @@ export async function resolveSection(
         if (!anchored && !rule.body) {
           return null;
         }
+        if (!anchored && process.env.NODE_ENV !== "production") {
+          // #190: silent focus no-ops are undiagnosable — say which
+          // cited anchor found no home under the resolved section.
+          console.warn(
+            `[reader] focus anchor "${anchor}" (from ${requestedPath}) ` +
+              `not found under ${candidate} — rendering unfocused`
+          );
+        }
         root = rule;
         citationPath = candidate;
         focusAnchor = anchored ? anchor : null;

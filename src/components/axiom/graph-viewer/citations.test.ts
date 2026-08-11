@@ -7,6 +7,7 @@ import {
   humanizeSource,
   isReadableLawFile,
   isReadableLawSource,
+  citationTailSegments,
 } from "./citations";
 
 describe("axiomAppUrlForCitation", () => {
@@ -209,5 +210,70 @@ describe("readable-law gate (#191)", () => {
       true
     );
     expect(isReadableLawSource("2026 APA Payment Standards, A1E")).toBe(false);
+  });
+});
+
+describe("citationTailSegments (#190 tolerant matcher)", () => {
+  const base = (path: string) => path.split("/").filter(Boolean);
+
+  it("prefers the run attached to the file's own section", () => {
+    // Trailing co-citation used to defeat the parser entirely.
+    expect(
+      citationTailSegments(
+        base("/us/statute/26/152"),
+        "26 USC 152(c)(1)(E), 6013"
+      )
+    ).toEqual(["c", "1", "E"]);
+    // Multi-citation: the primary run wins, not the last one.
+    expect(
+      citationTailSegments(
+        base("/us/statute/26/21"),
+        "26 USC 21(a)(2)(A), 21(g)(3)"
+      )
+    ).toEqual(["a", "2", "A"]);
+  });
+
+  it("tolerates whitespace between groups and around designators", () => {
+    expect(
+      citationTailSegments(
+        base("/us-ny/regulation/18-nycrr/387/14"),
+        "18 NYCRR 387.14 (a) (5)"
+      )
+    ).toEqual(["a", "5"]);
+  });
+
+  it("falls back to a trailing run when no base segment is cited", () => {
+    expect(
+      citationTailSegments(base("/us/statute/7/2014"), "Section X(e)(6)")
+    ).toEqual(["e", "6"]);
+    expect(
+      citationTailSegments(base("/us/statute/7/2014"), "no parens at all")
+    ).toBeNull();
+  });
+
+  it("rejects URL-hostile runs", () => {
+    expect(
+      citationTailSegments(base("/us/statute/26/32"), "32(see note *)")
+    ).toBeNull();
+  });
+});
+
+describe("axiomAppUrlForCitation focus links (#190)", () => {
+  it("keeps deep focus for co-cited and multi-cited sources", () => {
+    expect(
+      axiomAppUrlForCitation("us:statutes/26/152", "26 USC 152(c)(1)(E), 6013")
+    ).toBe("/us/statute/26/152/c/1/E");
+    expect(
+      axiomAppUrlForCitation("us:statutes/26/21", "26 USC 21(a)(2)(A), 21(g)(3)")
+    ).toBe("/us/statute/26/21/a/2/A");
+  });
+
+  it("still dedupes overlap with an already-deep file id", () => {
+    expect(
+      axiomAppUrlForCitation(
+        "us-ny:regulations/18-nycrr/387/14/a/5",
+        "18 NYCRR 387.14(a)(5)"
+      )
+    ).toBe("/us-ny/regulation/18-nycrr/387/14/a/5");
   });
 });

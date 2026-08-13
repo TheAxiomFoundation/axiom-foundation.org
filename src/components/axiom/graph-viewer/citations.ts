@@ -204,21 +204,11 @@ export function readableLawTarget(args: {
   if (!legalId) return null;
   const ruleName = legalId.split("#").pop() ?? null;
   const own = fileLegalIdOf(legalId);
-  if (isReadableLawFile(own)) {
-    return { fileLegalId: own, citation, ruleName };
-  }
-  // Synthesized package rules cite their statute in `source` as a raw
-  // legal id — that IS the law to read.
-  if (ruleSource && isReadableLawSource(ruleSource)) {
-    return {
-      fileLegalId: ruleSource.split("#")[0]!,
-      citation,
-      ruleName,
-    };
-  }
-  // Only questions borrow a consumer's provision. A RULE with an
-  // unreadable home must never point at a consumer's law: that
-  // provision does not contain it.
+  // A question is never law — even when it is housed in a law file
+  // (us:statutes/26/22#age), that file is merely where the referencing
+  // formula lives. The consumer whose provision asks it supplies the
+  // citation to focus and the card to spotlight; the question's own
+  // readable home is only the fallback when no consumer qualifies.
   if (isQuestion) {
     for (const consumer of consumers) {
       const file = fileLegalIdOf(consumer.legalId);
@@ -230,6 +220,23 @@ export function readableLawTarget(args: {
         };
       }
     }
+    if (isReadableLawFile(own)) {
+      return { fileLegalId: own, citation, ruleName: null };
+    }
+    return null;
+  }
+  if (isReadableLawFile(own)) {
+    return { fileLegalId: own, citation, ruleName };
+  }
+  // Synthesized package rules cite their statute in `source` as a raw
+  // legal id — that IS the law to read. A RULE with an unreadable home
+  // never borrows a consumer's law: that provision does not contain it.
+  if (ruleSource && isReadableLawSource(ruleSource)) {
+    return {
+      fileLegalId: ruleSource.split("#")[0]!,
+      citation,
+      ruleName,
+    };
   }
   return null;
 }

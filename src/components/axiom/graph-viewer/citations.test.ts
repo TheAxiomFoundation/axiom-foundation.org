@@ -303,6 +303,43 @@ describe("readableLawTarget (#190 question nodes)", () => {
     });
   });
 
+  it("a question housed IN a law file still borrows its consumer (the age case)", () => {
+    expect(
+      readableLawTarget({
+        legalId: "us:statutes/26/22#age",
+        ruleSource: null,
+        citation: "26 USC § 22",
+        isQuestion: true,
+        consumers: [
+          {
+            legalId: "us:statutes/26/22#section_22_aged_individual",
+            source: "26 USC 22(b)(1)",
+          },
+        ],
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/26/22",
+      citation: "26 USC 22(b)(1)",
+      ruleName: "section_22_aged_individual",
+    });
+  });
+
+  it("a question with no qualifying consumer falls back to its readable home, unspotlighted", () => {
+    expect(
+      readableLawTarget({
+        legalId: "us:statutes/26/22#age",
+        ruleSource: null,
+        citation: "26 USC § 22",
+        isQuestion: true,
+        consumers: [],
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/26/22",
+      citation: "26 USC § 22",
+      ruleName: null,
+    });
+  });
+
   it("questions borrow the consumer's file, citation, AND name", () => {
     expect(
       readableLawTarget({

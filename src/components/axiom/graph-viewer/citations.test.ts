@@ -8,6 +8,7 @@ import {
   isReadableLawFile,
   isReadableLawSource,
   citationTailSegments,
+  readableLawTarget,
 } from "./citations";
 
 describe("axiomAppUrlForCitation", () => {
@@ -275,5 +276,71 @@ describe("axiomAppUrlForCitation focus links (#190)", () => {
         "18 NYCRR 387.14(a)(5)"
       )
     ).toBe("/us-ny/regulation/18-nycrr/387/14/a/5");
+  });
+});
+
+describe("readableLawTarget (#190 question nodes)", () => {
+  const consumers = [
+    {
+      legalId: "us:statutes/26/21#treated_as_not_married_under_section_21",
+      source: "26 USC 21(e)(3)-(4)",
+    },
+  ];
+
+  it("rules read their own home with their own citation", () => {
+    expect(
+      readableLawTarget({
+        legalId: "us:statutes/26/21#cdcc_dollar_limit",
+        ruleSource: "26 USC 21(c)",
+        citation: "26 USC 21(c)",
+        isQuestion: false,
+        consumers,
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/26/21",
+      citation: "26 USC 21(c)",
+      ruleName: "cdcc_dollar_limit",
+    });
+  });
+
+  it("questions borrow the consumer's file, citation, AND name", () => {
+    expect(
+      readableLawTarget({
+        legalId: "axiom:us-package#legally_separated_under_decree",
+        ruleSource: null,
+        citation: null,
+        isQuestion: true,
+        consumers,
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/26/21",
+      citation: "26 USC 21(e)(3)-(4)",
+      ruleName: "treated_as_not_married_under_section_21",
+    });
+  });
+
+  it("a rule with an unreadable home never borrows a consumer's law", () => {
+    expect(
+      readableLawTarget({
+        legalId: "axiom:us-package#synthetic_rule",
+        ruleSource: null,
+        citation: null,
+        isQuestion: false,
+        consumers,
+      })
+    ).toBeNull();
+  });
+
+  it("borrowed citations produce a focused reader link", () => {
+    const target = readableLawTarget({
+      legalId: "axiom:us-package#legally_separated_under_decree",
+      ruleSource: null,
+      citation: null,
+      isQuestion: true,
+      consumers,
+    })!;
+    expect(axiomAppUrlForCitation(target.fileLegalId, target.citation)).toBe(
+      "/us/statute/26/21/e/3"
+    );
   });
 });

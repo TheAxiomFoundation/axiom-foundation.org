@@ -174,6 +174,66 @@ export function humanizeSource(source: string): string {
   return source;
 }
 
+export interface ReadableLawTarget {
+  /** File legal id of the provision to read. */
+  fileLegalId: string;
+  /** Citation whose subsection tail focuses the reader, if any. */
+  citation: string | null;
+  /** Rule whose card the reader's rail should spotlight. */
+  ruleName: string | null;
+}
+
+/**
+ * The provision, focus citation, and spotlight rule for a node's
+ * "Read the law". Rules read their own home (or their `source`'s);
+ * QUESTIONS have no home in the law, so they borrow the first
+ * consumer housed in readable law — and must borrow that consumer's
+ * citation and name too: the consumer's subsection is where the
+ * question is asked, and the consumer's card is the one that exists
+ * in the reader's rail (#190 follow-up: question nodes opened the
+ * whole section unfocused with nothing spotlighted).
+ */
+export function readableLawTarget(args: {
+  legalId: string | null;
+  ruleSource: string | null;
+  citation: string | null;
+  isQuestion: boolean;
+  consumers: ReadonlyArray<{ legalId: string; source: string | null }>;
+}): ReadableLawTarget | null {
+  const { legalId, ruleSource, citation, isQuestion, consumers } = args;
+  if (!legalId) return null;
+  const ruleName = legalId.split("#").pop() ?? null;
+  const own = fileLegalIdOf(legalId);
+  if (isReadableLawFile(own)) {
+    return { fileLegalId: own, citation, ruleName };
+  }
+  // Synthesized package rules cite their statute in `source` as a raw
+  // legal id — that IS the law to read.
+  if (ruleSource && isReadableLawSource(ruleSource)) {
+    return {
+      fileLegalId: ruleSource.split("#")[0]!,
+      citation,
+      ruleName,
+    };
+  }
+  // Only questions borrow a consumer's provision. A RULE with an
+  // unreadable home must never point at a consumer's law: that
+  // provision does not contain it.
+  if (isQuestion) {
+    for (const consumer of consumers) {
+      const file = fileLegalIdOf(consumer.legalId);
+      if (isReadableLawFile(file)) {
+        return {
+          fileLegalId: file,
+          citation: consumer.source ?? null,
+          ruleName: consumer.legalId.split("#").pop() ?? null,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 export function axiomAppUrl(fileLegalId: string): string | null {
   if (!fileLegalId || !fileLegalId.includes(":")) return null;
   const [jurisdiction, body] = fileLegalId.split(":") as [string, string];

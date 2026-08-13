@@ -14,8 +14,7 @@ import {
   humanizeCitation,
   humanizeRuleName,
   humanizeSource,
-  isReadableLawFile,
-  isReadableLawSource,
+  readableLawTarget,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
 import {
@@ -2864,39 +2863,19 @@ export function GraphViewerApp({
             // has no home in the law (it lives in the synthetic package
             // file), so read the provision that asks it — the first
             // consumer rule housed in a statutes/regulations file.
-            const lawFileLegalId = (() => {
-              if (!legalId) return null;
-              const own = fileLegalIdOf(legalId);
-              if (isReadableLawFile(own)) return own;
-              // Synthesized package rules cite their statute in
-              // `source` as a raw legal id — that IS the law to read.
-              const source = rule?.source;
-              if (source && isReadableLawSource(source)) {
-                return source.split("#")[0] ?? null;
-              }
-              // Only questions borrow a consumer's provision — they
-              // have no home in the law, so the section that asks them
-              // is the honest read. A RULE with an unreadable home (a
-              // policy file the corpus text doesn't carry) must never
-              // point at a consumer's law: that provision does not
-              // contain it.
-              if (!rule) {
-                for (const consumer of consumers) {
-                  const file = fileLegalIdOf(consumer.legalId);
-                  if (isReadableLawFile(file)) {
-                    return file;
-                  }
-                }
-              }
-              return null;
-            })();
+            const lawTarget = readableLawTarget({
+              legalId,
+              ruleSource: rule?.source ?? null,
+              citation: citation ? rawCitation : null,
+              isQuestion: !rule,
+              consumers,
+            });
             // The read link carries the cited subsection — the reader
-            // focuses it and clamps the rest of the section.
-            const lawHref = lawFileLegalId
-              ? axiomAppUrlForCitation(
-                  lawFileLegalId,
-                  citation ? rawCitation : null,
-                )
+            // focuses it and clamps the rest of the section. For a
+            // question the citation and spotlight rule come from the
+            // consumer whose provision asks it.
+            const lawHref = lawTarget
+              ? axiomAppUrlForCitation(lawTarget.fileLegalId, lawTarget.citation)
               : null;
             return (
           <aside className="node-inspector" aria-label="Node details">
@@ -3321,8 +3300,8 @@ export function GraphViewerApp({
                   // it itself and focuses the cited subsection.
                   // Carry the rule's identity so the reader can spotlight
                   // the card you came from in its encodings rail.
-                  const ruleParam = liveFragment
-                    ? `&rule=${encodeURIComponent(liveFragment)}`
+                  const ruleParam = lawTarget?.ruleName
+                    ? `&rule=${encodeURIComponent(lawTarget.ruleName)}`
                     : "";
                   void fetch(`/api/axiom/resolve${lawHref}`)
                     .then((response) =>

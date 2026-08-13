@@ -725,10 +725,17 @@ export async function rulespecSourceCitationPath(
     if (error) return null;
     for (const row of data ?? []) {
       const yaml = (row as { raw_yaml: string | null }).raw_yaml;
-      const match = yaml?.match(
-        /corpus_citation_path:\s*["']?([\w./-]+)["']?/
+      if (!yaml) continue;
+      // The encoder emits both spellings: singular scalar
+      // (`corpus_citation_path: us/...`) and plural list
+      // (`corpus_citation_paths:` followed by `- us/...` items). Read
+      // the scalar, else the first list item.
+      const single = yaml.match(/corpus_citation_path:\s*["']?([\w./-]+)["']?/);
+      if (single?.[1]) return single[1];
+      const plural = yaml.match(
+        /corpus_citation_paths:\s*\n\s*-\s*["']?([\w./-]+)["']?/
       );
-      if (match?.[1]) return match[1];
+      if (plural?.[1]) return plural[1];
     }
   }
   return null;

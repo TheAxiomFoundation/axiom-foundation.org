@@ -2863,10 +2863,16 @@ export function GraphViewerApp({
             // has no home in the law (it lives in the synthetic package
             // file), so read the provision that asks it — the first
             // consumer rule housed in a statutes/regulations file.
+            const curatedCitation =
+              typeof meta?.citation === "string" &&
+              !meta.citation.startsWith("axiom:")
+                ? meta.citation
+                : null;
             const lawTarget = readableLawTarget({
               legalId,
               ruleSource: rule?.source ?? null,
               citation: citation ? rawCitation : null,
+              curatedCitation,
               isQuestion: !rule,
               consumers,
             });

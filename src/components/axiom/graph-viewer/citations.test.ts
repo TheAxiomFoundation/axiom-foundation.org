@@ -9,6 +9,7 @@ import {
   isReadableLawSource,
   citationTailSegments,
   readableLawTarget,
+  readableSourceFileLegalId,
 } from "./citations";
 
 describe("axiomAppUrlForCitation", () => {
@@ -417,5 +418,67 @@ describe("readableLawTarget (#190 question nodes)", () => {
     expect(axiomAppUrlForCitation(target.fileLegalId, target.citation)).toBe(
       "/us/statute/26/21/e/3"
     );
+  });
+});
+
+describe("readableSourceFileLegalId (slash-form sources)", () => {
+  it("normalizes slash-form citation paths to colon-form file ids", () => {
+    expect(
+      readableSourceFileLegalId("us-ny/regulation/18-nycrr/387/14/a/5(a)")
+    ).toBe("us-ny:regulations/18-nycrr/387/14/a/5");
+    expect(
+      readableSourceFileLegalId("us-ny/regulation/18-nycrr/387/14/a/5(b)-(c)")
+    ).toBe("us-ny:regulations/18-nycrr/387/14/a/5");
+    expect(readableSourceFileLegalId("us/statute/7/2014")).toBe(
+      "us:statutes/7/2014"
+    );
+  });
+
+  it("passes colon-form through and rejects human text", () => {
+    expect(readableSourceFileLegalId("us:statutes/7/2014#a")).toBe(
+      "us:statutes/7/2014"
+    );
+    expect(readableSourceFileLegalId("26 USC 21(c)")).toBeNull();
+    expect(readableSourceFileLegalId("us/unknown-bucket/x")).toBeNull();
+  });
+
+  it("gives package rules with slash-form sources a Read-the-law target", () => {
+    expect(
+      readableLawTarget({
+        legalId: "axiom:us-ny-snap#categorically_eligible",
+        ruleSource: "us-ny/regulation/18-nycrr/387/14/a/5(a)",
+        citation: "us-ny/regulation/18-nycrr/387/14/a/5(a)",
+        isQuestion: false,
+        consumers: [],
+      })
+    ).toEqual({
+      fileLegalId: "us-ny:regulations/18-nycrr/387/14/a/5",
+      citation: "us-ny/regulation/18-nycrr/387/14/a/5(a)",
+      ruleName: "categorically_eligible",
+    });
+  });
+});
+
+describe("curated question citations", () => {
+  it("a curated meta.citation beats consumer inference", () => {
+    expect(
+      readableLawTarget({
+        legalId: "us:statutes/26/22#age",
+        ruleSource: null,
+        citation: "26 USC § 22",
+        curatedCitation: "26 USC 22(b)(1)",
+        isQuestion: true,
+        consumers: [
+          {
+            legalId: "us:statutes/26/22#some_other_rule",
+            source: "26 USC 22(c)(2)",
+          },
+        ],
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/26/22",
+      citation: "26 USC 22(b)(1)",
+      ruleName: null,
+    });
   });
 });

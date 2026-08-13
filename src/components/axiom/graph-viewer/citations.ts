@@ -58,7 +58,43 @@ export function isReadableLawFile(fileLegalId: string): boolean {
 
 /** True when a rule's raw `source` legal id points at readable law. */
 export function isReadableLawSource(source: string): boolean {
-  return READABLE_SOURCE.test(source);
+  return readableSourceFileLegalId(source) != null;
+}
+
+const SLASH_SOURCE_BUCKETS: Record<string, string> = {
+  statute: "statutes",
+  statutes: "statutes",
+  regulation: "regulations",
+  regulations: "regulations",
+  policy: "policies",
+  policies: "policies",
+  guidance: "guidance",
+  manual: "manual",
+  bill: "bills",
+  bills: "bills",
+};
+
+/**
+ * File legal id for a rule's raw `source`, when it names readable law.
+ * Sources come in two machine shapes: colon-form legal ids
+ * ("us:statutes/7/2014#a") and slash-form citation paths
+ * ("us-ny/regulation/18-nycrr/387/14/a/5(a)" — singular bucket,
+ * optional trailing parentheticals). Both normalize to the colon-form
+ * file id; human citation text ("26 USC 21(c)") returns null.
+ */
+export function readableSourceFileLegalId(source: string): string | null {
+  if (READABLE_SOURCE.test(source)) {
+    return source.split("#")[0]!;
+  }
+  const pathish = source.match(
+    /^([a-z]{2}(?:-[a-z0-9]+)?)\/([a-z]+)\/([^#(]+)/,
+  );
+  if (!pathish) return null;
+  const bucket = SLASH_SOURCE_BUCKETS[pathish[2]!];
+  if (!bucket) return null;
+  const rest = pathish[3]!.replace(/\/+$/, "");
+  if (!rest) return null;
+  return `${pathish[1]}:${bucket}/${rest}`;
 }
 
 /** Encoding-only leaves ("block-1") that never exist as corpus nodes. */
@@ -197,19 +233,27 @@ export function readableLawTarget(args: {
   legalId: string | null;
   ruleSource: string | null;
   citation: string | null;
+  /** Calculator-curated citation from input metadata — authored, so it
+   *  beats consumer inference for questions. */
+  curatedCitation?: string | null;
   isQuestion: boolean;
   consumers: ReadonlyArray<{ legalId: string; source: string | null }>;
 }): ReadableLawTarget | null {
   const { legalId, ruleSource, citation, isQuestion, consumers } = args;
+  const curatedCitation = args.curatedCitation ?? null;
   if (!legalId) return null;
   const ruleName = legalId.split("#").pop() ?? null;
   const own = fileLegalIdOf(legalId);
   // A question is never law — even when it is housed in a law file
   // (us:statutes/26/22#age), that file is merely where the referencing
-  // formula lives. The consumer whose provision asks it supplies the
-  // citation to focus and the card to spotlight; the question's own
-  // readable home is only the fallback when no consumer qualifies.
+  // formula lives. A hand-curated citation wins outright; otherwise
+  // the consumer whose provision asks it supplies the citation to
+  // focus and the card to spotlight, and the question's own readable
+  // home is only the fallback when no consumer qualifies.
   if (isQuestion) {
+    if (curatedCitation && isReadableLawFile(own)) {
+      return { fileLegalId: own, citation: curatedCitation, ruleName: null };
+    }
     for (const consumer of consumers) {
       const file = fileLegalIdOf(consumer.legalId);
       if (isReadableLawFile(file)) {
@@ -229,14 +273,12 @@ export function readableLawTarget(args: {
     return { fileLegalId: own, citation, ruleName };
   }
   // Synthesized package rules cite their statute in `source` as a raw
-  // legal id — that IS the law to read. A RULE with an unreadable home
-  // never borrows a consumer's law: that provision does not contain it.
-  if (ruleSource && isReadableLawSource(ruleSource)) {
-    return {
-      fileLegalId: ruleSource.split("#")[0]!,
-      citation,
-      ruleName,
-    };
+  // legal id or slash-form citation path — that IS the law to read. A
+  // RULE with an unreadable home never borrows a consumer's law: that
+  // provision does not contain it.
+  const sourceFile = ruleSource ? readableSourceFileLegalId(ruleSource) : null;
+  if (sourceFile) {
+    return { fileLegalId: sourceFile, citation, ruleName };
   }
   return null;
 }

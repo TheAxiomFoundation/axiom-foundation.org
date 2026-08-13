@@ -331,6 +331,44 @@ describe("readableLawTarget (#190 question nodes)", () => {
     ).toBeNull();
   });
 
+  it("covers null id, source homes, and unreadable consumers", () => {
+    expect(
+      readableLawTarget({
+        legalId: null,
+        ruleSource: null,
+        citation: null,
+        isQuestion: true,
+        consumers,
+      })
+    ).toBeNull();
+    // Synthesized package rule citing its statute via `source`.
+    expect(
+      readableLawTarget({
+        legalId: "axiom:us-package#snap_allotment",
+        ruleSource: "us:statutes/7/2017#a",
+        citation: "7 USC 2017(a)",
+        isQuestion: false,
+        consumers,
+      })
+    ).toEqual({
+      fileLegalId: "us:statutes/7/2017",
+      citation: "7 USC 2017(a)",
+      ruleName: "snap_allotment",
+    });
+    // Consumers in unreadable homes are skipped; none readable → null.
+    expect(
+      readableLawTarget({
+        legalId: "axiom:us-package#some_question",
+        ruleSource: null,
+        citation: null,
+        isQuestion: true,
+        consumers: [
+          { legalId: "axiom:us-package#composed_rule", source: null },
+        ],
+      })
+    ).toBeNull();
+  });
+
   it("borrowed citations produce a focused reader link", () => {
     const target = readableLawTarget({
       legalId: "axiom:us-package#legally_separated_under_decree",

@@ -29,6 +29,10 @@ const MODULES = [
   "us-ny:regulations/18-nycrr/387/14/a/5",
   "us-ak:policies/dpa/apa/standards/2026/state-supplement-payment-standard",
   "us-co:regulations/10-ccr-2506-1/4.110",
+  // CAPI: corpus holds MPP 49-025 as one flat provision (no child
+  // anchors), so its links are file-level by necessity — the sweep
+  // verifies they still render with the rule spotlighted.
+  "us-ca:regulations/cdss/eas/49/49-025",
 ];
 
 const base = process.env.SWEEP_BASE ?? "http://localhost:3000";

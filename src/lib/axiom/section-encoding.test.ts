@@ -310,6 +310,96 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
     );
   });
 
+  it("merges ancestor rules citing a deep path with the files below it", async () => {
+    // /us/statute/26/32/c: earned_income lives in 32/c/2.yaml below the
+    // path, eitc_qualifying_child cites 32(c)(3) from the section file
+    // above it. Both must reach the rail, each with the right anchor.
+    mirrorFromMock
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: `${SECTION}/c/2`,
+              file_path: "statutes/26/32/c/2.yaml",
+              raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
+            },
+          ],
+          error: null,
+        })
+      )
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: SECTION,
+              file_path: "statutes/26/32.yaml",
+              raw_yaml: [
+                ruleYaml("eitc_qualifying_child", "26 USC 32(c)(3)"),
+                "  - name: eitc_amount",
+                "    kind: derived",
+                "    source: 26 USC 32(a)",
+                "    versions:",
+                "      - effective_from: '2026-01-01'",
+                "        formula: 'x'",
+              ].join("\n"),
+            },
+          ],
+          error: null,
+        })
+      );
+
+    const result = await getSectionEncoding("rule-1", `${SECTION}/c`);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual([
+      "earned_income",
+      "eitc_qualifying_child",
+    ]);
+    expect(result.fileAnchors).toEqual({
+      earned_income: ["2"],
+      eitc_qualifying_child: ["3"],
+    });
+    expect(result.ruleFiles).toEqual({
+      earned_income: "statutes/26/32/c/2.yaml",
+      eitc_qualifying_child: "statutes/26/32.yaml",
+    });
+    // The rules join at the requested path, not the ancestor's.
+    expect(result.encodingRootPath).toBe(`${SECTION}/c`);
+  });
+
+  it("keeps serving a lone descendant directly when the ancestor has no citing rules", async () => {
+    mirrorFromMock
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: `${SECTION}/c/2`,
+              file_path: "statutes/26/32/c/2.yaml",
+              raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
+            },
+          ],
+          error: null,
+        })
+      )
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: SECTION,
+              file_path: "statutes/26/32.yaml",
+              raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+            },
+          ],
+          error: null,
+        })
+      );
+
+    const result = await getSectionEncoding("rule-1", `${SECTION}/c`);
+    expect(result.encoding?.encoding_run_id).toBe(
+      "github:statutes/26/32/c/2.yaml"
+    );
+    expect(result.fileAnchors).toEqual({ earned_income: ["2"] });
+  });
+
   it("falls through to the legacy path when no ancestor file exists", async () => {
     mirrorFromMock.mockReturnValue(mirrorChain({ data: [], error: null }));
     getRuleEncodingMock.mockResolvedValue(null);

@@ -8,7 +8,7 @@ import { SITE_URL } from "@/lib/urls";
 // revision — the iframe and every standalone link stay in lockstep so
 // caches can't serve a stale manuscript behind a fresh wrapper
 // (page.test.tsx enforces).
-const PAPER_VERSION = "r4-20260813";
+const PAPER_VERSION = "r5-20260813";
 const WEB_HREF = `/receipt/paper/web/index.html?v=${PAPER_VERSION}`;
 const PDF_HREF = `/receipt/paper/web/index.pdf?v=${PAPER_VERSION}`;
 
@@ -65,7 +65,7 @@ export default function ReceiptPaperPage() {
             below is the current manuscript snapshot.
           </p>
           <p className="mt-4 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            Revision 1 &middot; 2026-08-11 &middot; Max Ghenis, the Axiom
+            Revision 5 &middot; 2026-08-13 &middot; Max Ghenis, the Axiom
             Foundation
           </p>
         </Reveal>

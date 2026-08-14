@@ -8,7 +8,7 @@ import { SITE_URL } from "@/lib/urls";
 // revision — the iframe and every standalone link stay in lockstep so
 // caches can't serve a stale manuscript behind a fresh wrapper
 // (page.test.tsx enforces).
-const PAPER_VERSION = "r1-20260811";
+const PAPER_VERSION = "r4-20260813";
 const WEB_HREF = `/receipt/paper/web/index.html?v=${PAPER_VERSION}`;
 const PDF_HREF = `/receipt/paper/web/index.pdf?v=${PAPER_VERSION}`;
 

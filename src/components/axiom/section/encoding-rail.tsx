@@ -78,6 +78,7 @@ function RailSection({
  * section.
  */
 export function EncodingRail({
+  highlightRule = null,
   encoding,
   jurisdiction,
   citationPath,
@@ -89,6 +90,8 @@ export function EncodingRail({
   programs = [],
   ruleFiles = {},
 }: {
+  /** Rule the visitor navigated from — its card is spotlighted. */
+  highlightRule?: string | null;
   encoding: RuleEncodingData | null;
   jurisdiction: string;
   citationPath: string | null;
@@ -122,9 +125,14 @@ export function EncodingRail({
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
   const nodeMode = Boolean(activeChunk);
 
-  // Scope everything to the active subsection in follow mode.
+  // Scope everything to the active subsection in follow mode — but the
+  // navigated-from rule must never be scoped away.
   const nodeRules = activeChunk
-    ? encodedRules.filter((rule) => rule.anchors.includes(activeChunk.anchor))
+    ? encodedRules.filter(
+        (rule) =>
+          rule.anchors.includes(activeChunk.anchor) ||
+          rule.name === highlightRule
+      )
     : encodedRules;
   const nodeOutgoing = activeChunk
     ? (refsForChunk(outgoing, activeChunk.text) as InlineReference[])
@@ -175,6 +183,7 @@ export function EncodingRail({
           </h3>
           <RuleCardList
             rules={nodeRules}
+            highlightRule={highlightRule}
             citationLabel={citationPath ? formatCitationLabel(citationPath) : ""}
             detailFor={(ruleName) => ruleDetails.get(ruleName) ?? null}
             onExpand={() => {

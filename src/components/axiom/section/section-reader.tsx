@@ -582,7 +582,15 @@ function NeighborNav({ data }: { data: SectionPageData }) {
   );
 }
 
-export function SectionReader({ data }: { data: SectionPageData }) {
+export function SectionReader({
+  data,
+  highlightRule = null,
+}: {
+  data: SectionPageData;
+  /** Rule name the visitor navigated from (graph inspector's
+   *  Read-the-law) — the rail spotlights its card. */
+  highlightRule?: string | null;
+}) {
   const heading = data.root.heading?.trim();
   const effective = formatDate(data.root.effective_date);
   const outgoing = buildInlineReferences(
@@ -731,6 +739,7 @@ export function SectionReader({ data }: { data: SectionPageData }) {
           "prove faithfulness" pairing from the v1 detail panel. */}
       <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
         <EncodingRail
+          highlightRule={highlightRule}
           encoding={data.encoding}
           jurisdiction={data.root.jurisdiction}
           citationPath={data.root.citation_path}

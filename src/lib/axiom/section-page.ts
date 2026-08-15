@@ -725,10 +725,17 @@ export async function rulespecSourceCitationPath(
     if (error) return null;
     for (const row of data ?? []) {
       const yaml = (row as { raw_yaml: string | null }).raw_yaml;
-      const match = yaml?.match(
-        /corpus_citation_path:\s*["']?([\w./-]+)["']?/
+      if (!yaml) continue;
+      // The encoder emits both spellings: singular scalar
+      // (`corpus_citation_path: us/...`) and plural list
+      // (`corpus_citation_paths:` followed by `- us/...` items). Read
+      // the scalar, else the first list item.
+      const single = yaml.match(/corpus_citation_path:\s*["']?([\w./-]+)["']?/);
+      if (single?.[1]) return single[1];
+      const plural = yaml.match(
+        /corpus_citation_paths:\s*\n\s*-\s*["']?([\w./-]+)["']?/
       );
-      if (match?.[1]) return match[1];
+      if (plural?.[1]) return plural[1];
     }
   }
   return null;
@@ -759,6 +766,38 @@ export async function resolveSection(
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
+  if (root) {
+    // A childless deep leaf (…/26/21/c/1) is one item of an
+    // enumeration — its text reads as a fragment ("$3,000 …, or")
+    // without the parent's chapeau. When the parent is itself a
+    // body-bearing provision, render the parent focused on the leaf
+    // instead. Leaves with their own subtrees keep their page.
+    const leaf = ruleSegments[ruleSegments.length - 1] ?? "";
+    if (ruleSegments.length >= 4 && /^[a-z0-9]{1,4}$/i.test(leaf)) {
+      const probe = await getSubtreeProvisions(requestedPath);
+      if (probe.provisions.length > 0) {
+        prefetchedSubtree = probe;
+      } else {
+        const parentPath = [slug, ...ruleSegments.slice(0, -1)].join("/");
+        const parent = await getProvisionByCitationPath(parentPath).catch(
+          () => null
+        );
+        if (parent?.body) {
+          const parentSubtree = await getSubtreeProvisions(parentPath);
+          if (anchorExistsUnder(parent, parentPath, leaf, parentSubtree)) {
+            root = parent;
+            citationPath = parentPath;
+            focusAnchor = leaf;
+            prefetchedSubtree = parentSubtree;
+          } else {
+            prefetchedSubtree = probe;
+          }
+        } else {
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
   if (!root) {
     // Some sections are ingested subsection-granular with no section
     // row at all (42 USC 1396a: …/1396a/e/15 exists, …/1396a does
@@ -834,6 +873,14 @@ export async function resolveSection(
         const anchored = anchorExistsUnder(rule, candidate, anchor, subtree);
         if (!anchored && !rule.body) {
           return null;
+        }
+        if (!anchored && process.env.NODE_ENV !== "production") {
+          // #190: silent focus no-ops are undiagnosable — say which
+          // cited anchor found no home under the resolved section.
+          console.warn(
+            `[reader] focus anchor "${anchor}" (from ${requestedPath}) ` +
+              `not found under ${candidate} — rendering unfocused`
+          );
         }
         root = rule;
         citationPath = candidate;
@@ -924,17 +971,53 @@ export async function resolveSection(
  * it.
  */
 export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
+  return splitRootBodyAroundChildren(root, descendants).root;
+}
+
+/**
+ * Split a root body that repeats its descendants' text into the intro
+ * (chapeau before the first child) and the flush text after the LAST
+ * child — the trailing sentence enumerations often carry ("The amount
+ * determined under paragraph (1) or (2) … shall be reduced …"), which
+ * plain intro-trimming silently dropped.
+ */
+export function splitRootBodyAroundChildren(
+  root: Rule,
+  descendants: Rule[]
+): { root: Rule; flush: string | null } {
   const body = root.body;
-  if (!body) return root;
-  const firstChildBody = descendants
+  if (!body) return { root, flush: null };
+  const childBodies = descendants
     .map((rule) => rule.body?.trim() ?? "")
-    .find((text) => text.length >= 20);
-  if (!firstChildBody) return root;
+    .filter((text) => text.length >= 20);
+  const firstChildBody = childBodies[0];
+  if (!firstChildBody) return { root, flush: null };
   const needle = firstChildBody.slice(0, 60);
   const index = body.indexOf(needle);
-  if (index < 0) return root;
-  const intro = body.slice(0, index).trim();
-  return { ...root, body: intro.length > 0 ? intro : null };
+  if (index < 0) return { root, flush: null };
+  // Child rows store their text without the enumeration marker, so the
+  // kept chapeau would end with a dangling "(1)" — strip it.
+  const intro = body
+    .slice(0, index)
+    .trim()
+    .replace(/\(\s*[\w.]{1,4}\s*\)\s*$/, "")
+    .trim();
+
+  // Locate the end of the last child's text inside the root body; what
+  // follows is flush text belonging to the root, not to any child.
+  let flush: string | null = null;
+  const lastChildBody = childBodies[childBodies.length - 1]!;
+  const lastNeedle = lastChildBody.slice(0, 60);
+  const lastAt = body.lastIndexOf(lastNeedle);
+  if (lastAt >= 0) {
+    const tail = body.slice(lastAt + lastChildBody.length).trim();
+    if (tail.length >= 20) flush = tail;
+  }
+
+  return {
+    root: { ...root, body: intro.length > 0 ? intro : null },
+    flush,
+  };
 }
 
 export async function getSectionPageData(
@@ -1027,7 +1110,8 @@ export async function getSectionPageDataFromResolution(
   const encoding = sectionEncoding.encoding;
 
   const refBody = root.body;
-  root = dedupeRootBody(root, subtree.provisions);
+  const split = splitRootBodyAroundChildren(root, subtree.provisions);
+  root = split.root;
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -1036,6 +1120,16 @@ export async function getSectionPageDataFromResolution(
     designator: relativeDesignator(citationPath, rule.citation_path as string),
     relativeDepth: (rule.citation_path as string).split("/").length - rootDepth,
   }));
+  // Flush text after the last enumerated child belongs to the section,
+  // not to any child — render it at the end of the last child's block,
+  // where section-granular corpora place it.
+  if (split.flush && provisions.length > 0) {
+    const last = provisions[provisions.length - 1]!;
+    last.rule = {
+      ...last.rule,
+      body: [last.rule.body, split.flush].filter(Boolean).join("\n\n"),
+    };
+  }
 
   const [prev, next] = node
     ? await Promise.all([

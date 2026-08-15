@@ -354,6 +354,88 @@ describe("getSectionPageData", () => {
   });
 });
 
+describe("resolveSection childless-leaf lift", () => {
+  it("lifts an enumeration item to its bodied parent, focused", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) => {
+      if (path === "us/statute/26/21/c/1") {
+        return rule("us/statute/26/21/c/1", {
+          body: "$3,000 if there is 1 qualifying individual, or",
+        });
+      }
+      if (path === "us/statute/26/21/c") {
+        return rule("us/statute/26/21/c", {
+          body:
+            "The amount taken into account shall not exceed—\n\n" +
+            "(1) $3,000 if there is 1 qualifying individual, or\n\n" +
+            "(2) $6,000 if there are 2 or more.",
+        });
+      }
+      return null;
+    });
+    queueTables({
+      current_provisions: [
+        { data: [], error: null }, // leaf subtree probe: childless
+        { data: [], error: null }, // parent subtree
+      ],
+    });
+
+    const resolution = await resolveSection([
+      "us",
+      "statute",
+      "26",
+      "21",
+      "c",
+      "1",
+    ]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe("us/statute/26/21/c");
+    expect(resolution!.focusAnchor).toBe("1");
+  });
+
+  it("keeps a leaf that has its own subtree", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
+      path === "us-ny/regulation/18-nycrr/387/14/a/5"
+        ? rule("us-ny/regulation/18-nycrr/387/14/a/5", {
+            body: "(5) Categorical eligibility.",
+          })
+        : null
+    );
+    queueTables({
+      current_provisions: [
+        {
+          data: [rule("us-ny/regulation/18-nycrr/387/14/a/5/i")],
+          error: null,
+        },
+      ],
+    });
+
+    const resolution = await resolveSection([
+      "us-ny",
+      "regulation",
+      "18-nycrr",
+      "387",
+      "14",
+      "a",
+      "5",
+    ]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe(
+      "us-ny/regulation/18-nycrr/387/14/a/5"
+    );
+    expect(resolution!.focusAnchor).toBeNull();
+  });
+
+  it("keeps a section-granular exact hit untouched", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
+      path === "us/statute/26/32" ? rule("us/statute/26/32") : null
+    );
+    const resolution = await resolveSection(["us", "statute", "26", "32"]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe("us/statute/26/32");
+    expect(resolution!.focusAnchor).toBeNull();
+  });
+});
+
 describe("resolveSection policy-adjacent fallbacks (#191)", () => {
   it("crosswalks a policy path to its manual-classified corpus home", async () => {
     getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
@@ -460,6 +542,50 @@ describe("resolveSection policy-adjacent fallbacks (#191)", () => {
     expect(
       await resolveSection(["us-nc", "policy", "dhh-s", "glossary"])
     ).toBeNull();
+  });
+
+  it("reads the plural corpus_citation_paths list from the mirror", async () => {
+    getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
+      path === "us/guidance/irs/rev-proc-2025-32/page-14"
+        ? rule("us/guidance/irs/rev-proc-2025-32/page-14", {
+            doc_type: "guidance",
+          })
+        : null
+    );
+    encodingsFromMock.mockImplementation(() =>
+      chain({
+        data: [
+          {
+            raw_yaml: [
+              "module:",
+              "  source_verification:",
+              "    corpus_citation_paths:",
+              "      - us/guidance/irs/rev-proc-2025-32/page-14",
+              "      - us/guidance/irs/rev-proc-2025-32/page-15",
+            ].join("\n"),
+          },
+        ],
+        error: null,
+      })
+    );
+    queueTables({
+      current_provisions: Array.from({ length: 6 }, () => ({
+        data: [],
+        error: null,
+      })),
+    });
+
+    const resolution = await resolveSection([
+      "us",
+      "policy",
+      "irs",
+      "rev-proc-2025-32",
+      "earned-income-credit",
+    ]);
+    expect(resolution).not.toBeNull();
+    expect(resolution!.citationPath).toBe(
+      "us/guidance/irs/rev-proc-2025-32/page-14"
+    );
   });
 
   it("still 404s a policy path with no crosswalk, mirror, or corpus home", async () => {

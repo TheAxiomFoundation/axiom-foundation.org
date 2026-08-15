@@ -114,8 +114,7 @@ export default function ReceiptPage() {
               className="text-[var(--color-accent)] hover:underline"
             >
               API reference
-            </a>{" "}
-            · <code>receipt verify</code> lands with the corpus adoption
+            </a>
           </p>
         </Reveal>
 

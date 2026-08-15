@@ -5,14 +5,14 @@ import { SITE_URL } from "@/lib/urls";
 export const metadata: Metadata = {
   title: "receipt — verifiable custody of agent-produced records",
   description:
-    "A receipt is the record you keep so anyone can check it later. The receipt package writes them for agent-produced records — one offline verification command.",
+    "Anyone can verify, offline, that an agent-produced record was never changed, backdated, or deleted. One command over a clone; trust anchors live in the verifier's own code.",
   alternates: { canonical: `${SITE_URL}/receipt` },
   // Without a page-level block, shares inherit the root layout's
   // generic brand card; give the package its own title and description.
   openGraph: {
     title: "receipt — verifiable custody of agent-produced records",
     description:
-      "A receipt is the record you keep so anyone can check it later. The receipt package writes them for agent-produced records — one offline verification command.",
+      "Anyone can verify, offline, that an agent-produced record was never changed, backdated, or deleted. One command over a clone; trust anchors live in the verifier's own code.",
     url: `${SITE_URL}/receipt`,
   },
 };
@@ -79,12 +79,12 @@ export default function ReceiptPage() {
             Verifiable custody of agent-produced records
           </h1>
           <p className="font-body text-[1.2rem] leading-relaxed text-[var(--color-ink-secondary)] text-pretty">
-            A receipt is the record you keep so anyone can check it later.
-            Agents now produce records faster than any human can witness them —
-            forecasts, ledgers, encoded law. The receipt package writes
-            receipts for those records, and <code>receipt verify</code> is what
-            happens when someone asks to see them: a clone, commodity tools,
-            one offline, fail-closed verdict.
+            Agents produce records faster than any human can witness them —
+            encoded law, signed rule corpora, release histories. The receipt
+            package writes receipts for those records, and{" "}
+            <code>receipt verify</code> is what happens when someone asks to
+            see them: a clone, commodity tools, one offline, fail-closed
+            verdict.
           </p>
         </Reveal>
 
@@ -156,8 +156,9 @@ export default function ReceiptPage() {
           <h2 className="heading-section mb-3">Where it comes from</h2>
           <p className="font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
             The machinery arrives by extraction from three production systems
-            that each built it independently — pre-registered forecast records,
-            an observation-ledger release chain, and a signed statute corpus —
+            that each built it independently — a signed statute corpus,
+            pre-registered forecast records, and an observation-ledger release
+            chain —
             behind a byte-equivalence gate: the extracted verifier must
             reproduce the source verifier&apos;s verdict, pass and fail alike,
             on the live production chain before any system consumes the

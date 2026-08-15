@@ -235,6 +235,21 @@ describe("citationTailSegments (#190 tolerant matcher)", () => {
     ).toEqual(["a", "2", "A"]);
   });
 
+  it("does not match a section number inside a longer designator", () => {
+    expect(
+      citationTailSegments(
+        base("/us/statute/26/21"),
+        "26 USC 121(a), 21(b)"
+      )
+    ).toEqual(["b"]);
+    expect(
+      citationTailSegments(
+        base("/us/statute/26/21"),
+        "Tax year 2021(a); 26 USC 21(c)"
+      )
+    ).toEqual(["c"]);
+  });
+
   it("tolerates whitespace between groups and around designators", () => {
     expect(
       citationTailSegments(
@@ -268,6 +283,15 @@ describe("axiomAppUrlForCitation focus links (#190)", () => {
     expect(
       axiomAppUrlForCitation("us:statutes/26/21", "26 USC 21(a)(2)(A), 21(g)(3)")
     ).toBe("/us/statute/26/21/a/2/A");
+  });
+
+  it("focuses the bounded section when a longer section is cited first", () => {
+    expect(
+      axiomAppUrlForCitation(
+        "us:statutes/26/21",
+        "26 USC 121(a), 21(b)"
+      )
+    ).toBe("/us/statute/26/21/b");
   });
 
   it("still dedupes overlap with an already-deep file id", () => {

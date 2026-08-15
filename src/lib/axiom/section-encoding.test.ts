@@ -366,6 +366,46 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
     expect(result.encodingRootPath).toBe(`${SECTION}/c`);
   });
 
+  it("merges dotted CFR ancestor citations with deep descendant files", async () => {
+    const regulation = "us/regulation/7/273/9";
+    mirrorFromMock
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: `${regulation}/d/6/iii`,
+              file_path: "regulations/7-cfr/273/9/d/6/iii.yaml",
+              raw_yaml: ruleYaml("homeless_shelter", "7 CFR 273.9(d)(6)(iii)"),
+            },
+          ],
+          error: null,
+        })
+      )
+      .mockReturnValueOnce(
+        mirrorChain({
+          data: [
+            {
+              citation_path: regulation,
+              file_path: "regulations/7-cfr/273/9.yaml",
+              raw_yaml: ruleYaml("standard_deduction", "7 CFR 273.9(d)(1)"),
+            },
+          ],
+          error: null,
+        })
+      );
+
+    const result = await getSectionEncoding("rule-1", `${regulation}/d`);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual([
+      "homeless_shelter",
+      "standard_deduction",
+    ]);
+    expect(result.fileAnchors).toEqual({
+      homeless_shelter: ["6"],
+      standard_deduction: ["1"],
+    });
+  });
+
   it("keeps serving a lone descendant directly when the ancestor has no citing rules", async () => {
     mirrorFromMock
       .mockReturnValueOnce(

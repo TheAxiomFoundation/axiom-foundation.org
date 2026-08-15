@@ -328,6 +328,15 @@ export function citationTailSegments(
       const at = citation.indexOf(segment, from);
       if (at < 0) break;
       const after = at + segment.length;
+      // A section designator must start at a token boundary. Without
+      // this guard section "21" binds to the tail of "121(a)" or
+      // "2021(a)" before reaching the citation's actual "21(b)".
+      // Dots and dashes are legal separators ("273.10", "48-7A-3"),
+      // so only a preceding word character disqualifies the match.
+      if (at > 0 && /\w/.test(citation[at - 1]!)) {
+        from = after;
+        continue;
+      }
       const parenAt = citation.slice(after).match(/^\s*\(/);
       if (parenAt) {
         run.lastIndex = after + (parenAt[0].length - 1);

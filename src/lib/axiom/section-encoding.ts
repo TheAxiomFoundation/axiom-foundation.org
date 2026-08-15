@@ -186,9 +186,11 @@ function assembleSection(
       .map((segment) => segment.toLowerCase());
     const section = ancestor.citationPath.split("/").at(-1) ?? "";
     // Lookbehind keeps a short section number ("7") from matching
-    // inside a longer one ("2017(a)").
+    // inside a longer one ("2017(a)"). Dots and dashes must remain
+    // valid separators: regulation paths split "273/10", while their
+    // source citations spell the section "273.10(e)".
     const chainRe = new RegExp(
-      `(?<![\\w.-])${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
+      `(?<!\\w)${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
       "g"
     );
     for (const rule of parseRuleSpec(ancestor.content).rules) {

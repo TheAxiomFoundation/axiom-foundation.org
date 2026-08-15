@@ -2863,7 +2863,14 @@ export function GraphViewerApp({
             // has no home in the law (it lives in the synthetic package
             // file), so read the provision that asks it — the first
             // consumer rule housed in a statutes/regulations file.
+            // Only a citation that came from the node's own `source`
+            // is curated. The canvas also sets meta.citation to the
+            // humanized FILE id as a display fallback — steering
+            // Read-the-law by that would send every question to its
+            // file head, unfocused (the #190 "no question focuses"
+            // regression).
             const curatedCitation =
+              meta?.citationFromSource &&
               typeof meta?.citation === "string" &&
               !meta.citation.startsWith("axiom:")
                 ? meta.citation
@@ -3618,13 +3625,16 @@ function buildStructureTraces(
 
     const input = inputsById.get(legalId);
     if (input) {
+      // No `source`: a question has no legal citation of its own —
+      // homeFile covers the display fallback, and a fake source here
+      // would masquerade as a curated citation in Read-the-law
+      // targeting (the "no question focuses" regression).
       const trace: TraceNode = {
         legalId: input.legalId,
         label: input.name,
         value: scalarSample(input.sample),
         dtype: "input",
         inputSource: "default",
-        source: input.fileLegalId,
         homeFile: input.fileLegalId,
         children: [],
       };
@@ -3640,7 +3650,6 @@ function buildStructureTraces(
         value: null,
         dtype: "input",
         inputSource: "default",
-        source: relation.fileLegalId,
         homeFile: relation.fileLegalId,
         children: [],
       };

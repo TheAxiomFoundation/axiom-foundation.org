@@ -730,7 +730,11 @@ export async function rulespecSourceCitationPath(
       // (`corpus_citation_path: us/...`) and plural list
       // (`corpus_citation_paths:` followed by `- us/...` items). Read
       // the scalar, else the first list item.
-      const single = yaml.match(/corpus_citation_path:\s*["']?([\w./-]+)["']?/);
+      // Same-line value only: an empty scalar followed by another key
+      // must not capture the next line's token as a path.
+      const single = yaml.match(
+        /corpus_citation_path:[ \t]*["']?([\w./-]+)["']?/
+      );
       if (single?.[1]) return single[1];
       const plural = yaml.match(
         /corpus_citation_paths:\s*\n\s*-\s*["']?([\w./-]+)["']?/

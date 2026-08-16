@@ -354,9 +354,18 @@ function parenGroups(rawRun: string): string[] | null {
   const segments = [...rawRun.matchAll(/\(\s*([^()]+?)\s*\)/g)].map(
     (m) => m[1]!,
   );
-  if (segments.length === 0) return null;
-  return segments.every((segment) => /^[\w.-]+$/.test(segment))
-    ? segments
+  // Humanized citations append a proper-noun jurisdiction suffix —
+  // "4.207.3(a) (Colorado)" — which is not a subsection designator.
+  // Designators are short case-runs ("iv", "A", "aa", "12"), never
+  // capitalized words, so cut the run at the first proper noun.
+  const properNoun = segments.findIndex((segment) =>
+    /^[A-Z][a-z]{2,}$/.test(segment),
+  );
+  const designators =
+    properNoun >= 0 ? segments.slice(0, properNoun) : segments;
+  if (designators.length === 0) return null;
+  return designators.every((segment) => /^[\w.-]+$/.test(segment))
+    ? designators
     : null;
 }
 

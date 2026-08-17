@@ -82,20 +82,38 @@ export function SubtreeSearch({
     const trimmed = query.trim().toLowerCase();
     if (!trimmed) return [];
     const tokens = trimmed.split(/\s+/);
-    // Name matches outrank path-only matches: "social security" should
-    // surface §86 (headline "Social Security Benefits…") above state
-    // policies that merely contain social-security in their file path.
-    const named: typeof entries = [];
-    const pathOnly: typeof entries = [];
+    // Ranked in three tiers: a hit in the module's NAME (headline
+    // rule) beats a hit in its citation, which beats a hit that only
+    // lives in the raw file path — "social security" surfaces §86
+    // ("Social Security Benefits Included In Gross Income") above
+    // state documents merely titled or filed under those words.
+    const byHeadline: typeof entries = [];
+    const byCitation: typeof entries = [];
+    const byPath: typeof entries = [];
     for (const entry of entries) {
       if (!tokens.every((token) => entry.haystack.includes(token))) continue;
-      const name = `${entry.label} ${entry.citation}`.toLowerCase();
-      (tokens.every((token) => name.includes(token)) ? named : pathOnly).push(
-        entry,
-      );
-      if (named.length >= MAX_RESULTS) break;
+      const headline =
+        entry.label === entry.citation ? "" : entry.label.toLowerCase();
+      const citation = entry.citation.toLowerCase();
+      if (headline && tokens.every((token) => headline.includes(token))) {
+        byHeadline.push(entry);
+      } else if (tokens.every((token) => citation.includes(token))) {
+        byCitation.push(entry);
+      } else {
+        byPath.push(entry);
+      }
+      if (byHeadline.length >= MAX_RESULTS) break;
     }
-    return [...named, ...pathOnly].slice(0, MAX_RESULTS);
+    // Within a tier, substantial modules first — the 26-rule §86
+    // encoding is a better "social security" answer than a 2-rule
+    // side definition that happens to share the words.
+    const bySize = (a: (typeof entries)[number], b: (typeof entries)[number]) =>
+      b.module.ruleCount - a.module.ruleCount;
+    return [
+      ...byHeadline.sort(bySize),
+      ...byCitation.sort(bySize),
+      ...byPath.sort(bySize),
+    ].slice(0, MAX_RESULTS);
   }, [entries, query]);
 
   const searching = query.trim().length > 0;

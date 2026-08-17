@@ -544,6 +544,42 @@ describe("resolveSection policy-adjacent fallbacks (#191)", () => {
     ).toBeNull();
   });
 
+  it("ignores an empty corpus_citation_path scalar instead of eating the next line", async () => {
+    encodingsFromMock.mockImplementation(() =>
+      chain({
+        data: [
+          {
+            raw_yaml: [
+              "module:",
+              "  source_verification:",
+              "    corpus_citation_path:",
+              "    verified_by: someone/else",
+            ].join("\n"),
+          },
+        ],
+        error: null,
+      })
+    );
+    getProvisionByCitationPathMock.mockResolvedValue(null);
+    queueTables({
+      current_provisions: Array.from({ length: 12 }, () => ({
+        data: [],
+        error: null,
+      })),
+    });
+
+    const resolution = await resolveSection([
+      "us",
+      "policy",
+      "irs",
+      "rev-proc-2025-32",
+      "earned-income-credit",
+    ]);
+    // No path extracted → the mirror rung yields nothing and the
+    // ladder exhausts to a 404 rather than resolving "verified_by".
+    expect(resolution).toBeNull();
+  });
+
   it("reads the plural corpus_citation_paths list from the mirror", async () => {
     getProvisionByCitationPathMock.mockImplementation(async (path: string) =>
       path === "us/guidance/irs/rev-proc-2025-32/page-14"

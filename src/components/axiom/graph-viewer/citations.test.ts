@@ -38,6 +38,23 @@ describe("axiomAppUrlForCitation", () => {
     );
   });
 
+  it("drops the humanized jurisdiction suffix from citation tails", () => {
+    // meta.citation for state rules is humanized with a proper-noun
+    // suffix — "(Colorado)" must never become a URL segment.
+    expect(
+      axiomAppUrlForCitation(
+        "us-co:regulations/10-ccr-2506-1/4.207.3",
+        "10 CCR 2506-1 § 4.207.3 (Colorado)"
+      )
+    ).toBe("/us-co/regulation/10-ccr-2506-1/4.207.3");
+    expect(
+      axiomAppUrlForCitation(
+        "us-co:regulations/10-ccr-2506-1/4.207",
+        "10 CCR 2506-1 § 4.207(a) (Colorado)"
+      )
+    ).toBe("/us-co/regulation/10-ccr-2506-1/4.207/a");
+  });
+
   it("ignores URL-hostile or interior parentheticals", () => {
     expect(
       axiomAppUrlForCitation("us:statutes/26/21", "26 USC 21 (as amended) text"),

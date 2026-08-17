@@ -58,11 +58,21 @@ export function SubtreeSearch({
   const entries = useMemo(
     () =>
       modules.map((module) => {
-        const label = humanizeCitation(module.target);
+        const citation = humanizeCitation(module.target);
+        // The headline rule is how people actually name a module
+        // ("Net Investment Income Tax", "Social Security Benefits
+        // Included In Gross Income") — a citation-only haystack made
+        // federal statutes unfindable by policy name (their citations
+        // are just numbers).
+        const headline = module.headlineRule
+          ? humanizeRuleName(module.headlineRule)
+          : null;
         return {
           module,
-          label,
-          haystack: `${label} ${module.target}`.toLowerCase(),
+          label: headline ?? citation,
+          citation,
+          haystack:
+            `${headline ?? ""} ${citation} ${module.target}`.toLowerCase(),
         };
       }),
     [modules],
@@ -72,14 +82,20 @@ export function SubtreeSearch({
     const trimmed = query.trim().toLowerCase();
     if (!trimmed) return [];
     const tokens = trimmed.split(/\s+/);
-    const hits: typeof entries = [];
+    // Name matches outrank path-only matches: "social security" should
+    // surface §86 (headline "Social Security Benefits…") above state
+    // policies that merely contain social-security in their file path.
+    const named: typeof entries = [];
+    const pathOnly: typeof entries = [];
     for (const entry of entries) {
-      if (tokens.every((token) => entry.haystack.includes(token))) {
-        hits.push(entry);
-        if (hits.length >= MAX_RESULTS) break;
-      }
+      if (!tokens.every((token) => entry.haystack.includes(token))) continue;
+      const name = `${entry.label} ${entry.citation}`.toLowerCase();
+      (tokens.every((token) => name.includes(token)) ? named : pathOnly).push(
+        entry,
+      );
+      if (named.length >= MAX_RESULTS) break;
     }
-    return hits;
+    return [...named, ...pathOnly].slice(0, MAX_RESULTS);
   }, [entries, query]);
 
   const searching = query.trim().length > 0;
@@ -111,7 +127,9 @@ export function SubtreeSearch({
             >
               <strong>{entry.label}</strong>
               <span className="picker-result-target">
-                {entry.module.target}
+                {entry.label === entry.citation
+                  ? entry.module.target
+                  : entry.citation}
                 {entry.module.ruleCount > 0
                   ? ` · ${entry.module.ruleCount} rules`
                   : ""}

@@ -19,6 +19,10 @@ a.text-white:hover {
 }
 @import "../lib/prism-catala/light.css";
 @import "@axiom-foundation/ui/tokens.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ── Mobile: prevent horizontal page scroll ──
    The shared tokens set `overflow-x: hidden` on <body>, and this rule
@@ -145,8 +149,6 @@ canvas[aria-hidden] {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
-
-
 
 /* ── /coverage hero: the platform stack — three isometric layers
    from source documents down to machine-readable encodings. Hover a
@@ -584,7 +586,6 @@ canvas[aria-hidden] {
   display: none;
 }
 
-
 /* ── Landing "what it powers": live demo previews inside the use-case
    cards — the demo-shell gallery's scaled-iframe thumb, inlined. The
    iframe renders the real app at full width and scales down; clicks
@@ -911,4 +912,55 @@ body:has(.embed-page) {
 /* no travel inside the popup: hide the prev/next section pager */
 .embed-page nav[aria-label="Adjacent sections"] {
   display: none !important;
+}
+
+/* ── shadcn/ui semantic tokens, mapped onto the Axiom palette ──
+   shadcn components consume these (bg-card, text-muted-foreground, …).
+   Values come from the site's own design tokens so the primitives render
+   in the statute-paper skin. Deliberately NOT mapped: --color-accent /
+   --color-accent-foreground — the site's @theme already owns those names
+   for the brand amber, and shadcn's "accent" (a hover tint) would clobber
+   them site-wide. Components that used accent utilities are patched to
+   Axiom vars instead. Light-only: the site has no dark mode. */
+@theme inline {
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --background: #faf9f6;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #92400e;
+  --primary-foreground: #faf9f6;
+  --secondary: #f5f5f4;
+  --secondary-foreground: #1c1917;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --destructive: #991b1b;
+  --border: #e7e5e4;
+  --input: #78716c;
+  --ring: #92400e;
+  --radius: 0.25rem;
 }

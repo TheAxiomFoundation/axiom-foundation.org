@@ -740,6 +740,10 @@ interface NodeMeta {
   kindLine: string;
   /** Humanized citation, e.g. "10 CCR 2506-1 § 4.207.3 (Colorado)". */
   citation?: string;
+  /** True when `citation` came from the node's own `source` field, not
+   *  the file-id display fallback. Only sourced citations may steer
+   *  Read-the-law targeting — the fallback is presentation, not law. */
+  citationFromSource?: boolean;
   /** URL of the rule's primary legal source — when present, the citation
    *  renders as a link to it. */
   sourceUrl?: string | null;
@@ -2714,6 +2718,7 @@ function buildParameterMeta(p: ParameterRule): NodeMeta {
   return {
     kindLine: `Parameter${dtypeText}${p.unit ? ` · ${p.unit}` : ""}`,
     citation,
+    citationFromSource: Boolean(p.source),
     sourceUrl: p.sourceUrl ?? null,
     legalId: p.legalId,
     appUrl,
@@ -2744,6 +2749,10 @@ function buildMeta(t: TraceNode, kind: "Output" | "Input" | "Rule" | "Parameter"
   return {
     kindLine: `${friendly}${dtypeText}`,
     citation,
+    // A bare colon-form legal id in `source` (runtime traces stuff the
+    // home file there for input leaves) is an address, not a citation.
+    citationFromSource:
+      Boolean(t.source) && !/^[a-z]{2}(-[a-z0-9]+)?:/.test(t.source ?? ""),
     sourceUrl: t.sourceUrl ?? null,
     legalId: t.legalId,
     appUrl,

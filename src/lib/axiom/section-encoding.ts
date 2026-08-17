@@ -112,6 +112,10 @@ function baseEncoding(
   };
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function mergedContent(
   citationPath: string,
   ruleRaws: Record<string, unknown>[]
@@ -135,7 +139,8 @@ function assembleSection(
   citationPath: string,
   sectionFile: SectionFile | null,
   descendants: SectionFile[],
-  primaryMeta: RuleEncodingData | null
+  primaryMeta: RuleEncodingData | null,
+  ancestor: SectionFile | null = null
 ): SectionEncoding {
   const seenNames = new Set<string>();
   const ruleRaws: Record<string, unknown>[] = [];
@@ -168,6 +173,57 @@ function assembleSection(
     }
   }
 
+  // A deep path's rules can be split between files below it and the
+  // nearest ancestor module: …/32/c has earned-income in 32/c/2.yaml
+  // while eitc_qualifying_child cites 32(c)(3) from 32.yaml. Merge the
+  // ancestor's rules whose source citations reach this path, anchoring
+  // each to the citation's next segment below it.
+  let ancestorRuleCount = 0;
+  if (ancestor && citationPath.startsWith(`${ancestor.citationPath}/`)) {
+    const rel = citationPath
+      .slice(ancestor.citationPath.length + 1)
+      .split("/")
+      .map((segment) => segment.toLowerCase());
+    const section = ancestor.citationPath.split("/").at(-1) ?? "";
+    // Lookbehind keeps a short section number ("7") from matching
+    // inside a longer one ("2017(a)"). Dots and dashes must remain
+    // valid separators: regulation paths split "273/10", while their
+    // source citations spell the section "273.10(e)".
+    const chainRe = new RegExp(
+      `(?<!\\w)${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
+      "g"
+    );
+    for (const rule of parseRuleSpec(ancestor.content).rules) {
+      const source = rule.source ?? "";
+      let cited = false;
+      const anchors = new Set<string>();
+      for (const match of source.matchAll(chainRe)) {
+        const segments = Array.from(
+          match[1].matchAll(/\(([A-Za-z0-9]{1,4})\)/g),
+          (seg) => seg[1]
+        );
+        const lower = segments.map((segment) => segment.toLowerCase());
+        const within =
+          lower.length >= rel.length &&
+          rel.every((segment, index) => lower[index] === segment);
+        if (!within) continue;
+        cited = true;
+        const next = segments[rel.length];
+        if (next) anchors.add(next);
+      }
+      if (!cited) continue;
+      ruleFiles[rule.name] ??= ancestor.filePath;
+      for (const anchor of anchors) {
+        const list = (fileAnchors[rule.name] ??= []);
+        if (!list.includes(anchor)) list.push(anchor);
+      }
+      if (seenNames.has(rule.name)) continue;
+      seenNames.add(rule.name);
+      ruleRaws.push(rule.raw);
+      ancestorRuleCount++;
+    }
+  }
+
   // Single-file sections need no synthetic doc — serve the file
   // directly so file_path (GitHub link, sibling tests) stays real.
   if (sectionFile && descendantRuleCount === 0) {
@@ -185,7 +241,7 @@ function assembleSection(
       ruleFiles,
     };
   }
-  if (!sectionFile && descendants.length === 1) {
+  if (!sectionFile && descendants.length === 1 && ancestorRuleCount === 0) {
     const only = descendants[0];
     return {
       encodingRootPath: citationPath,
@@ -321,7 +377,11 @@ export async function getSectionEncoding(
     const descendants = mirror.filter(
       (file) => file.citationPath !== citationPath
     );
-    return assembleSection(citationPath, sectionFile, descendants, null);
+    // No exact file at this path means it may be a deep page whose
+    // remaining rules live in an ancestor module — probe for it so
+    // subsection-granular files don't shadow the section file's rules.
+    const ancestor = sectionFile ? null : await findAncestorFile(citationPath);
+    return assembleSection(citationPath, sectionFile, descendants, null, ancestor);
   }
   // Nothing at or below the request: the request may be DEEPER than
   // the encoded file. Serve the nearest ancestor module; the page

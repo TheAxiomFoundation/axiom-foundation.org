@@ -16,12 +16,6 @@ import { isGitHubEncoding } from "@/lib/axiom-utils";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 import { useMemo } from "react";
 import yaml from "js-yaml";
-import { primaryProgram } from "./primary-program";
-import {
-  composeGraphViewerUrl,
-  graphViewerUrl,
-  ruleGraphFocus,
-} from "@/lib/axiom/runtime/graph-links";
 import { ReferencesPanel } from "@/components/axiom/references-panel";
 import { useActiveAnchor } from "./use-active-anchor";
 
@@ -84,6 +78,7 @@ function RailSection({
  * section.
  */
 export function EncodingRail({
+  highlightRule = null,
   encoding,
   jurisdiction,
   citationPath,
@@ -95,6 +90,8 @@ export function EncodingRail({
   programs = [],
   ruleFiles = {},
 }: {
+  /** Rule the visitor navigated from — its card is spotlighted. */
+  highlightRule?: string | null;
   encoding: RuleEncodingData | null;
   jurisdiction: string;
   citationPath: string | null;
@@ -128,9 +125,14 @@ export function EncodingRail({
   const activeChunk = chunks.find((chunk) => chunk.anchor === active);
   const nodeMode = Boolean(activeChunk);
 
-  // Scope everything to the active subsection in follow mode.
+  // Scope everything to the active subsection in follow mode — but the
+  // navigated-from rule must never be scoped away.
   const nodeRules = activeChunk
-    ? encodedRules.filter((rule) => rule.anchors.includes(activeChunk.anchor))
+    ? encodedRules.filter(
+        (rule) =>
+          rule.anchors.includes(activeChunk.anchor) ||
+          rule.name === highlightRule
+      )
     : encodedRules;
   const nodeOutgoing = activeChunk
     ? (refsForChunk(outgoing, activeChunk.text) as InlineReference[])
@@ -181,6 +183,7 @@ export function EncodingRail({
           </h3>
           <RuleCardList
             rules={nodeRules}
+            highlightRule={highlightRule}
             citationLabel={citationPath ? formatCitationLabel(citationPath) : ""}
             detailFor={(ruleName) => ruleDetails.get(ruleName) ?? null}
             onExpand={() => {
@@ -189,16 +192,6 @@ export function EncodingRail({
                 citation_path: citationPath,
                 source: isGitHubEncoding(encoding) ? "github" : "encoding_run",
               });
-            }}
-            hrefFor={(ruleName) => {
-              const slug = citationPath?.split("/")[0] ?? null;
-              const filePath = ruleFiles[ruleName];
-              if (!slug || !filePath) return null;
-              const focus = ruleGraphFocus(slug, filePath, ruleName);
-              const program = primaryProgram(programs);
-              return program
-                ? graphViewerUrl(program, focus)
-                : composeGraphViewerUrl(focus);
             }}
           />
         </section>

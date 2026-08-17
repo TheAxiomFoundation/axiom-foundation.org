@@ -14,6 +14,7 @@ import {
   humanizeCitation,
   humanizeRuleName,
   humanizeSource,
+  readableLawTarget,
 } from "./citations";
 import { InspectorMiniGraph } from "./inspector-mini-graph";
 import {
@@ -2862,44 +2863,32 @@ export function GraphViewerApp({
             // has no home in the law (it lives in the synthetic package
             // file), so read the provision that asks it — the first
             // consumer rule housed in a statutes/regulations file.
-            const lawFileLegalId = (() => {
-              if (!legalId) return null;
-              const own = fileLegalIdOf(legalId);
-              if (/:(statutes|regulations|manual)\//.test(own)) return own;
-              // Synthesized package rules cite their statute in
-              // `source` as a raw legal id — that IS the law to read.
-              const source = rule?.source;
-              if (
-                source &&
-                /^[a-z]{2}(?:-[a-z]{2})?:(statutes|regulations|manual)\//.test(
-                  source,
-                )
-              ) {
-                return source.split("#")[0] ?? null;
-              }
-              // Only questions borrow a consumer's provision — they
-              // have no home in the law, so the section that asks them
-              // is the honest read. A RULE with an unreadable home (a
-              // policy file the corpus text doesn't carry) must never
-              // point at a consumer's law: that provision does not
-              // contain it.
-              if (!rule) {
-                for (const consumer of consumers) {
-                  const file = fileLegalIdOf(consumer.legalId);
-                  if (/:(statutes|regulations|manual)\//.test(file)) {
-                    return file;
-                  }
-                }
-              }
-              return null;
-            })();
+            // Only a citation that came from the node's own `source`
+            // is curated. The canvas also sets meta.citation to the
+            // humanized FILE id as a display fallback — steering
+            // Read-the-law by that would send every question to its
+            // file head, unfocused (the #190 "no question focuses"
+            // regression).
+            const curatedCitation =
+              meta?.citationFromSource &&
+              typeof meta?.citation === "string" &&
+              !meta.citation.startsWith("axiom:")
+                ? meta.citation
+                : null;
+            const lawTarget = readableLawTarget({
+              legalId,
+              ruleSource: rule?.source ?? null,
+              citation: citation ? rawCitation : null,
+              curatedCitation,
+              isQuestion: !rule,
+              consumers,
+            });
             // The read link carries the cited subsection — the reader
-            // focuses it and clamps the rest of the section.
-            const lawHref = lawFileLegalId
-              ? axiomAppUrlForCitation(
-                  lawFileLegalId,
-                  citation ? rawCitation : null,
-                )
+            // focuses it and clamps the rest of the section. For a
+            // question the citation and spotlight rule come from the
+            // consumer whose provision asks it.
+            const lawHref = lawTarget
+              ? axiomAppUrlForCitation(lawTarget.fileLegalId, lawTarget.citation)
               : null;
             return (
           <aside className="node-inspector" aria-label="Node details">
@@ -3322,6 +3311,11 @@ export function GraphViewerApp({
                   // when the resolved row is just an ancestor of the
                   // cited path, keep the deep path: the reader resolves
                   // it itself and focuses the cited subsection.
+                  // Carry the rule's identity so the reader can spotlight
+                  // the card you came from in its encodings rail.
+                  const ruleParam = lawTarget?.ruleName
+                    ? `&rule=${encodeURIComponent(lawTarget.ruleName)}`
+                    : "";
                   void fetch(`/api/axiom/resolve${lawHref}`)
                     .then((response) =>
                       response.ok ? response.json() : null,
@@ -3330,9 +3324,11 @@ export function GraphViewerApp({
                       const href = resolved?.href ?? null;
                       const target =
                         href && !lawHref.startsWith(href) ? href : lawHref;
-                      setLawPopup(`${target}?embed=1`);
+                      setLawPopup(`${target}?embed=1${ruleParam}`);
                     })
-                    .catch(() => setLawPopup(`${lawHref}?embed=1`));
+                    .catch(() =>
+                      setLawPopup(`${lawHref}?embed=1${ruleParam}`),
+                    );
                 }}
               >
                 Read the law →
@@ -3629,13 +3625,16 @@ function buildStructureTraces(
 
     const input = inputsById.get(legalId);
     if (input) {
+      // No `source`: a question has no legal citation of its own —
+      // homeFile covers the display fallback, and a fake source here
+      // would masquerade as a curated citation in Read-the-law
+      // targeting (the "no question focuses" regression).
       const trace: TraceNode = {
         legalId: input.legalId,
         label: input.name,
         value: scalarSample(input.sample),
         dtype: "input",
         inputSource: "default",
-        source: input.fileLegalId,
         homeFile: input.fileLegalId,
         children: [],
       };
@@ -3651,7 +3650,6 @@ function buildStructureTraces(
         value: null,
         dtype: "input",
         inputSource: "default",
-        source: relation.fileLegalId,
         homeFile: relation.fileLegalId,
         children: [],
       };

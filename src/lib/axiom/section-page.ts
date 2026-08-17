@@ -1,5 +1,6 @@
 import {
   supabaseCorpus,
+  supabaseEncodings,
   getRuleReferences,
   type Rule,
   type RuleReference,
@@ -609,6 +610,10 @@ async function getNavigationNode(
 export interface SectionResolution {
   root: Rule;
   citationPath: string;
+  /** The path the URL actually asked for, before any fallback rewrote
+   *  it. When it differs from citationPath (doc-type crosswalk, mirror
+   *  source lookup), encodings may still be keyed by it. */
+  requestedPath: string;
   focusAnchor: string | null;
   /** True when no corpus row exists at the path itself and the root
    *  was synthesized over descendant rows — the signal that the path
@@ -686,6 +691,56 @@ export function joinedSegmentPaths(
   return paths;
 }
 
+/** Document classes the corpus files interchangeably for policy-adjacent
+ *  material. An encoding under policies/ may live in the corpus as
+ *  manual/ or guidance/ — same document, different classification. */
+const DOC_TYPE_SIBLINGS: Record<string, string[]> = {
+  policy: ["manual", "guidance"],
+  manual: ["policy", "guidance"],
+  guidance: ["policy", "manual"],
+};
+
+export function docTypeCrosswalk(docType: string | undefined): string[] {
+  return docType ? (DOC_TYPE_SIBLINGS[docType] ?? []) : [];
+}
+
+/**
+ * The corpus home an encoding module attests for itself:
+ * `module.source_verification.corpus_citation_path` from the rulespec
+ * mirror. Looked up by the reader path (mirror rows are keyed by the
+ * file's citation path); subsection tails are trimmed until a row
+ * matches, since page-structured sources can't anchor subsections.
+ */
+export async function rulespecSourceCitationPath(
+  slug: string,
+  ruleSegments: string[]
+): Promise<string | null> {
+  for (let end = ruleSegments.length; end >= 3; end--) {
+    const candidate = [slug, ...ruleSegments.slice(0, end)].join("/");
+    const { data, error } = await supabaseEncodings
+      .from("rulespec_files")
+      .select("raw_yaml")
+      .eq("citation_path", candidate)
+      .limit(3);
+    if (error) return null;
+    for (const row of data ?? []) {
+      const yaml = (row as { raw_yaml: string | null }).raw_yaml;
+      if (!yaml) continue;
+      // The encoder emits both spellings: singular scalar
+      // (`corpus_citation_path: us/...`) and plural list
+      // (`corpus_citation_paths:` followed by `- us/...` items). Read
+      // the scalar, else the first list item.
+      const single = yaml.match(/corpus_citation_path:\s*["']?([\w./-]+)["']?/);
+      if (single?.[1]) return single[1];
+      const plural = yaml.match(
+        /corpus_citation_paths:\s*\n\s*-\s*["']?([\w./-]+)["']?/
+      );
+      if (plural?.[1]) return plural[1];
+    }
+  }
+  return null;
+}
+
 export async function resolveSection(
   segments: string[]
 ): Promise<SectionResolution | null> {
@@ -711,6 +766,38 @@ export async function resolveSection(
   let prefetchedSubtree: Awaited<
     ReturnType<typeof getSubtreeProvisions>
   > | null = null;
+  if (root) {
+    // A childless deep leaf (…/26/21/c/1) is one item of an
+    // enumeration — its text reads as a fragment ("$3,000 …, or")
+    // without the parent's chapeau. When the parent is itself a
+    // body-bearing provision, render the parent focused on the leaf
+    // instead. Leaves with their own subtrees keep their page.
+    const leaf = ruleSegments[ruleSegments.length - 1] ?? "";
+    if (ruleSegments.length >= 4 && /^[a-z0-9]{1,4}$/i.test(leaf)) {
+      const probe = await getSubtreeProvisions(requestedPath);
+      if (probe.provisions.length > 0) {
+        prefetchedSubtree = probe;
+      } else {
+        const parentPath = [slug, ...ruleSegments.slice(0, -1)].join("/");
+        const parent = await getProvisionByCitationPath(parentPath).catch(
+          () => null
+        );
+        if (parent?.body) {
+          const parentSubtree = await getSubtreeProvisions(parentPath);
+          if (anchorExistsUnder(parent, parentPath, leaf, parentSubtree)) {
+            root = parent;
+            citationPath = parentPath;
+            focusAnchor = leaf;
+            prefetchedSubtree = parentSubtree;
+          } else {
+            prefetchedSubtree = probe;
+          }
+        } else {
+          prefetchedSubtree = probe;
+        }
+      }
+    }
+  }
   if (!root) {
     // Some sections are ingested subsection-granular with no section
     // row at all (42 USC 1396a: …/1396a/e/15 exists, …/1396a does
@@ -787,11 +874,74 @@ export async function resolveSection(
         if (!anchored && !rule.body) {
           return null;
         }
+        if (!anchored && process.env.NODE_ENV !== "production") {
+          // #190: silent focus no-ops are undiagnosable — say which
+          // cited anchor found no home under the resolved section.
+          console.warn(
+            `[reader] focus anchor "${anchor}" (from ${requestedPath}) ` +
+              `not found under ${candidate} — rendering unfocused`
+          );
+        }
         root = rule;
         citationPath = candidate;
         focusAnchor = anchored ? anchor : null;
         prefetchedSubtree = subtree;
         break;
+      }
+    }
+  }
+  if (!root) {
+    // Encoding file paths and corpus paths disagree on document class
+    // for policy-adjacent material: a rulespec filed under policies/
+    // may be ingested as manual/ or guidance/. Retry the same tail
+    // under the sibling classes before giving up (#191).
+    for (const sibling of docTypeCrosswalk(ruleSegments[0])) {
+      const candidate = [slug, sibling, ...ruleSegments.slice(1)].join("/");
+      const rule = await getProvisionByCitationPath(candidate).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = candidate;
+        break;
+      }
+      const probe = await getSubtreeProvisions(candidate);
+      if (probe.provisions.length > 0) {
+        const navNode = await getNavigationNode(candidate);
+        root = synthesizeSectionRoot(candidate, resolved, navNode?.label);
+        citationPath = candidate;
+        synthetic = true;
+        prefetchedSubtree = probe;
+        break;
+      }
+    }
+  }
+  if (!root) {
+    // Last rung: the encodings mirror records each module's true corpus
+    // home (module.source_verification.corpus_citation_path). A reader
+    // URL built from a rule-file legal id — the graph inspector's
+    // "Read the law" — resolves through it even when the file and
+    // corpus paths diverge entirely (…/capital-gains vs …/page-25).
+    const sourcePath = await rulespecSourceCitationPath(
+      slug,
+      ruleSegments
+    ).catch(() => null);
+    if (sourcePath && sourcePath !== requestedPath) {
+      const rule = await getProvisionByCitationPath(sourcePath).catch(
+        () => null
+      );
+      if (rule) {
+        root = rule;
+        citationPath = sourcePath;
+      } else {
+        const probe = await getSubtreeProvisions(sourcePath);
+        if (probe.provisions.length > 0) {
+          const navNode = await getNavigationNode(sourcePath);
+          root = synthesizeSectionRoot(sourcePath, resolved, navNode?.label);
+          citationPath = sourcePath;
+          synthetic = true;
+          prefetchedSubtree = probe;
+        }
       }
     }
   }
@@ -804,6 +954,7 @@ export async function resolveSection(
   return {
     root,
     citationPath,
+    requestedPath,
     focusAnchor,
     synthetic,
     containerCandidate,
@@ -820,17 +971,53 @@ export async function resolveSection(
  * it.
  */
 export function dedupeRootBody(root: Rule, descendants: Rule[]): Rule {
+  return splitRootBodyAroundChildren(root, descendants).root;
+}
+
+/**
+ * Split a root body that repeats its descendants' text into the intro
+ * (chapeau before the first child) and the flush text after the LAST
+ * child — the trailing sentence enumerations often carry ("The amount
+ * determined under paragraph (1) or (2) … shall be reduced …"), which
+ * plain intro-trimming silently dropped.
+ */
+export function splitRootBodyAroundChildren(
+  root: Rule,
+  descendants: Rule[]
+): { root: Rule; flush: string | null } {
   const body = root.body;
-  if (!body) return root;
-  const firstChildBody = descendants
+  if (!body) return { root, flush: null };
+  const childBodies = descendants
     .map((rule) => rule.body?.trim() ?? "")
-    .find((text) => text.length >= 20);
-  if (!firstChildBody) return root;
+    .filter((text) => text.length >= 20);
+  const firstChildBody = childBodies[0];
+  if (!firstChildBody) return { root, flush: null };
   const needle = firstChildBody.slice(0, 60);
   const index = body.indexOf(needle);
-  if (index < 0) return root;
-  const intro = body.slice(0, index).trim();
-  return { ...root, body: intro.length > 0 ? intro : null };
+  if (index < 0) return { root, flush: null };
+  // Child rows store their text without the enumeration marker, so the
+  // kept chapeau would end with a dangling "(1)" — strip it.
+  const intro = body
+    .slice(0, index)
+    .trim()
+    .replace(/\(\s*[\w.]{1,4}\s*\)\s*$/, "")
+    .trim();
+
+  // Locate the end of the last child's text inside the root body; what
+  // follows is flush text belonging to the root, not to any child.
+  let flush: string | null = null;
+  const lastChildBody = childBodies[childBodies.length - 1]!;
+  const lastNeedle = lastChildBody.slice(0, 60);
+  const lastAt = body.lastIndexOf(lastNeedle);
+  if (lastAt >= 0) {
+    const tail = body.slice(lastAt + lastChildBody.length).trim();
+    if (tail.length >= 20) flush = tail;
+  }
+
+  return {
+    root: { ...root, body: intro.length > 0 ? intro : null },
+    flush,
+  };
 }
 
 export async function getSectionPageData(
@@ -839,6 +1026,63 @@ export async function getSectionPageData(
   const resolution = await resolveSection(segments);
   if (!resolution) return null;
   return getSectionPageDataFromResolution(resolution);
+}
+
+/**
+ * Encoding paths for a section, most likely first: the resolved corpus
+ * path, the originally requested path when a fallback rewrote it, and
+ * the doc-type crosswalk siblings of both. Rulespec mirror rows are
+ * keyed by encoding-file paths, which classify policy-adjacent
+ * documents differently from the corpus (#191) — a guidance page's
+ * rules may be keyed under policy/, whichever URL the reader arrived
+ * from.
+ */
+export function encodingPathCandidates(
+  resolution: Pick<SectionResolution, "citationPath" | "requestedPath">
+): string[] {
+  const candidates: string[] = [];
+  for (const path of [resolution.citationPath, resolution.requestedPath]) {
+    if (!path || candidates.includes(path)) continue;
+    candidates.push(path);
+    const segments = path.split("/");
+    for (const sibling of docTypeCrosswalk(segments[1])) {
+      const variant = [segments[0], sibling, ...segments.slice(2)].join("/");
+      if (!candidates.includes(variant)) candidates.push(variant);
+    }
+  }
+  return candidates;
+}
+
+function hasEncodingContent(
+  section: Awaited<ReturnType<typeof getSectionEncoding>>
+): boolean {
+  return section.encoding != null || Object.keys(section.ruleFiles).length > 0;
+}
+
+async function getSectionEncodingAcrossPaths(
+  rootId: string,
+  resolution: Pick<SectionResolution, "citationPath" | "requestedPath">
+): Promise<Awaited<ReturnType<typeof getSectionEncoding>>> {
+  const candidates = encodingPathCandidates(resolution);
+  let first: Awaited<ReturnType<typeof getSectionEncoding>> | null = null;
+  for (const candidate of candidates) {
+    const section = await getSectionEncoding(rootId, candidate).catch(() => ({
+      encoding: null,
+      encodingRootPath: null,
+      fileAnchors: {},
+      ruleFiles: {},
+    }));
+    if (hasEncodingContent(section)) return section;
+    first = first ?? section;
+  }
+  return (
+    first ?? {
+      encoding: null,
+      encodingRootPath: null,
+      fileAnchors: {},
+      ruleFiles: {},
+    }
+  );
 }
 
 export async function getSectionPageDataFromResolution(
@@ -852,7 +1096,7 @@ export async function getSectionPageDataFromResolution(
       prefetchedSubtree ?? getSubtreeProvisions(citationPath),
       getRuleReferences(citationPath).catch(() => [] as RuleReference[]),
       getNavigationNode(citationPath),
-      getSectionEncoding(root.id, citationPath).catch(() => ({
+      getSectionEncodingAcrossPaths(root.id, resolution).catch(() => ({
         encoding: null,
         encodingRootPath: null,
         fileAnchors: {},
@@ -866,7 +1110,8 @@ export async function getSectionPageDataFromResolution(
   const encoding = sectionEncoding.encoding;
 
   const refBody = root.body;
-  root = dedupeRootBody(root, subtree.provisions);
+  const split = splitRootBodyAroundChildren(root, subtree.provisions);
+  root = split.root;
 
   const rootDepth = citationPath.split("/").length;
   const provisions: SectionProvision[] = subtree.provisions.map((rule) => ({
@@ -875,6 +1120,16 @@ export async function getSectionPageDataFromResolution(
     designator: relativeDesignator(citationPath, rule.citation_path as string),
     relativeDepth: (rule.citation_path as string).split("/").length - rootDepth,
   }));
+  // Flush text after the last enumerated child belongs to the section,
+  // not to any child — render it at the end of the last child's block,
+  // where section-granular corpora place it.
+  if (split.flush && provisions.length > 0) {
+    const last = provisions[provisions.length - 1]!;
+    last.rule = {
+      ...last.rule,
+      body: [last.rule.body, split.flush].filter(Boolean).join("\n\n"),
+    };
+  }
 
   const [prev, next] = node
     ? await Promise.all([

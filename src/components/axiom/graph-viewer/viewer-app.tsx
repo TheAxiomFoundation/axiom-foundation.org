@@ -3600,11 +3600,23 @@ function buildStructureTraces(
 
     const rule = rulesById.get(legalId);
     if (rule) {
+      // A scalar parameter's value IS its formula constant. The engine
+      // only traces derived rules, so without this the run view shows
+      // "—" where the statute's own number belongs (the 0.009 on the
+      // Additional Medicare rate). Table-shaped parameters keep null.
+      const literal =
+        rule.kind === "parameter" && rule.formula
+          ? rule.formula.trim()
+          : null;
+      const parameterValue =
+        literal && /^-?[\d_]+(\.\d+)?$/.test(literal)
+          ? Number(literal.replace(/_/g, ""))
+          : null;
       const trace: TraceNode = {
         legalId: rule.legalId,
         label: rule.name,
         ruleKind: rule.kind,
-        value: null,
+        value: parameterValue,
         dtype: traceDtype(rule.dtype),
         source: rule.source ?? undefined,
         sourceUrl: rule.sourceUrl ?? null,

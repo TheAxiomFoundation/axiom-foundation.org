@@ -3881,10 +3881,15 @@ function InputOutlineBranch({
 // Labels for encoding conventions whose raw values would read as
 // magic numbers. filing_status is the rulespec-us convention: 1 joint,
 // 2 married filing separately, everything else not a married filing.
+// The encoder's filing-status enum, decoded by the rulespecs that
+// distinguish every arm (standard-deduction: 4 takes the joint
+// amount, 3 the head-of-household amount, 0 the unmarried amount).
 const FILING_STATUS_LABELS: Record<number, string> = {
-  0: "0 — not a married filing",
+  0: "0 — unmarried individual",
   1: "1 — joint return",
   2: "2 — married filing separately",
+  3: "3 — head of household",
+  4: "4 — surviving spouse",
 };
 
 function enumOptionLabel(inputName: string, option: number): string {

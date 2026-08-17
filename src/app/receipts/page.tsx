@@ -112,9 +112,8 @@ export default function ReceiptsPage() {
         <Reveal as="section">
           <h2 className="heading-section mb-3">What&apos;s next</h2>
           <p className="max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
-            The receipts get thicker, not thinner: we intend to publish the
-            full agent logs behind every encoding as telemetry — the complete
-            record of how each rule came to say what it says.
+            We intend to publish the full agent logs behind every encoding —
+            the complete record of how each rule came to say what it says.
           </p>
         </Reveal>
       </div>

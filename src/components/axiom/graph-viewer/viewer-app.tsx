@@ -2933,6 +2933,10 @@ export function GraphViewerApp({
               </p>
             ) : null}
             {(() => {
+              // The parameter-value line above already states the
+              // constant — repeating it as a "computed" value reads as
+              // two different numbers waiting to disagree.
+              if (parameterValue) return null;
               const cardValue =
                 "value" in inspected &&
                 inspected.value &&

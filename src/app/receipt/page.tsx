@@ -131,6 +131,12 @@ export default function ReceiptPage() {
             package's own. */}
         <Reveal as="section" className="mb-16">
           <h2 className="heading-section m-0 mb-6">Try to slip one past it</h2>
+          <p className="m-0 mb-6 max-w-[720px] font-body text-[1rem] leading-relaxed text-[var(--color-ink-secondary)]">
+            When an encoding is wrong, the discipline is to fix the pipeline
+            and re-encode — never edit the published file by hand. The record
+            shows which path a change took: pick one below and read the
+            verdict.
+          </p>
           <VerifyDemo />
         </Reveal>
 

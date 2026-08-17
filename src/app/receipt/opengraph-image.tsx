@@ -95,7 +95,7 @@ export default async function Image() {
             <div style={{ ...label, color: CODE_DIM, display: "flex" }}>THE CLONE</div>
             <span style={{ color: CODE_TEXT }}>rules/</span>
             <span style={{ color: CODE_AMBER }}>{"  tax/rate.yaml"}</span>
-            <span style={{ color: CODE_AMBER }}>{"    value: 0.99"}</span>
+            <span style={{ color: CODE_AMBER }}>{"    value: 0.17"}</span>
             <span style={{ color: CODE_TEXT }}>releases/</span>
             <span style={{ color: CODE_TEXT }}>{"  manifests/0002.json"}</span>
             <span style={{ color: CODE_TEXT }}>{"  anchors/producer.pub"}</span>
@@ -118,7 +118,7 @@ export default async function Image() {
               {"    match its witnessed digest:"}
             </span>
             <span style={{ color: CODE_TEXT }}>
-              {"    tree has e4075851568e…, journal binds"}
+              {"    tree has c0f597cf00ba…, journal binds"}
             </span>
             <span style={{ color: CODE_TEXT }}>{"    e218ac6d2f12…"}</span>
             <span

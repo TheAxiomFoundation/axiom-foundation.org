@@ -114,6 +114,13 @@ export default function ReceiptPage() {
               className="text-[var(--color-accent)] hover:underline"
             >
               API reference
+            </a>{" "}
+            ·{" "}
+            <a
+              href="/receipt/paper"
+              className="text-[var(--color-accent)] hover:underline"
+            >
+              Working paper
             </a>
           </p>
         </Reveal>

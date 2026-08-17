@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/landing/reveal";
+import { VerifyDemo } from "./verify-demo";
 import { SITE_URL } from "@/lib/urls";
 
 export const metadata: Metadata = {
@@ -123,6 +124,14 @@ export default function ReceiptPage() {
               Working paper
             </a>
           </p>
+        </Reveal>
+
+        {/* The fail-closed behavior, touchable: pick an attack, watch the
+            first check that fails stop the run. Refusal strings are the
+            package's own. */}
+        <Reveal as="section" className="mb-16">
+          <h2 className="heading-section m-0 mb-6">Try to slip one past it</h2>
+          <VerifyDemo />
         </Reveal>
 
         <Reveal as="section" className="mb-16">

@@ -2933,6 +2933,10 @@ export function GraphViewerApp({
               </p>
             ) : null}
             {(() => {
+              // The parameter-value line above already states the
+              // constant — repeating it as a "computed" value reads as
+              // two different numbers waiting to disagree.
+              if (parameterValue) return null;
               const cardValue =
                 "value" in inspected &&
                 inspected.value &&
@@ -3600,11 +3604,23 @@ function buildStructureTraces(
 
     const rule = rulesById.get(legalId);
     if (rule) {
+      // A scalar parameter's value IS its formula constant. The engine
+      // only traces derived rules, so without this the run view shows
+      // "—" where the statute's own number belongs (the 0.009 on the
+      // Additional Medicare rate). Table-shaped parameters keep null.
+      const literal =
+        rule.kind === "parameter" && rule.formula
+          ? rule.formula.trim()
+          : null;
+      const parameterValue =
+        literal && /^-?[\d_]+(\.\d+)?$/.test(literal)
+          ? Number(literal.replace(/_/g, ""))
+          : null;
       const trace: TraceNode = {
         legalId: rule.legalId,
         label: rule.name,
         ruleKind: rule.kind,
-        value: null,
+        value: parameterValue,
         dtype: traceDtype(rule.dtype),
         source: rule.source ?? undefined,
         sourceUrl: rule.sourceUrl ?? null,
@@ -3881,10 +3897,15 @@ function InputOutlineBranch({
 // Labels for encoding conventions whose raw values would read as
 // magic numbers. filing_status is the rulespec-us convention: 1 joint,
 // 2 married filing separately, everything else not a married filing.
+// The encoder's filing-status enum, decoded by the rulespecs that
+// distinguish every arm (standard-deduction: 4 takes the joint
+// amount, 3 the head-of-household amount, 0 the unmarried amount).
 const FILING_STATUS_LABELS: Record<number, string> = {
-  0: "0 — not a married filing",
+  0: "0 — unmarried individual",
   1: "1 — joint return",
   2: "2 — married filing separately",
+  3: "3 — head of household",
+  4: "4 — surviving spouse",
 };
 
 function enumOptionLabel(inputName: string, option: number): string {

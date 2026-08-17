@@ -24,12 +24,23 @@ describe("receipt verify demo", () => {
     expect(screen.queryByText(/declarations/)).not.toBeInTheDocument();
   });
 
-  it("refuses a rewritten rule with both digests, tree vs journal", () => {
+  it("refuses the hand edit with both digests, tree vs journal", () => {
     render(<VerifyDemo />);
-    fireEvent.click(screen.getByRole("button", { name: "rewrite a rule" }));
+    fireEvent.click(screen.getByRole("button", { name: "hand-edit the fix" }));
     expect(screen.getByText(/does not match its/)).toBeInTheDocument();
-    expect(screen.getByText(/tree has e4075851568e/)).toBeInTheDocument();
+    expect(screen.getByText(/tree has c0f597cf00ba/)).toBeInTheDocument();
     expect(screen.getByText(/binds e218ac6d2f12/)).toBeInTheDocument();
+  });
+
+  it("passes the same correction when it arrives by re-encoding", () => {
+    render(<VerifyDemo />);
+    fireEvent.click(screen.getByRole("button", { name: "re-encode the fix" }));
+    expect(
+      screen.getByText("VERDICT: PASS — custody and corpus binding"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/chain of 3 release/)).toBeInTheDocument();
+    expect(screen.getByText(/manifests\/0003.json/)).toBeInTheDocument();
+    expect(screen.getByText(/sha256 c0f597cf00ba/)).toBeInTheDocument();
   });
 
   it("admits that wholesale regeneration passes on first contact", () => {

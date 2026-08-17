@@ -9,19 +9,28 @@ import { useState } from "react";
 // custody → binding → declarations and the run stops at the first failure,
 // so later passes never appear in a failing verdict — exactly like the CLI.
 
-type Attack = "pristine" | "rewrite" | "swapkey" | "rewitness" | "dropgate";
+type Attack =
+  | "pristine"
+  | "rewrite"
+  | "reencode"
+  | "swapkey"
+  | "rewitness"
+  | "dropgate";
 
 const ATTACKS: { id: Attack; label: string }[] = [
   { id: "pristine", label: "pristine clone" },
-  { id: "rewrite", label: "rewrite a rule" },
+  { id: "rewrite", label: "hand-edit the fix" },
+  { id: "reencode", label: "re-encode the fix" },
   { id: "swapkey", label: "swap the signing key" },
   { id: "rewitness", label: "regenerate everything" },
   { id: "dropgate", label: "drop a gate declaration" },
 ];
 
-// Real SHA-256 prefixes of the exact bytes shown in the tree.
+// Real SHA-256 prefixes of the exact bytes shown in the tree. The story:
+// the published rate reads 0.15 and should read 0.17. Fixing the encoder
+// and re-encoding updates the journal with the file; a hand edit does not.
 const DIGEST_WITNESSED = "e218ac6d2f12"; // "name: rate\nvalue: 0.15\n"
-const DIGEST_TAMPERED = "e4075851568e"; // "name: rate\nvalue: 0.99\n"
+const DIGEST_CORRECTED = "c0f597cf00ba"; // "name: rate\nvalue: 0.17\n"
 
 type Line = { text: string; tone?: "fail" | "ok" | "dim" | "caveat" };
 
@@ -54,11 +63,28 @@ function verdict(attack: Attack, baseRef: boolean): Line[] {
       ...fail("binding", [
         "content file 'rules/tax/rate.yaml'",
         "does not match its witnessed digest:",
-        `tree has ${DIGEST_TAMPERED}…,`,
+        `tree has ${DIGEST_CORRECTED}…,`,
         `journal binds ${DIGEST_WITNESSED}…`,
       ]),
       { text: "" },
       { text: "VERDICT: FAIL — binding", tone: "fail" },
+    ];
+  }
+
+  if (attack === "reencode") {
+    return [
+      { text: "ESTABLISHED OFFLINE, FROM THIS CLONE ALONE" },
+      ...pass("custody", "chain of 3 release(s), 2 witnesses per release"),
+      ...pass("binding", "3 content files bound, 1 attested path"),
+      ...pass("declarations", "3 gates declared, every required gate present"),
+      { text: "" },
+      { text: "VERDICT: PASS — custody and corpus binding" },
+      { text: "" },
+      {
+        text: "  The same correction as the hand edit — arriving",
+        tone: "caveat",
+      },
+      { text: "  as release 0003, journal row updated, gates run.", tone: "caveat" },
     ];
   }
 
@@ -136,12 +162,15 @@ function tree(attack: Attack): Line[] {
     regenerated
       ? changed("  manifests/0002.json      re-signed, re-witnessed")
       : plain("  manifests/0002.json"),
+    ...(attack === "reencode"
+      ? [changed("  manifests/0003.json      the fix, witnessed")]
+      : []),
     attack === "swapkey"
       ? changed("  anchors/producer.pub     substituted key")
       : plain("  anchors/producer.pub"),
     plain("rules/"),
-    attack === "rewrite"
-      ? changed("  tax/rate.yaml            value: 0.99")
+    attack === "rewrite" || attack === "reencode"
+      ? changed("  tax/rate.yaml            value: 0.17")
       : plain("  tax/rate.yaml            value: 0.15"),
     plain("  benefit/amount.yaml"),
     plain(".axiom/"),
@@ -149,6 +178,9 @@ function tree(attack: Attack): Line[] {
     attack === "dropgate"
       ? changed("    gate rulespec/compile  row deleted")
       : plain("    gate rulespec/compile  outcome: pass"),
+    ...(attack === "reencode"
+      ? [changed("    content rate.yaml      sha256 c0f597cf00ba…")]
+      : []),
     dim(""),
     dim("auditor's own repo — out of the producer's reach"),
     dim("  spec.py   producer SPKI 6092ef9ccc3c0c52…"),

@@ -28,11 +28,11 @@ type Line = { text: string; tone?: "fail" | "ok" | "dim" | "caveat" };
 function verdict(attack: Attack, baseRef: boolean): Line[] {
   const pass = (name: string, detail: string): Line[] => [
     { text: `  [ok  ] ${name}`, tone: "ok" },
-    { text: `         ${detail}`, tone: "dim" },
+    { text: `    ${detail}`, tone: "dim" },
   ];
   const fail = (name: string, failure: string[]): Line[] => [
     { text: `  [FAIL] ${name}`, tone: "fail" },
-    ...failure.map((t): Line => ({ text: `         ${t}`, tone: "fail" })),
+    ...failure.map((t): Line => ({ text: `    ${t}`, tone: "fail" })),
   ];
 
   if (attack === "swapkey") {
@@ -52,9 +52,10 @@ function verdict(attack: Attack, baseRef: boolean): Line[] {
       { text: "PASSES" },
       ...pass("custody", "chain of 2 release(s), 2 witnesses per release"),
       ...fail("binding", [
-        "content file 'rules/tax/rate.yaml' does not match its",
-        `witnessed digest: tree has ${DIGEST_TAMPERED}…, journal`,
-        `binds ${DIGEST_WITNESSED}…`,
+        "content file 'rules/tax/rate.yaml'",
+        "does not match its witnessed digest:",
+        `tree has ${DIGEST_TAMPERED}…,`,
+        `journal binds ${DIGEST_WITNESSED}…`,
       ]),
       { text: "" },
       { text: "VERDICT: FAIL — binding", tone: "fail" },
@@ -67,8 +68,9 @@ function verdict(attack: Attack, baseRef: boolean): Line[] {
       ...pass("custody", "chain of 2 release(s), 2 witnesses per release"),
       ...pass("binding", "3 content files bound, 1 attested path"),
       ...fail("declarations", [
-        "the witnessed journal does not declare a gate the",
-        "pinned spec requires: 'rulespec/compile'",
+        "the witnessed journal does not declare",
+        "a gate the pinned spec requires:",
+        "'rulespec/compile'",
       ]),
       { text: "" },
       { text: "VERDICT: FAIL — declarations", tone: "fail" },
@@ -79,8 +81,9 @@ function verdict(attack: Attack, baseRef: boolean): Line[] {
     return [
       { text: "PASSES" },
       ...fail("history", [
-        "release history is not immutable: existing release",
-        "file bytes changed relative to 5b0d266:",
+        "release history is not immutable:",
+        "existing release file",
+        "bytes changed relative to 5b0d266:",
         "releases/manifests/0001.json",
       ]),
       { text: "" },
@@ -101,19 +104,20 @@ function verdict(attack: Attack, baseRef: boolean): Line[] {
     lines.push(
       { text: "" },
       {
-        text: "  It does NOT prove the history was never rewritten —",
+        text: "  It does NOT prove the history was never rewritten",
         tone: "caveat",
       },
       {
-        text: "  a producer holding the signing key can regenerate",
+        text: "  — a producer holding the signing key can",
         tone: "caveat",
       },
       {
-        text: "  and re-witness a whole chain, and this first-contact",
+        text: "  regenerate and re-witness a whole chain, and",
         tone: "caveat",
       },
-      { text: "  check would still pass; supply --base-ref against", tone: "caveat" },
-      { text: "  a head you recorded earlier to bind against that.", tone: "caveat" },
+      { text: "  this first-contact check would still pass;", tone: "caveat" },
+      { text: "  supply --base-ref against a head you recorded", tone: "caveat" },
+      { text: "  earlier to bind against that.", tone: "caveat" },
     );
   }
   return lines;
@@ -152,12 +156,15 @@ function tree(attack: Attack): Line[] {
   ];
 }
 
+// The panes are terminals: the site styles every `pre` as a dark code
+// block (tokens.css), so tones come from the code palette, not the page's
+// ink scale — ink on the code background is invisible.
 const TONE: Record<NonNullable<Line["tone"]> | "plain", string> = {
-  plain: "text-[var(--color-ink)]",
-  ok: "text-[var(--color-ink)]",
-  dim: "text-[var(--color-ink-muted)]",
-  fail: "text-[var(--color-accent)]",
-  caveat: "text-[var(--color-ink-secondary)]",
+  plain: "text-[var(--color-code-text)]",
+  ok: "text-[var(--color-code-text)]",
+  dim: "text-[var(--color-code-comment)]",
+  fail: "text-[var(--color-code-keyword)]",
+  caveat: "text-[var(--color-code-comment)]",
 };
 
 export function VerifyDemo() {
@@ -194,7 +201,7 @@ export function VerifyDemo() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-4 overflow-x-auto">
+        <div>
           <p className="m-0 mb-2 font-mono text-[0.66rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
             the clone
           </p>
@@ -207,7 +214,7 @@ export function VerifyDemo() {
           </pre>
         </div>
 
-        <div className="rounded-md border border-[var(--color-rule)] bg-[var(--color-paper-elevated)] p-4 overflow-x-auto">
+        <div>
           <p className="m-0 mb-2 font-mono text-[0.66rem] uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
             receipt verify{baseRef ? " --base-ref 5b0d266" : ""}
           </p>

@@ -13,7 +13,11 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const PAPER = "#faf9f6";
-const ELEVATED = "#f4f2ec";
+const CODE_BG = "#1c1917";
+const CODE_BORDER = "#2a2826";
+const CODE_TEXT = "#e7e5e4";
+const CODE_DIM = "#a8a29e";
+const CODE_AMBER = "#fbbf24";
 const INK = "#1c1917";
 const MUTED = "#78716c";
 const SECONDARY = "#57534e";
@@ -34,8 +38,8 @@ export default async function Image() {
   const pane = {
     display: "flex" as const,
     flexDirection: "column" as const,
-    background: ELEVATED,
-    border: `1.5px solid ${RULE}`,
+    background: CODE_BG,
+    border: `1.5px solid ${CODE_BORDER}`,
     borderRadius: 10,
     padding: "26px 30px",
     fontFamily: "JetBrains Mono",
@@ -88,38 +92,38 @@ export default async function Image() {
 
         <div style={{ display: "flex", gap: 24, flexGrow: 1 }}>
           <div style={{ ...pane, width: 420 }}>
-            <div style={{ ...label, display: "flex" }}>THE CLONE</div>
-            <span style={{ color: INK }}>rules/</span>
-            <span style={{ color: ACCENT }}>{"  tax/rate.yaml"}</span>
-            <span style={{ color: ACCENT }}>{"    value: 0.99"}</span>
-            <span style={{ color: INK }}>releases/</span>
-            <span style={{ color: INK }}>{"  manifests/0002.json"}</span>
-            <span style={{ color: INK }}>{"  anchors/producer.pub"}</span>
-            <span style={{ color: MUTED, marginTop: 16 }}>
+            <div style={{ ...label, color: CODE_DIM, display: "flex" }}>THE CLONE</div>
+            <span style={{ color: CODE_TEXT }}>rules/</span>
+            <span style={{ color: CODE_AMBER }}>{"  tax/rate.yaml"}</span>
+            <span style={{ color: CODE_AMBER }}>{"    value: 0.99"}</span>
+            <span style={{ color: CODE_TEXT }}>releases/</span>
+            <span style={{ color: CODE_TEXT }}>{"  manifests/0002.json"}</span>
+            <span style={{ color: CODE_TEXT }}>{"  anchors/producer.pub"}</span>
+            <span style={{ color: CODE_DIM, marginTop: 16 }}>
               {"auditor's own repo:"}
             </span>
-            <span style={{ color: MUTED }}>{"  spec.py — pinned anchors"}</span>
+            <span style={{ color: CODE_DIM }}>{"  spec.py — pinned anchors"}</span>
           </div>
 
           <div style={{ ...pane, flexGrow: 1 }}>
-            <div style={{ ...label, display: "flex" }}>RECEIPT VERIFY</div>
-            <span style={{ color: INK }}>{"  [ok  ] custody"}</span>
-            <span style={{ color: ACCENT, fontFamily: "JetBrains Mono Bold" }}>
+            <div style={{ ...label, color: CODE_DIM, display: "flex" }}>RECEIPT VERIFY</div>
+            <span style={{ color: CODE_TEXT }}>{"  [ok  ] custody"}</span>
+            <span style={{ color: CODE_AMBER, fontFamily: "JetBrains Mono Bold" }}>
               {"  [FAIL] binding"}
             </span>
-            <span style={{ color: SECONDARY }}>
+            <span style={{ color: CODE_TEXT }}>
               {"    content file 'rules/tax/rate.yaml' does not"}
             </span>
-            <span style={{ color: SECONDARY }}>
+            <span style={{ color: CODE_TEXT }}>
               {"    match its witnessed digest:"}
             </span>
-            <span style={{ color: SECONDARY }}>
+            <span style={{ color: CODE_TEXT }}>
               {"    tree has e4075851568e…, journal binds"}
             </span>
-            <span style={{ color: SECONDARY }}>{"    e218ac6d2f12…"}</span>
+            <span style={{ color: CODE_TEXT }}>{"    e218ac6d2f12…"}</span>
             <span
               style={{
-                color: ACCENT,
+                color: CODE_AMBER,
                 fontFamily: "JetBrains Mono Bold",
                 marginTop: 14,
               }}

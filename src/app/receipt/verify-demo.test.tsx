@@ -67,8 +67,7 @@ describe("receipt verify demo", () => {
       screen.getByRole("button", { name: "drop a gate declaration" }),
     );
     expect(screen.getByText(/\[FAIL\] declarations/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/pinned spec requires: 'rulespec\/compile'/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/pinned spec requires:/)).toBeInTheDocument();
+    expect(screen.getByText(/'rulespec\/compile'/)).toBeInTheDocument();
   });
 });

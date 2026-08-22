@@ -13,6 +13,7 @@
     "test:run": "bun run build:ui && vitest run",
     "test:coverage": "bun run build:ui && vitest run --coverage",
     "sync:rulespec-index": "bun scripts/sync-rulespec-index.mjs",
+    "build:tariff-schedule": "bun scripts/build-tariff-schedule-data.ts",
     "deploy": "vercel --prod"
   },
   "dependencies": {

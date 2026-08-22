@@ -48,8 +48,10 @@ describe('AboutPage', () => {
     expect(screen.getByText('hello@axiom.org')).toBeInTheDocument()
   })
 
-  it('does not link out to GitHub in Round 1', () => {
+  it('links out to the GitHub org', () => {
     render(<AboutPage />)
-    expect(screen.queryByText(/github\.com/i)).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /browse the code on github/i })
+    expect(link).toHaveAttribute('href', 'https://github.com/TheAxiomFoundation')
+    expect(link).toHaveAttribute('target', '_blank')
   })
 })

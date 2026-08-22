@@ -2,6 +2,7 @@ import { certificateUrl, coverageBurndown, tariffMetadata } from "@/lib/tariff-s
 
 export function TariffStatusBlock() {
   const date = tariffMetadata.builtAt.slice(0, 10);
+  const generated = new Date().toISOString().slice(0, 10);
   return (
     <section aria-labelledby="coverage-status" className="border-y border-[var(--color-rule)] py-6">
       <h2 id="coverage-status" className="m-0 font-body text-lg font-medium text-[var(--color-ink)]">Coverage status: incomplete and not certified.</h2>
@@ -16,7 +17,7 @@ export function TariffStatusBlock() {
         </ul>
       </details>
       <p className="mt-5 mb-0 font-mono text-xs leading-relaxed text-[var(--color-ink-muted)]">
-        Built from rulespec-us {tariffMetadata.rulespecCommit.slice(0, 10)} on {date}; corpus release {tariffMetadata.corpusRelease}; last checked {date}.
+        Built from rulespec-us {tariffMetadata.rulespecCommit.slice(0, 10)} (source commit dated {date}); corpus release {tariffMetadata.corpusRelease}; page generated {generated}. Freshness is the source commit date, not a monitoring guarantee.
       </p>
       <p className="mt-2 mb-0 font-mono text-xs leading-relaxed text-[var(--color-ink-muted)]">
         Certificate SHA-256: {tariffMetadata.certificateSha256}

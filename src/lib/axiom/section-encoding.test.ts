@@ -364,6 +364,83 @@ describe("getSectionEncoding", () => {
     ]);
   });
 
+  it("sorts cited-by modules and drops empty mirror rows", async () => {
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+          },
+        ],
+        error: null,
+      },
+      citedBy: {
+        data: [
+          {
+            citation_path: "us/policy/z/later",
+            file_path: "policies/z/later.yaml",
+            raw_yaml: ruleYaml("z_rule", "z source"),
+          },
+          {
+            citation_path: "us/policy/a/empty",
+            file_path: "policies/a/empty.yaml",
+            raw_yaml: "   ",
+          },
+          {
+            citation_path: "us/policy/a/first",
+            file_path: "policies/a/first.yaml",
+            raw_yaml: ruleYaml("a_rule", "a source"),
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles.map((file) => file.citationPath)).toEqual([
+      "us/policy/a/first",
+      "us/policy/z/later",
+    ]);
+  });
+
+  it("keeps the path-matched encoding when the cited-by query rejects", async () => {
+    const results = {
+      path: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+          },
+        ],
+        error: null,
+      },
+      citedBy: null,
+      ancestor: { data: [], error: null },
+    };
+    mirrorFromMock.mockImplementation(() => {
+      const chain = mirrorChain(results as never);
+      const originalThen = chain.then;
+      chain.then = (
+        resolve: (value: unknown) => unknown,
+        reject?: (reason: unknown) => unknown,
+      ) => {
+        if (mirrorQueryCalls.at(-1)?.kind === "citedBy") {
+          return Promise.reject(new Error("boom")).then(resolve, reject);
+        }
+        return originalThen(resolve, reject);
+      };
+      return chain;
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles).toEqual([]);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual(["eitc_amount"]);
+  });
+
   it("serves cited-by modules when the path range is empty", async () => {
     const tariffPath = "us/statute/hts/2203.00.00";
     const policyCitation =

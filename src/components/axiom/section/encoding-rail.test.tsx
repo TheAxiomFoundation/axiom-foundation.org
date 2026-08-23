@@ -11,6 +11,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EncodingRail } from "./encoding-rail";
 import type { RuleEncodingData } from "@/lib/supabase";
 import { _resetRawFetchCache } from "@/lib/axiom/rulespec/raw-cache";
+import { trackAxiomEvent } from "@/lib/analytics";
+
+vi.mock("@/lib/analytics", () => ({ trackAxiomEvent: vi.fn() }));
 
 const YAML = [
   "format: rulespec/v1",
@@ -81,7 +84,17 @@ function placeSections(tops: Record<string, number>) {
       document.body.appendChild(el);
     }
     el.getBoundingClientRect = () =>
-      ({ top, bottom: top + 1000, left: 0, right: 0, width: 0, height: 1000, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+      ({
+        top,
+        bottom: top + 1000,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 1000,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
   }
 }
 
@@ -118,7 +131,7 @@ function renderRail() {
       encodedRules={ENCODED_RULES}
       outgoing={OUTGOING}
       incoming={[]}
-    />
+    />,
   );
 }
 
@@ -144,12 +157,12 @@ describe("EncodingRail", () => {
     placeSections({ a: 500, b: 1500 });
     renderRail();
     expect(screen.getByTestId("rail-header")).toHaveTextContent(
-      "Whole section"
+      "Whole section",
     );
     // Encodings cards lead the rail; the code drawer sits collapsed
     // beneath them and citations stay collapsed.
     expect(screen.getByTestId("rail-encodings")).toHaveTextContent(
-      "Encodings · 2"
+      "Encodings · 2",
     );
     expect(screen.getByTestId("rail-rules")).not.toHaveAttribute("open");
     expect(screen.getByTestId("rail-rules")).toHaveTextContent("rulespec code");
@@ -177,7 +190,9 @@ describe("EncodingRail", () => {
     scrollTo({ a: -1200, b: 100 }); // reading (b)
     await waitFor(() => {
       expect(screen.getByText("(b) Percentages")).toBeInTheDocument();
-      expect(screen.queryByText("(a) Allowance of credit")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("(a) Allowance of credit"),
+      ).not.toBeInTheDocument();
     });
     expect(screen.getAllByText("rule_for_b").length).toBeGreaterThan(0);
   });
@@ -206,7 +221,7 @@ describe("EncodingRail", () => {
         outgoing={OUTGOING}
         incoming={[]}
         programs={programs}
-      />
+      />,
     );
     expect(screen.queryByTestId("rail-programs")).not.toBeInTheDocument();
     expect(screen.queryByTestId("rail-executable")).not.toBeInTheDocument();
@@ -238,31 +253,74 @@ describe("EncodingRail", () => {
             ruleNames: ["rule_for_b"],
           },
         ]}
-      />
+      />,
     );
 
     const group = screen.getByTestId("rail-cited-by");
     expect(
-      within(group).getByText("Encoded from this provision")
+      within(group).getByText("Encoded from this provision"),
     ).toBeInTheDocument();
     expect(
       within(group).getByText(
-        "us/policy/usitc/us-tariff-duty/lines/generated/ch22"
-      )
+        "us/policy/usitc/us-tariff-duty/lines/generated/ch22",
+      ),
     ).toHaveAttribute(
       "href",
-      "https://github.com/TheAxiomFoundation/rulespec-us/blob/main/us/policies/usitc/us-tariff-duty/lines/generated/ch22.yaml"
+      "https://github.com/TheAxiomFoundation/rulespec-us/blob/main/us/policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
     );
     expect(within(group).getByText("rule_for_b")).toBeInTheDocument();
 
-    const cardLists = within(screen.getByTestId("rail-encodings")).getAllByTestId(
-      "rule-cards"
-    );
+    const cardLists = within(
+      screen.getByTestId("rail-encodings"),
+    ).getAllByTestId("rule-cards");
     expect(cardLists).toHaveLength(2);
     expect(within(cardLists[0]).getByText("rule_for_a")).toBeInTheDocument();
     expect(
-      within(cardLists[0]).queryByText("rule_for_b")
+      within(cardLists[0]).queryByText("rule_for_b"),
     ).not.toBeInTheDocument();
+  });
+
+  it("tracks expansion of path-matched and cited-by rule cards", () => {
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        citedByFiles={[
+          {
+            citationPath: "us/policy/usitc/us-tariff-duty/lines/generated/ch22",
+            filePath: "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
+            ruleNames: ["rule_for_b"],
+          },
+        ]}
+      />,
+    );
+
+    const group = screen.getByTestId("rail-cited-by");
+    const citedByCard = within(group)
+      .getByText("rule_for_b")
+      .closest("details")!;
+    fireEvent(citedByCard, new Event("toggle", { bubbles: false }));
+    Object.defineProperty(citedByCard, "open", { value: true });
+    fireEvent(citedByCard, new Event("toggle", { bubbles: false }));
+
+    const pathCard = screen.getAllByText("rule_for_a")[0].closest("details")!;
+    Object.defineProperty(pathCard, "open", { value: true });
+    fireEvent(pathCard, new Event("toggle", { bubbles: false }));
+
+    expect(vi.mocked(trackAxiomEvent).mock.calls.length).toBeGreaterThanOrEqual(
+      2,
+    );
+    expect(vi.mocked(trackAxiomEvent)).toHaveBeenCalledWith(
+      "axiom_encoding_viewed",
+      expect.objectContaining({ citation_path: "us/statute/26/32" }),
+    );
   });
 
   it("shows an unlinked module path when no RuleSpec repository is mapped", () => {
@@ -289,18 +347,18 @@ describe("EncodingRail", () => {
             ruleNames: ["not_on_this_section"],
           },
         ]}
-      />
+      />,
     );
 
     const group = screen.getByTestId("rail-cited-by");
     expect(within(group).getByText("fr/policy/tariff/ch22").tagName).toBe(
-      "SPAN"
+      "SPAN",
     );
     expect(
-      within(group).queryByText("fr/policy/tariff/unused")
+      within(group).queryByText("fr/policy/tariff/unused"),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByTestId("rail-encodings")).getAllByTestId("rule-cards")
+      within(screen.getByTestId("rail-encodings")).getAllByTestId("rule-cards"),
     ).toHaveLength(1);
   });
 
@@ -333,13 +391,15 @@ describe("EncodingRail", () => {
         encodedRules={[{ name: "rule_for_a", kind: "derived", anchors: ["a"] }]}
         outgoing={[]}
         incoming={[]}
-      />
+      />,
     );
     scrollTo({ j: -50 });
     await waitFor(() =>
       expect(
-        screen.getByText("No rules are tied directly to this part of the section.")
-      ).toBeInTheDocument()
+        screen.getByText(
+          "No rules are tied directly to this part of the section.",
+        ),
+      ).toBeInTheDocument(),
     );
   });
 });

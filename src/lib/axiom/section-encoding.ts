@@ -9,6 +9,7 @@ import {
   fetchEncodedFile,
   type EncodedFile,
 } from "@/lib/axiom/rulespec/repo-listing";
+import { ruleEncodesProvision } from "@/lib/axiom/rulespec/source-citations";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 
 /**
@@ -62,8 +63,17 @@ export interface SectionEncoding {
   citedByFiles: Array<{
     citationPath: string;
     filePath: string;
+    /** Names (as rendered) of the rules this file contributed — only
+     *  rules that encode this provision; a rule whose name collides
+     *  with an earlier one is rendered as ``name@module``. */
     ruleNames: string[];
   }>;
+  /**
+   * Citing modules beyond the file bound, when the mirror reported
+   * more matches than were fetched. Zero when every citer is shown
+   * or the count was unavailable.
+   */
+  citedByOverflow: number;
 }
 
 /** Bound on files merged per section; deep regulation trees stay
@@ -95,6 +105,7 @@ function emptyResult(
     fileAnchors: {},
     ruleFiles,
     citedByFiles: [],
+    citedByOverflow: 0,
   };
 }
 
@@ -153,6 +164,7 @@ function assembleSection(
   primaryMeta: RuleEncodingData | null,
   ancestor: SectionFile | null = null,
   citedBy: SectionFile[] = [],
+  citedByOverflow = 0,
 ): SectionEncoding {
   const seenNames = new Set<string>();
   const ruleRaws: Record<string, unknown>[] = [];
@@ -237,26 +249,42 @@ function assembleSection(
   }
 
   let citedByRuleCount = 0;
-  // ruleNames carries only the rules this file actually contributed:
-  // a name already defined by a path-matched file stays attributed to
-  // that file, so the rail never relabels a path-matched rule as
-  // "encoded from this provision" on a name collision.
-  const citedByFiles = citedBy.map((file) => {
+  // Cited-by modules contribute only the rules that encode THIS
+  // provision (singular module source == the provision, or a
+  // value-bearing atom citing it) — never the whole file. A chapter
+  // composition that encodes one overlay heading among seventy rules
+  // shows that one rule here. Names are module-scoped in RuleSpec, so
+  // a rule whose name is already taken (by a path-matched rule or an
+  // earlier citing module) is rendered as ``name@module`` rather than
+  // silently dropped or misattributed.
+  const citedByFiles = citedBy.flatMap((file) => {
     const doc = parseRuleSpec(file.content);
+    const moduleTag = file.citationPath.split("/").at(-1) ?? file.citationPath;
     const ruleNames: string[] = [];
     for (const rule of doc.rules) {
-      ruleFiles[rule.name] ??= file.filePath;
-      if (seenNames.has(rule.name)) continue;
-      seenNames.add(rule.name);
-      ruleRaws.push(rule.raw);
-      ruleNames.push(rule.name);
+      if (!ruleEncodesProvision(doc, rule, citationPath)) continue;
+      const renderedName = seenNames.has(rule.name)
+        ? `${rule.name}@${moduleTag}`
+        : rule.name;
+      if (seenNames.has(renderedName)) continue;
+      seenNames.add(renderedName);
+      ruleFiles[renderedName] ??= file.filePath;
+      ruleRaws.push(
+        renderedName === rule.name
+          ? rule.raw
+          : { ...rule.raw, name: renderedName },
+      );
+      ruleNames.push(renderedName);
       citedByRuleCount++;
     }
-    return {
-      citationPath: file.citationPath,
-      filePath: file.filePath,
-      ruleNames,
-    };
+    if (ruleNames.length === 0) return [];
+    return [
+      {
+        citationPath: file.citationPath,
+        filePath: file.filePath,
+        ruleNames,
+      },
+    ];
   });
 
   // Single-file sections need no synthetic doc — serve the file
@@ -275,6 +303,7 @@ function assembleSection(
       fileAnchors,
       ruleFiles,
       citedByFiles,
+      citedByOverflow,
     };
   }
   if (
@@ -295,12 +324,14 @@ function assembleSection(
       fileAnchors,
       ruleFiles,
       citedByFiles,
+      citedByOverflow,
     };
   }
   if (ruleRaws.length === 0) {
     return {
       ...emptyResult(primaryMeta, citationPath),
       citedByFiles,
+      citedByOverflow,
     };
   }
 
@@ -320,6 +351,7 @@ function assembleSection(
     fileAnchors,
     ruleFiles,
     citedByFiles,
+    citedByOverflow,
   };
 }
 
@@ -365,36 +397,45 @@ async function listMirrorFiles(
   }
 }
 
+interface CitedByLookup {
+  files: SectionFile[];
+  /** Matching rows the mirror reported beyond those fetched. */
+  overflow: number;
+}
+
+const NO_CITED_BY: CitedByLookup = { files: [], overflow: 0 };
+
 /**
- * Reverse lookup for modules whose value (kind: parameter) proof
- * atoms cite the requested provision — the modules that encode its
- * content. Condition atoms are excluded on purpose: the tariff
- * chapter compositions all reference the witness beer line from
- * regime-guard formulas, and an all-declarations lookup would flood
- * a provision page with modules that merely mention it. This is separate from the path range scan because
- * policy-rooted modules do not live under their statute paths.
- * Failure is intentionally an empty extra group: a missing column,
- * timeout, or transient error must not hide path-matched encodings.
+ * Reverse lookup for modules that encode the requested provision:
+ * rows whose ``value_citation_paths`` (singular module source plus
+ * value-bearing proof atoms — see rulespec/source-citations.ts)
+ * contain it. Separate from the path range scan because policy-rooted
+ * modules do not live under their statute paths. Bounded to
+ * MAX_SECTION_FILES files in citation-path order; the exact match
+ * count rides along so the page can say how many citers it is not
+ * showing instead of truncating silently. Failure is intentionally an
+ * empty extra group: a missing column, timeout, or transient error
+ * must not hide path-matched encodings.
  */
-async function listCitedByFiles(citationPath: string): Promise<SectionFile[]> {
+async function listCitedByFiles(citationPath: string): Promise<CitedByLookup> {
   try {
     const result = await withTimeout(
       supabaseEncodings
         .from("rulespec_files")
-        .select("citation_path, file_path, raw_yaml")
+        .select("citation_path, file_path, raw_yaml", { count: "exact" })
         .contains("value_citation_paths", [citationPath])
         .order("citation_path", { ascending: true })
         .limit(MAX_SECTION_FILES),
       QUERY_TIMEOUT_MS,
       null,
     );
-    if (!result || result.error) return [];
+    if (!result || result.error) return NO_CITED_BY;
     const rows = (result.data ?? []) as Array<{
       citation_path: string;
       file_path: string;
       raw_yaml: string | null;
     }>;
-    return rows
+    const files = rows
       .filter((row) => row.raw_yaml && row.raw_yaml.trim().length > 0)
       .map((row) => ({
         citationPath: row.citation_path,
@@ -402,8 +443,10 @@ async function listCitedByFiles(citationPath: string): Promise<SectionFile[]> {
         content: row.raw_yaml as string,
       }))
       .sort((a, b) => a.citationPath.localeCompare(b.citationPath));
+    const count = typeof result.count === "number" ? result.count : rows.length;
+    return { files, overflow: Math.max(0, count - rows.length) };
   } catch {
-    return [];
+    return NO_CITED_BY;
   }
 }
 
@@ -472,10 +515,12 @@ export async function getSectionEncoding(
   rootId: string,
   citationPath: string,
 ): Promise<SectionEncoding> {
-  const [mirror, citedBy] = await Promise.all([
+  const [mirror, citedByLookup] = await Promise.all([
     listMirrorFiles(citationPath),
     listCitedByFiles(citationPath),
   ]);
+  const citedBy = citedByLookup.files;
+  const citedByOverflow = citedByLookup.overflow;
   if (mirror && mirror.length > 0) {
     const sectionFile =
       mirror.find((file) => file.citationPath === citationPath) ?? null;
@@ -497,6 +542,7 @@ export async function getSectionEncoding(
       null,
       ancestor,
       citedByOnly,
+      citedByOverflow,
     );
   }
   // Nothing at or below the request: the request may be DEEPER than
@@ -515,6 +561,7 @@ export async function getSectionEncoding(
         null,
         ancestor,
         citedByOnly,
+        citedByOverflow,
       );
     }
     return assembleSection(ancestor.citationPath, ancestor, [], null);
@@ -523,7 +570,15 @@ export async function getSectionEncoding(
   // A successful path scan can legitimately be empty when all
   // encodings for the provision are homed in policy buckets.
   if (mirror && citedBy.length > 0) {
-    return assembleSection(citationPath, null, [], null, null, citedBy);
+    return assembleSection(
+      citationPath,
+      null,
+      [],
+      null,
+      null,
+      citedBy,
+      citedByOverflow,
+    );
   }
 
   // Mirror miss (not yet synced, or query failure): legacy path —

@@ -21,10 +21,14 @@ generate `/axiom/v2/...` hrefs. The app root and marketing pages stay on v1.
   from the rulespec-* repos), legacy GitHub-raw fallback second. Never add
   request-time GitHub reads to hot paths. Each mirror row's
   `source_citation_paths` records every corpus provision declared by its module
-  and proof atoms, and `value_citation_paths` the subset cited by
-  `kind: parameter` atoms — the provisions whose content the module encodes.
-  The section reader keys its **Encoded from this provision** group on
-  `value_citation_paths` (condition atoms reference without encoding).
+  and proof atoms, and `value_citation_paths` the provisions whose content the
+  module encodes: the singular `source_verification.corpus_citation_path` plus
+  paths cited by value-bearing atom kinds (see `source-citations.ts` under
+  `src/lib/axiom/rulespec`; condition-family atoms reference without
+  encoding). The section reader keys its **Encoded from this provision** group on
+  `value_citation_paths`, contributes only the rules that encode the page's
+  provision, renders name collisions as `name@module`, and reports citers
+  beyond its 60-file bound as an overflow count.
 - **Everything executable** (packages, graphs, calculate): the hosted
   axiom-api via `src/lib/axiom/runtime/api.ts`, server-side only.
 

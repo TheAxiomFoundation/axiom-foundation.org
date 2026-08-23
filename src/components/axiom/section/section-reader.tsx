@@ -757,6 +757,7 @@ export function SectionReader({
           programs={data.programs}
           ruleFiles={data.ruleFiles}
           citedByFiles={data.citedByFiles}
+          citedByOverflow={data.citedByOverflow}
         />
       </aside>
     </div>

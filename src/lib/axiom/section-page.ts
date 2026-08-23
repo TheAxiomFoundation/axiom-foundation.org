@@ -113,6 +113,8 @@ export interface SectionPageData {
   ruleFiles: Record<string, string>;
   /** Policy-rooted modules whose declared sources include this provision. */
   citedByFiles: SectionEncoding["citedByFiles"];
+  /** Citing modules not shown because the reverse lookup is bounded. */
+  citedByOverflow: number;
   /**
    * Set when the requested path was deeper than the ingested corpus
    * row (e.g. …/26/32/a on a section-granular corpus): the section
@@ -1071,6 +1073,7 @@ async function getSectionEncodingAcrossPaths(
       fileAnchors: {},
       ruleFiles: {},
       citedByFiles: [],
+      citedByOverflow: 0,
     }));
     if (hasEncodingContent(section)) return section;
     first = first ?? section;
@@ -1082,6 +1085,7 @@ async function getSectionEncodingAcrossPaths(
       fileAnchors: {},
       ruleFiles: {},
       citedByFiles: [],
+      citedByOverflow: 0,
     }
   );
 }
@@ -1103,6 +1107,7 @@ export async function getSectionPageDataFromResolution(
         fileAnchors: {},
         ruleFiles: {},
         citedByFiles: [],
+        citedByOverflow: 0,
       })),
       getProvisionCoverage(citationPath).catch(
         () => [] as ProvisionProgramCoverage[],
@@ -1231,6 +1236,7 @@ export async function getSectionPageDataFromResolution(
     programs,
     ruleFiles: sectionEncoding.ruleFiles,
     citedByFiles: sectionEncoding.citedByFiles,
+    citedByOverflow: sectionEncoding.citedByOverflow,
     focusAnchor,
     prev,
     next,

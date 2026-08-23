@@ -92,6 +92,7 @@ export function EncodingRail({
   programs = [],
   ruleFiles = {},
   citedByFiles = [],
+  citedByOverflow = 0,
 }: {
   /** Rule the visitor navigated from — its card is spotlighted. */
   highlightRule?: string | null;
@@ -108,6 +109,8 @@ export function EncodingRail({
   ruleFiles?: Record<string, string>;
   /** Policy-rooted modules that declare this provision as a source. */
   citedByFiles?: SectionPageData["citedByFiles"];
+  /** Citing modules beyond the bounded lookup (not shown). */
+  citedByOverflow?: number;
 }) {
   const ruleDetails = useMemo(() => {
     const map = new Map<string, RuleCardDetail>();
@@ -215,7 +218,7 @@ export function EncodingRail({
               }}
             />
           )}
-          {citedByGroups.length > 0 && (
+          {(citedByGroups.length > 0 || citedByOverflow > 0) && (
             <div
               data-testid="rail-cited-by"
               className={
@@ -276,6 +279,17 @@ export function EncodingRail({
                   );
                 })}
               </div>
+              {citedByOverflow > 0 && (
+                <p
+                  data-testid="rail-cited-by-overflow"
+                  className="mt-3 text-xs text-[var(--color-ink-muted)]"
+                >
+                  {citedByOverflow} more{" "}
+                  {citedByOverflow === 1 ? "module encodes" : "modules encode"}{" "}
+                  this provision. This view is bounded to the first{" "}
+                  {citedByFiles.length} by citation path.
+                </p>
+              )}
             </div>
           )}
         </section>

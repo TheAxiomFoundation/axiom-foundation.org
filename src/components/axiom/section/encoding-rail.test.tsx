@@ -323,6 +323,58 @@ describe("EncodingRail", () => {
     );
   });
 
+  it("says how many citing modules the bounded lookup left out", () => {
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/hts/9903.91.02"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        citedByFiles={[
+          {
+            citationPath:
+              "us/policy/cbp/us-tariff-schedule/generated/ch01/ch01",
+            filePath:
+              "policies/cbp/us-tariff-schedule/generated/ch01/ch01.yaml",
+            ruleNames: ["rule_for_b"],
+          },
+        ]}
+        citedByOverflow={42}
+      />,
+    );
+
+    expect(screen.getByTestId("rail-cited-by-overflow")).toHaveTextContent(
+      "42 more modules encode this provision. This view is bounded to the first 1 by citation path.",
+    );
+  });
+
+  it("renders the overflow note even when no cited-by rule is in view", () => {
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        citedByFiles={[]}
+        citedByOverflow={1}
+      />,
+    );
+
+    expect(screen.getByTestId("rail-cited-by-overflow")).toHaveTextContent(
+      "1 more module encodes this provision.",
+    );
+  });
+
   it("shows an unlinked module path when no RuleSpec repository is mapped", () => {
     placeSections({ a: 500, b: 1500 });
     render(

@@ -37,6 +37,26 @@ function ruleYaml(name: string, source: string): string {
   ].join("\n");
 }
 
+/** Policy-rooted module whose singular source IS ``sourcePath`` —
+ *  every rule in it counts as encoded from that provision. */
+function citedByYaml(names: string[], sourcePath: string): string {
+  return [
+    "format: rulespec/v1",
+    "module:",
+    "  source_verification:",
+    `    corpus_citation_path: ${sourcePath}`,
+    "rules:",
+    ...names.flatMap((name) => [
+      `  - name: ${name}`,
+      "    kind: derived",
+      `    source: ${sourcePath}`,
+      "    versions:",
+      "      - effective_from: '2026-01-01'",
+      "        formula: 'x'",
+    ]),
+  ].join("\n");
+}
+
 function encodingRow(filePath: string, content: string) {
   return {
     encoding_run_id: "run-1",
@@ -325,7 +345,7 @@ describe("getSectionEncoding", () => {
           {
             citation_path: policyCitation,
             file_path: policyFile,
-            raw_yaml: ruleYaml("ch22_general_rate", "HTS 2203.00.00"),
+            raw_yaml: citedByYaml(["ch22_general_rate"], SECTION),
           },
         ],
         error: null,
@@ -381,15 +401,7 @@ describe("getSectionEncoding", () => {
           {
             citation_path: "us/policy/x/module",
             file_path: "policies/x/module.yaml",
-            raw_yaml: [
-              ruleYaml("shared_name", "policy restatement"),
-              "  - name: policy_only",
-              "    kind: derived",
-              "    source: policy source",
-              "    versions:",
-              "      - effective_from: '2026-01-01'",
-              "        formula: 'y'",
-            ].join("\n"),
+            raw_yaml: citedByYaml(["shared_name", "policy_only"], SECTION),
           },
         ],
         error: null,
@@ -398,18 +410,108 @@ describe("getSectionEncoding", () => {
 
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.ruleFiles.shared_name).toBe("statutes/26/32.yaml");
+    expect(result.ruleFiles["shared_name@module"]).toBe(
+      "policies/x/module.yaml",
+    );
     expect(result.citedByFiles).toEqual([
       {
         citationPath: "us/policy/x/module",
         filePath: "policies/x/module.yaml",
-        ruleNames: ["policy_only"],
+        ruleNames: ["shared_name@module", "policy_only"],
       },
     ]);
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
     expect(doc.rules.map((rule) => rule.name)).toEqual([
       "shared_name",
+      "shared_name@module",
       "policy_only",
     ]);
+  });
+
+  it("keeps only the rules that encode the provision from a cited-by file", async () => {
+    const mixed = [
+      "format: rulespec/v1",
+      "module:",
+      "  source_verification:",
+      "    corpus_citation_path: us/statute/hts/chapter-99/page-1",
+      "rules:",
+      "  - name: rate_for_this_line",
+      "    kind: parameter",
+      "    metadata:",
+      "      proof:",
+      "        atoms:",
+      "          - path: versions[0].values",
+      "            kind: parameter",
+      "            source:",
+      `              corpus_citation_path: ${SECTION}`,
+      "              excerpt: Free",
+      "    versions:",
+      "      - effective_from: '2026-01-01'",
+      "        values: {1: 0}",
+      "  - name: guard_mentioning_it",
+      "    kind: derived",
+      "    metadata:",
+      "      proof:",
+      "        atoms:",
+      "          - path: versions[0].formula",
+      "            kind: condition",
+      "            source:",
+      `              corpus_citation_path: ${SECTION}`,
+      "              excerpt: Beer made from malt",
+      "    versions:",
+      "      - effective_from: '2026-01-01'",
+      "        formula: 'x'",
+      "  - name: unrelated_rule",
+      "    kind: derived",
+      "    versions:",
+      "      - effective_from: '2026-01-01'",
+      "        formula: 'y'",
+    ].join("\n");
+    configureMirror({
+      citedBy: {
+        data: [
+          {
+            citation_path: "us/policy/cbp/composition",
+            file_path: "policies/cbp/composition.yaml",
+            raw_yaml: mixed,
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles).toEqual([
+      {
+        citationPath: "us/policy/cbp/composition",
+        filePath: "policies/cbp/composition.yaml",
+        ruleNames: ["rate_for_this_line"],
+      },
+    ]);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual(["rate_for_this_line"]);
+  });
+
+  it("reports citers beyond the file bound as overflow", async () => {
+    configureMirror({
+      citedBy: {
+        data: [
+          {
+            citation_path: "us/policy/a/one",
+            file_path: "policies/a/one.yaml",
+            raw_yaml: citedByYaml(["one_rule"], SECTION),
+          },
+        ],
+        count: 102,
+        error: null,
+      } as never,
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles.map((file) => file.citationPath)).toEqual([
+      "us/policy/a/one",
+    ]);
+    expect(result.citedByOverflow).toBe(101);
   });
 
   it("sorts cited-by modules and drops empty mirror rows", async () => {
@@ -429,7 +531,7 @@ describe("getSectionEncoding", () => {
           {
             citation_path: "us/policy/z/later",
             file_path: "policies/z/later.yaml",
-            raw_yaml: ruleYaml("z_rule", "z source"),
+            raw_yaml: citedByYaml(["z_rule"], SECTION),
           },
           {
             citation_path: "us/policy/a/empty",
@@ -439,7 +541,7 @@ describe("getSectionEncoding", () => {
           {
             citation_path: "us/policy/a/first",
             file_path: "policies/a/first.yaml",
-            raw_yaml: ruleYaml("a_rule", "a source"),
+            raw_yaml: citedByYaml(["a_rule"], SECTION),
           },
         ],
         error: null,
@@ -470,7 +572,10 @@ describe("getSectionEncoding", () => {
     };
     mirrorFromMock.mockImplementation(() => {
       const chain = mirrorChain(results as never);
-      const originalThen = chain.then;
+      const originalThen = chain.then as (
+        resolve: (value: unknown) => unknown,
+        reject?: (reason: unknown) => unknown,
+      ) => Promise<unknown>;
       chain.then = (
         resolve: (value: unknown) => unknown,
         reject?: (reason: unknown) => unknown,
@@ -501,7 +606,7 @@ describe("getSectionEncoding", () => {
           {
             citation_path: policyCitation,
             file_path: policyFile,
-            raw_yaml: ruleYaml("ch22_general_rate", "HTS 2203.00.00"),
+            raw_yaml: citedByYaml(["ch22_general_rate"], tariffPath),
           },
         ],
         error: null,

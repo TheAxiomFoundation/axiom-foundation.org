@@ -107,9 +107,9 @@ export function EncodingRail({
   programs?: ProvisionProgramCoverage[];
   /** Rule name → repo file path; enables per-rule graph links. */
   ruleFiles?: Record<string, string>;
-  /** Policy-rooted modules that declare this provision as a source. */
+  /** Policy-rooted modules with rules grounded in this provision. */
   citedByFiles?: SectionPageData["citedByFiles"];
-  /** Citing modules beyond the bounded lookup (not shown). */
+  /** Citing rules beyond the bounded lookup (not shown). */
   citedByOverflow?: number;
 }) {
   const ruleDetails = useMemo(() => {
@@ -135,25 +135,41 @@ export function EncodingRail({
 
   // Scope everything to the active subsection in follow mode — but the
   // navigated-from rule must never be scoped away.
+  const citedByRulesByRenderedName = new Map(
+    citedByFiles.flatMap((file) =>
+      file.rules.map((rule) => [rule.renderedName, rule] as const),
+    ),
+  );
+  const matchesHighlight = (renderedName: string) => {
+    if (renderedName === highlightRule) return true;
+    const citation = citedByRulesByRenderedName.get(renderedName);
+    return citation?.canonicalName === highlightRule;
+  };
   const nodeRules = activeChunk
     ? encodedRules.filter(
         (rule) =>
           rule.anchors.includes(activeChunk.anchor) ||
-          rule.name === highlightRule,
+          matchesHighlight(rule.name),
       )
     : encodedRules;
   const citedByRuleNames = new Set(
-    citedByFiles.flatMap((file) => file.ruleNames),
+    citedByFiles.flatMap((file) =>
+      file.rules.map((rule) => rule.renderedName),
+    ),
   );
   const pathMatchedRules = nodeRules.filter(
     (rule) => !citedByRuleNames.has(rule.name),
   );
+  const nodeRulesByName = new Map(nodeRules.map((rule) => [rule.name, rule]));
   const citedByGroups = citedByFiles
     .map((file) => ({
       ...file,
-      rules: nodeRules.filter((rule) => file.ruleNames.includes(rule.name)),
+      visibleRules: file.rules.flatMap((citation) => {
+        const rule = nodeRulesByName.get(citation.renderedName);
+        return rule ? [{ citation, rule }] : [];
+      }),
     }))
-    .filter((file) => file.rules.length > 0);
+    .filter((file) => file.visibleRules.length > 0);
   const nodeOutgoing = activeChunk
     ? (refsForChunk(outgoing, activeChunk.text) as InlineReference[])
     : outgoing;
@@ -252,10 +268,40 @@ export function EncodingRail({
                           {file.citationPath}
                         </span>
                       )}
+                      {file.visibleRules.some(
+                        ({ citation }) =>
+                          citation.renderedName !== citation.canonicalName,
+                      ) && (
+                        <div className="mt-2 space-y-1">
+                          {file.visibleRules.flatMap(({ citation }) =>
+                            citation.renderedName === citation.canonicalName
+                              ? []
+                              : [
+                                  <p
+                                    key={citation.renderedName}
+                                    className="break-all text-[11px] text-[var(--color-ink-muted)]"
+                                  >
+                                    <span className="font-mono text-[var(--color-ink-secondary)]">
+                                      {citation.canonicalName}
+                                    </span>{" "}
+                                    rendered as{" "}
+                                    <span className="font-mono">
+                                      {citation.renderedName}
+                                    </span>
+                                    .
+                                  </p>,
+                                ],
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2">
                         <RuleCardList
-                          rules={file.rules}
-                          highlightRule={highlightRule}
+                          rules={file.visibleRules.map(({ rule }) => rule)}
+                          highlightRule={
+                            file.visibleRules.find(({ citation }) =>
+                              matchesHighlight(citation.renderedName),
+                            )?.citation.renderedName ?? null
+                          }
                           citationLabel={
                             citationPath
                               ? formatCitationLabel(citationPath)
@@ -284,10 +330,9 @@ export function EncodingRail({
                   data-testid="rail-cited-by-overflow"
                   className="mt-3 text-xs text-[var(--color-ink-muted)]"
                 >
-                  {citedByOverflow} more{" "}
-                  {citedByOverflow === 1 ? "module encodes" : "modules encode"}{" "}
-                  this provision. This view is bounded to the first{" "}
-                  {citedByFiles.length} by citation path.
+                  {citedByOverflow} more rules in other modules are grounded in
+                  this provision. This view shows the first 120 by rank and
+                  module path.
                 </p>
               )}
             </div>

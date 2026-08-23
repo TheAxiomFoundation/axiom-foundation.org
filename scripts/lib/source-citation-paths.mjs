@@ -7,8 +7,9 @@ export const MAX_SOURCE_CITATION_PATHS = 5_000;
  * Collect the corpus citation paths a RuleSpec file declares. See
  * src/lib/axiom/rulespec/source-citations.ts for the semantics of the
  * two sets (``all`` = every declaration; ``values`` = the provisions
- * whose content the module encodes). Malformed YAML and non-strings
- * yield empty sets.
+ * reached by singular-source or non-reference grounding declarations).
+ * Both arrays are search aids; malformed YAML and non-strings yield
+ * empty sets.
  */
 export function extractCitationPathSets(content) {
   if (typeof content !== "string") return { all: [], values: [] };

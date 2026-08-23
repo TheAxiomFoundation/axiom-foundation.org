@@ -9,7 +9,7 @@ import {
   fetchEncodedFile,
   type EncodedFile,
 } from "@/lib/axiom/rulespec/repo-listing";
-import { ruleEncodesProvision } from "@/lib/axiom/rulespec/source-citations";
+import { ruleCitationRows } from "@/lib/axiom/rulespec/source-citations";
 import { parseRuleSpec } from "@/lib/axiom/rulespec/doc";
 
 /**
@@ -55,23 +55,22 @@ export interface SectionEncoding {
    * durable legal ID. Feeds per-rule graph links.
    */
   ruleFiles: Record<string, string>;
-  /**
-   * Modules whose value proof atoms cite this provision,
-   * but whose own citation path may live in a different bucket (for
-   * example a policy-rooted tariff module citing an HTS line).
-   */
+  /** Rules in modules grounded in this provision, grouped by their
+   *  module citation path in materialized rank order. */
   citedByFiles: Array<{
     citationPath: string;
     filePath: string;
-    /** Names (as rendered) of the rules this file contributed — only
-     *  rules that encode this provision; a rule whose name collides
-     *  with an earlier one is rendered as ``name@module``. */
-    ruleNames: string[];
+    rules: Array<{
+      renderedName: string;
+      canonicalName: string;
+      rank: 0 | 1 | 2 | 3;
+      atomKinds: string[];
+    }>;
   }>;
   /**
-   * Citing modules beyond the file bound, when the mirror reported
-   * more matches than were fetched. Zero when every citer is shown
-   * or the count was unavailable.
+   * Citing rules beyond the row bound, when the index reported more
+   * matches than were fetched. Zero when every rule is shown or the
+   * count was unavailable.
    */
   citedByOverflow: number;
 }
@@ -79,12 +78,23 @@ export interface SectionEncoding {
 /** Bound on files merged per section; deep regulation trees stay
  *  bounded. 26 USC 32 has 2 files today. */
 const MAX_SECTION_FILES = 60;
+export const MAX_CITED_RULES = 120;
 const QUERY_TIMEOUT_MS = 4000;
 
 interface SectionFile {
   citationPath: string;
   filePath: string;
   content: string;
+}
+
+interface RuleCitationRecord {
+  moduleCitationPath: string;
+  filePath: string;
+  ruleName: string;
+  isModuleSource: boolean;
+  atomKinds: string[];
+  rank: 0 | 1 | 2 | 3;
+  ruleYaml: string;
 }
 
 function emptyResult(
@@ -152,6 +162,41 @@ function mergedContent(
   );
 }
 
+function parseRuleRow(ruleYaml: string): Record<string, unknown> | null {
+  try {
+    const value = yaml.load(ruleYaml);
+    if (!Array.isArray(value) || value.length === 0) return null;
+    const rule = value[0];
+    return rule && typeof rule === "object" && !Array.isArray(rule)
+      ? (rule as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function moduleSlug(moduleCitationPath: string): string {
+  const withoutJurisdiction = moduleCitationPath.split("/").slice(1);
+  return (withoutJurisdiction.length > 0
+    ? withoutJurisdiction
+    : [moduleCitationPath]
+  ).join(".");
+}
+
+function renderedRuleName(
+  canonicalName: string,
+  moduleCitationPath: string,
+  seenNames: Set<string>,
+): string {
+  if (!seenNames.has(canonicalName)) return canonicalName;
+  const base = `${canonicalName}@${moduleSlug(moduleCitationPath)}`;
+  if (!seenNames.has(base)) return base;
+  for (let suffix = 2; ; suffix++) {
+    const candidate = `${base}#${suffix}`;
+    if (!seenNames.has(candidate)) return candidate;
+  }
+}
+
 /**
  * Merge a section-level doc (optional) with descendant files into
  * one encoding + file-derived anchors. ``primaryMeta`` (a DB run)
@@ -163,7 +208,7 @@ function assembleSection(
   descendants: SectionFile[],
   primaryMeta: RuleEncodingData | null,
   ancestor: SectionFile | null = null,
-  citedBy: SectionFile[] = [],
+  citedBy: RuleCitationRecord[] = [],
   citedByOverflow = 0,
 ): SectionEncoding {
   const seenNames = new Set<string>();
@@ -249,43 +294,49 @@ function assembleSection(
   }
 
   let citedByRuleCount = 0;
-  // Cited-by modules contribute only the rules that encode THIS
-  // provision (singular module source == the provision, or a
-  // value-bearing atom citing it) — never the whole file. A chapter
-  // composition that encodes one overlay heading among seventy rules
-  // shows that one rule here. Names are module-scoped in RuleSpec, so
-  // a rule whose name is already taken (by a path-matched rule or an
-  // earlier citing module) is rendered as ``name@module`` rather than
-  // silently dropped or misattributed.
-  const citedByFiles = citedBy.flatMap((file) => {
-    const doc = parseRuleSpec(file.content);
-    const moduleTag = file.citationPath.split("/").at(-1) ?? file.citationPath;
-    const ruleNames: string[] = [];
-    for (const rule of doc.rules) {
-      if (!ruleEncodesProvision(doc, rule, citationPath)) continue;
-      const renderedName = seenNames.has(rule.name)
-        ? `${rule.name}@${moduleTag}`
-        : rule.name;
-      if (seenNames.has(renderedName)) continue;
-      seenNames.add(renderedName);
-      ruleFiles[renderedName] ??= file.filePath;
-      ruleRaws.push(
-        renderedName === rule.name
-          ? rule.raw
-          : { ...rule.raw, name: renderedName },
-      );
-      ruleNames.push(renderedName);
-      citedByRuleCount++;
+  // Rule rows arrive ordered by rank, module path, and canonical name.
+  // Map insertion order preserves the first (best-ranked) row for each
+  // module while later-ranked rules append to that same group. Rule
+  // names are module-scoped, so every collision receives a stable full
+  // module slug and, if needed, a numeric suffix. No row is discarded
+  // merely because another module chose the same rule name.
+  const citedByGroups = new Map<
+    string,
+    SectionEncoding["citedByFiles"][number]
+  >();
+  for (const row of citedBy) {
+    const raw = parseRuleRow(row.ruleYaml);
+    if (!raw) continue;
+    const renderedName = renderedRuleName(
+      row.ruleName,
+      row.moduleCitationPath,
+      seenNames,
+    );
+    seenNames.add(renderedName);
+    ruleFiles[renderedName] ??= row.filePath;
+    ruleRaws.push(
+      renderedName === row.ruleName
+        ? raw
+        : { ...raw, name: renderedName },
+    );
+    let group = citedByGroups.get(row.moduleCitationPath);
+    if (!group) {
+      group = {
+        citationPath: row.moduleCitationPath,
+        filePath: row.filePath,
+        rules: [],
+      };
+      citedByGroups.set(row.moduleCitationPath, group);
     }
-    if (ruleNames.length === 0) return [];
-    return [
-      {
-        citationPath: file.citationPath,
-        filePath: file.filePath,
-        ruleNames,
-      },
-    ];
-  });
+    group.rules.push({
+      renderedName,
+      canonicalName: row.ruleName,
+      rank: row.rank,
+      atomKinds: row.atomKinds,
+    });
+    citedByRuleCount++;
+  }
+  const citedByFiles = [...citedByGroups.values()];
 
   // Single-file sections need no synthetic doc — serve the file
   // directly so file_path (GitHub link, sibling tests) stays real.
@@ -337,7 +388,10 @@ function assembleSection(
 
   const bucketDir = sectionFile
     ? sectionFile.filePath.replace(/\.yaml$/, "")
-    : (descendants[0] ?? citedBy[0]).filePath.split("/").slice(0, -1).join("/");
+    : (descendants[0] ?? citedBy[0] ?? ancestor)!.filePath
+        .split("/")
+        .slice(0, -1)
+        .join("/");
   return {
     encodingRootPath: citationPath,
     encoding: {
@@ -399,23 +453,104 @@ async function listMirrorFiles(
 
 interface CitedByLookup {
   files: SectionFile[];
-  /** Matching rows the mirror reported beyond those fetched. */
+  /** Matching files the legacy mirror lookup did not fetch. */
   overflow: number;
 }
 
 const NO_CITED_BY: CitedByLookup = { files: [], overflow: 0 };
 
+interface RuleCitationLookup {
+  rows: RuleCitationRecord[];
+  overflow: number;
+  /** The materialized table could not be read, so use the file fallback. */
+  needsFallback: boolean;
+}
+
+const RULE_CITATIONS_UNAVAILABLE: RuleCitationLookup = {
+  rows: [],
+  overflow: 0,
+  needsFallback: true,
+};
+
+interface RuleCitationQueryResult {
+  data: unknown;
+  error: unknown;
+  count: number | null;
+}
+
 /**
- * Reverse lookup for modules that encode the requested provision:
- * rows whose ``value_citation_paths`` (singular module source plus
- * value-bearing proof atoms — see rulespec/source-citations.ts)
- * contain it. Separate from the path range scan because policy-rooted
- * modules do not live under their statute paths. Bounded to
- * MAX_SECTION_FILES files in citation-path order; the exact match
- * count rides along so the page can say how many citers it is not
- * showing instead of truncating silently. Failure is intentionally an
- * empty extra group: a missing column, timeout, or transient error
- * must not hide path-matched encodings.
+ * Materialized reverse lookup at rule granularity. The exact count is
+ * computed before the 120-row limit, so overflow always describes
+ * omitted rules rather than modules. A missing table, timeout, or
+ * transient error returns an empty fail-open result marked for the
+ * whole-file compatibility lookup below.
+ */
+async function listRuleCitations(
+  citationPath: string,
+): Promise<RuleCitationLookup> {
+  try {
+    const query = supabaseEncodings
+      .from("rule_citations")
+      .select(
+        "module_citation_path, file_path, rule_name, is_module_source, atom_kinds, rank, rule_yaml",
+        { count: "exact" },
+      )
+      .eq("citation_path", citationPath)
+      .order("rank", { ascending: true })
+      .order("module_citation_path", { ascending: true })
+      .order("rule_name", { ascending: true })
+      .limit(MAX_CITED_RULES);
+    const result = await withTimeout<
+      RuleCitationQueryResult | RuleCitationLookup
+    >(
+      query as unknown as PromiseLike<RuleCitationQueryResult>,
+      QUERY_TIMEOUT_MS,
+      RULE_CITATIONS_UNAVAILABLE,
+    );
+    if ("needsFallback" in result) return result;
+    if (result.error) return RULE_CITATIONS_UNAVAILABLE;
+    const sourceRows = (result.data ?? []) as Array<{
+      module_citation_path: string;
+      file_path: string;
+      rule_name: string;
+      is_module_source: boolean;
+      atom_kinds: unknown;
+      rank: number;
+      rule_yaml: string;
+    }>;
+    const rows = sourceRows.map<RuleCitationRecord>((row) => ({
+      moduleCitationPath: row.module_citation_path,
+      filePath: row.file_path,
+      ruleName: row.rule_name,
+      isModuleSource: row.is_module_source,
+      atomKinds: Array.isArray(row.atom_kinds)
+        ? row.atom_kinds.filter(
+            (kind): kind is string => typeof kind === "string",
+          )
+        : [],
+      rank: (
+        row.rank === 0 || row.rank === 1 || row.rank === 2
+          ? row.rank
+          : 3
+      ) as RuleCitationRecord["rank"],
+      ruleYaml: row.rule_yaml,
+    }));
+    const count = typeof result.count === "number" ? result.count : rows.length;
+    return {
+      rows,
+      overflow: Math.max(0, count - sourceRows.length),
+      needsFallback: false,
+    };
+  } catch {
+    return RULE_CITATIONS_UNAVAILABLE;
+  }
+}
+
+/**
+ * Compatibility lookup used only while ``rule_citations`` is absent or
+ * unreadable. It fetches bounded whole files through the existing
+ * search-aid array so rolling out the additive migration cannot regress
+ * reader pages.
  */
 async function listCitedByFiles(citationPath: string): Promise<CitedByLookup> {
   try {
@@ -450,16 +585,43 @@ async function listCitedByFiles(citationPath: string): Promise<CitedByLookup> {
   }
 }
 
-function excludePathMatchedFiles(
-  citedBy: SectionFile[],
+function citationRowsFromFiles(
+  citationPath: string,
+  files: SectionFile[],
+): RuleCitationRecord[] {
+  const rows = files.flatMap((file) =>
+    ruleCitationRows(
+      parseRuleSpec(file.content),
+      file.citationPath,
+      file.filePath,
+      "",
+      file.citationPath.split("/")[0] ?? "",
+    )
+      .filter((row) => row.citation_path === citationPath)
+      .map((row) => ({
+        moduleCitationPath: row.module_citation_path,
+        filePath: row.file_path,
+        ruleName: row.rule_name,
+        isModuleSource: row.is_module_source,
+        atomKinds: row.atom_kinds,
+        rank: row.rank,
+        ruleYaml: row.rule_yaml,
+      })),
+  );
+  return rows.sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      a.moduleCitationPath.localeCompare(b.moduleCitationPath) ||
+      a.ruleName.localeCompare(b.ruleName),
+  );
+}
+
+function excludePathMatchedRows(
+  citedBy: RuleCitationRecord[],
   pathMatched: SectionFile[],
-): SectionFile[] {
+): RuleCitationRecord[] {
   const seen = new Set(pathMatched.map((file) => file.filePath));
-  return citedBy.filter((file) => {
-    if (seen.has(file.filePath)) return false;
-    seen.add(file.filePath);
-    return true;
-  });
+  return citedBy.filter((row) => !seen.has(row.filePath));
 }
 
 /**
@@ -515,12 +677,17 @@ export async function getSectionEncoding(
   rootId: string,
   citationPath: string,
 ): Promise<SectionEncoding> {
-  const [mirror, citedByLookup] = await Promise.all([
+  const [mirror, indexedCitations] = await Promise.all([
     listMirrorFiles(citationPath),
-    listCitedByFiles(citationPath),
+    listRuleCitations(citationPath),
   ]);
-  const citedBy = citedByLookup.files;
-  const citedByOverflow = citedByLookup.overflow;
+  let citedBy = indexedCitations.rows;
+  let citedByOverflow = indexedCitations.overflow;
+  if (indexedCitations.needsFallback) {
+    const fileLookup = await listCitedByFiles(citationPath);
+    citedBy = citationRowsFromFiles(citationPath, fileLookup.files);
+    citedByOverflow = fileLookup.overflow;
+  }
   if (mirror && mirror.length > 0) {
     const sectionFile =
       mirror.find((file) => file.citationPath === citationPath) ?? null;
@@ -531,7 +698,7 @@ export async function getSectionEncoding(
     // remaining rules live in an ancestor module — probe for it so
     // subsection-granular files don't shadow the section file's rules.
     const ancestor = sectionFile ? null : await findAncestorFile(citationPath);
-    const citedByOnly = excludePathMatchedFiles(
+    const citedByOnly = excludePathMatchedRows(
       citedBy,
       ancestor ? [...mirror, ancestor] : mirror,
     );
@@ -550,10 +717,8 @@ export async function getSectionEncoding(
   // layer re-joins its rules by source citation.
   const ancestor = await findAncestorFile(citationPath);
   if (ancestor) {
-    const citedByOnly = mirror
-      ? excludePathMatchedFiles(citedBy, [ancestor])
-      : [];
-    if (citedByOnly.length > 0) {
+    const citedByOnly = excludePathMatchedRows(citedBy, [ancestor]);
+    if (citedByOnly.length > 0 || citedByOverflow > 0) {
       return assembleSection(
         citationPath,
         null,
@@ -569,7 +734,7 @@ export async function getSectionEncoding(
 
   // A successful path scan can legitimately be empty when all
   // encodings for the provision are homed in policy buckets.
-  if (mirror && citedBy.length > 0) {
+  if (mirror && (citedBy.length > 0 || citedByOverflow > 0)) {
     return assembleSection(
       citationPath,
       null,

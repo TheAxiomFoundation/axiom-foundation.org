@@ -1,4 +1,4 @@
-import type { RuleSpecDoc, RuleSpecRule } from "./doc";
+import { dumpRuleYaml, type RuleSpecDoc, type RuleSpecRule } from "./doc";
 
 /**
  * Which corpus provisions does a RuleSpec module encode?
@@ -10,20 +10,15 @@ import type { RuleSpecDoc, RuleSpecRule } from "./doc";
  * per rule through proof atoms (``metadata.proof.atoms[].source
  * .corpus_citation_path``).
  *
- * Two sets come out of that, with different meanings:
+ * Two sets come out of that, with different search meanings:
  *
- * - ``all``: every declared path. Good for search; too broad for
- *   "what encodes this provision?" because condition atoms reference
- *   provisions without encoding them.
- * - ``values``: the provisions whose CONTENT the module encodes — the
- *   singular module source, plus paths cited by value-bearing atom
- *   kinds. Measured over rulespec-us on 2026-08-23: with this set,
- *   14,231 provisions are cited and only 15 (chapter-99 overlay
- *   headings every chapter composition encodes) exceed the reader's
- *   60-file bound, while the witness beer line resolves to exactly the
- *   ch22 rates module. Adding ``formula`` atoms triples the over-bound
- *   set and ``condition`` atoms pull every composition onto the beer
- *   line.
+ * - ``all``: every declared path, including import and ordering
+ *   references. Good for broad source search.
+ * - ``values``: every provision that grounds a rule, excluding only
+ *   import and ordering references, plus the singular module source.
+ *   This broad set is a search aid. The reader uses materialized
+ *   rule-level rows so it can rank and bound common citations without
+ *   fetching whole files.
  */
 export const VALUE_ATOM_KINDS: ReadonlySet<string> = new Set([
   "parameter",
@@ -34,6 +29,25 @@ export const VALUE_ATOM_KINDS: ReadonlySet<string> = new Set([
   "unit",
   "default",
 ]);
+
+/** Atom kinds that point between RuleSpec declarations rather than
+ * grounding a rule in corpus text. */
+export const REFERENCE_ATOM_KINDS = new Set(["import", "ordering"]);
+
+export type RuleCitationRank = 0 | 1 | 2 | 3;
+
+export interface RuleCitationRow {
+  citation_path: string;
+  module_citation_path: string;
+  rule_name: string;
+  file_path: string;
+  repo: string;
+  jurisdiction: string;
+  is_module_source: boolean;
+  atom_kinds: string[];
+  rank: RuleCitationRank;
+  rule_yaml: string;
+}
 
 export interface CitationPathSets {
   all: string[];
@@ -87,13 +101,81 @@ function* ruleAtoms(
   }
 }
 
-/** Paths a rule's value-bearing atoms cite. */
+/** Rank a rule-level citation for bounded reader presentation. */
+export function rankForKinds(
+  kinds: Set<string>,
+  isModuleSource: boolean,
+): RuleCitationRank {
+  if (isModuleSource) return 0;
+  for (const kind of kinds) {
+    if (VALUE_ATOM_KINDS.has(kind)) return 1;
+  }
+  if (kinds.has("formula") || kinds.has("effective_period")) return 2;
+  return 3;
+}
+
+/** Paths a rule's non-reference grounding atoms cite. */
 export function ruleValueCitationPaths(rule: RuleSpecRule): Set<string> {
   const paths = new Set<string>();
   for (const atom of ruleAtoms(rule)) {
-    if (atom.kind && VALUE_ATOM_KINDS.has(atom.kind)) paths.add(atom.path);
+    if (!atom.kind || !REFERENCE_ATOM_KINDS.has(atom.kind)) {
+      paths.add(atom.path);
+    }
   }
   return paths;
+}
+
+/**
+ * Materialize one row per rule and cited corpus path.
+ *
+ * A module's singular source grounds every rule in that module. Proof atoms
+ * add rule-specific paths unless they are import or ordering references. The
+ * YAML stays as a list item so callers can splice rows beneath a synthetic
+ * document's ``rules`` key without parsing the original module file.
+ */
+export function ruleCitationRows(
+  doc: RuleSpecDoc,
+  moduleCitationPath: string,
+  filePath: string,
+  repo: string,
+  jurisdiction: string,
+): RuleCitationRow[] {
+  const { singular } = moduleSourcePaths(doc);
+  const rows: RuleCitationRow[] = [];
+
+  for (const rule of doc.rules) {
+    const kindsByPath = new Map<string, Set<string>>();
+    if (singular) kindsByPath.set(singular, new Set());
+
+    for (const atom of ruleAtoms(rule)) {
+      if (atom.kind && REFERENCE_ATOM_KINDS.has(atom.kind)) continue;
+      let kinds = kindsByPath.get(atom.path);
+      if (!kinds) {
+        kinds = new Set();
+        kindsByPath.set(atom.path, kinds);
+      }
+      if (atom.kind) kinds.add(atom.kind);
+    }
+
+    const ruleYaml = dumpRuleYaml(rule);
+    for (const [citationPath, kinds] of kindsByPath) {
+      const isModuleSource = citationPath === singular;
+      rows.push({
+        citation_path: citationPath,
+        module_citation_path: moduleCitationPath,
+        rule_name: rule.name,
+        file_path: filePath,
+        repo,
+        jurisdiction,
+        is_module_source: isModuleSource,
+        atom_kinds: [...kinds],
+        rank: rankForKinds(kinds, isModuleSource),
+        rule_yaml: ruleYaml,
+      });
+    }
+  }
+
+  return rows;
 }
 
 export function extractCitationPathSets(doc: RuleSpecDoc): CitationPathSets {
@@ -108,7 +190,9 @@ export function extractCitationPathSets(doc: RuleSpecDoc): CitationPathSets {
   for (const rule of doc.rules) {
     for (const atom of ruleAtoms(rule)) {
       all.add(atom.path);
-      if (atom.kind && VALUE_ATOM_KINDS.has(atom.kind)) values.add(atom.path);
+      if (!atom.kind || !REFERENCE_ATOM_KINDS.has(atom.kind)) {
+        values.add(atom.path);
+      }
     }
   }
   return { all: [...all], values: [...values] };
@@ -119,7 +203,7 @@ export function extractCitationPathSets(doc: RuleSpecDoc): CitationPathSets {
  * the module's singular source IS that provision (every rule in the
  * module is encoded from it — including the 135 rulespec-us modules
  * that carry no proof atoms at all) or when the rule's own
- * value-bearing atoms cite it.
+ * non-reference grounding atoms cite it.
  */
 export function ruleEncodesProvision(
   doc: RuleSpecDoc,

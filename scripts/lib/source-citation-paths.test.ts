@@ -146,7 +146,7 @@ rules: []
 });
 
 describe("extractCitationPathSets", () => {
-  it("keys the value set on parameter atoms only", () => {
+  it("keys the value set on every non-reference grounding atom", () => {
     const content = `
 module:
   source_verification:
@@ -180,7 +180,10 @@ rules:
 `;
 
     const sets = extractCitationPathSets(content);
-    expect(sets.values).toEqual(["us/statute/hts/2203.00.00"]);
+    expect(sets.values).toEqual([
+      "us/statute/hts/2203.00.00",
+      "us/statute/hts/7202",
+    ]);
     expect(sets.all).toEqual([
       "us/statute/hts/general-note-3/page-1",
       "us/statute/hts/2203.00.00",

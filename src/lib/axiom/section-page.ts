@@ -111,9 +111,9 @@ export interface SectionPageData {
   programs: ProvisionProgramCoverage[];
   /** Rule name → repo file path (the file half of its legal ID). */
   ruleFiles: Record<string, string>;
-  /** Policy-rooted modules whose declared sources include this provision. */
+  /** Modules with materialized rules grounded in this provision. */
   citedByFiles: SectionEncoding["citedByFiles"];
-  /** Citing modules not shown because the reverse lookup is bounded. */
+  /** Citing rules not shown because the reverse lookup is bounded. */
   citedByOverflow: number;
   /**
    * Set when the requested path was deeper than the ingested corpus

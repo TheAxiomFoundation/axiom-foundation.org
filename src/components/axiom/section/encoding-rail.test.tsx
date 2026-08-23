@@ -138,6 +138,10 @@ function renderRail() {
 describe("EncodingRail", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
     // Async like a real frame — the hook assigns the frame id before
     // the callback runs and clears it inside the callback.
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
@@ -250,7 +254,14 @@ describe("EncodingRail", () => {
           {
             citationPath: "us/policy/usitc/us-tariff-duty/lines/generated/ch22",
             filePath: "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
-            ruleNames: ["rule_for_b"],
+            rules: [
+              {
+                renderedName: "rule_for_b",
+                canonicalName: "rule_for_b",
+                rank: 1,
+                atomKinds: ["value"],
+              },
+            ],
           },
         ]}
       />,
@@ -280,6 +291,68 @@ describe("EncodingRail", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows an alias's canonical name and spotlights it by either name", () => {
+    placeSections({ a: 500, b: 1500 });
+    const renderedName =
+      "rule_for_b@policy.snap.us-ga.fy-2026-benefit-calculation";
+    render(
+      <EncodingRail
+        highlightRule="rule_for_b"
+        encoding={{
+          ...makeEncoding(),
+          rulespec_content: YAML.replace(
+            "name: rule_for_b",
+            `name: ${renderedName}`,
+          ),
+        }}
+        jurisdiction="us-ga"
+        citationPath="us-ga/statute/snap/example"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={[
+          ENCODED_RULES[0],
+          { ...ENCODED_RULES[1], name: renderedName },
+        ]}
+        outgoing={[]}
+        incoming={[]}
+        citedByFiles={[
+          {
+            citationPath:
+              "us-ga/policy/snap/fy-2026-benefit-calculation",
+            filePath: "policies/snap/fy-2026-benefit-calculation.yaml",
+            rules: [
+              {
+                renderedName,
+                canonicalName: "rule_for_b",
+                rank: 3,
+                atomKinds: ["condition"],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const group = screen.getByTestId("rail-cited-by");
+    expect(
+      within(group).getByText((_, element) =>
+        Boolean(
+          element?.tagName === "P" &&
+            element.textContent ===
+              `rule_for_b rendered as ${renderedName}.`,
+        ),
+      ),
+    ).toBeInTheDocument();
+    const card = within(group)
+      .getAllByText(renderedName)
+      .map((element) => element.closest("details"))
+      .find(Boolean);
+    expect(card).toHaveAttribute("open");
+    expect(
+      within(card as HTMLElement).getByText("your rule"),
+    ).toBeInTheDocument();
+  });
+
   it("tracks expansion of path-matched and cited-by rule cards", () => {
     placeSections({ a: 500, b: 1500 });
     render(
@@ -296,7 +369,14 @@ describe("EncodingRail", () => {
           {
             citationPath: "us/policy/usitc/us-tariff-duty/lines/generated/ch22",
             filePath: "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
-            ruleNames: ["rule_for_b"],
+            rules: [
+              {
+                renderedName: "rule_for_b",
+                canonicalName: "rule_for_b",
+                rank: 1,
+                atomKinds: ["value"],
+              },
+            ],
           },
         ]}
       />,
@@ -323,7 +403,7 @@ describe("EncodingRail", () => {
     );
   });
 
-  it("says how many citing modules the bounded lookup left out", () => {
+  it("says how many citing rules the bounded lookup left out", () => {
     placeSections({ a: 500, b: 1500 });
     render(
       <EncodingRail
@@ -341,7 +421,14 @@ describe("EncodingRail", () => {
               "us/policy/cbp/us-tariff-schedule/generated/ch01/ch01",
             filePath:
               "policies/cbp/us-tariff-schedule/generated/ch01/ch01.yaml",
-            ruleNames: ["rule_for_b"],
+            rules: [
+              {
+                renderedName: "rule_for_b",
+                canonicalName: "rule_for_b",
+                rank: 3,
+                atomKinds: ["condition"],
+              },
+            ],
           },
         ]}
         citedByOverflow={42}
@@ -349,7 +436,7 @@ describe("EncodingRail", () => {
     );
 
     expect(screen.getByTestId("rail-cited-by-overflow")).toHaveTextContent(
-      "42 more modules encode this provision. This view is bounded to the first 1 by citation path.",
+      "42 more rules in other modules are grounded in this provision. This view shows the first 120 by rank and module path.",
     );
   });
 
@@ -371,7 +458,7 @@ describe("EncodingRail", () => {
     );
 
     expect(screen.getByTestId("rail-cited-by-overflow")).toHaveTextContent(
-      "1 more module encodes this provision.",
+      "1 more rules in other modules are grounded in this provision. This view shows the first 120 by rank and module path.",
     );
   });
 
@@ -391,12 +478,26 @@ describe("EncodingRail", () => {
           {
             citationPath: "fr/policy/tariff/ch22",
             filePath: "policies/tariff/ch22.yaml",
-            ruleNames: ["rule_for_a"],
+            rules: [
+              {
+                renderedName: "rule_for_a",
+                canonicalName: "rule_for_a",
+                rank: 0,
+                atomKinds: [],
+              },
+            ],
           },
           {
             citationPath: "fr/policy/tariff/unused",
             filePath: "policies/tariff/unused.yaml",
-            ruleNames: ["not_on_this_section"],
+            rules: [
+              {
+                renderedName: "not_on_this_section",
+                canonicalName: "not_on_this_section",
+                rank: 1,
+                atomKinds: ["value"],
+              },
+            ],
           },
         ]}
       />,

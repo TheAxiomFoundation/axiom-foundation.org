@@ -57,6 +57,45 @@ function citedByYaml(names: string[], sourcePath: string): string {
   ].join("\n");
 }
 
+function citationRuleYaml(name: string, source = "26 USC 32(a)"): string {
+  return [
+    `- name: ${name}`,
+    "  kind: derived",
+    `  source: ${source}`,
+    "  versions:",
+    "    - effective_from: '2026-01-01'",
+    "      formula: 'x'",
+  ].join("\n");
+}
+
+function ruleCitationRow({
+  moduleCitationPath,
+  filePath,
+  ruleName,
+  rank,
+  atomKinds = [],
+  isModuleSource = false,
+}: {
+  moduleCitationPath: string;
+  filePath?: string;
+  ruleName: string;
+  rank: 0 | 1 | 2 | 3;
+  atomKinds?: string[];
+  isModuleSource?: boolean;
+}) {
+  return {
+    module_citation_path: moduleCitationPath,
+    file_path:
+      filePath ??
+      `policies/${moduleCitationPath.split("/").slice(2).join("/")}.yaml`,
+    rule_name: ruleName,
+    is_module_source: isModuleSource,
+    atom_kinds: atomKinds,
+    rank,
+    rule_yaml: citationRuleYaml(ruleName),
+  };
+}
+
 function encodingRow(filePath: string, content: string) {
   return {
     encoding_run_id: "run-1",
@@ -79,8 +118,12 @@ function encodingRow(filePath: string, content: string) {
 
 const SECTION = "us/statute/26/32";
 
-type MirrorResult = { data: unknown; error: unknown };
-type MirrorQueryKind = "path" | "citedBy" | "ancestor";
+type MirrorResult = { data: unknown; error: unknown; count?: number | null };
+type MirrorQueryKind =
+  | "path"
+  | "ruleCitations"
+  | "citedByFallback"
+  | "ancestor";
 
 const mirrorQueryCalls: Array<{
   kind: MirrorQueryKind;
@@ -88,20 +131,32 @@ const mirrorQueryCalls: Array<{
   args: unknown[];
 }> = [];
 
-/** Chainable PostgREST stub that routes results by the query filter.
- *  This prevents path rows from accidentally being returned by the
- *  independent cited-by lookup. */
-function mirrorChain(results: Record<MirrorQueryKind, MirrorResult>) {
-  let kind: MirrorQueryKind = "path";
+/** Chainable PostgREST stub that routes by table and query filter.
+ *  The rule-level lookup and the whole-file rollout fallback must be
+ *  independently observable even though both run beside the path scan. */
+function mirrorChain(
+  table: string,
+  results: Record<MirrorQueryKind, MirrorResult>,
+) {
+  let kind: MirrorQueryKind =
+    table === "rule_citations" ? "ruleCitations" : "path";
   const self: Record<string, unknown> = {};
-  self.select = () => self;
+  self.select = (...args: unknown[]) => {
+    mirrorQueryCalls.push({ kind, method: "select", args });
+    return self;
+  };
   self.or = (...args: unknown[]) => {
     kind = "path";
     mirrorQueryCalls.push({ kind, method: "or", args });
     return self;
   };
+  self.eq = (...args: unknown[]) => {
+    kind = "ruleCitations";
+    mirrorQueryCalls.push({ kind, method: "eq", args });
+    return self;
+  };
   self.contains = (...args: unknown[]) => {
-    kind = "citedBy";
+    kind = "citedByFallback";
     mirrorQueryCalls.push({ kind, method: "contains", args });
     return self;
   };
@@ -125,11 +180,14 @@ function mirrorChain(results: Record<MirrorQueryKind, MirrorResult>) {
 
 function configureMirror({
   path = { data: [], error: null },
-  citedBy = { data: [], error: null },
+  ruleCitations = { data: [], error: null, count: 0 },
+  citedByFallback = { data: [], error: null, count: 0 },
   ancestor = { data: [], error: null },
 }: Partial<Record<MirrorQueryKind, MirrorResult>> = {}) {
-  const results = { path, citedBy, ancestor };
-  mirrorFromMock.mockImplementation(() => mirrorChain(results));
+  const results = { path, ruleCitations, citedByFallback, ancestor };
+  mirrorFromMock.mockImplementation((table: string) =>
+    mirrorChain(table, results),
+  );
 }
 
 function mirrorRows(
@@ -324,11 +382,13 @@ describe("getSectionEncoding", () => {
     expect(result.citedByFiles).toEqual([]);
   });
 
-  it("merges cited-by rules with path-matched rules and marks their module", async () => {
-    const policyCitation =
+  it("assembles indexed rules by module in materialized rank order", async () => {
+    const linesModule =
       "us/policy/usitc/us-tariff-duty/lines/generated/ch22";
-    const policyFile =
+    const linesFile =
       "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml";
+    const compositionModule = "us/policy/cbp/us-tariff-duty/composition";
+    const compositionFile = "policies/cbp/us-tariff-duty/composition.yaml";
     configureMirror({
       path: {
         data: [
@@ -340,181 +400,259 @@ describe("getSectionEncoding", () => {
         ],
         error: null,
       },
-      citedBy: {
+      ruleCitations: {
         data: [
-          {
-            citation_path: policyCitation,
-            file_path: policyFile,
-            raw_yaml: citedByYaml(["ch22_general_rate"], SECTION),
-          },
+          ruleCitationRow({
+            moduleCitationPath: linesModule,
+            filePath: linesFile,
+            ruleName: "ch22_general_rate",
+            rank: 1,
+            atomKinds: ["value"],
+          }),
+          ruleCitationRow({
+            moduleCitationPath: compositionModule,
+            filePath: compositionFile,
+            ruleName: "computed_overlay",
+            rank: 2,
+            atomKinds: ["formula"],
+          }),
+          ruleCitationRow({
+            moduleCitationPath: linesModule,
+            filePath: linesFile,
+            ruleName: "ch22_guard",
+            rank: 3,
+            atomKinds: ["condition", "predicate"],
+          }),
         ],
+        count: 3,
         error: null,
       },
     });
 
     const result = await getSectionEncoding("rule-1", SECTION);
-    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
-    expect(doc.rules.map((rule) => rule.name)).toEqual([
+    expect(
+      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
+        (rule) => rule.name,
+      ),
+    ).toEqual([
       "eitc_amount",
       "ch22_general_rate",
+      "computed_overlay",
+      "ch22_guard",
     ]);
-    expect(result.ruleFiles).toEqual({
-      eitc_amount: "statutes/26/32.yaml",
-      ch22_general_rate: policyFile,
-    });
     expect(result.citedByFiles).toEqual([
       {
-        citationPath: policyCitation,
-        filePath: policyFile,
-        ruleNames: ["ch22_general_rate"],
+        citationPath: linesModule,
+        filePath: linesFile,
+        rules: [
+          {
+            renderedName: "ch22_general_rate",
+            canonicalName: "ch22_general_rate",
+            rank: 1,
+            atomKinds: ["value"],
+          },
+          {
+            renderedName: "ch22_guard",
+            canonicalName: "ch22_guard",
+            rank: 3,
+            atomKinds: ["condition", "predicate"],
+          },
+        ],
+      },
+      {
+        citationPath: compositionModule,
+        filePath: compositionFile,
+        rules: [
+          {
+            renderedName: "computed_overlay",
+            canonicalName: "computed_overlay",
+            rank: 2,
+            atomKinds: ["formula"],
+          },
+        ],
       },
     ]);
-    expect(mirrorQueryCalls.filter((call) => call.kind === "citedBy")).toEqual([
+    expect(
+      mirrorQueryCalls.filter((call) => call.kind === "ruleCitations"),
+    ).toEqual([
       {
-        kind: "citedBy",
+        kind: "ruleCitations",
+        method: "select",
+        args: [
+          "module_citation_path, file_path, rule_name, is_module_source, atom_kinds, rank, rule_yaml",
+          { count: "exact" },
+        ],
+      },
+      {
+        kind: "ruleCitations",
+        method: "eq",
+        args: ["citation_path", SECTION],
+      },
+      {
+        kind: "ruleCitations",
+        method: "order",
+        args: ["rank", { ascending: true }],
+      },
+      {
+        kind: "ruleCitations",
+        method: "order",
+        args: ["module_citation_path", { ascending: true }],
+      },
+      {
+        kind: "ruleCitations",
+        method: "order",
+        args: ["rule_name", { ascending: true }],
+      },
+      {
+        kind: "ruleCitations",
+        method: "limit",
+        args: [120],
+      },
+    ]);
+    expect(
+      mirrorQueryCalls.some((call) => call.kind === "citedByFallback"),
+    ).toBe(false);
+  });
+
+  it("renders every same-basename state SNAP collision with a stable full slug", async () => {
+    const jurisdictions = ["us-co", "us-ga", "us-md", "us-ny"];
+    const canonicalName = "snap_maximum_allotment";
+    configureMirror({
+      ruleCitations: {
+        data: jurisdictions.map((jurisdiction) =>
+          ruleCitationRow({
+            moduleCitationPath: `${jurisdiction}/policy/snap/fy-2026-benefit-calculation`,
+            filePath: `policies/${jurisdiction}/snap/fy-2026-benefit-calculation.yaml`,
+            ruleName: canonicalName,
+            rank: 0,
+            isModuleSource: true,
+          }),
+        ),
+        count: 4,
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    const renderedNames = [
+      canonicalName,
+      `${canonicalName}@policy.snap.fy-2026-benefit-calculation`,
+      `${canonicalName}@policy.snap.fy-2026-benefit-calculation#2`,
+      `${canonicalName}@policy.snap.fy-2026-benefit-calculation#3`,
+    ];
+    expect(
+      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
+        (rule) => rule.name,
+      ),
+    ).toEqual(renderedNames);
+    expect(result.citedByFiles).toHaveLength(4);
+    expect(
+      result.citedByFiles.flatMap((file) =>
+        file.rules.map((rule) => rule.renderedName),
+      ),
+    ).toEqual(renderedNames);
+    expect(
+      result.citedByFiles.flatMap((file) =>
+        file.rules.map((rule) => rule.canonicalName),
+      ),
+    ).toEqual(Array(4).fill(canonicalName));
+    expect(Object.keys(result.ruleFiles)).toEqual(renderedNames);
+  });
+
+  it("computes rule overflow from the exact index count", async () => {
+    configureMirror({
+      ruleCitations: {
+        data: [
+          ruleCitationRow({
+            moduleCitationPath: "us/policy/a/one",
+            ruleName: "one_rule",
+            rank: 1,
+            atomKinds: ["value"],
+          }),
+          ruleCitationRow({
+            moduleCitationPath: "us/policy/a/two",
+            ruleName: "two_rule",
+            rank: 3,
+            atomKinds: ["condition"],
+          }),
+        ],
+        count: 206,
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles).toHaveLength(2);
+    expect(result.citedByOverflow).toBe(204);
+  });
+
+  it("uses the whole-file value path fallback only when the rule index errors", async () => {
+    const fallbackModule = "us/policy/cbp/us-tariff-duty/composition";
+    const fallbackFile = "policies/cbp/us-tariff-duty/composition.yaml";
+    configureMirror({
+      ruleCitations: {
+        data: null,
+        error: { message: "rule_citations is unavailable" },
+      },
+      citedByFallback: {
+        data: [
+          {
+            citation_path: fallbackModule,
+            file_path: fallbackFile,
+            raw_yaml: citedByYaml(
+              ["fallback_value", "fallback_condition"],
+              SECTION,
+            ),
+          },
+        ],
+        count: 1,
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles).toEqual([
+      {
+        citationPath: fallbackModule,
+        filePath: fallbackFile,
+        rules: [
+          {
+            renderedName: "fallback_condition",
+            canonicalName: "fallback_condition",
+            rank: 0,
+            atomKinds: [],
+          },
+          {
+            renderedName: "fallback_value",
+            canonicalName: "fallback_value",
+            rank: 0,
+            atomKinds: [],
+          },
+        ],
+      },
+    ]);
+    expect(
+      mirrorQueryCalls.filter((call) => call.kind === "citedByFallback"),
+    ).toEqual([
+      {
+        kind: "citedByFallback",
         method: "contains",
         args: ["value_citation_paths", [SECTION]],
       },
       {
-        kind: "citedBy",
+        kind: "citedByFallback",
         method: "order",
         args: ["citation_path", { ascending: true }],
       },
-      { kind: "citedBy", method: "limit", args: [60] },
-    ]);
-  });
-
-  it("keeps a name collision attributed to the path-matched file", async () => {
-    configureMirror({
-      path: {
-        data: [
-          {
-            citation_path: SECTION,
-            file_path: "statutes/26/32.yaml",
-            raw_yaml: ruleYaml("shared_name", "26 USC 32(a)"),
-          },
-        ],
-        error: null,
-      },
-      citedBy: {
-        data: [
-          {
-            citation_path: "us/policy/x/module",
-            file_path: "policies/x/module.yaml",
-            raw_yaml: citedByYaml(["shared_name", "policy_only"], SECTION),
-          },
-        ],
-        error: null,
-      },
-    });
-
-    const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.ruleFiles.shared_name).toBe("statutes/26/32.yaml");
-    expect(result.ruleFiles["shared_name@module"]).toBe(
-      "policies/x/module.yaml",
-    );
-    expect(result.citedByFiles).toEqual([
       {
-        citationPath: "us/policy/x/module",
-        filePath: "policies/x/module.yaml",
-        ruleNames: ["shared_name@module", "policy_only"],
+        kind: "citedByFallback",
+        method: "limit",
+        args: [60],
       },
-    ]);
-    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
-    expect(doc.rules.map((rule) => rule.name)).toEqual([
-      "shared_name",
-      "shared_name@module",
-      "policy_only",
     ]);
   });
 
-  it("keeps only the rules that encode the provision from a cited-by file", async () => {
-    const mixed = [
-      "format: rulespec/v1",
-      "module:",
-      "  source_verification:",
-      "    corpus_citation_path: us/statute/hts/chapter-99/page-1",
-      "rules:",
-      "  - name: rate_for_this_line",
-      "    kind: parameter",
-      "    metadata:",
-      "      proof:",
-      "        atoms:",
-      "          - path: versions[0].values",
-      "            kind: parameter",
-      "            source:",
-      `              corpus_citation_path: ${SECTION}`,
-      "              excerpt: Free",
-      "    versions:",
-      "      - effective_from: '2026-01-01'",
-      "        values: {1: 0}",
-      "  - name: guard_mentioning_it",
-      "    kind: derived",
-      "    metadata:",
-      "      proof:",
-      "        atoms:",
-      "          - path: versions[0].formula",
-      "            kind: condition",
-      "            source:",
-      `              corpus_citation_path: ${SECTION}`,
-      "              excerpt: Beer made from malt",
-      "    versions:",
-      "      - effective_from: '2026-01-01'",
-      "        formula: 'x'",
-      "  - name: unrelated_rule",
-      "    kind: derived",
-      "    versions:",
-      "      - effective_from: '2026-01-01'",
-      "        formula: 'y'",
-    ].join("\n");
-    configureMirror({
-      citedBy: {
-        data: [
-          {
-            citation_path: "us/policy/cbp/composition",
-            file_path: "policies/cbp/composition.yaml",
-            raw_yaml: mixed,
-          },
-        ],
-        error: null,
-      },
-    });
-
-    const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.citedByFiles).toEqual([
-      {
-        citationPath: "us/policy/cbp/composition",
-        filePath: "policies/cbp/composition.yaml",
-        ruleNames: ["rate_for_this_line"],
-      },
-    ]);
-    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
-    expect(doc.rules.map((rule) => rule.name)).toEqual(["rate_for_this_line"]);
-  });
-
-  it("reports citers beyond the file bound as overflow", async () => {
-    configureMirror({
-      citedBy: {
-        data: [
-          {
-            citation_path: "us/policy/a/one",
-            file_path: "policies/a/one.yaml",
-            raw_yaml: citedByYaml(["one_rule"], SECTION),
-          },
-        ],
-        count: 102,
-        error: null,
-      } as never,
-    });
-
-    const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.citedByFiles.map((file) => file.citationPath)).toEqual([
-      "us/policy/a/one",
-    ]);
-    expect(result.citedByOverflow).toBe(101);
-  });
-
-  it("sorts cited-by modules and drops empty mirror rows", async () => {
+  it("keeps the path-matched encoding when both citation lookups fail", async () => {
     configureMirror({
       path: {
         data: [
@@ -526,89 +664,43 @@ describe("getSectionEncoding", () => {
         ],
         error: null,
       },
-      citedBy: {
-        data: [
-          {
-            citation_path: "us/policy/z/later",
-            file_path: "policies/z/later.yaml",
-            raw_yaml: citedByYaml(["z_rule"], SECTION),
-          },
-          {
-            citation_path: "us/policy/a/empty",
-            file_path: "policies/a/empty.yaml",
-            raw_yaml: "   ",
-          },
-          {
-            citation_path: "us/policy/a/first",
-            file_path: "policies/a/first.yaml",
-            raw_yaml: citedByYaml(["a_rule"], SECTION),
-          },
-        ],
-        error: null,
+      ruleCitations: {
+        data: null,
+        error: { message: "rule table unavailable" },
       },
-    });
-
-    const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.citedByFiles.map((file) => file.citationPath)).toEqual([
-      "us/policy/a/first",
-      "us/policy/z/later",
-    ]);
-  });
-
-  it("keeps the path-matched encoding when the cited-by query rejects", async () => {
-    const results = {
-      path: {
-        data: [
-          {
-            citation_path: SECTION,
-            file_path: "statutes/26/32.yaml",
-            raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
-          },
-        ],
-        error: null,
+      citedByFallback: {
+        data: null,
+        error: { message: "array lookup unavailable" },
       },
-      citedBy: null,
-      ancestor: { data: [], error: null },
-    };
-    mirrorFromMock.mockImplementation(() => {
-      const chain = mirrorChain(results as never);
-      const originalThen = chain.then as (
-        resolve: (value: unknown) => unknown,
-        reject?: (reason: unknown) => unknown,
-      ) => Promise<unknown>;
-      chain.then = (
-        resolve: (value: unknown) => unknown,
-        reject?: (reason: unknown) => unknown,
-      ) => {
-        if (mirrorQueryCalls.at(-1)?.kind === "citedBy") {
-          return Promise.reject(new Error("boom")).then(resolve, reject);
-        }
-        return originalThen(resolve, reject);
-      };
-      return chain;
     });
 
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.citedByFiles).toEqual([]);
-    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
-    expect(doc.rules.map((rule) => rule.name)).toEqual(["eitc_amount"]);
+    expect(
+      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
+        (rule) => rule.name,
+      ),
+    ).toEqual(["eitc_amount"]);
   });
 
-  it("serves cited-by modules when the path range is empty", async () => {
+  it("serves indexed citing rules when the path range is empty", async () => {
     const tariffPath = "us/statute/hts/2203.00.00";
     const policyCitation =
       "us/policy/usitc/us-tariff-duty/lines/generated/ch22";
     const policyFile =
       "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml";
     configureMirror({
-      citedBy: {
+      ruleCitations: {
         data: [
-          {
-            citation_path: policyCitation,
-            file_path: policyFile,
-            raw_yaml: citedByYaml(["ch22_general_rate"], tariffPath),
-          },
+          ruleCitationRow({
+            moduleCitationPath: policyCitation,
+            filePath: policyFile,
+            ruleName: "ch22_general_rate",
+            rank: 1,
+            atomKinds: ["value"],
+          }),
         ],
+        count: 1,
         error: null,
       },
     });
@@ -624,56 +716,53 @@ describe("getSectionEncoding", () => {
     expect(result.citedByFiles[0]).toEqual({
       citationPath: policyCitation,
       filePath: policyFile,
-      ruleNames: ["ch22_general_rate"],
+      rules: [
+        {
+          renderedName: "ch22_general_rate",
+          canonicalName: "ch22_general_rate",
+          rank: 1,
+          atomKinds: ["value"],
+        },
+      ],
     });
     expect(getRuleEncodingMock).not.toHaveBeenCalled();
     expect(findEncodedDescendantsMock).not.toHaveBeenCalled();
   });
 
-  it("dedupes files returned by both path and cited-by queries", async () => {
-    const row = {
-      citation_path: SECTION,
-      file_path: "statutes/26/32.yaml",
-      raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
-    };
-    configureMirror({
-      path: { data: [row], error: null },
-      citedBy: { data: [row], error: null },
-    });
-
-    const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.citedByFiles).toEqual([]);
-    expect(result.encoding?.file_path).toBe("statutes/26/32.yaml");
-    expect(
-      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
-        (rule) => rule.name,
-      ),
-    ).toEqual(["eitc_amount"]);
-  });
-
-  it("keeps the path-matched result when the cited-by query fails", async () => {
+  it("excludes indexed rows whose file path is already path-matched", async () => {
     const content = ruleYaml("eitc_amount", "26 USC 32(a)");
+    const pathFile = "statutes/26/32.yaml";
     configureMirror({
       path: {
         data: [
           {
             citation_path: SECTION,
-            file_path: "statutes/26/32.yaml",
+            file_path: pathFile,
             raw_yaml: content,
           },
         ],
         error: null,
       },
-      citedBy: { data: null, error: { message: "column unavailable" } },
+      ruleCitations: {
+        data: [
+          ruleCitationRow({
+            moduleCitationPath: "us/policy/reindexed/module",
+            filePath: pathFile,
+            ruleName: "duplicate_index_row",
+            rank: 3,
+            atomKinds: ["condition"],
+          }),
+        ],
+        count: 1,
+        error: null,
+      },
     });
 
     const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.encoding?.rulespec_content).toBe(content);
     expect(result.citedByFiles).toEqual([]);
-    expect(result.ruleFiles).toEqual({
-      eitc_amount: "statutes/26/32.yaml",
-    });
-    expect(getRuleEncodingMock).not.toHaveBeenCalled();
+    expect(result.encoding?.file_path).toBe(pathFile);
+    expect(result.encoding?.rulespec_content).toBe(content);
+    expect(result.ruleFiles).toEqual({ eitc_amount: pathFile });
   });
 
   it("falls back to the legacy path when the mirror query fails", async () => {

@@ -37,3 +37,8 @@ create policy "rule_citations are publicly readable"
   on encodings.rule_citations for select using (true);
 
 grant select on encodings.rule_citations to anon, authenticated;
+
+-- The sync script writes with the service role, which does not inherit
+-- privileges on tables created by other roles in this schema (the
+-- rulespec_files index needed the same companion grant).
+grant select, insert, update, delete on encodings.rule_citations to service_role;

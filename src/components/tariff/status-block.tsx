@@ -20,6 +20,9 @@ export function TariffStatusBlock() {
         Built from rulespec-us {tariffMetadata.rulespecCommit.slice(0, 10)} (source commit dated {date}); corpus release {tariffMetadata.corpusRelease}; page generated {generated}. Freshness is the source commit date, not a monitoring guarantee.
       </p>
       <p className="mt-2 mb-0 font-mono text-xs leading-relaxed text-[var(--color-ink-muted)]">
+        Citation links open the corpus reader at the canonical provision path. The site currently serves a corpus release without the tariff schedule text, so those pages return not found until the release that carries it is activated.
+      </p>
+      <p className="mt-2 mb-0 font-mono text-xs leading-relaxed text-[var(--color-ink-muted)]">
         Certificate SHA-256: {tariffMetadata.certificateSha256}
       </p>
     </section>

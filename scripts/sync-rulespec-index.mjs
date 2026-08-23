@@ -36,7 +36,7 @@ import {
   githubHeaders,
   githubJson,
 } from "./lib/rulespec-discovery.mjs";
-import { sourceCitationPathsForFile } from "./lib/source-citation-paths.mjs";
+import { citationPathSetsForFile } from "./lib/source-citation-paths.mjs";
 
 const RAW_FETCH_CONCURRENCY = 8;
 const UPSERT_CHUNK_SIZE = 100;
@@ -153,7 +153,7 @@ console.log(`${files.length} encoding files listed`);
 const rows = (
   await mapWithConcurrency(files, RAW_FETCH_CONCURRENCY, async (file) => {
     const content = await fetchRawYaml(file).catch(() => null);
-    const sourceCitationPaths = sourceCitationPathsForFile(
+    const citationPathSets = citationPathSetsForFile(
       content,
       `${file.root.repo}:${file.filePath}`,
     );
@@ -166,7 +166,8 @@ const rows = (
       bucket: file.bucket,
       raw_yaml: content,
       search_text: buildSearchText(file, content),
-      source_citation_paths: sourceCitationPaths,
+      source_citation_paths: citationPathSets.all,
+      value_citation_paths: citationPathSets.values,
       synced_at: new Date().toISOString(),
     };
   })

@@ -55,7 +55,7 @@ export interface SectionEncoding {
    */
   ruleFiles: Record<string, string>;
   /**
-   * Modules whose declared source citations include this provision,
+   * Modules whose value proof atoms cite this provision,
    * but whose own citation path may live in a different bucket (for
    * example a policy-rooted tariff module citing an HTS line).
    */
@@ -361,8 +361,12 @@ async function listMirrorFiles(
 }
 
 /**
- * Reverse lookup for modules that explicitly cite the requested
- * provision. This is separate from the path range scan because
+ * Reverse lookup for modules whose value (kind: parameter) proof
+ * atoms cite the requested provision — the modules that encode its
+ * content. Condition atoms are excluded on purpose: the tariff
+ * chapter compositions all reference the witness beer line from
+ * regime-guard formulas, and an all-declarations lookup would flood
+ * a provision page with modules that merely mention it. This is separate from the path range scan because
  * policy-rooted modules do not live under their statute paths.
  * Failure is intentionally an empty extra group: a missing column,
  * timeout, or transient error must not hide path-matched encodings.
@@ -373,7 +377,7 @@ async function listCitedByFiles(citationPath: string): Promise<SectionFile[]> {
       supabaseEncodings
         .from("rulespec_files")
         .select("citation_path, file_path, raw_yaml")
-        .contains("source_citation_paths", [citationPath])
+        .contains("value_citation_paths", [citationPath])
         .order("citation_path", { ascending: true })
         .limit(MAX_SECTION_FILES),
       QUERY_TIMEOUT_MS,

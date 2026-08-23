@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   MAX_SOURCE_CITATION_PATHS,
+  citationPathSetsForFile,
+  extractCitationPathSets,
   extractSourceCitationPaths,
-  sourceCitationPathsForFile,
 } from "./source-citation-paths.mjs";
 
 describe("extractSourceCitationPaths", () => {
@@ -118,7 +119,7 @@ rules: []
 `;
     const warn = vi.fn();
 
-    const paths = sourceCitationPathsForFile(
+    const { all: paths } = citationPathSetsForFile(
       content,
       "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
       warn,
@@ -138,8 +139,60 @@ rules: []
     const warn = vi.fn();
 
     expect(
-      sourceCitationPathsForFile("module: {}\nrules: []", "empty.yaml", warn),
-    ).toEqual([]);
+      citationPathSetsForFile("module: {}\nrules: []", "empty.yaml", warn),
+    ).toEqual({ all: [], values: [] });
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("extractCitationPathSets", () => {
+  it("keys the value set on parameter atoms only", () => {
+    const content = `
+module:
+  source_verification:
+    corpus_citation_paths:
+      - us/statute/hts/general-note-3/page-1
+      - us/statute/hts/2203.00.00
+rules:
+  - name: ch22_general_rate
+    metadata:
+      proof:
+        atoms:
+          - path: versions[0].values
+            kind: parameter
+            source:
+              corpus_citation_path: us/statute/hts/2203.00.00
+              excerpt: "Rates of duty (1-General): Free"
+  - name: entry_is_line_d
+    metadata:
+      proof:
+        atoms:
+          - path: versions[0].formula
+            kind: condition
+            source:
+              corpus_citation_path: us/statute/hts/2203.00.00
+              excerpt: Beer made from malt
+          - path: versions[0].formula
+            kind: condition
+            source:
+              corpus_citation_path: us/statute/hts/7202
+              excerpt: Ferroalloys
+`;
+
+    const sets = extractCitationPathSets(content);
+    expect(sets.values).toEqual(["us/statute/hts/2203.00.00"]);
+    expect(sets.all).toEqual([
+      "us/statute/hts/general-note-3/page-1",
+      "us/statute/hts/2203.00.00",
+      "us/statute/hts/7202",
+    ]);
+  });
+
+  it("returns empty sets for malformed YAML and non-strings", () => {
+    expect(extractCitationPathSets("module: [unterminated")).toEqual({
+      all: [],
+      values: [],
+    });
+    expect(extractCitationPathSets(null)).toEqual({ all: [], values: [] });
   });
 });

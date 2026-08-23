@@ -98,7 +98,7 @@ function mirrorChain(results: Record<MirrorQueryKind, MirrorResult>) {
   }
   self.then = (
     resolve: (value: unknown) => unknown,
-    reject?: (reason: unknown) => unknown
+    reject?: (reason: unknown) => unknown,
   ) => Promise.resolve(results[kind]).then(resolve, reject);
   return self;
 }
@@ -113,7 +113,7 @@ function configureMirror({
 }
 
 function mirrorRows(
-  rows: Array<{ citation_path: string; file_path: string; raw_yaml: string }>
+  rows: Array<{ citation_path: string; file_path: string; raw_yaml: string }>,
 ) {
   configureMirror({ path: { data: rows, error: null } });
 }
@@ -132,7 +132,7 @@ describe("getSectionEncoding", () => {
   it("passes the primary encoding through when there are no descendant files", async () => {
     const primary = encodingRow(
       "statutes/26/32.yaml",
-      ruleYaml("eitc_amount", "26 USC 32(a)")
+      ruleYaml("eitc_amount", "26 USC 32(a)"),
     );
     getRuleEncodingMock.mockResolvedValue(primary);
     findEncodedDescendantsMock.mockResolvedValue([]);
@@ -161,7 +161,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
     expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
     expect(result.encoding?.encoding_run_id).toBe(
-      "github:statutes/7/2017/a.yaml"
+      "github:statutes/7/2017/a.yaml",
     );
     expect(result.encoding?.rulespec_content).toContain("snap_allotment");
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
@@ -169,7 +169,10 @@ describe("getSectionEncoding", () => {
 
   it("merges primary and descendant rules into one parseable doc (26/32 layout)", async () => {
     getRuleEncodingMock.mockResolvedValue(
-      encodingRow("statutes/26/32.yaml", ruleYaml("eitc_amount", "26 USC 32(a)"))
+      encodingRow(
+        "statutes/26/32.yaml",
+        ruleYaml("eitc_amount", "26 USC 32(a)"),
+      ),
     );
     findEncodedDescendantsMock.mockResolvedValue([
       {
@@ -184,9 +187,7 @@ describe("getSectionEncoding", () => {
     });
 
     const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.encoding?.encoding_run_id).toBe(
-      `github:merged:${SECTION}`
-    );
+    expect(result.encoding?.encoding_run_id).toBe(`github:merged:${SECTION}`);
     expect(result.encoding?.file_path).toBe("statutes/26/32");
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
     expect(doc.parseErrors).toEqual([]);
@@ -201,7 +202,10 @@ describe("getSectionEncoding", () => {
 
   it("dedupes rules present in both primary and descendant files", async () => {
     getRuleEncodingMock.mockResolvedValue(
-      encodingRow("statutes/26/32.yaml", ruleYaml("eitc_amount", "26 USC 32(a)"))
+      encodingRow(
+        "statutes/26/32.yaml",
+        ruleYaml("eitc_amount", "26 USC 32(a)"),
+      ),
     );
     findEncodedDescendantsMock.mockResolvedValue([
       {
@@ -224,7 +228,7 @@ describe("getSectionEncoding", () => {
   it("keeps the primary when every descendant fetch fails", async () => {
     const primary = encodingRow(
       "statutes/26/32.yaml",
-      ruleYaml("eitc_amount", "26 USC 32(a)")
+      ruleYaml("eitc_amount", "26 USC 32(a)"),
     );
     getRuleEncodingMock.mockResolvedValue(primary);
     findEncodedDescendantsMock.mockResolvedValue([
@@ -262,9 +266,7 @@ describe("getSectionEncoding", () => {
     ]);
 
     const result = await getSectionEncoding("rule-1", SECTION);
-    expect(result.encoding?.encoding_run_id).toBe(
-      `github:merged:${SECTION}`
-    );
+    expect(result.encoding?.encoding_run_id).toBe(`github:merged:${SECTION}`);
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
     expect(doc.rules.map((rule) => rule.name)).toEqual([
       "eitc_amount",
@@ -293,7 +295,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", "us/statute/7/2017");
     expect(result.encoding?.file_path).toBe("statutes/7/2017/a.yaml");
     expect(result.encoding?.encoding_run_id).toBe(
-      "github:statutes/7/2017/a.yaml"
+      "github:statutes/7/2017/a.yaml",
     );
     expect(result.fileAnchors).toEqual({ snap_allotment: ["a"] });
     expect(result.ruleFiles).toEqual({
@@ -347,13 +349,11 @@ describe("getSectionEncoding", () => {
         ruleNames: ["ch22_general_rate"],
       },
     ]);
-    expect(
-      mirrorQueryCalls.filter((call) => call.kind === "citedBy")
-    ).toEqual([
+    expect(mirrorQueryCalls.filter((call) => call.kind === "citedBy")).toEqual([
       {
         kind: "citedBy",
         method: "contains",
-        args: ["source_citation_paths", [SECTION]],
+        args: ["value_citation_paths", [SECTION]],
       },
       {
         kind: "citedBy",
@@ -387,8 +387,8 @@ describe("getSectionEncoding", () => {
     expect(result.encodingRootPath).toBe(tariffPath);
     expect(
       parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
-        (rule) => rule.name
-      )
+        (rule) => rule.name,
+      ),
     ).toEqual(["ch22_general_rate"]);
     expect(result.ruleFiles).toEqual({ ch22_general_rate: policyFile });
     expect(result.citedByFiles[0]).toEqual({
@@ -416,8 +416,8 @@ describe("getSectionEncoding", () => {
     expect(result.encoding?.file_path).toBe("statutes/26/32.yaml");
     expect(
       parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
-        (rule) => rule.name
-      )
+        (rule) => rule.name,
+      ),
     ).toEqual(["eitc_amount"]);
   });
 
@@ -452,7 +452,7 @@ describe("getSectionEncoding", () => {
     });
     const primary = encodingRow(
       "statutes/26/32.yaml",
-      ruleYaml("eitc_amount", "26 USC 32(a)")
+      ruleYaml("eitc_amount", "26 USC 32(a)"),
     );
     getRuleEncodingMock.mockResolvedValue(primary);
     findEncodedDescendantsMock.mockResolvedValue([]);
@@ -461,14 +461,13 @@ describe("getSectionEncoding", () => {
   });
 });
 
-
 describe("ancestor walk-up (request deeper than the encoded file)", () => {
   it("serves the nearest ancestor module and reports its root path", async () => {
     // First query (at-or-below the deep path): nothing. Second query
     // (ancestor chain): the section-level 273/10 module.
     const sectionYaml = ruleYaml(
       "snap_calculated_monthly_allotment_before_minimums",
-      "7 CFR 273.10(e)(2)(ii)(A)"
+      "7 CFR 273.10(e)(2)(ii)(A)",
     );
     configureMirror({
       ancestor: {
@@ -485,12 +484,12 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
 
     const result = await getSectionEncoding(
       "rule-1",
-      "us/regulation/7/273/10/e/2/ii/A"
+      "us/regulation/7/273/10/e/2/ii/A",
     );
     expect(result.encodingRootPath).toBe("us/regulation/7/273/10");
     expect(result.encoding?.file_path).toBe("regulations/7-cfr/273/10.yaml");
     expect(result.encoding?.rulespec_content).toContain(
-      "snap_calculated_monthly_allotment_before_minimums"
+      "snap_calculated_monthly_allotment_before_minimums",
     );
   });
 
@@ -610,7 +609,7 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
 
     const result = await getSectionEncoding("rule-1", `${SECTION}/c`);
     expect(result.encoding?.encoding_run_id).toBe(
-      "github:statutes/26/32/c/2.yaml"
+      "github:statutes/26/32/c/2.yaml",
     );
     expect(result.fileAnchors).toEqual({ earned_income: ["2"] });
   });

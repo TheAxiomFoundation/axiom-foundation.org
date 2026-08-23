@@ -364,6 +364,54 @@ describe("getSectionEncoding", () => {
     ]);
   });
 
+  it("keeps a name collision attributed to the path-matched file", async () => {
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: ruleYaml("shared_name", "26 USC 32(a)"),
+          },
+        ],
+        error: null,
+      },
+      citedBy: {
+        data: [
+          {
+            citation_path: "us/policy/x/module",
+            file_path: "policies/x/module.yaml",
+            raw_yaml: [
+              ruleYaml("shared_name", "policy restatement"),
+              "  - name: policy_only",
+              "    kind: derived",
+              "    source: policy source",
+              "    versions:",
+              "      - effective_from: '2026-01-01'",
+              "        formula: 'y'",
+            ].join("\n"),
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.ruleFiles.shared_name).toBe("statutes/26/32.yaml");
+    expect(result.citedByFiles).toEqual([
+      {
+        citationPath: "us/policy/x/module",
+        filePath: "policies/x/module.yaml",
+        ruleNames: ["policy_only"],
+      },
+    ]);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual([
+      "shared_name",
+      "policy_only",
+    ]);
+  });
+
   it("sorts cited-by modules and drops empty mirror rows", async () => {
     configureMirror({
       path: {

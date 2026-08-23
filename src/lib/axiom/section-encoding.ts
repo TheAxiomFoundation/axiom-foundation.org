@@ -237,14 +237,19 @@ function assembleSection(
   }
 
   let citedByRuleCount = 0;
+  // ruleNames carries only the rules this file actually contributed:
+  // a name already defined by a path-matched file stays attributed to
+  // that file, so the rail never relabels a path-matched rule as
+  // "encoded from this provision" on a name collision.
   const citedByFiles = citedBy.map((file) => {
     const doc = parseRuleSpec(file.content);
-    const ruleNames = Array.from(new Set(doc.rules.map((rule) => rule.name)));
+    const ruleNames: string[] = [];
     for (const rule of doc.rules) {
       ruleFiles[rule.name] ??= file.filePath;
       if (seenNames.has(rule.name)) continue;
       seenNames.add(rule.name);
       ruleRaws.push(rule.raw);
+      ruleNames.push(rule.name);
       citedByRuleCount++;
     }
     return {

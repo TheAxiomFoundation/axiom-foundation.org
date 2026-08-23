@@ -59,24 +59,63 @@ function encodingRow(filePath: string, content: string) {
 
 const SECTION = "us/statute/26/32";
 
-/** Chainable PostgREST stub: builder methods return the chain, the
- *  chain is thenable with the given result. */
-function mirrorChain(result: { data: unknown; error: unknown }) {
+type MirrorResult = { data: unknown; error: unknown };
+type MirrorQueryKind = "path" | "citedBy" | "ancestor";
+
+const mirrorQueryCalls: Array<{
+  kind: MirrorQueryKind;
+  method: string;
+  args: unknown[];
+}> = [];
+
+/** Chainable PostgREST stub that routes results by the query filter.
+ *  This prevents path rows from accidentally being returned by the
+ *  independent cited-by lookup. */
+function mirrorChain(results: Record<MirrorQueryKind, MirrorResult>) {
+  let kind: MirrorQueryKind = "path";
   const self: Record<string, unknown> = {};
-  for (const method of ["select", "or", "in", "order", "limit"]) {
-    self[method] = () => self;
+  self.select = () => self;
+  self.or = (...args: unknown[]) => {
+    kind = "path";
+    mirrorQueryCalls.push({ kind, method: "or", args });
+    return self;
+  };
+  self.contains = (...args: unknown[]) => {
+    kind = "citedBy";
+    mirrorQueryCalls.push({ kind, method: "contains", args });
+    return self;
+  };
+  self.in = (...args: unknown[]) => {
+    kind = "ancestor";
+    mirrorQueryCalls.push({ kind, method: "in", args });
+    return self;
+  };
+  for (const method of ["order", "limit"]) {
+    self[method] = (...args: unknown[]) => {
+      mirrorQueryCalls.push({ kind, method, args });
+      return self;
+    };
   }
   self.then = (
     resolve: (value: unknown) => unknown,
     reject?: (reason: unknown) => unknown
-  ) => Promise.resolve(result).then(resolve, reject);
+  ) => Promise.resolve(results[kind]).then(resolve, reject);
   return self;
+}
+
+function configureMirror({
+  path = { data: [], error: null },
+  citedBy = { data: [], error: null },
+  ancestor = { data: [], error: null },
+}: Partial<Record<MirrorQueryKind, MirrorResult>> = {}) {
+  const results = { path, citedBy, ancestor };
+  mirrorFromMock.mockImplementation(() => mirrorChain(results));
 }
 
 function mirrorRows(
   rows: Array<{ citation_path: string; file_path: string; raw_yaml: string }>
 ) {
-  mirrorFromMock.mockReturnValue(mirrorChain({ data: rows, error: null }));
+  configureMirror({ path: { data: rows, error: null } });
 }
 
 describe("getSectionEncoding", () => {
@@ -85,8 +124,9 @@ describe("getSectionEncoding", () => {
     findEncodedDescendantsMock.mockReset();
     fetchEncodedFileMock.mockReset();
     mirrorFromMock.mockReset();
+    mirrorQueryCalls.length = 0;
     // Default: mirror is empty → the legacy path drives the test.
-    mirrorRows([]);
+    configureMirror();
   });
 
   it("passes the primary encoding through when there are no descendant files", async () => {
@@ -100,6 +140,7 @@ describe("getSectionEncoding", () => {
     const result = await getSectionEncoding("rule-1", SECTION);
     expect(result.encoding).toBe(primary);
     expect(result.fileAnchors).toEqual({});
+    expect(result.citedByFiles).toEqual([]);
     expect(fetchEncodedFileMock).not.toHaveBeenCalled();
   });
 
@@ -258,6 +299,151 @@ describe("getSectionEncoding", () => {
     expect(result.ruleFiles).toEqual({
       snap_allotment: "statutes/7/2017/a.yaml",
     });
+    expect(result.citedByFiles).toEqual([]);
+  });
+
+  it("merges cited-by rules with path-matched rules and marks their module", async () => {
+    const policyCitation =
+      "us/policy/usitc/us-tariff-duty/lines/generated/ch22";
+    const policyFile =
+      "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml";
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+          },
+        ],
+        error: null,
+      },
+      citedBy: {
+        data: [
+          {
+            citation_path: policyCitation,
+            file_path: policyFile,
+            raw_yaml: ruleYaml("ch22_general_rate", "HTS 2203.00.00"),
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    const doc = parseRuleSpec(result.encoding!.rulespec_content!);
+    expect(doc.rules.map((rule) => rule.name)).toEqual([
+      "eitc_amount",
+      "ch22_general_rate",
+    ]);
+    expect(result.ruleFiles).toEqual({
+      eitc_amount: "statutes/26/32.yaml",
+      ch22_general_rate: policyFile,
+    });
+    expect(result.citedByFiles).toEqual([
+      {
+        citationPath: policyCitation,
+        filePath: policyFile,
+        ruleNames: ["ch22_general_rate"],
+      },
+    ]);
+    expect(
+      mirrorQueryCalls.filter((call) => call.kind === "citedBy")
+    ).toEqual([
+      {
+        kind: "citedBy",
+        method: "contains",
+        args: ["source_citation_paths", [SECTION]],
+      },
+      {
+        kind: "citedBy",
+        method: "order",
+        args: ["citation_path", { ascending: true }],
+      },
+      { kind: "citedBy", method: "limit", args: [60] },
+    ]);
+  });
+
+  it("serves cited-by modules when the path range is empty", async () => {
+    const tariffPath = "us/statute/hts/2203.00.00";
+    const policyCitation =
+      "us/policy/usitc/us-tariff-duty/lines/generated/ch22";
+    const policyFile =
+      "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml";
+    configureMirror({
+      citedBy: {
+        data: [
+          {
+            citation_path: policyCitation,
+            file_path: policyFile,
+            raw_yaml: ruleYaml("ch22_general_rate", "HTS 2203.00.00"),
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getSectionEncoding("rule-1", tariffPath);
+    expect(result.encodingRootPath).toBe(tariffPath);
+    expect(
+      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
+        (rule) => rule.name
+      )
+    ).toEqual(["ch22_general_rate"]);
+    expect(result.ruleFiles).toEqual({ ch22_general_rate: policyFile });
+    expect(result.citedByFiles[0]).toEqual({
+      citationPath: policyCitation,
+      filePath: policyFile,
+      ruleNames: ["ch22_general_rate"],
+    });
+    expect(getRuleEncodingMock).not.toHaveBeenCalled();
+    expect(findEncodedDescendantsMock).not.toHaveBeenCalled();
+  });
+
+  it("dedupes files returned by both path and cited-by queries", async () => {
+    const row = {
+      citation_path: SECTION,
+      file_path: "statutes/26/32.yaml",
+      raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+    };
+    configureMirror({
+      path: { data: [row], error: null },
+      citedBy: { data: [row], error: null },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.citedByFiles).toEqual([]);
+    expect(result.encoding?.file_path).toBe("statutes/26/32.yaml");
+    expect(
+      parseRuleSpec(result.encoding!.rulespec_content!).rules.map(
+        (rule) => rule.name
+      )
+    ).toEqual(["eitc_amount"]);
+  });
+
+  it("keeps the path-matched result when the cited-by query fails", async () => {
+    const content = ruleYaml("eitc_amount", "26 USC 32(a)");
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: content,
+          },
+        ],
+        error: null,
+      },
+      citedBy: { data: null, error: { message: "column unavailable" } },
+    });
+
+    const result = await getSectionEncoding("rule-1", SECTION);
+    expect(result.encoding?.rulespec_content).toBe(content);
+    expect(result.citedByFiles).toEqual([]);
+    expect(result.ruleFiles).toEqual({
+      eitc_amount: "statutes/26/32.yaml",
+    });
+    expect(getRuleEncodingMock).not.toHaveBeenCalled();
   });
 
   it("falls back to the legacy path when the mirror query fails", async () => {
@@ -284,20 +470,18 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
       "snap_calculated_monthly_allotment_before_minimums",
       "7 CFR 273.10(e)(2)(ii)(A)"
     );
-    mirrorFromMock
-      .mockReturnValueOnce(mirrorChain({ data: [], error: null }))
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: "us/regulation/7/273/10",
-              file_path: "regulations/7-cfr/273/10.yaml",
-              raw_yaml: sectionYaml,
-            },
-          ],
-          error: null,
-        })
-      );
+    configureMirror({
+      ancestor: {
+        data: [
+          {
+            citation_path: "us/regulation/7/273/10",
+            file_path: "regulations/7-cfr/273/10.yaml",
+            raw_yaml: sectionYaml,
+          },
+        ],
+        error: null,
+      },
+    });
 
     const result = await getSectionEncoding(
       "rule-1",
@@ -314,39 +498,36 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
     // /us/statute/26/32/c: earned_income lives in 32/c/2.yaml below the
     // path, eitc_qualifying_child cites 32(c)(3) from the section file
     // above it. Both must reach the rail, each with the right anchor.
-    mirrorFromMock
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: `${SECTION}/c/2`,
-              file_path: "statutes/26/32/c/2.yaml",
-              raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
-            },
-          ],
-          error: null,
-        })
-      )
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: SECTION,
-              file_path: "statutes/26/32.yaml",
-              raw_yaml: [
-                ruleYaml("eitc_qualifying_child", "26 USC 32(c)(3)"),
-                "  - name: eitc_amount",
-                "    kind: derived",
-                "    source: 26 USC 32(a)",
-                "    versions:",
-                "      - effective_from: '2026-01-01'",
-                "        formula: 'x'",
-              ].join("\n"),
-            },
-          ],
-          error: null,
-        })
-      );
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: `${SECTION}/c/2`,
+            file_path: "statutes/26/32/c/2.yaml",
+            raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
+          },
+        ],
+        error: null,
+      },
+      ancestor: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: [
+              ruleYaml("eitc_qualifying_child", "26 USC 32(c)(3)"),
+              "  - name: eitc_amount",
+              "    kind: derived",
+              "    source: 26 USC 32(a)",
+              "    versions:",
+              "      - effective_from: '2026-01-01'",
+              "        formula: 'x'",
+            ].join("\n"),
+          },
+        ],
+        error: null,
+      },
+    });
 
     const result = await getSectionEncoding("rule-1", `${SECTION}/c`);
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
@@ -368,31 +549,28 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
 
   it("merges dotted CFR ancestor citations with deep descendant files", async () => {
     const regulation = "us/regulation/7/273/9";
-    mirrorFromMock
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: `${regulation}/d/6/iii`,
-              file_path: "regulations/7-cfr/273/9/d/6/iii.yaml",
-              raw_yaml: ruleYaml("homeless_shelter", "7 CFR 273.9(d)(6)(iii)"),
-            },
-          ],
-          error: null,
-        })
-      )
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: regulation,
-              file_path: "regulations/7-cfr/273/9.yaml",
-              raw_yaml: ruleYaml("standard_deduction", "7 CFR 273.9(d)(1)"),
-            },
-          ],
-          error: null,
-        })
-      );
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: `${regulation}/d/6/iii`,
+            file_path: "regulations/7-cfr/273/9/d/6/iii.yaml",
+            raw_yaml: ruleYaml("homeless_shelter", "7 CFR 273.9(d)(6)(iii)"),
+          },
+        ],
+        error: null,
+      },
+      ancestor: {
+        data: [
+          {
+            citation_path: regulation,
+            file_path: "regulations/7-cfr/273/9.yaml",
+            raw_yaml: ruleYaml("standard_deduction", "7 CFR 273.9(d)(1)"),
+          },
+        ],
+        error: null,
+      },
+    });
 
     const result = await getSectionEncoding("rule-1", `${regulation}/d`);
     const doc = parseRuleSpec(result.encoding!.rulespec_content!);
@@ -407,31 +585,28 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
   });
 
   it("keeps serving a lone descendant directly when the ancestor has no citing rules", async () => {
-    mirrorFromMock
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: `${SECTION}/c/2`,
-              file_path: "statutes/26/32/c/2.yaml",
-              raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
-            },
-          ],
-          error: null,
-        })
-      )
-      .mockReturnValueOnce(
-        mirrorChain({
-          data: [
-            {
-              citation_path: SECTION,
-              file_path: "statutes/26/32.yaml",
-              raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
-            },
-          ],
-          error: null,
-        })
-      );
+    configureMirror({
+      path: {
+        data: [
+          {
+            citation_path: `${SECTION}/c/2`,
+            file_path: "statutes/26/32/c/2.yaml",
+            raw_yaml: ruleYaml("earned_income", "26 USC 32(c)(2)(A)"),
+          },
+        ],
+        error: null,
+      },
+      ancestor: {
+        data: [
+          {
+            citation_path: SECTION,
+            file_path: "statutes/26/32.yaml",
+            raw_yaml: ruleYaml("eitc_amount", "26 USC 32(a)"),
+          },
+        ],
+        error: null,
+      },
+    });
 
     const result = await getSectionEncoding("rule-1", `${SECTION}/c`);
     expect(result.encoding?.encoding_run_id).toBe(
@@ -441,7 +616,7 @@ describe("ancestor walk-up (request deeper than the encoded file)", () => {
   });
 
   it("falls through to the legacy path when no ancestor file exists", async () => {
-    mirrorFromMock.mockReturnValue(mirrorChain({ data: [], error: null }));
+    configureMirror();
     getRuleEncodingMock.mockResolvedValue(null);
     findEncodedDescendantsMock.mockResolvedValue([]);
     const result = await getSectionEncoding("rule-1", "us/statute/26/32/a");

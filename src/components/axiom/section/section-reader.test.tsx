@@ -70,6 +70,7 @@ function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
     ],
     programs: [],
     ruleFiles: {},
+    citedByFiles: [],
     focusAnchor: null,
     prev: { citationPath: "us/statute/26/31", label: "§ 31" },
     next: { citationPath: "us/statute/26/33", label: "§ 33" },

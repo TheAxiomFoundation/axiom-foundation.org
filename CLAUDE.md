@@ -19,7 +19,10 @@ generate `/axiom/v2/...` hrefs. The app root and marketing pages stay on v1.
   activated upstream (axiom-corpus).
 - **RuleSpec encodings**: `encodings.rulespec_files` mirror first (live-synced
   from the rulespec-* repos), legacy GitHub-raw fallback second. Never add
-  request-time GitHub reads to hot paths.
+  request-time GitHub reads to hot paths. Each mirror row's
+  `source_citation_paths` records the corpus provisions declared by its module
+  and proof atoms. The section reader uses that reverse index to show
+  policy-rooted modules under **Encoded from this provision**.
 - **Everything executable** (packages, graphs, calculate): the hosted
   axiom-api via `src/lib/axiom/runtime/api.ts`, server-side only.
 

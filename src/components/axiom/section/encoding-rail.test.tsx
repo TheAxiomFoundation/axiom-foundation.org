@@ -1,4 +1,11 @@
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { EncodingRail } from "./encoding-rail";
@@ -210,6 +217,91 @@ describe("EncodingRail", () => {
     renderRail();
     expect(screen.queryByText("graph ↗")).not.toBeInTheDocument();
     expect(screen.queryByText("use in builder ↗")).not.toBeInTheDocument();
+  });
+
+  it("groups policy modules that encode the provision with their rule cards", () => {
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="us"
+        citationPath="us/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={ENCODED_RULES}
+        outgoing={OUTGOING}
+        incoming={[]}
+        citedByFiles={[
+          {
+            citationPath: "us/policy/usitc/us-tariff-duty/lines/generated/ch22",
+            filePath: "policies/usitc/us-tariff-duty/lines/generated/ch22.yaml",
+            ruleNames: ["rule_for_b"],
+          },
+        ]}
+      />
+    );
+
+    const group = screen.getByTestId("rail-cited-by");
+    expect(
+      within(group).getByText("Encoded from this provision")
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByText(
+        "us/policy/usitc/us-tariff-duty/lines/generated/ch22"
+      )
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/TheAxiomFoundation/rulespec-us/blob/main/us/policies/usitc/us-tariff-duty/lines/generated/ch22.yaml"
+    );
+    expect(within(group).getByText("rule_for_b")).toBeInTheDocument();
+
+    const cardLists = within(screen.getByTestId("rail-encodings")).getAllByTestId(
+      "rule-cards"
+    );
+    expect(cardLists).toHaveLength(2);
+    expect(within(cardLists[0]).getByText("rule_for_a")).toBeInTheDocument();
+    expect(
+      within(cardLists[0]).queryByText("rule_for_b")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an unlinked module path when no RuleSpec repository is mapped", () => {
+    placeSections({ a: 500, b: 1500 });
+    render(
+      <EncodingRail
+        encoding={makeEncoding()}
+        jurisdiction="fr"
+        citationPath="fr/statute/26/32"
+        isRepealed={false}
+        chunks={CHUNKS}
+        encodedRules={[ENCODED_RULES[0]]}
+        outgoing={[]}
+        incoming={[]}
+        citedByFiles={[
+          {
+            citationPath: "fr/policy/tariff/ch22",
+            filePath: "policies/tariff/ch22.yaml",
+            ruleNames: ["rule_for_a"],
+          },
+          {
+            citationPath: "fr/policy/tariff/unused",
+            filePath: "policies/tariff/unused.yaml",
+            ruleNames: ["not_on_this_section"],
+          },
+        ]}
+      />
+    );
+
+    const group = screen.getByTestId("rail-cited-by");
+    expect(within(group).getByText("fr/policy/tariff/ch22").tagName).toBe(
+      "SPAN"
+    );
+    expect(
+      within(group).queryByText("fr/policy/tariff/unused")
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("rail-encodings")).getAllByTestId("rule-cards")
+    ).toHaveLength(1);
   });
 
   it("renders no programs block when coverage is empty", () => {

@@ -3,11 +3,11 @@
  * Sync the rulespec-* GitHub repos into the encodings.rulespec_files
  * search index (see supabase/migrations/20260701000000_add_rulespec_files_index.sql).
  *
- * One row per encoding YAML: citation path, raw YAML, and a
- * pre-tokenised search_text (path segments, rule names, formula
- * identifiers, module summary). The Axiom app's encoded-search lane
- * queries this table first and only falls back to crawling GitHub at
- * request time when the table is missing or empty.
+ * One row per encoding YAML: citation path, raw YAML, source citation
+ * paths, and a pre-tokenised search_text (path segments, rule names,
+ * formula identifiers, module summary). The Axiom app's encoded-search
+ * lane queries this table first and only falls back to crawling GitHub
+ * at request time when the table is missing or empty.
  *
  * Usage:
  *   SUPABASE_URL=https://<project>.supabase.co \
@@ -25,7 +25,10 @@ import { createClient } from "@supabase/supabase-js";
 // and tree-listing logic instead of mirroring them — a mirror is how
 // the index once kept a stale ca→canada slug mapping the app had
 // already dropped.
-import { parseRuleSpec, tokenizeFormula } from "../src/lib/axiom/rulespec/doc.ts";
+import {
+  parseRuleSpec,
+  tokenizeFormula,
+} from "../src/lib/axiom/rulespec/doc.ts";
 import { parseTreeEntries } from "../src/lib/axiom/rulespec/repo-listing.ts";
 import {
   GITHUB_ORG,
@@ -33,6 +36,7 @@ import {
   githubHeaders,
   githubJson,
 } from "./lib/rulespec-discovery.mjs";
+import { sourceCitationPathsForFile } from "./lib/source-citation-paths.mjs";
 
 const RAW_FETCH_CONCURRENCY = 8;
 const UPSERT_CHUNK_SIZE = 100;
@@ -42,7 +46,7 @@ const supabaseUrl =
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !serviceKey) {
   console.error(
-    "Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY."
+    "Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY.",
   );
   process.exit(1);
 }
@@ -53,11 +57,9 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 });
 
 async function listFiles(root) {
-  const treePath = root.prefix
-    ? `${root.branch}:${root.prefix}`
-    : root.branch;
+  const treePath = root.prefix ? `${root.branch}:${root.prefix}` : root.branch;
   const body = await githubJson(
-    `https://api.github.com/repos/${GITHUB_ORG}/${root.repo}/git/trees/${encodeURIComponent(treePath)}?recursive=1`
+    `https://api.github.com/repos/${GITHUB_ORG}/${root.repo}/git/trees/${encodeURIComponent(treePath)}?recursive=1`,
   );
   if (body.truncated) {
     console.warn(`tree truncated for ${root.repo}:${root.prefix ?? ""}`);
@@ -94,7 +96,8 @@ function buildSearchText(file, content) {
         for (const version of rule.versions) {
           if (!version.formula) continue;
           for (const segment of tokenizeFormula(version.formula)) {
-            if (segment.isIdentifier) parts.push(segment.text.replace(/_/g, " "));
+            if (segment.isIdentifier)
+              parts.push(segment.text.replace(/_/g, " "));
           }
         }
       }
@@ -107,7 +110,7 @@ function buildSearchText(file, content) {
       .join(" ")
       .toLowerCase()
       .split(/[^a-z0-9]+/)
-      .filter((token) => token.length >= 2)
+      .filter((token) => token.length >= 2),
   );
   return [...tokens].join(" ");
 }
@@ -121,7 +124,7 @@ async function mapWithConcurrency(items, limit, fn) {
         const index = next++;
         out[index] = await fn(items[index]);
       }
-    })
+    }),
   );
   return out;
 }
@@ -141,7 +144,7 @@ for (const root of roots) {
     }
   } catch (error) {
     console.warn(
-      `skip ${root.repo}:${root.prefix ?? ""} listing: ${error.message}`
+      `skip ${root.repo}:${root.prefix ?? ""} listing: ${error.message}`,
     );
   }
 }
@@ -150,6 +153,10 @@ console.log(`${files.length} encoding files listed`);
 const rows = (
   await mapWithConcurrency(files, RAW_FETCH_CONCURRENCY, async (file) => {
     const content = await fetchRawYaml(file).catch(() => null);
+    const sourceCitationPaths = sourceCitationPathsForFile(
+      content,
+      `${file.root.repo}:${file.filePath}`,
+    );
     return {
       citation_path: file.citationPath,
       file_path: file.filePath,
@@ -159,6 +166,7 @@ const rows = (
       bucket: file.bucket,
       raw_yaml: content,
       search_text: buildSearchText(file, content),
+      source_citation_paths: sourceCitationPaths,
       synced_at: new Date().toISOString(),
     };
   })

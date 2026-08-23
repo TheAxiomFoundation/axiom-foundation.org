@@ -54,6 +54,16 @@ export interface SectionEncoding {
    * durable legal ID. Feeds per-rule graph links.
    */
   ruleFiles: Record<string, string>;
+  /**
+   * Modules whose declared source citations include this provision,
+   * but whose own citation path may live in a different bucket (for
+   * example a policy-rooted tariff module citing an HTS line).
+   */
+  citedByFiles: Array<{
+    citationPath: string;
+    filePath: string;
+    ruleNames: string[];
+  }>;
 }
 
 /** Bound on files merged per section; deep regulation trees stay
@@ -69,7 +79,7 @@ interface SectionFile {
 
 function emptyResult(
   encoding: RuleEncodingData | null,
-  encodingRootPath: string | null = null
+  encodingRootPath: string | null = null,
 ): SectionEncoding {
   // Even a lone primary file yields rule→file provenance so rule
   // cards can deep-link into the graph.
@@ -84,6 +94,7 @@ function emptyResult(
     encodingRootPath: encoding ? encodingRootPath : null,
     fileAnchors: {},
     ruleFiles,
+    citedByFiles: [],
   };
 }
 
@@ -91,7 +102,7 @@ function baseEncoding(
   runId: string,
   citation: string,
   filePath: string,
-  content: string
+  content: string,
 ): RuleEncodingData {
   return {
     encoding_run_id: runId,
@@ -118,7 +129,7 @@ function escapeRegExp(text: string): string {
 
 function mergedContent(
   citationPath: string,
-  ruleRaws: Record<string, unknown>[]
+  ruleRaws: Record<string, unknown>[],
 ): string {
   return yaml.dump(
     {
@@ -126,7 +137,7 @@ function mergedContent(
       module: { name: citationPath.split("/").join(".") },
       rules: ruleRaws,
     },
-    { indent: 2, lineWidth: 100, noRefs: true, sortKeys: false }
+    { indent: 2, lineWidth: 100, noRefs: true, sortKeys: false },
   );
 }
 
@@ -140,7 +151,8 @@ function assembleSection(
   sectionFile: SectionFile | null,
   descendants: SectionFile[],
   primaryMeta: RuleEncodingData | null,
-  ancestor: SectionFile | null = null
+  ancestor: SectionFile | null = null,
+  citedBy: SectionFile[] = [],
 ): SectionEncoding {
   const seenNames = new Set<string>();
   const ruleRaws: Record<string, unknown>[] = [];
@@ -191,7 +203,7 @@ function assembleSection(
     // source citations spell the section "273.10(e)".
     const chainRe = new RegExp(
       `(?<!\\w)${escapeRegExp(section)}((?:\\s*\\([A-Za-z0-9]{1,4}\\))+)`,
-      "g"
+      "g",
     );
     for (const rule of parseRuleSpec(ancestor.content).rules) {
       const source = rule.source ?? "";
@@ -200,7 +212,7 @@ function assembleSection(
       for (const match of source.matchAll(chainRe)) {
         const segments = Array.from(
           match[1].matchAll(/\(([A-Za-z0-9]{1,4})\)/g),
-          (seg) => seg[1]
+          (seg) => seg[1],
         );
         const lower = segments.map((segment) => segment.toLowerCase());
         const within =
@@ -224,9 +236,27 @@ function assembleSection(
     }
   }
 
+  let citedByRuleCount = 0;
+  const citedByFiles = citedBy.map((file) => {
+    const doc = parseRuleSpec(file.content);
+    const ruleNames = Array.from(new Set(doc.rules.map((rule) => rule.name)));
+    for (const rule of doc.rules) {
+      ruleFiles[rule.name] ??= file.filePath;
+      if (seenNames.has(rule.name)) continue;
+      seenNames.add(rule.name);
+      ruleRaws.push(rule.raw);
+      citedByRuleCount++;
+    }
+    return {
+      citationPath: file.citationPath,
+      filePath: file.filePath,
+      ruleNames,
+    };
+  });
+
   // Single-file sections need no synthetic doc — serve the file
   // directly so file_path (GitHub link, sibling tests) stays real.
-  if (sectionFile && descendantRuleCount === 0) {
+  if (sectionFile && descendantRuleCount === 0 && citedByRuleCount === 0) {
     return {
       encodingRootPath: citationPath,
       encoding: {
@@ -239,9 +269,15 @@ function assembleSection(
       },
       fileAnchors,
       ruleFiles,
+      citedByFiles,
     };
   }
-  if (!sectionFile && descendants.length === 1 && ancestorRuleCount === 0) {
+  if (
+    !sectionFile &&
+    descendants.length === 1 &&
+    ancestorRuleCount === 0 &&
+    citedByRuleCount === 0
+  ) {
     const only = descendants[0];
     return {
       encodingRootPath: citationPath,
@@ -249,17 +285,23 @@ function assembleSection(
         `github:${only.filePath}`,
         only.citationPath,
         only.filePath,
-        only.content
+        only.content,
       ),
       fileAnchors,
       ruleFiles,
+      citedByFiles,
     };
   }
-  if (ruleRaws.length === 0) return emptyResult(primaryMeta, citationPath);
+  if (ruleRaws.length === 0) {
+    return {
+      ...emptyResult(primaryMeta, citationPath),
+      citedByFiles,
+    };
+  }
 
   const bucketDir = sectionFile
     ? sectionFile.filePath.replace(/\.yaml$/, "")
-    : descendants[0].filePath.split("/").slice(0, -1).join("/");
+    : (descendants[0] ?? citedBy[0]).filePath.split("/").slice(0, -1).join("/");
   return {
     encodingRootPath: citationPath,
     encoding: {
@@ -272,6 +314,7 @@ function assembleSection(
     },
     fileAnchors,
     ruleFiles,
+    citedByFiles,
   };
 }
 
@@ -280,7 +323,7 @@ function assembleSection(
  * descendant, ordered root-first then by path.
  */
 async function listMirrorFiles(
-  citationPath: string
+  citationPath: string,
 ): Promise<SectionFile[] | null> {
   try {
     const result = await withTimeout(
@@ -288,7 +331,7 @@ async function listMirrorFiles(
         .from("rulespec_files")
         .select("citation_path, file_path, raw_yaml")
         .or(
-          `citation_path.eq.${citationPath},citation_path.like.${citationPath}/*`
+          `citation_path.eq.${citationPath},citation_path.like.${citationPath}/*`,
         )
         // Order in the database, before the limit — without this the
         // limit selects an arbitrary subset on sections with more
@@ -296,7 +339,7 @@ async function listMirrorFiles(
         .order("citation_path", { ascending: true })
         .limit(MAX_SECTION_FILES),
       QUERY_TIMEOUT_MS,
-      null
+      null,
     );
     if (!result || result.error) return null;
     const rows = (result.data ?? []) as Array<{
@@ -318,6 +361,56 @@ async function listMirrorFiles(
 }
 
 /**
+ * Reverse lookup for modules that explicitly cite the requested
+ * provision. This is separate from the path range scan because
+ * policy-rooted modules do not live under their statute paths.
+ * Failure is intentionally an empty extra group: a missing column,
+ * timeout, or transient error must not hide path-matched encodings.
+ */
+async function listCitedByFiles(citationPath: string): Promise<SectionFile[]> {
+  try {
+    const result = await withTimeout(
+      supabaseEncodings
+        .from("rulespec_files")
+        .select("citation_path, file_path, raw_yaml")
+        .contains("source_citation_paths", [citationPath])
+        .order("citation_path", { ascending: true })
+        .limit(MAX_SECTION_FILES),
+      QUERY_TIMEOUT_MS,
+      null,
+    );
+    if (!result || result.error) return [];
+    const rows = (result.data ?? []) as Array<{
+      citation_path: string;
+      file_path: string;
+      raw_yaml: string | null;
+    }>;
+    return rows
+      .filter((row) => row.raw_yaml && row.raw_yaml.trim().length > 0)
+      .map((row) => ({
+        citationPath: row.citation_path,
+        filePath: row.file_path,
+        content: row.raw_yaml as string,
+      }))
+      .sort((a, b) => a.citationPath.localeCompare(b.citationPath));
+  } catch {
+    return [];
+  }
+}
+
+function excludePathMatchedFiles(
+  citedBy: SectionFile[],
+  pathMatched: SectionFile[],
+): SectionFile[] {
+  const seen = new Set(pathMatched.map((file) => file.filePath));
+  return citedBy.filter((file) => {
+    if (seen.has(file.filePath)) return false;
+    seen.add(file.filePath);
+    return true;
+  });
+}
+
+/**
  * Nearest ANCESTOR rulespec file for a request deeper than the
  * encoded granularity: one `in.()` probe over the ancestor chain
  * (never above jurisdiction/bucket/title), deepest hit wins. This is
@@ -326,7 +419,7 @@ async function listMirrorFiles(
  * finds its encoding.
  */
 async function findAncestorFile(
-  citationPath: string
+  citationPath: string,
 ): Promise<SectionFile | null> {
   const segments = citationPath.split("/");
   const ancestors: string[] = [];
@@ -343,7 +436,7 @@ async function findAncestorFile(
         .order("citation_path", { ascending: false })
         .limit(ancestors.length),
       QUERY_TIMEOUT_MS,
-      null
+      null,
     );
     if (!result || result.error) return null;
     const rows = (result.data ?? []) as Array<{
@@ -368,27 +461,60 @@ async function findAncestorFile(
 
 export async function getSectionEncoding(
   rootId: string,
-  citationPath: string
+  citationPath: string,
 ): Promise<SectionEncoding> {
-  const mirror = await listMirrorFiles(citationPath);
+  const [mirror, citedBy] = await Promise.all([
+    listMirrorFiles(citationPath),
+    listCitedByFiles(citationPath),
+  ]);
   if (mirror && mirror.length > 0) {
     const sectionFile =
       mirror.find((file) => file.citationPath === citationPath) ?? null;
     const descendants = mirror.filter(
-      (file) => file.citationPath !== citationPath
+      (file) => file.citationPath !== citationPath,
     );
     // No exact file at this path means it may be a deep page whose
     // remaining rules live in an ancestor module — probe for it so
     // subsection-granular files don't shadow the section file's rules.
     const ancestor = sectionFile ? null : await findAncestorFile(citationPath);
-    return assembleSection(citationPath, sectionFile, descendants, null, ancestor);
+    const citedByOnly = excludePathMatchedFiles(
+      citedBy,
+      ancestor ? [...mirror, ancestor] : mirror,
+    );
+    return assembleSection(
+      citationPath,
+      sectionFile,
+      descendants,
+      null,
+      ancestor,
+      citedByOnly,
+    );
   }
   // Nothing at or below the request: the request may be DEEPER than
   // the encoded file. Serve the nearest ancestor module; the page
   // layer re-joins its rules by source citation.
   const ancestor = await findAncestorFile(citationPath);
   if (ancestor) {
+    const citedByOnly = mirror
+      ? excludePathMatchedFiles(citedBy, [ancestor])
+      : [];
+    if (citedByOnly.length > 0) {
+      return assembleSection(
+        citationPath,
+        null,
+        [],
+        null,
+        ancestor,
+        citedByOnly,
+      );
+    }
     return assembleSection(ancestor.citationPath, ancestor, [], null);
+  }
+
+  // A successful path scan can legitimately be empty when all
+  // encodings for the provision are homed in policy buckets.
+  if (mirror && citedBy.length > 0) {
+    return assembleSection(citationPath, null, [], null, null, citedBy);
   }
 
   // Mirror miss (not yet synced, or query failure): legacy path —
@@ -404,9 +530,7 @@ export async function getSectionEncoding(
   const fetched = (
     await Promise.all(
       limited.map(async (file) => {
-        const res = await fetchEncodedFile(file.citationPath).catch(
-          () => null
-        );
+        const res = await fetchEncodedFile(file.citationPath).catch(() => null);
         return res
           ? {
               citationPath: file.citationPath,
@@ -414,7 +538,7 @@ export async function getSectionEncoding(
               content: res.content,
             }
           : null;
-      })
+      }),
     )
   ).filter((item): item is SectionFile => Boolean(item));
   if (fetched.length === 0) return emptyResult(primary, citationPath);
@@ -432,7 +556,7 @@ export async function getSectionEncoding(
 function withTimeout<T>(
   promise: PromiseLike<T>,
   ms: number,
-  fallback: T
+  fallback: T,
 ): Promise<T> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(fallback), ms);
@@ -444,7 +568,7 @@ function withTimeout<T>(
       () => {
         clearTimeout(timer);
         resolve(fallback);
-      }
+      },
     );
   });
 }

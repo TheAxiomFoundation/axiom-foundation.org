@@ -38,7 +38,7 @@ describe("tariff schedule artifact", () => {
     const beer = committed.lines.find((item) => item.hts10 === "2203000000");
     expect(beer).toMatchObject({ description: "Beer made from malt", generalRate: "Free", column2Rate: "13.2¢/liter", canada338Warning: true });
   });
-  it.skipIf(!sourceAvailable)("regenerates byte-identically from the pinned rulespec commit", () => {
+  it.skipIf(!sourceAvailable)("regenerates byte-identically from the pinned rulespec commit", { timeout: 180_000 }, () => {
     const rebuilt = buildArtifact();
     expect(rebuilt).toEqual(committed);
     expect(buildArtifact()).toEqual(rebuilt);

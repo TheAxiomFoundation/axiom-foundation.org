@@ -42,7 +42,7 @@ import { citationPathSetsForFile } from "./lib/source-citation-paths.mjs";
 const RAW_FETCH_CONCURRENCY = 8;
 const UPSERT_CHUNK_SIZE = 100;
 const RULE_CITATION_DELETE_CHUNK_SIZE = 25;
-const RULE_CITATION_UPSERT_CHUNK_SIZE = 500;
+const RULE_CITATION_UPSERT_CHUNK_SIZE = 200;
 
 const supabaseUrl =
   process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -65,9 +65,7 @@ async function listFiles(root) {
     `https://api.github.com/repos/${GITHUB_ORG}/${root.repo}/git/trees/${encodeURIComponent(treePath)}?recursive=1`,
   );
   if (!Array.isArray(body.tree)) {
-    console.warn(
-      `tree missing entries for ${root.repo}:${root.prefix ?? ""}`,
-    );
+    console.warn(`tree missing entries for ${root.repo}:${root.prefix ?? ""}`);
     return { complete: false, files: [] };
   }
   if (body.truncated) {
@@ -123,6 +121,32 @@ function buildSearchText(file, doc) {
       .filter((token) => token.length >= 2),
   );
   return [...tokens].join(" ");
+}
+
+/**
+ * Run one Supabase write with bounded retries. A six-hourly crawl makes
+ * thousands of REST calls; transient gateway failures (HTML error pages,
+ * dropped connections) surface as one-off errors and have killed full
+ * runs at arbitrary chunks. Retry every failure a few times with
+ * backoff; a persisting error still fails the run closed.
+ */
+async function writeWithRetries(label, run) {
+  const delaysMs = [2_000, 8_000, 20_000];
+  for (let attempt = 0; ; attempt++) {
+    const { error } = await run();
+    if (!error) return;
+    const summary = String(error.message ?? error).slice(0, 200);
+    if (attempt >= delaysMs.length) {
+      console.error(
+        `${label} failed after ${attempt + 1} attempts: ${summary}`,
+      );
+      process.exit(1);
+    }
+    console.warn(
+      `${label} attempt ${attempt + 1} failed (${summary}); retrying`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delaysMs[attempt]));
+  }
 }
 
 async function mapWithConcurrency(items, limit, fn) {
@@ -236,13 +260,11 @@ const rows = indexedFiles.map(({ fileRow }) => fileRow);
 let upserted = 0;
 for (let i = 0; i < rows.length; i += UPSERT_CHUNK_SIZE) {
   const chunk = rows.slice(i, i + UPSERT_CHUNK_SIZE);
-  const { error } = await supabase
-    .from("rulespec_files")
-    .upsert(chunk, { onConflict: "citation_path" });
-  if (error) {
-    console.error(`upsert failed at chunk ${i}: ${error.message}`);
-    process.exit(1);
-  }
+  await writeWithRetries(`rulespec_files upsert at chunk ${i}`, () =>
+    supabase.from("rulespec_files").upsert(chunk, {
+      onConflict: "citation_path",
+    }),
+  );
   upserted += chunk.length;
 }
 console.log(`${upserted} rows upserted`);
@@ -251,11 +273,7 @@ console.log(`${upserted} rows upserted`);
 // current rows. Batching the module predicates keeps requests bounded while
 // ensuring modules that now have zero citations also lose their old rows.
 let ruleCitationRowsUpserted = 0;
-for (
-  let i = 0;
-  i < indexedFiles.length;
-  i += RULE_CITATION_DELETE_CHUNK_SIZE
-) {
+for (let i = 0; i < indexedFiles.length; i += RULE_CITATION_DELETE_CHUNK_SIZE) {
   const moduleChunk = indexedFiles.slice(
     i,
     i + RULE_CITATION_DELETE_CHUNK_SIZE,
@@ -263,16 +281,12 @@ for (
   const moduleCitationPaths = moduleChunk.map(
     ({ fileRow }) => fileRow.citation_path,
   );
-  const { error: resetError } = await supabase
-    .from("rule_citations")
-    .delete()
-    .in("module_citation_path", moduleCitationPaths);
-  if (resetError) {
-    console.error(
-      `rule citation reset failed at module chunk ${i}: ${resetError.message}`,
-    );
-    process.exit(1);
-  }
+  await writeWithRetries(`rule citation reset at module chunk ${i}`, () =>
+    supabase
+      .from("rule_citations")
+      .delete()
+      .in("module_citation_path", moduleCitationPaths),
+  );
 
   const citationRows = moduleChunk.flatMap(
     ({ ruleCitationRows: moduleRows }) => moduleRows,
@@ -283,15 +297,13 @@ for (
     j += RULE_CITATION_UPSERT_CHUNK_SIZE
   ) {
     const chunk = citationRows.slice(j, j + RULE_CITATION_UPSERT_CHUNK_SIZE);
-    const { error } = await supabase.from("rule_citations").upsert(chunk, {
-      onConflict: "citation_path,module_citation_path,rule_name",
-    });
-    if (error) {
-      console.error(
-        `rule citation upsert failed at module chunk ${i}, row ${j}: ${error.message}`,
-      );
-      process.exit(1);
-    }
+    await writeWithRetries(
+      `rule citation upsert at module chunk ${i}, row ${j}`,
+      () =>
+        supabase.from("rule_citations").upsert(chunk, {
+          onConflict: "citation_path,module_citation_path,rule_name",
+        }),
+    );
     ruleCitationRowsUpserted += chunk.length;
   }
 }

@@ -286,12 +286,18 @@ describe("computeFieldHighlights", () => {
 
 describe("pinned highlights (EITC door)", () => {
   it("always includes the pinned targets from the committed census", () => {
+    // Pins live in their own country family's view; check each pin
+    // against the highlights of the country it belongs to.
+    for (const target of PINNED_HIGHLIGHT_TARGETS) {
+      const country = target.split(":")[0]!.split("-")[0]!;
+      const picked = computeFieldHighlights(
+        filterViewModules(corpusSubtrees.modules, country),
+      );
+      expect(picked.map((m) => m.target)).toContain(target);
+    }
     const picked = computeFieldHighlights(
       filterViewModules(corpusSubtrees.modules),
     );
-    for (const target of PINNED_HIGHLIGHT_TARGETS) {
-      expect(picked.map((m) => m.target)).toContain(target);
-    }
     // EITC specifically: the census names its headline, so the door
     // label path yields "EITC — 26 USC § 32".
     const eitc = picked.find((m) => m.target === "us:statutes/26/32")!;
@@ -719,10 +725,14 @@ describe("US-only scope", () => {
     expect(filtered.map((m) => m.jurisdiction)).toEqual(["us", "us-co"]);
   });
 
-  it("the committed snapshot is already US-only", () => {
-    expect(filterUsModules(corpusSubtrees.modules)).toHaveLength(
-      corpusSubtrees.modules.length,
+  it("the committed snapshot carries only census-known families (us, be)", () => {
+    const nonUs = corpusSubtrees.modules.filter(
+      (m) => !m.jurisdiction.startsWith("us"),
     );
+    expect(nonUs.length).toBeGreaterThan(0);
+    expect(
+      nonUs.every((m) => m.jurisdiction === "be" || m.jurisdiction.startsWith("be-")),
+    ).toBe(true);
   });
 });
 

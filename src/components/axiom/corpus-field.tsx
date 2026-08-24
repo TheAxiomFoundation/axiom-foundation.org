@@ -82,6 +82,10 @@ const ComposeViewer = dynamic(
 const JURISDICTION_LABELS: Record<string, string> = {
   us: "US · Federal",
   be: "BE · Federal",
+  "be-vlg": "BE · Flanders",
+  "be-wal": "BE · Wallonia",
+  "be-bru": "BE · Brussels",
+  "be-dg": "BE · German-speaking Community",
 };
 
 const ZOOM_IN_MS = 640;

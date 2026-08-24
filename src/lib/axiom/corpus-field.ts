@@ -199,6 +199,12 @@ export function highlightScore(module: CorpusModule): number {
  *  (the US may show 4 doors) — they never evict a size-based pick. */
 export const PINNED_HIGHLIGHT_TARGETS: readonly string[] = [
   "us:statutes/26/32",
+  // Belgium's flagship doors: verified composing statute modules
+  // (company-car benefit, the special social-security contribution,
+  // and the elderly income-guarantee payable amount).
+  "be:statutes/income_tax/benefits/company_car",
+  "be:statutes/social_security/special_contribution",
+  "be:statutes/income_guarantee_for_elderly/payable_amount",
 ];
 
 export function computeFieldHighlights(

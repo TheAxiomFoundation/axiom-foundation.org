@@ -30,6 +30,7 @@ import {
   tokenizeFormula,
 } from "../src/lib/axiom/rulespec/doc.ts";
 import { ruleCitationRows } from "../src/lib/axiom/rulespec/source-citations.ts";
+import { budgetedChunks } from "./lib/budgeted-chunks.mjs";
 import { parseTreeEntries } from "../src/lib/axiom/rulespec/repo-listing.ts";
 import {
   GITHUB_ORG,
@@ -43,6 +44,12 @@ const RAW_FETCH_CONCURRENCY = 8;
 const UPSERT_CHUNK_SIZE = 100;
 const RULE_CITATION_DELETE_CHUNK_SIZE = 25;
 const RULE_CITATION_UPSERT_CHUNK_SIZE = 200;
+// Rows carry whole rule YAML; composition rules run to tens of KB, so a
+// row-count bound alone let single requests reach several MB and the
+// REST gateway answered with Cloudflare error pages, connection resets,
+// and statement timeouts (runs 32710243782 and two locals died at the
+// same fat chunk). Flush a chunk when its payload budget is spent.
+const RULE_CITATION_CHUNK_BUDGET_BYTES = 700_000;
 
 const supabaseUrl =
   process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -131,7 +138,7 @@ function buildSearchText(file, doc) {
  * backoff; a persisting error still fails the run closed.
  */
 async function writeWithRetries(label, run) {
-  const delaysMs = [2_000, 8_000, 20_000];
+  const delaysMs = [2_000, 8_000, 20_000, 45_000];
   for (let attempt = 0; ; attempt++) {
     const { error } = await run();
     if (!error) return;
@@ -291,14 +298,13 @@ for (let i = 0; i < indexedFiles.length; i += RULE_CITATION_DELETE_CHUNK_SIZE) {
   const citationRows = moduleChunk.flatMap(
     ({ ruleCitationRows: moduleRows }) => moduleRows,
   );
-  for (
-    let j = 0;
-    j < citationRows.length;
-    j += RULE_CITATION_UPSERT_CHUNK_SIZE
-  ) {
-    const chunk = citationRows.slice(j, j + RULE_CITATION_UPSERT_CHUNK_SIZE);
+  for (const chunk of budgetedChunks(
+    citationRows,
+    RULE_CITATION_UPSERT_CHUNK_SIZE,
+    RULE_CITATION_CHUNK_BUDGET_BYTES,
+  )) {
     await writeWithRetries(
-      `rule citation upsert at module chunk ${i}, row ${j}`,
+      `rule citation upsert at module chunk ${i}, row ${ruleCitationRowsUpserted}`,
       () =>
         supabase.from("rule_citations").upsert(chunk, {
           onConflict: "citation_path,module_citation_path,rule_name",

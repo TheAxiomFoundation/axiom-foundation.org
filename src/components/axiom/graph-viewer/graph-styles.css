@@ -3477,3 +3477,50 @@
     justify-content: flex-end;
   }
 }
+
+/* ── Controls bar ──
+   The graph's controls (zoom, detail level, expand/collapse,
+   fullscreen) live in a flow row ABOVE the canvas — inspector popups
+   and door chips can never cover them. The wrap turns into a column;
+   the canvas takes the rest. */
+.graph-viewer-root .irg-wrap{
+  display: flex;
+  flex-direction: column;
+}
+.graph-viewer-root .irg-canvas{
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.graph-viewer-root .irg-controls-bar{
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.graph-viewer-root .irg-controls-bar .irg-toolbar{
+  position: static;
+}
+.graph-viewer-root .irg-controls-bar .irg-fullscreen-btn{
+  position: static;
+  margin-left: auto;
+}
+
+/* In-slot (header row) variant: the bar sheds its own chrome — the
+   frame row is the chrome. */
+.graph-viewer-root .graph-controls-slot{
+  margin-left: auto;
+  /* The "Run a scenario" button floats at the stage's top-right,
+     visually on this row's right end — keep clear of it. */
+  margin-right: 148px;
+  display: flex;
+  align-items: center;
+}
+.graph-viewer-root .irg-controls-bar.irg-controls-inline{
+  border-bottom: none;
+  padding: 0;
+  background: transparent;
+}

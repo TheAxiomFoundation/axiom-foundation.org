@@ -83,6 +83,10 @@ interface Props {
   hoverLegalId?: string | null;
   /** Clicking empty canvas — the app closes the info card. */
   onPaneClear?: () => void;
+  /** Host element for the controls bar (a slot in the frame's header
+   *  row). Portaled there when provided; rendered above the canvas
+   *  otherwise. */
+  controlsSlot?: HTMLElement | null;
   /** Double-click → open the rule lens on this node. */
   onLens?: (legalId: string) => void;
 }
@@ -120,6 +124,7 @@ export function InteractiveRuleGraph({
   pinnedLegalId = null,
   hoverLegalId = null,
   onPaneClear,
+  controlsSlot = null,
   onLens,
 }: Props) {
   // Sub-rules expand inline by default — the user gets the full DAG to atomic
@@ -553,6 +558,83 @@ export function InteractiveRuleGraph({
       className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}
     >
       <ReactFlowProvider>
+        {(() => {
+          const controlsBar = (
+        <div className={`irg-controls-bar ${controlsSlot ? "irg-controls-inline" : ""}`}>
+          <div className="irg-toolbar">
+            <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
+              <button
+                type="button"
+                className={`irg-toolbar-btn ${detail === "operators" ? "is-active" : ""}`}
+                onClick={() => setDetail("operators")}
+                role="tab"
+                aria-selected={detail === "operators"}
+                title="Show operators (AND, OR, IF, comparisons, arithmetic)"
+              >
+                Operators
+              </button>
+              <button
+                type="button"
+                className={`irg-toolbar-btn ${detail === "wires" ? "is-active" : ""}`}
+                onClick={() => setDetail("wires")}
+                role="tab"
+                aria-selected={detail === "wires"}
+                title="Hide operators — show only inputs, sub-rules, outputs and the wires between them"
+              >
+                Wires only
+              </button>
+            </div>
+            <button
+              type="button"
+              className="irg-toolbar-btn"
+              onClick={expandAll}
+              title="Expand every sub-rule inline"
+            >
+              Expand all
+            </button>
+            <button
+              type="button"
+              className="irg-toolbar-btn"
+              onClick={collapseAll}
+              title="Collapse every sub-rule into a clickable terminal"
+            >
+              Collapse all
+            </button>
+          </div>
+          <button
+            type="button"
+            className="irg-fullscreen-btn"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit full screen (Esc)" : "Enter full screen"}
+            aria-label={isFullscreen ? "Exit full screen" : "Enter full screen"}
+          >
+            {isFullscreen ? (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+          );
+          return controlsSlot ? createPortal(controlsBar, controlsSlot) : controlsBar;
+        })()}
+        <div className="irg-canvas">
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
@@ -653,79 +735,8 @@ export function InteractiveRuleGraph({
           />
 
           <GraphMiniMap />
-          <SmoothControls />
         </ReactFlow>
-        <div className="irg-toolbar">
-          <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
-            <button
-              type="button"
-              className={`irg-toolbar-btn ${detail === "operators" ? "is-active" : ""}`}
-              onClick={() => setDetail("operators")}
-              role="tab"
-              aria-selected={detail === "operators"}
-              title="Show operators (AND, OR, IF, comparisons, arithmetic)"
-            >
-              Operators
-            </button>
-            <button
-              type="button"
-              className={`irg-toolbar-btn ${detail === "wires" ? "is-active" : ""}`}
-              onClick={() => setDetail("wires")}
-              role="tab"
-              aria-selected={detail === "wires"}
-              title="Hide operators — show only inputs, sub-rules, outputs and the wires between them"
-            >
-              Wires only
-            </button>
-          </div>
-          <button
-            type="button"
-            className="irg-toolbar-btn"
-            onClick={expandAll}
-            title="Expand every sub-rule inline"
-          >
-            Expand all
-          </button>
-          <button
-            type="button"
-            className="irg-toolbar-btn"
-            onClick={collapseAll}
-            title="Collapse every sub-rule into a clickable terminal"
-          >
-            Collapse all
-          </button>
         </div>
-        <button
-          type="button"
-          className="irg-fullscreen-btn"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit full screen (Esc)" : "Enter full screen"}
-          aria-label={isFullscreen ? "Exit full screen" : "Enter full screen"}
-        >
-          {isFullscreen ? (
-            // collapse glyph
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-              <path
-                d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-          ) : (
-            // expand glyph
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-              <path
-                d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-        </button>
       </ReactFlowProvider>
     </div>
   );
@@ -859,43 +870,6 @@ function GraphMiniMap() {
   );
 }
 
-/** Zoom controls that glide — the stock Controls snap. */
-function SmoothControls() {
-  const flow = useReactFlow();
-  return (
-    <div className="smooth-controls" aria-label="Zoom controls">
-      <button
-        type="button"
-        onClick={() => void flow.zoomIn({ duration: 320 })}
-        aria-label="Zoom in"
-      >
-        +
-      </button>
-      <button
-        type="button"
-        onClick={() => void flow.zoomOut({ duration: 320 })}
-        aria-label="Zoom out"
-      >
-        −
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          void flow.fitView({
-            duration: 950,
-            padding: 0.12,
-            interpolate: "smooth",
-            minZoom: 0.01,
-          })
-        }
-        aria-label="Fit the whole graph"
-        title="Fit the whole graph"
-      >
-        ⛶
-      </button>
-    </div>
-  );
-}
 
 /** Duration scaled to how far the camera must travel — short hops
  *  stay quick, cross-map flights take a long smooth arc. */
@@ -1260,16 +1234,12 @@ const OutputNode = ({ data }: NodeProps) => {
       {!answerPopulated && d.showValues && d.value && (
         <div className="irg-value">{d.value}</div>
       )}
-      {d.canExpand && (
+      {d.canExpand && !d.isExpanded && (
         <div
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded
-            ? "− collapse"
-            : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} rules`
-              : "+ expand"}
+          {d.hiddenCount ? `+ expand · ${d.hiddenCount} rules` : "+ expand"}
         </div>
       )}
       <NodeInfo
@@ -1493,16 +1463,12 @@ const RuleRefNode = ({ data }: NodeProps) => {
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
-      {d.canExpand && (
+      {d.canExpand && !d.isExpanded && (
         <div
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded
-            ? "− collapse"
-            : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} rules`
-              : "+ expand"}
+          {d.hiddenCount ? `+ expand · ${d.hiddenCount} rules` : "+ expand"}
         </div>
       )}
       <NodeInfo

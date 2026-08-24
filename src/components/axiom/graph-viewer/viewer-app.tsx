@@ -589,6 +589,9 @@ export function GraphViewerApp({
   // on demand from the encodings mirror — for law that is encoded but not
   // yet inside any compiled program package. Choosing a program or
   // country exits compose mode back to the package registry.
+  const [graphControlsSlot, setGraphControlsSlot] = useState<HTMLElement | null>(
+    null,
+  );
   const [composeFocus, setComposeFocus] = useState<string | null>(() =>
     initialParam("compose"),
   );
@@ -2700,6 +2703,10 @@ export function GraphViewerApp({
                   : "Loading graph"}
             </span>
           )}
+          {/* The graph's own controls (zoom, detail, expand/collapse,
+              fullscreen) portal into this slot — same frame row, right
+              side, never covered by canvas popups. */}
+          <div className="graph-controls-slot" ref={setGraphControlsSlot} />
         </div>
         <div
           className={`graph-stage ${runResult ? "plane-live" : ""} ${
@@ -2731,13 +2738,6 @@ export function GraphViewerApp({
               <strong>This subtree can&rsquo;t execute yet</strong>
               <span>{runBlocked}</span>
             </div>
-          )}
-          {composeFocus && composedHiddenCount > 0 && (
-            // The isolated-node filter's honesty note: tiny, muted,
-            // out of the way — never a header.
-            <span className="standalone-note" data-testid="standalone-note">
-              +{composedHiddenCount} standalone definitions hidden
-            </span>
           )}
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
@@ -2864,6 +2864,7 @@ export function GraphViewerApp({
               }
               hoverLegalId={null}
               onPaneClear={() => setInspected(null)}
+              controlsSlot={graphControlsSlot}
               onLens={openLens}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}
@@ -2884,7 +2885,10 @@ export function GraphViewerApp({
             const input = legalId ? (walkInputById.get(legalId) ?? null) : null;
             const consumers = inspectedConsumers;
             const meta = "meta" in inspected ? inspected.meta : undefined;
-            const formula = meta?.formula ?? rule?.formula ?? null;
+            // The rule carries the FULL formula; node meta holds the
+            // 140-char one-liner cut for the card — never show the cut
+            // one when the real thing is available.
+            const formula = rule?.formula ?? meta?.formula ?? null;
             const rawCitation =
               meta?.citation ??
               rule?.source ??
@@ -4484,8 +4488,14 @@ function FormulaPretty({ source }: { source: string }) {
   return (
     <code className="formula-pretty formula-block">
       {lines.map((line, lineIndex) => (
-        <span key={lineIndex} className="fp-line">
-          {"  ".repeat(line.indent)}
+        // Indent as padding, not literal spaces: a long line wraps and
+        // its continuation hangs at the construct's own depth instead
+        // of forcing a horizontal scrollbar.
+        <span
+          key={lineIndex}
+          className="fp-line"
+          style={{ paddingLeft: `${line.indent * 14}px` }}
+        >
           {line.spans.map((span, spanIndex) => (
             <span key={spanIndex} className={span.cls} title={span.title}>
               {span.text}

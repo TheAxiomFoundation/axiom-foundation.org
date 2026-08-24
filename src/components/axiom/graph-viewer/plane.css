@@ -684,8 +684,7 @@
 }
 .graph-viewer-root .node-inspector-formula {
   margin: 10px 0 0;
-  max-height: 140px;
-  overflow: auto;
+  /* Full formula, no inner scrollbox — the inspector itself scrolls. */
   background: var(--color-rule-subtle);
   border-radius: 8px;
   padding: 8px 10px;
@@ -2092,8 +2091,10 @@
   border-color: var(--color-accent);
 }
 .graph-viewer-root .mini-graph-card.is-question {
+  /* Dashed marks "input you answer" — but muted ink read as a
+     half-rendered card; keep the text legible. */
   border-style: dashed;
-  color: var(--color-ink-muted);
+  color: var(--color-ink-secondary);
 }
 .graph-viewer-root .mini-graph-card.is-center {
   border-color: var(--color-accent);
@@ -2120,8 +2121,6 @@
 
 .graph-viewer-root .node-inspector-code-body {
   padding: 10px 12px;
-  max-height: 240px;
-  overflow: auto;
   background: var(--color-paper);
 }
 .graph-viewer-root .formula-pretty {
@@ -2547,35 +2546,6 @@
   text-align: left;
 }
 
-/* Smooth zoom controls (replacing the stock snapping ones). */
-.graph-viewer-root .smooth-controls {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 12;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.graph-viewer-root .smooth-controls button {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-rule);
-  border-radius: 8px;
-  background: var(--color-paper-elevated);
-  color: var(--color-ink-secondary);
-  font-size: 15px;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-.graph-viewer-root .smooth-controls button:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
 /* Every scrollable surface scrolls smoothly. */
 .graph-viewer-root,
 .graph-viewer-root * {
@@ -2804,7 +2774,10 @@
 }
 .graph-viewer-root .formula-block .fp-line {
   display: block;
-  white-space: pre;
+  /* Long constructs wrap in place (indent is padding, so the wrap
+     hangs at the construct's depth) — never a horizontal scrollbar. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.75;
 }
 
@@ -4026,18 +3999,6 @@
 }
 
 /* The isolated-node filter's honesty note, stage corner. */
-.graph-viewer-root .standalone-note {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  z-index: 8;
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  pointer-events: none;
-}
 
 /* Country/program switch in the graph header: package navigation that
    was previously deep-link-only. Reuses the launcher's select styling. */

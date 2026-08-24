@@ -70,6 +70,8 @@ function makeData(overrides: Partial<SectionPageData> = {}): SectionPageData {
     ],
     programs: [],
     ruleFiles: {},
+    citedByFiles: [],
+    citedByOverflow: 0,
     focusAnchor: null,
     prev: { citationPath: "us/statute/26/31", label: "§ 31" },
     next: { citationPath: "us/statute/26/33", label: "§ 33" },
@@ -102,7 +104,7 @@ describe("SectionReader", () => {
     // The citation path is implied by the breadcrumbs — no eyebrow.
     expect(screen.getByText("Official source")).toHaveAttribute(
       "href",
-      "https://uscode.house.gov/32"
+      "https://uscode.house.gov/32",
     );
     // The header action strip carries the verbs (graph/build/cite).
     const strip = screen.getByTestId("action-strip");
@@ -113,14 +115,14 @@ describe("SectionReader", () => {
     // Chunk sections with designator links into their own URLs.
     expect(screen.getByTitle("Open us/statute/26/32/a")).toHaveAttribute(
       "href",
-      "/us/statute/26/32/a"
+      "/us/statute/26/32/a",
     );
     // The encoded layer leads the rail: the encodings block names
     // each rule and grounds it in the subsection it implements.
     const encodings = screen.getByTestId("rail-encodings");
     expect(within(encodings).getByText("eitc_phased_in")).toBeInTheDocument();
     expect(
-      within(encodings).getByText(/§ 32 \(a\)\(b\) · derived/)
+      within(encodings).getByText(/§ 32 \(a\)\(b\) · derived/),
     ).toBeInTheDocument();
     // Prev/next.
     expect(screen.getByText(/§ 31/)).toHaveAttribute("rel", "prev");
@@ -139,18 +141,18 @@ describe("SectionReader", () => {
             { label: "(b)", href: "/us/statute/26/32/b" },
           ],
         })}
-      />
+      />,
     );
     const crumbs = within(
-      screen.getByRole("navigation", { name: "Breadcrumb" })
+      screen.getByRole("navigation", { name: "Breadcrumb" }),
     );
     expect(crumbs.getByText("Title 26")).toHaveAttribute(
       "href",
-      "/us/statute/26"
+      "/us/statute/26",
     );
     expect(crumbs.getByText("§ 32")).toHaveAttribute(
       "href",
-      "/us/statute/26/32"
+      "/us/statute/26/32",
     );
     // Leaf crumb is the current page, not a link.
     expect(crumbs.getByText("(b)").tagName).toBe("SPAN");
@@ -182,14 +184,14 @@ describe("SectionReader", () => {
           ],
           ruleFiles: { eitc_phased_in: "statutes/26/32/a.yaml" },
         })}
-      />
+      />,
     );
     const rows = screen.getAllByTestId("subsection-actions");
     expect(rows).toHaveLength(1);
     const row = rows[0];
     // Cite label is the formatted legal citation for the subsection.
     expect(
-      within(row).getByText("cite · 26 U.S.C. § 32(a)")
+      within(row).getByText("cite · 26 U.S.C. § 32(a)"),
     ).toBeInTheDocument();
     // Graph opens the covering program focused on this subsection.
     const graph = within(row).getByText("graph ↗");
@@ -198,7 +200,10 @@ describe("SectionReader", () => {
     expect(graphHref.searchParams.get("focus")).toBe("us:statutes/26/32/a");
     // Builder gets the subsection's encoded rule as the output.
     const builder = within(row).getByText("use in builder ↗");
-    const builderHref = new URL(builder.getAttribute("href")!, "http://app.test");
+    const builderHref = new URL(
+      builder.getAttribute("href")!,
+      "http://app.test",
+    );
     // Section-level id: the builder scopes its output picker to the
     // provision and the user selects rules there.
     expect(builderHref.searchParams.get("output")).toBe("us:statutes/26/32");
@@ -208,18 +213,14 @@ describe("SectionReader", () => {
 
   it("omits graph and builder actions without coverage, keeping cite", () => {
     render(
-      <SectionReader
-        data={makeData({ focusAnchor: "b", encodedRules: [] })}
-      />
+      <SectionReader data={makeData({ focusAnchor: "b", encodedRules: [] })} />,
     );
     const row = screen.getByTestId("subsection-actions");
     expect(
-      within(row).getByText("cite · 26 U.S.C. § 32(b)")
+      within(row).getByText("cite · 26 U.S.C. § 32(b)"),
     ).toBeInTheDocument();
     expect(within(row).queryByText("graph ↗")).not.toBeInTheDocument();
-    expect(
-      within(row).queryByText("use in builder ↗")
-    ).not.toBeInTheDocument();
+    expect(within(row).queryByText("use in builder ↗")).not.toBeInTheDocument();
   });
 
   it("gives corpus-row sections the same focus behavior as chunked ones", () => {
@@ -271,7 +272,7 @@ describe("SectionReader", () => {
           ],
           ruleFiles: { limit_rule: "statutes/26/32/d.yaml" },
         })}
-      />
+      />,
     );
     // Focus highlight on the top-level provision.
     expect(document.getElementById("d")?.className).toContain("shadow");
@@ -279,18 +280,21 @@ describe("SectionReader", () => {
     // Action row with the same verbs as chunked sections.
     const row = screen.getByTestId("subsection-actions");
     expect(
-      within(row).getByText("cite · 26 U.S.C. § 32(d)")
+      within(row).getByText("cite · 26 U.S.C. § 32(d)"),
     ).toBeInTheDocument();
     expect(within(row).getByText("graph ↗")).toBeInTheDocument();
     const builder = within(row).getByText("use in builder ↗");
     expect(
-      new URL(builder.getAttribute("href")!, "http://app.test").searchParams.get("output")
+      new URL(
+        builder.getAttribute("href")!,
+        "http://app.test",
+      ).searchParams.get("output"),
     ).toBe("us:statutes/26/32");
     // A real subsection URL on the designator; rule-name chips no
     // longer sit in the reading flow.
     expect(screen.getByTitle("Open us/statute/26/32/d")).toHaveAttribute(
       "href",
-      "/us/statute/26/32/d"
+      "/us/statute/26/32/d",
     );
   });
 
@@ -303,7 +307,7 @@ describe("SectionReader", () => {
           prev: null,
           next: null,
         })}
-      />
+      />,
     );
     expect(screen.getByText(/General chapeau text/)).toBeInTheDocument();
     expect(screen.getByText(/unusually large/)).toBeInTheDocument();
@@ -341,7 +345,7 @@ describe("SectionReader", () => {
             },
           ],
         })}
-      />
+      />,
     );
     expect(screen.getByText("In general")).toBeInTheDocument();
     expect(screen.getByText("Child body text.")).toBeInTheDocument();

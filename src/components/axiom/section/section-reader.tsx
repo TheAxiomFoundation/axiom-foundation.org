@@ -80,10 +80,10 @@ function EncodingStatusLine({ data }: { data: SectionPageData }) {
           .map((provision) => provision.anchor)
       : data.bodyChunks.map((chunk) => chunk.anchor);
   const encodedAnchors = new Set(
-    data.encodedRules.flatMap((entry) => entry.anchors)
+    data.encodedRules.flatMap((entry) => entry.anchors),
   );
   const encodedCount = unitAnchors.filter((anchor) =>
-    encodedAnchors.has(anchor)
+    encodedAnchors.has(anchor),
   ).length;
 
   return (
@@ -105,10 +105,12 @@ function EncodingStatusLine({ data }: { data: SectionPageData }) {
           title={
             encodedCount === unitAnchors.length
               ? "Every subsection has encoded rules"
-              : `Encoded so far: ${unitAnchors
-                  .filter((anchor) => encodedAnchors.has(anchor))
-                  .map((anchor) => `(${anchor})`)
-                  .join(" ") || "none at subsection level"}`
+              : `Encoded so far: ${
+                  unitAnchors
+                    .filter((anchor) => encodedAnchors.has(anchor))
+                    .map((anchor) => `(${anchor})`)
+                    .join(" ") || "none at subsection level"
+                }`
           }
         >
           {unitAnchors.length <= COVERAGE_MAP_MAX_UNITS && (
@@ -206,7 +208,6 @@ function AnchorLink({ anchor }: { anchor: string }) {
   );
 }
 
-
 /** Top-level provision with its whole subtree — one collapsible unit
  *  so provision-backed sections compress the same way chunked ones
  *  do. Heading, chips, and actions stay outside the clamp. */
@@ -224,7 +225,7 @@ function ProvisionGroup({
   const anchor = head.anchor;
   const focused = data.focusAnchor === anchor;
   const groupRules = data.encodedRules.filter((entry) =>
-    entry.anchors.includes(anchor)
+    entry.anchors.includes(anchor),
   );
   const { graphHref, builderHref } = focused
     ? subsectionActionHrefs(data, anchor, groupRules)
@@ -234,7 +235,7 @@ function ProvisionGroup({
     (head.rule.body?.length ?? 0) +
     childProvisions.reduce(
       (sum, child) => sum + (child.rule.body?.length ?? 0),
-      0
+      0,
     );
   const clamp = data.encodedRules.length > 0 && !focused && textLength > 420;
   const content = (
@@ -410,22 +411,22 @@ function ProvisionBlock({
 function subsectionActionHrefs(
   data: SectionPageData,
   anchor: string,
-  subsectionRules: SectionPageData["encodedRules"]
+  subsectionRules: SectionPageData["encodedRules"],
 ): { graphHref: string | null; builderHref: string | null } {
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
   const slug = data.citationPath.split("/")[0];
   const graphProgram =
     data.programs.find(
       (program) =>
-        program.status === "ready" && program.anchors.includes(anchor)
+        program.status === "ready" && program.anchors.includes(anchor),
     ) ??
     data.programs.find((program) => program.anchors.includes(anchor)) ??
     primaryProgram(data.programs);
   const inPrograms = new Set(
-    data.programs.flatMap((program) => program.ruleNames)
+    data.programs.flatMap((program) => program.ruleNames),
   );
   const sorted = [...subsectionRules].sort(
-    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived")
+    (a, b) => Number(b.kind === "derived") - Number(a.kind === "derived"),
   );
   // No package covers this section: compose the graph on demand from
   // the subsection's encoded file instead of dropping the link.
@@ -435,7 +436,7 @@ function subsectionActionHrefs(
       ? graphViewerUrl(graphProgram, `${sectionFocus}/${anchor}`)
       : composeRule && slug
         ? composeGraphViewerUrl(
-            fileGraphFocus(slug, data.ruleFiles[composeRule.name])
+            fileGraphFocus(slug, data.ruleFiles[composeRule.name]),
           )
         : null;
   // Builder gets the section-level legal id: its deep-link handler
@@ -469,9 +470,7 @@ function stripComposeHref(data: SectionPageData): string | null {
   const rule = data.encodedRules.find((entry) => data.ruleFiles[entry.name]);
   if (!rule) return null;
   const slug = data.citationPath.split("/")[0];
-  return composeGraphViewerUrl(
-    fileGraphFocus(slug, data.ruleFiles[rule.name])
-  );
+  return composeGraphViewerUrl(fileGraphFocus(slug, data.ruleFiles[rule.name]));
 }
 
 const FOCUSED_SUBSECTION_CLASS =
@@ -486,7 +485,7 @@ function ChunkBlock({
 }) {
   const focused = data.focusAnchor === chunk.anchor;
   const chunkRules = data.encodedRules.filter((rule) =>
-    rule.anchors.includes(chunk.anchor)
+    rule.anchors.includes(chunk.anchor),
   );
   const { graphHref, builderHref } = focused
     ? subsectionActionHrefs(data, chunk.anchor, chunkRules)
@@ -596,11 +595,9 @@ export function SectionReader({
   const outgoing = buildInlineReferences(
     data.refBody ?? data.root.body,
     data.citationPath,
-    data.rootRefs
+    data.rootRefs,
   ).filter((ref) => ref.direction === "outgoing");
-  const incoming = data.rootRefs.filter(
-    (ref) => ref.direction === "incoming"
-  );
+  const incoming = data.rootRefs.filter((ref) => ref.direction === "incoming");
   const sectionFocus = graphFocusForCitationPath(data.citationPath);
 
   return (
@@ -669,7 +666,7 @@ export function SectionReader({
             {data.intro && (
               <div className="mt-6">
                 <RuleBody
-                                    body={data.intro}
+                  body={data.intro}
                   refs={refsForChunk(data.rootRefs, data.intro)}
                   citationPath={data.root.citation_path ?? undefined}
                 />
@@ -683,7 +680,7 @@ export function SectionReader({
           data.root.body && (
             <div className="mt-6">
               <RuleBody
-                                body={data.root.body}
+                body={data.root.body}
                 refs={data.rootRefs}
                 citationPath={data.root.citation_path ?? undefined}
               />
@@ -710,13 +707,13 @@ export function SectionReader({
                 sectionFocus={sectionFocus}
               />
             ))
-          )
+          ),
         )}
 
         {data.truncated && (
           <p className="mt-8 text-sm text-[var(--color-ink-muted)]">
-            This section is unusually large; deeper subsections were cut
-            off. Open a subsection via its designator link — for example{" "}
+            This section is unusually large; deeper subsections were cut off.
+            Open a subsection via its designator link — for example{" "}
             {data.toc[0] ? (
               <Link
                 href={`/${data.citationPath}/${data.toc[0].anchor.split("-")[0]}`}
@@ -759,6 +756,8 @@ export function SectionReader({
           incoming={incoming}
           programs={data.programs}
           ruleFiles={data.ruleFiles}
+          citedByFiles={data.citedByFiles}
+          citedByOverflow={data.citedByOverflow}
         />
       </aside>
     </div>

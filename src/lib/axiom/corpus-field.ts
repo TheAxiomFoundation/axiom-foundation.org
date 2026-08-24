@@ -319,7 +319,7 @@ export interface FieldLayout {
 
 /** Clusters with at least this many modules earn a text label —
  *  labelling all 52 jurisdictions would wallpaper the field. */
-export const CLUSTER_LABEL_MIN_MODULES = 20;
+export const CLUSTER_LABEL_MIN_MODULES = 2;
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
@@ -400,7 +400,7 @@ const GROUP_RIM = 1.7;
 const GROUP_RIM_SINGLETON = 1.1;
 /** How far apart the group spiral spreads, × the area-faithful
  *  radius (1 = groups touch; more = clear water between families). */
-const GROUP_SPREAD = 1.25;
+const GROUP_SPREAD = 1.45;
 
 interface PlacedClusterDots {
   /** Emission order — offsets are index-aligned with this list. */
@@ -520,7 +520,7 @@ function packClusters(
       const angle = step * GOLDEN_ANGLE;
       const x = Math.cos(angle) * t * aspect * 0.55;
       const y = Math.sin(angle) * t * 0.55;
-      const pad = 14;
+      const pad = 28;
       const collides = placed.some(
         (other) =>
           Math.hypot(other.x - x, other.y - y) <

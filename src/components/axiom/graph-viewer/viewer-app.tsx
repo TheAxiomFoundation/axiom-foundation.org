@@ -640,16 +640,16 @@ export function GraphViewerApp({
   // The picker's corpus loads only when the launcher is actually up —
   // a ?program= / ?compose= deep link never pays for it.
   useEffect(() => {
-    if (launcher === "closed" || corpusModules) return;
+    if (launcher === "closed") return;
     let cancelled = false;
-    loadCorpusModules().then(({ modules }) => {
+    loadCorpusModules({ country }).then(({ modules }) => {
       if (!cancelled) setCorpusModules(modules);
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [launcher]);
+  }, [launcher, country]);
 
   // The launcher's single verb: pick a node → its subgraph opens.
   // Compose mode for exactly that root, the URL rewritten to the
@@ -2512,6 +2512,7 @@ export function GraphViewerApp({
                   onPick={enterComposeMode}
                   frame={false}
                   spotlight={tourSpotlight}
+                  country={country}
                 />
               </div>
             ) : (
@@ -2520,7 +2521,7 @@ export function GraphViewerApp({
                   modules={corpusModules}
                   onPick={enterComposeMode}
                   query={launcherQuery}
-                  scope={listScope}
+                  scope={country === "us" ? listScope : "all"}
                   state={listState}
                 />
               </div>
@@ -2536,7 +2537,7 @@ export function GraphViewerApp({
               />
               {/* Nationwide / State scope, list mode only — composes
                   with the text search over the same list. */}
-              {launcherMode === "list" && (
+              {launcherMode === "list" && country === "us" && (
                 <div
                   className="picker-mode-toggle picker-scope-toggle"
                   role="tablist"
@@ -2559,7 +2560,7 @@ export function GraphViewerApp({
               )}
               {/* Under States, narrow to ONE state — real names from
                   the citations map, only states the corpus carries. */}
-              {launcherMode === "list" && listScope === "states" && (
+              {launcherMode === "list" && country === "us" && listScope === "states" && (
                 <select
                   className="list-state-select"
                   data-testid="list-state-select"
@@ -2612,9 +2613,8 @@ export function GraphViewerApp({
                   onChange={(event) => {
                     setComposeFocus(null);
                     setCountry(event.target.value);
-                    dismissLauncher();
                   }}
-                  aria-label="Open a country's program graph"
+                  aria-label="Scope the overview to a country"
                 >
                   {countries.map((option) => (
                     <option key={option} value={option}>
@@ -4126,7 +4126,7 @@ function connectedComponent(
 
 /** Jurisdictions hidden from the viewer for now (registry still
  *  serves them; this is presentation only). */
-const HIDDEN_COUNTRIES = new Set<Country>(["uk"]);
+const HIDDEN_COUNTRIES = new Set<Country>(["uk", "ca"]);
 /** Individual programs hidden for now — us-ny/tanf executes into a
  *  known parameter-table gap until rulespec-us#1131's artifact lands. */
 const HIDDEN_PROGRAMS = new Set<string>(["us-ny/tanf"]);

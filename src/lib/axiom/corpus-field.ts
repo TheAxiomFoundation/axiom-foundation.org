@@ -105,10 +105,21 @@ export function isCompositionTarget(target: string): boolean {
 /** The app's full view filter, applied once in the shared loader so
  *  every surface (field, picker, doors, clusters, counts) agrees:
  *  US-only, no single-node subtrees, no composition pipelines. */
-export function filterViewModules(modules: CorpusModule[]): CorpusModule[] {
+/** Family membership: "be-wal" belongs to "be", "us-co" to "us". */
+export function isCountryJurisdiction(
+  jurisdiction: string,
+  country: string,
+): boolean {
+  return jurisdiction === country || jurisdiction.startsWith(`${country}-`);
+}
+
+export function filterViewModules(
+  modules: CorpusModule[],
+  country = "us",
+): CorpusModule[] {
   return modules.filter(
     (module) =>
-      isUsJurisdiction(module.jurisdiction) &&
+      isCountryJurisdiction(module.jurisdiction, country) &&
       module.ruleCount >= MIN_VIEW_RULE_COUNT &&
       !isCompositionTarget(module.target),
   );

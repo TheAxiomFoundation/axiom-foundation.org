@@ -81,6 +81,7 @@ const ComposeViewer = dynamic(
 
 const JURISDICTION_LABELS: Record<string, string> = {
   us: "US · Federal",
+  be: "BE · Federal",
 };
 
 const ZOOM_IN_MS = 640;
@@ -114,7 +115,12 @@ export function CorpusField({
   onPick,
   frame = true,
   spotlight = null,
+  country = "us",
 }: {
+  /** Which country family's subtrees the field shows ("us", "be").
+   *  Hosts with a country switch pass their selection; the landing
+   *  keeps the US default. */
+  country?: string;
   /** Embedded mode (the viewer's launcher): picking a subtree calls
    *  this instead of pushState + mounting the compose viewer overlay
    *  — the host is already the viewer. Omitted on the /axiom landing,
@@ -169,7 +175,7 @@ export function CorpusField({
     let cancelled = false;
     // Live mirror first, committed snapshot as ballast — the field is
     // never empty just because the API is down.
-    loadCorpusModules().then(
+    loadCorpusModules({ country }).then(
       ({ modules: loaded, source: loadedSource }) => {
         if (cancelled) return;
         setModules(loaded);
@@ -184,7 +190,7 @@ export function CorpusField({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [country]);
 
   // Doors are computed from the census — the largest / most intricate
   // subtrees, capped per jurisdiction — and labeled by citation.

@@ -1234,16 +1234,12 @@ const OutputNode = ({ data }: NodeProps) => {
       {!answerPopulated && d.showValues && d.value && (
         <div className="irg-value">{d.value}</div>
       )}
-      {d.canExpand && (
+      {d.canExpand && !d.isExpanded && (
         <div
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded
-            ? "− collapse"
-            : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} rules`
-              : "+ expand"}
+          {d.hiddenCount ? `+ expand · ${d.hiddenCount} rules` : "+ expand"}
         </div>
       )}
       <NodeInfo
@@ -1467,16 +1463,12 @@ const RuleRefNode = ({ data }: NodeProps) => {
       <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
       {d.showValues && d.value && <div className="irg-value">{d.value}</div>}
-      {d.canExpand && (
+      {d.canExpand && !d.isExpanded && (
         <div
           className="irg-action irg-action-secondary irg-action-clickable"
           data-action="collapse"
         >
-          {d.isExpanded
-            ? "− collapse"
-            : d.hiddenCount
-              ? `+ expand · ${d.hiddenCount} rules`
-              : "+ expand"}
+          {d.hiddenCount ? `+ expand · ${d.hiddenCount} rules` : "+ expand"}
         </div>
       )}
       <NodeInfo

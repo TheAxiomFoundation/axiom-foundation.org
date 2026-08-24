@@ -684,8 +684,7 @@
 }
 .graph-viewer-root .node-inspector-formula {
   margin: 10px 0 0;
-  max-height: 140px;
-  overflow: auto;
+  /* Full formula, no inner scrollbox — the inspector itself scrolls. */
   background: var(--color-rule-subtle);
   border-radius: 8px;
   padding: 8px 10px;
@@ -2120,8 +2119,6 @@
 
 .graph-viewer-root .node-inspector-code-body {
   padding: 10px 12px;
-  max-height: 240px;
-  overflow: auto;
   background: var(--color-paper);
 }
 .graph-viewer-root .formula-pretty {

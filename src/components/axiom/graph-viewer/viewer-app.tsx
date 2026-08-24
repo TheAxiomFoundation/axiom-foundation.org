@@ -2885,7 +2885,10 @@ export function GraphViewerApp({
             const input = legalId ? (walkInputById.get(legalId) ?? null) : null;
             const consumers = inspectedConsumers;
             const meta = "meta" in inspected ? inspected.meta : undefined;
-            const formula = meta?.formula ?? rule?.formula ?? null;
+            // The rule carries the FULL formula; node meta holds the
+            // 140-char one-liner cut for the card — never show the cut
+            // one when the real thing is available.
+            const formula = rule?.formula ?? meta?.formula ?? null;
             const rawCitation =
               meta?.citation ??
               rule?.source ??

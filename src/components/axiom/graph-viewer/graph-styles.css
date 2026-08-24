@@ -3501,10 +3501,6 @@
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-paper);
 }
-.graph-viewer-root .irg-controls-bar .smooth-controls{
-  position: static;
-  flex-direction: row;
-}
 .graph-viewer-root .irg-controls-bar .irg-toolbar{
   position: static;
 }

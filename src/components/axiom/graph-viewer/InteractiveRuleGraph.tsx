@@ -561,7 +561,6 @@ export function InteractiveRuleGraph({
         {(() => {
           const controlsBar = (
         <div className={`irg-controls-bar ${controlsSlot ? "irg-controls-inline" : ""}`}>
-          <SmoothControls />
           <div className="irg-toolbar">
             <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
               <button
@@ -871,43 +870,6 @@ function GraphMiniMap() {
   );
 }
 
-/** Zoom controls that glide — the stock Controls snap. */
-function SmoothControls() {
-  const flow = useReactFlow();
-  return (
-    <div className="smooth-controls" aria-label="Zoom controls">
-      <button
-        type="button"
-        onClick={() => void flow.zoomIn({ duration: 320 })}
-        aria-label="Zoom in"
-      >
-        +
-      </button>
-      <button
-        type="button"
-        onClick={() => void flow.zoomOut({ duration: 320 })}
-        aria-label="Zoom out"
-      >
-        −
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          void flow.fitView({
-            duration: 950,
-            padding: 0.12,
-            interpolate: "smooth",
-            minZoom: 0.01,
-          })
-        }
-        aria-label="Fit the whole graph"
-        title="Fit the whole graph"
-      >
-        ⛶
-      </button>
-    </div>
-  );
-}
 
 /** Duration scaled to how far the camera must travel — short hops
  *  stay quick, cross-map flights take a long smooth arc. */

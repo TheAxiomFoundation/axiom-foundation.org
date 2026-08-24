@@ -46,7 +46,7 @@ const MAX_MEMBERS = 11;
 const VARIABLE_RE = /^[\w.:#/–-]{1,140}$/;
 // A file legal id: `us:statutes/7/2014/e/6/A` — no #fragment; run-by-root
 // roots a whole subtree, not a single rule.
-const ROOT_RE = /^[a-z]{2}(?:-[a-z]{2})?:[\w./–-]{1,200}$/;
+const ROOT_RE = /^[a-z]{2}(?:-[a-z]{2,3})?:[\w./–-]{1,200}$/;
 const MAX_VALUES = 64;
 const MAX_VARIABLES = 96;
 

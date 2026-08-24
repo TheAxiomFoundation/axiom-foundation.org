@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runtimeProxyGet } from "@/lib/axiom/runtime/api";
 
-const FOCUS_RE = /^[a-z]{2}(?:-[a-z]{2})?:[\w./–-]+(?:#[\w-]+)?$/;
+const FOCUS_RE = /^[a-z]{2}(?:-[a-z]{2,3})?:[\w./–-]+(?:#[\w-]+)?$/;
 
 /** Compose-on-demand passthrough for the in-app graph viewer:
  *  builds a graph from the encodings mirror for law no compiled

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runtimeProxyGet } from "@/lib/axiom/runtime/api";
 
-const ROOT_RE = /^[a-z]{2}(?:-[a-z]{2})?:[\w./–-]+(?:#[\w-]+)?$/;
+const ROOT_RE = /^[a-z]{2}(?:-[a-z]{2,3})?:[\w./–-]+(?:#[\w-]+)?$/;
 
 /** Input catalog passthrough for the run panel: every dataset slot of
  *  a compile-on-demand subtree with the dtype and screening default

@@ -186,11 +186,26 @@ export const NON_COMPILING_ROOTS: ReadonlySet<string> = new Set([
   "us:statutes/42/415/a",
   "us:statutes/42/415/b",
   "us:statutes/42/415/i",
+  // Composes but doesn't execute: run-by-root 422s on a parameter with
+  // no value at the run date (article 114 professional-past limit).
+  "be:regulations/unemployment/benefit_amount",
 ]);
 
 export function highlightScore(module: CorpusModule): number {
   return module.linkedRuleCount + 2 * module.importCount;
 }
+
+/** A size-based door needs real substance: below this score a module
+ *  rides the field unlabeled however empty its jurisdiction's door
+ *  quota is (small regional corpora were winning doors by quota
+ *  alone). Pins are exempt. */
+export const MIN_HIGHLIGHT_SCORE = 12;
+
+/** Jurisdictions whose modules ride the field but never take a door —
+ *  a presentation choice, not a data one (the German-speaking
+ *  Community's family-benefit modules are substantial but the
+ *  country-level doors should lead). */
+export const DOORLESS_JURISDICTIONS: ReadonlySet<string> = new Set(["be-dg"]);
 
 /** Doors the corpus must always offer, whatever the size formula
  *  says. Verified compiling (run-by-root answers 200 with outputs):
@@ -241,6 +256,8 @@ export function computeFieldHighlights(
     // targets absent from the live mirror are already gone.)
     if (isDustModule(module)) continue;
     if (NON_COMPILING_ROOTS.has(module.target)) continue;
+    if (highlightScore(module) < MIN_HIGHLIGHT_SCORE) continue;
+    if (DOORLESS_JURISDICTIONS.has(module.jurisdiction)) continue;
     const used = perJurisdiction.get(module.jurisdiction) ?? 0;
     if (used >= maxPerJurisdiction) continue;
     perJurisdiction.set(module.jurisdiction, used + 1);
@@ -1111,12 +1128,12 @@ export function shapeRendersNodes(pxRadius: number): boolean {
 
 /** On-screen footprint radius (CSS px) at which a HEADLINE title
  *  appears — at far zoom, unlabeled is fine. */
-export const SUBTREE_LABEL_MIN_PX = 10;
+export const SUBTREE_LABEL_MIN_PX = 14;
 /** Citation-fallback titles wait for twice the footprint. */
-export const SUBTREE_FALLBACK_LABEL_MIN_PX = 20;
+export const SUBTREE_FALLBACK_LABEL_MIN_PX = 26;
 /** At most this many fallback titles per frame (headline titles own
  *  the rest of the label budget). */
-export const FALLBACK_LABELS_PER_FRAME = 32;
+export const FALLBACK_LABELS_PER_FRAME = 20;
 
 export function dotEarnsLabel(
   dot: Pick<FieldDot, "dust" | "headlineRule" | "sourceOutline">,

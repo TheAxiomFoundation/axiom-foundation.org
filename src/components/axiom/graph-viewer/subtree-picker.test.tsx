@@ -20,8 +20,8 @@ function module(overrides: Partial<CorpusModule>): CorpusModule {
 const MODULES: CorpusModule[] = [
   module({ target: "us:regulations/7-cfr/273/10", bucket: "regulations", ruleCount: 40, linkedRuleCount: 40 }),
   module({ target: "us:statutes/7/2014/e/6/A", ruleCount: 22, linkedRuleCount: 22, importCount: 3 }),
-  module({ target: "us-ny:regulations/18-nycrr/387/14", jurisdiction: "us-ny", bucket: "regulations", ruleCount: 9, linkedRuleCount: 9 }),
-  module({ target: "us-fl:policies/dcf/ess-program-policy-manual/appendix-a-1", jurisdiction: "us-fl", bucket: "policies", ruleCount: 3, linkedRuleCount: 3 }),
+  module({ target: "us-ny:regulations/18-nycrr/387/14", jurisdiction: "us-ny", bucket: "regulations", ruleCount: 19, linkedRuleCount: 19 }),
+  module({ target: "us-fl:policies/dcf/ess-program-policy-manual/appendix-a-1", jurisdiction: "us-fl", bucket: "policies", ruleCount: 13, linkedRuleCount: 13 }),
 ];
 
 describe("SubtreeDoors", () => {

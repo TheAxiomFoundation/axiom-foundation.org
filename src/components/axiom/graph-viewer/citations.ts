@@ -22,6 +22,11 @@ const JURISDICTION_LABELS: Record<string, string> = {
   "us-tx": "Texas", "us-ut": "Utah", "us-vt": "Vermont", "us-va": "Virginia",
   "us-wa": "Washington", "us-wv": "West Virginia", "us-wi": "Wisconsin",
   "us-wy": "Wyoming",
+  be: "Belgium",
+  "be-vlg": "Flanders",
+  "be-wal": "Wallonia",
+  "be-bru": "Brussels",
+  "be-dg": "German-speaking Community",
 };
 
 /** The one place jurisdiction codes become names ("us-ia" → "Iowa").
@@ -106,6 +111,23 @@ export function humanizeCitation(fileLegalId: string): string {
   const parts = body.split("/").filter(Boolean);
   if (parts.length === 0) return fileLegalId;
   const [kind, ...rest] = parts;
+
+  // Belgian targets cite by topic path (statutes/family_benefits/
+  // lgaf_amounts), not numbered sections — the US patterns misread
+  // them as "be Code § family_benefits.lgaf_amounts". Read the path
+  // as words: "Family Benefits — Lgaf Amounts (Belgium)".
+  if (jurisdiction === "be" || jurisdiction.startsWith("be-")) {
+    const label = JURISDICTION_LABELS[jurisdiction] ?? jurisdiction;
+    const topic = rest
+      .map((segment) =>
+        segment
+          .split(/[_-]/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" "),
+      )
+      .join(" — ");
+    return topic ? `${topic} (${label})` : `${label}`;
+  }
 
   if (kind === "statutes" && rest.length >= 1) {
     const title = rest[0]!;

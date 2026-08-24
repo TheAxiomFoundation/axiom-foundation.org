@@ -81,6 +81,11 @@ const ComposeViewer = dynamic(
 
 const JURISDICTION_LABELS: Record<string, string> = {
   us: "US · Federal",
+  be: "BE · Federal",
+  "be-vlg": "BE · Flanders",
+  "be-wal": "BE · Wallonia",
+  "be-bru": "BE · Brussels",
+  "be-dg": "BE · German-speaking Community",
 };
 
 const ZOOM_IN_MS = 640;
@@ -114,7 +119,12 @@ export function CorpusField({
   onPick,
   frame = true,
   spotlight = null,
+  country = "us",
 }: {
+  /** Which country family's subtrees the field shows ("us", "be").
+   *  Hosts with a country switch pass their selection; the landing
+   *  keeps the US default. */
+  country?: string;
   /** Embedded mode (the viewer's launcher): picking a subtree calls
    *  this instead of pushState + mounting the compose viewer overlay
    *  — the host is already the viewer. Omitted on the /axiom landing,
@@ -169,7 +179,7 @@ export function CorpusField({
     let cancelled = false;
     // Live mirror first, committed snapshot as ballast — the field is
     // never empty just because the API is down.
-    loadCorpusModules().then(
+    loadCorpusModules({ country }).then(
       ({ modules: loaded, source: loadedSource }) => {
         if (cancelled) return;
         setModules(loaded);
@@ -184,7 +194,7 @@ export function CorpusField({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [country]);
 
   // Doors are computed from the census — the largest / most intricate
   // subtrees, capped per jurisdiction — and labeled by citation.
@@ -195,10 +205,13 @@ export function CorpusField({
         module.target,
         // Headline rule first, citation second — "Elderly Disabled
         // Credit — 26 USC § 22"; citation-only when the census has
-        // no headline.
-        module.headlineRule
-          ? `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`
-          : humanizeCitation(module.target),
+        // no headline. Belgian topic paths already read as names
+        // ("Income Tax — Benefits — Company Car (Belgium)"): the
+        // citation alone, or headline+citation would say every word
+        // twice and overflow the chip.
+        module.jurisdiction.startsWith("be") || !module.headlineRule
+          ? humanizeCitation(module.target)
+          : `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`,
       ])
     );
   }, [modules]);
@@ -523,9 +536,15 @@ export function CorpusField({
         }
         let entry = cache.get(dot.target);
         if (!entry) {
-          const text = dot.headlineRule
+          const raw = dot.headlineRule
             ? humanizeRuleName(dot.headlineRule)
             : humanizeCitation(dot.target);
+          // Inside a country's own field every rule repeating the
+          // country name is pure width — "Belgium Worker Pension …"
+          // reads as "Worker Pension …".
+          const text = dot.jurisdiction.startsWith("be")
+            ? raw.replace(/^Belgium /, "")
+            : raw;
           entry = {
             text,
             // measureText under the current font (field units) —
@@ -539,8 +558,8 @@ export function CorpusField({
         const y = dot.y + dot.r + 2 / k;
         const collides = placed.some(
           (p) =>
-            Math.abs(p.y - y) < lineH &&
-            Math.abs(p.x - x) < (p.w + w) / 2 + fontField
+            Math.abs(p.y - y) < lineH * 1.7 &&
+            Math.abs(p.x - x) < (p.w + w) / 2 + fontField * 3
         );
         if (collides) continue;
         ctx.fillText(entry.text, x, y);

@@ -2091,8 +2091,10 @@
   border-color: var(--color-accent);
 }
 .graph-viewer-root .mini-graph-card.is-question {
+  /* Dashed marks "input you answer" — but muted ink read as a
+     half-rendered card; keep the text legible. */
   border-style: dashed;
-  color: var(--color-ink-muted);
+  color: var(--color-ink-secondary);
 }
 .graph-viewer-root .mini-graph-card.is-center {
   border-color: var(--color-accent);

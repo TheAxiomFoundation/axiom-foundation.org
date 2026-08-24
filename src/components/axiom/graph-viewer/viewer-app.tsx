@@ -27,8 +27,10 @@ import "./plane.css";
 import {
   countriesFromPrograms,
   PREFERRED_DEFAULT_PROGRAM_KEY,
+  countryLabel,
   countryOf,
   defaultOutputsForProgram,
+  displayNameForProgram,
   fetchAllPrograms,
   fetchComposedGraph,
   fetchRootInputs,
@@ -2630,6 +2632,43 @@ export function GraphViewerApp({
           )}
           {/* Composed views carry no header line at all — the graph
               is its own label. Program views keep their coordinates. */}
+          {!composeFocus && countries.length > 1 && (
+            <div className="program-switch" data-testid="program-switch">
+              <select
+                className="list-state-select"
+                data-testid="country-switch"
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
+                aria-label="Switch country"
+              >
+                {countries.map((option) => (
+                  <option key={option} value={option}>
+                    {countryLabel(option)}
+                  </option>
+                ))}
+              </select>
+              {programs.length > 1 && (
+                <select
+                  className="list-state-select"
+                  data-testid="program-switch-select"
+                  value={program ? programKey(program) : ""}
+                  onChange={(event) => {
+                    const next = programs.find(
+                      (item) => programKey(item) === event.target.value,
+                    );
+                    if (next) setProgram(programRefFromSummary(next));
+                  }}
+                  aria-label="Switch program"
+                >
+                  {programs.map((item) => (
+                    <option key={programKey(item)} value={programKey(item)}>
+                      {displayNameForProgram(item)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
           {!composeFocus && (
             <span className="top-meta">
               {programsLoading

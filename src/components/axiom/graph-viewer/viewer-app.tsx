@@ -2739,13 +2739,6 @@ export function GraphViewerApp({
               <span>{runBlocked}</span>
             </div>
           )}
-          {composeFocus && composedHiddenCount > 0 && (
-            // The isolated-node filter's honesty note: tiny, muted,
-            // out of the way — never a header.
-            <span className="standalone-note" data-testid="standalone-note">
-              +{composedHiddenCount} standalone definitions hidden
-            </span>
-          )}
           <div
             className={`graph-veil ${veiled ? "is-on" : ""}`}
             aria-hidden={!veiled}

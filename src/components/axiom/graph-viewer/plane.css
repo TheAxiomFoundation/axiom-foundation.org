@@ -4026,18 +4026,6 @@
 }
 
 /* The isolated-node filter's honesty note, stage corner. */
-.graph-viewer-root .standalone-note {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  z-index: 8;
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  pointer-events: none;
-}
 
 /* Country/program switch in the graph header: package navigation that
    was previously deep-link-only. Reuses the launcher's select styling. */

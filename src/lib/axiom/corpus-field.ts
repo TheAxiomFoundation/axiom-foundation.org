@@ -227,6 +227,13 @@ export function computeFieldHighlights(
   count = HIGHLIGHT_COUNT,
   maxPerJurisdiction = HIGHLIGHT_MAX_PER_JURISDICTION,
 ): CorpusModule[] {
+  // Door density scales with the corpus: a ~100-module country field
+  // doesn't need the 14 doors the 4,400-module US field earns. Only
+  // the default count adapts — explicit counts stay literal.
+  const sizeTarget =
+    count === HIGHLIGHT_COUNT
+      ? Math.min(count, Math.max(4, Math.round(modules.length / 22)))
+      : count;
   const ranked = [...modules].sort(
     (a, b) =>
       highlightScore(b) - highlightScore(a) ||
@@ -250,7 +257,7 @@ export function computeFieldHighlights(
       continue;
     }
     // Keep scanning past the count: a pinned target may rank lower.
-    if (sizePicked >= count) continue;
+    if (sizePicked >= sizeTarget) continue;
     // Dust never gets a door, and neither do roots we know can't
     // execute. (Callers pass the mirror-authoritative module list, so
     // targets absent from the live mirror are already gone.)

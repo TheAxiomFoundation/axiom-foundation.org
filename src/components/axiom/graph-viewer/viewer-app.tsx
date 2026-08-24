@@ -589,6 +589,9 @@ export function GraphViewerApp({
   // on demand from the encodings mirror — for law that is encoded but not
   // yet inside any compiled program package. Choosing a program or
   // country exits compose mode back to the package registry.
+  const [graphControlsSlot, setGraphControlsSlot] = useState<HTMLElement | null>(
+    null,
+  );
   const [composeFocus, setComposeFocus] = useState<string | null>(() =>
     initialParam("compose"),
   );
@@ -2700,6 +2703,10 @@ export function GraphViewerApp({
                   : "Loading graph"}
             </span>
           )}
+          {/* The graph's own controls (zoom, detail, expand/collapse,
+              fullscreen) portal into this slot — same frame row, right
+              side, never covered by canvas popups. */}
+          <div className="graph-controls-slot" ref={setGraphControlsSlot} />
         </div>
         <div
           className={`graph-stage ${runResult ? "plane-live" : ""} ${
@@ -2864,6 +2871,7 @@ export function GraphViewerApp({
               }
               hoverLegalId={null}
               onPaneClear={() => setInspected(null)}
+              controlsSlot={graphControlsSlot}
               onLens={openLens}
               parameterRules={parameterRules}
               selectedOutputIds={selectedSet}

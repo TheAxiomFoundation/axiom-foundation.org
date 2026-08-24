@@ -83,6 +83,10 @@ interface Props {
   hoverLegalId?: string | null;
   /** Clicking empty canvas — the app closes the info card. */
   onPaneClear?: () => void;
+  /** Host element for the controls bar (a slot in the frame's header
+   *  row). Portaled there when provided; rendered above the canvas
+   *  otherwise. */
+  controlsSlot?: HTMLElement | null;
   /** Double-click → open the rule lens on this node. */
   onLens?: (legalId: string) => void;
 }
@@ -120,6 +124,7 @@ export function InteractiveRuleGraph({
   pinnedLegalId = null,
   hoverLegalId = null,
   onPaneClear,
+  controlsSlot = null,
   onLens,
 }: Props) {
   // Sub-rules expand inline by default — the user gets the full DAG to atomic
@@ -553,7 +558,9 @@ export function InteractiveRuleGraph({
       className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}
     >
       <ReactFlowProvider>
-        <div className="irg-controls-bar">
+        {(() => {
+          const controlsBar = (
+        <div className={`irg-controls-bar ${controlsSlot ? "irg-controls-inline" : ""}`}>
           <SmoothControls />
           <div className="irg-toolbar">
             <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
@@ -625,6 +632,9 @@ export function InteractiveRuleGraph({
             )}
           </button>
         </div>
+          );
+          return controlsSlot ? createPortal(controlsBar, controlsSlot) : controlsBar;
+        })()}
         <div className="irg-canvas">
         <ReactFlow
           nodes={displayNodes}

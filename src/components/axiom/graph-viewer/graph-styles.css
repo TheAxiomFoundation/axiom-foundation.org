@@ -3512,3 +3512,19 @@
   position: static;
   margin-left: auto;
 }
+
+/* In-slot (header row) variant: the bar sheds its own chrome — the
+   frame row is the chrome. */
+.graph-viewer-root .graph-controls-slot{
+  margin-left: auto;
+  /* The "Run a scenario" button floats at the stage's top-right,
+     visually on this row's right end — keep clear of it. */
+  margin-right: 148px;
+  display: flex;
+  align-items: center;
+}
+.graph-viewer-root .irg-controls-bar.irg-controls-inline{
+  border-bottom: none;
+  padding: 0;
+  background: transparent;
+}

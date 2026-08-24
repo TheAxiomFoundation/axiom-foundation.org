@@ -29,6 +29,7 @@ const SHELL_DEMO_IDS = new Set([
   "microsim",
   "guidance",
   "architecture",
+  "belgium",
 ]);
 
 /** Renamed ids — old links keep landing on the right demo. */

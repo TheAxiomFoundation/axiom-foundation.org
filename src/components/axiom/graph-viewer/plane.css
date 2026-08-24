@@ -4038,3 +4038,11 @@
   color: var(--color-ink-muted);
   pointer-events: none;
 }
+
+/* Country/program switch in the graph header: package navigation that
+   was previously deep-link-only. Reuses the launcher's select styling. */
+.graph-viewer-root .program-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

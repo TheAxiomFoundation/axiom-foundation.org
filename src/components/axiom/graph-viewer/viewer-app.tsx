@@ -2601,6 +2601,28 @@ export function GraphViewerApp({
                   List
                 </button>
               </div>
+              {/* Country door: pick a country to leave the overview and
+                  land on its executable program graph. The same
+                  registry-derived list as the graph header's switch. */}
+              {countries.length > 1 && (
+                <select
+                  className="list-state-select"
+                  data-testid="launcher-country-switch"
+                  value={country}
+                  onChange={(event) => {
+                    setComposeFocus(null);
+                    setCountry(event.target.value);
+                    dismissLauncher();
+                  }}
+                  aria-label="Open a country's program graph"
+                >
+                  {countries.map((option) => (
+                    <option key={option} value={option}>
+                      {countryLabel(option)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </>
         ) : (

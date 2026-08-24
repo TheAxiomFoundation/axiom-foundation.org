@@ -4488,8 +4488,14 @@ function FormulaPretty({ source }: { source: string }) {
   return (
     <code className="formula-pretty formula-block">
       {lines.map((line, lineIndex) => (
-        <span key={lineIndex} className="fp-line">
-          {"  ".repeat(line.indent)}
+        // Indent as padding, not literal spaces: a long line wraps and
+        // its continuation hangs at the construct's own depth instead
+        // of forcing a horizontal scrollbar.
+        <span
+          key={lineIndex}
+          className="fp-line"
+          style={{ paddingLeft: `${line.indent * 14}px` }}
+        >
           {line.spans.map((span, spanIndex) => (
             <span key={spanIndex} className={span.cls} title={span.title}>
               {span.text}

@@ -2774,7 +2774,10 @@
 }
 .graph-viewer-root .formula-block .fp-line {
   display: block;
-  white-space: pre;
+  /* Long constructs wrap in place (indent is padding, so the wrap
+     hangs at the construct's depth) — never a horizontal scrollbar. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.75;
 }
 

@@ -553,6 +553,79 @@ export function InteractiveRuleGraph({
       className={`irg-wrap ${isFullscreen ? "irg-fullscreen" : ""}`}
     >
       <ReactFlowProvider>
+        <div className="irg-controls-bar">
+          <SmoothControls />
+          <div className="irg-toolbar">
+            <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
+              <button
+                type="button"
+                className={`irg-toolbar-btn ${detail === "operators" ? "is-active" : ""}`}
+                onClick={() => setDetail("operators")}
+                role="tab"
+                aria-selected={detail === "operators"}
+                title="Show operators (AND, OR, IF, comparisons, arithmetic)"
+              >
+                Operators
+              </button>
+              <button
+                type="button"
+                className={`irg-toolbar-btn ${detail === "wires" ? "is-active" : ""}`}
+                onClick={() => setDetail("wires")}
+                role="tab"
+                aria-selected={detail === "wires"}
+                title="Hide operators — show only inputs, sub-rules, outputs and the wires between them"
+              >
+                Wires only
+              </button>
+            </div>
+            <button
+              type="button"
+              className="irg-toolbar-btn"
+              onClick={expandAll}
+              title="Expand every sub-rule inline"
+            >
+              Expand all
+            </button>
+            <button
+              type="button"
+              className="irg-toolbar-btn"
+              onClick={collapseAll}
+              title="Collapse every sub-rule into a clickable terminal"
+            >
+              Collapse all
+            </button>
+          </div>
+          <button
+            type="button"
+            className="irg-fullscreen-btn"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit full screen (Esc)" : "Enter full screen"}
+            aria-label={isFullscreen ? "Exit full screen" : "Enter full screen"}
+          >
+            {isFullscreen ? (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+        <div className="irg-canvas">
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
@@ -653,79 +726,8 @@ export function InteractiveRuleGraph({
           />
 
           <GraphMiniMap />
-          <SmoothControls />
         </ReactFlow>
-        <div className="irg-toolbar">
-          <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
-            <button
-              type="button"
-              className={`irg-toolbar-btn ${detail === "operators" ? "is-active" : ""}`}
-              onClick={() => setDetail("operators")}
-              role="tab"
-              aria-selected={detail === "operators"}
-              title="Show operators (AND, OR, IF, comparisons, arithmetic)"
-            >
-              Operators
-            </button>
-            <button
-              type="button"
-              className={`irg-toolbar-btn ${detail === "wires" ? "is-active" : ""}`}
-              onClick={() => setDetail("wires")}
-              role="tab"
-              aria-selected={detail === "wires"}
-              title="Hide operators — show only inputs, sub-rules, outputs and the wires between them"
-            >
-              Wires only
-            </button>
-          </div>
-          <button
-            type="button"
-            className="irg-toolbar-btn"
-            onClick={expandAll}
-            title="Expand every sub-rule inline"
-          >
-            Expand all
-          </button>
-          <button
-            type="button"
-            className="irg-toolbar-btn"
-            onClick={collapseAll}
-            title="Collapse every sub-rule into a clickable terminal"
-          >
-            Collapse all
-          </button>
         </div>
-        <button
-          type="button"
-          className="irg-fullscreen-btn"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit full screen (Esc)" : "Enter full screen"}
-          aria-label={isFullscreen ? "Exit full screen" : "Enter full screen"}
-        >
-          {isFullscreen ? (
-            // collapse glyph
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-              <path
-                d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-          ) : (
-            // expand glyph
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-              <path
-                d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-        </button>
       </ReactFlowProvider>
     </div>
   );

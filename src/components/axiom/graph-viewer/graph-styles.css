@@ -3477,3 +3477,38 @@
     justify-content: flex-end;
   }
 }
+
+/* ── Controls bar ──
+   The graph's controls (zoom, detail level, expand/collapse,
+   fullscreen) live in a flow row ABOVE the canvas — inspector popups
+   and door chips can never cover them. The wrap turns into a column;
+   the canvas takes the rest. */
+.graph-viewer-root .irg-wrap{
+  display: flex;
+  flex-direction: column;
+}
+.graph-viewer-root .irg-canvas{
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.graph-viewer-root .irg-controls-bar{
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.graph-viewer-root .irg-controls-bar .smooth-controls{
+  position: static;
+  flex-direction: row;
+}
+.graph-viewer-root .irg-controls-bar .irg-toolbar{
+  position: static;
+}
+.graph-viewer-root .irg-controls-bar .irg-fullscreen-btn{
+  position: static;
+  margin-left: auto;
+}

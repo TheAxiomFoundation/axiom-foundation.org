@@ -205,10 +205,13 @@ export function CorpusField({
         module.target,
         // Headline rule first, citation second — "Elderly Disabled
         // Credit — 26 USC § 22"; citation-only when the census has
-        // no headline.
-        module.headlineRule
-          ? `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`
-          : humanizeCitation(module.target),
+        // no headline. Belgian topic paths already read as names
+        // ("Income Tax — Benefits — Company Car (Belgium)"): the
+        // citation alone, or headline+citation would say every word
+        // twice and overflow the chip.
+        module.jurisdiction.startsWith("be") || !module.headlineRule
+          ? humanizeCitation(module.target)
+          : `${humanizeRuleName(module.headlineRule)} — ${humanizeCitation(module.target)}`,
       ])
     );
   }, [modules]);
@@ -533,9 +536,15 @@ export function CorpusField({
         }
         let entry = cache.get(dot.target);
         if (!entry) {
-          const text = dot.headlineRule
+          const raw = dot.headlineRule
             ? humanizeRuleName(dot.headlineRule)
             : humanizeCitation(dot.target);
+          // Inside a country's own field every rule repeating the
+          // country name is pure width — "Belgium Worker Pension …"
+          // reads as "Worker Pension …".
+          const text = dot.jurisdiction.startsWith("be")
+            ? raw.replace(/^Belgium /, "")
+            : raw;
           entry = {
             text,
             // measureText under the current font (field units) —
@@ -549,8 +558,8 @@ export function CorpusField({
         const y = dot.y + dot.r + 2 / k;
         const collides = placed.some(
           (p) =>
-            Math.abs(p.y - y) < lineH &&
-            Math.abs(p.x - x) < (p.w + w) / 2 + fontField
+            Math.abs(p.y - y) < lineH * 1.7 &&
+            Math.abs(p.x - x) < (p.w + w) / 2 + fontField * 3
         );
         if (collides) continue;
         ctx.fillText(entry.text, x, y);

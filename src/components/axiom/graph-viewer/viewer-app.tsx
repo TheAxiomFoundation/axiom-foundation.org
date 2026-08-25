@@ -500,48 +500,11 @@ export function GraphViewerApp({
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
-  // The summit: the terminal result with the deepest dependency
-  // closure — the box the whole law rolls up into (Allotment,
-  // Benefit). The easiest handhold for a first look.
-  const summitOutput = useMemo(() => {
-    if (!graph) return null;
-    const byId = new Map(graph.rules.map((rule) => [rule.legalId, rule]));
-    let best: string | null = null;
-    let bestSize = -1;
-    for (const id of graph.terminalOutputs) {
-      const seen = new Set<string>();
-      const stack = [id];
-      while (stack.length > 0) {
-        const current = stack.pop()!;
-        if (seen.has(current)) continue;
-        seen.add(current);
-        const rule = byId.get(current);
-        if (rule) stack.push(...rule.ruleDeps);
-      }
-      if (seen.size > bestSize) {
-        bestSize = seen.size;
-        best = id;
-      }
-    }
-    return best;
-  }, [graph]);
-  // Headline results: everything the run computed, ranked by how
-  // much law rolls up into each — the deepest-closure node (the main
-  // figure) first, shallow parameters last. Purely graph-driven;
-  // nothing is declared or curated. Shared between the results grid
-  // and the inspector, which skips re-printing a value that already
-  // sits on a results cell in the same panel.
-  const resultHeadlineNames = useMemo(() => {
-    if (!runResult) return [] as string[];
-    const ruleByFragment = new Map<
-      string,
-      NonNullable<ReturnType<typeof walkRuleById.get>>
-    >();
-    for (const rule of graph?.rules ?? []) {
-      const fragment = rule.legalId.split("#").pop() ?? "";
-      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
-    }
-    const closureSize = (legalId: string) => {
+  // How much law rolls up into a rule: the size of its dependency
+  // closure. One ranking, asked twice — once to pick the summit of
+  // the graph, once to pick the headline of a run.
+  const closureSizeOf = useMemo(
+    () => (legalId: string) => {
       const seen = new Set<string>();
       const stack = [legalId];
       while (stack.length > 0) {
@@ -552,17 +515,53 @@ export function GraphViewerApp({
         if (rule) stack.push(...rule.ruleDeps);
       }
       return seen.size;
-    };
+    },
+    [walkRuleById],
+  );
+  // The summit: the terminal result with the deepest dependency
+  // closure — the box the whole law rolls up into (Allotment,
+  // Benefit). The easiest handhold for a first look.
+  const summitOutput = useMemo(() => {
+    if (!graph) return null;
+    let best: string | null = null;
+    let bestSize = -1;
+    for (const id of graph.terminalOutputs) {
+      const size = closureSizeOf(id);
+      if (size > bestSize) {
+        bestSize = size;
+        best = id;
+      }
+    }
+    return best;
+  }, [graph, closureSizeOf]);
+  // The headline result: ONLY the main node — the computed value
+  // whose rule has the deepest dependency closure, the box the whole
+  // law rolls up into. Every intermediate stays on the canvas, where
+  // the execution layer already paints it; the grid never repeats
+  // them. Purely graph-driven; nothing is declared or curated.
+  // Shared between the results grid and the inspector, which skips
+  // re-printing a value that already sits on a results cell in the
+  // same panel.
+  const resultHeadlineNames = useMemo(() => {
+    if (!runResult) return [] as string[];
+    const ruleByFragment = new Map<
+      string,
+      NonNullable<ReturnType<typeof walkRuleById.get>>
+    >();
+    for (const rule of graph?.rules ?? []) {
+      const fragment = rule.legalId.split("#").pop() ?? "";
+      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
+    }
     return Object.keys(runResult.outputs)
       .filter((name) => !name.includes(":"))
       .map((name) => {
         const rule = ruleByFragment.get(name);
-        return { name, size: rule ? closureSize(rule.legalId) : 0 };
+        return { name, size: rule ? closureSizeOf(rule.legalId) : 0 };
       })
       .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
-      .slice(0, 8)
+      .slice(0, 1)
       .map((entry) => entry.name);
-  }, [graph, runResult, walkRuleById]);
+  }, [graph, runResult, closureSizeOf]);
 
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(

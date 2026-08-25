@@ -500,34 +500,6 @@ export function GraphViewerApp({
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
-  // Headline results: the program's own outputs, then the direct
-  // ingredients of the first one (the money chain — for SNAP that
-  // surfaces the monthly allotment). Shared between the results grid
-  // and the inspector, which skips re-printing a value that already
-  // sits on a results cell in the same panel.
-  const resultHeadlineNames = useMemo(() => {
-    if (!runResult) return [] as string[];
-    const names: string[] = [];
-    const push = (fragment: string | undefined) => {
-      if (!fragment) return;
-      if (!(fragment in runResult.outputs)) return;
-      if (!names.includes(fragment)) names.push(fragment);
-    };
-    for (const id of graph?.ownOutputs ?? []) {
-      push(id.split("#").pop());
-    }
-    const first = (graph?.ownOutputs ?? [])[0];
-    const firstRule = first ? walkRuleById.get(first) : null;
-    for (const dep of firstRule?.ruleDeps ?? []) {
-      push(dep.split("#").pop());
-    }
-    if (names.length === 0) {
-      for (const name of Object.keys(runResult.outputs)) {
-        if (!name.includes(":")) push(name);
-      }
-    }
-    return names.slice(0, 8);
-  }, [graph, runResult, walkRuleById]);
   // The summit: the terminal result with the deepest dependency
   // closure — the box the whole law rolls up into (Allotment,
   // Benefit). The easiest handhold for a first look.
@@ -553,6 +525,44 @@ export function GraphViewerApp({
     }
     return best;
   }, [graph]);
+  // Headline results: everything the run computed, ranked by how
+  // much law rolls up into each — the deepest-closure node (the main
+  // figure) first, shallow parameters last. Purely graph-driven;
+  // nothing is declared or curated. Shared between the results grid
+  // and the inspector, which skips re-printing a value that already
+  // sits on a results cell in the same panel.
+  const resultHeadlineNames = useMemo(() => {
+    if (!runResult) return [] as string[];
+    const ruleByFragment = new Map<
+      string,
+      NonNullable<ReturnType<typeof walkRuleById.get>>
+    >();
+    for (const rule of graph?.rules ?? []) {
+      const fragment = rule.legalId.split("#").pop() ?? "";
+      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
+    }
+    const closureSize = (legalId: string) => {
+      const seen = new Set<string>();
+      const stack = [legalId];
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        if (seen.has(current)) continue;
+        seen.add(current);
+        const rule = walkRuleById.get(current);
+        if (rule) stack.push(...rule.ruleDeps);
+      }
+      return seen.size;
+    };
+    return Object.keys(runResult.outputs)
+      .filter((name) => !name.includes(":"))
+      .map((name) => {
+        const rule = ruleByFragment.get(name);
+        return { name, size: rule ? closureSize(rule.legalId) : 0 };
+      })
+      .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
+      .slice(0, 8)
+      .map((entry) => entry.name);
+  }, [graph, runResult, walkRuleById]);
 
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(

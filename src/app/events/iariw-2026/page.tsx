@@ -5,6 +5,12 @@ export const metadata: Metadata = {
   title: "Workshop: New technologies for evidence-based policy making — Axiom Foundation",
   description:
     "Free afternoon workshop in Brussels, Thursday 27 August 2026 — the Axiom Foundation and PolicyEngine with CAPE and BEAMM at UCLouvain Saint-Louis. Talks, a live demo, and a roundtable with Belgian policy institutions.",
+  openGraph: {
+    images: [
+      { url: "https://axiom.org/events/iariw-2026-og.png", width: 2400, height: 1350 },
+    ],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 const REGISTRATION_URL =

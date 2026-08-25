@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import TariffPaperPage, { PAPER_VERSION } from "./page";
 
@@ -74,9 +75,7 @@ describe("tariff paper wrapper", () => {
     const html = readFileSync(join(webRoot, "index.html"), "utf8");
     const refs = [
       ...html.matchAll(/(?:src|href)="(?!https?|#|mailto|data:)([^"]+)"/g),
-    ]
-      .map((m) => m[1].split("?")[0])
-      .filter((u) => u !== "index.pdf");
+    ].map((m) => m[1].split("?")[0]);
     expect(refs.length).toBeGreaterThanOrEqual(10);
     for (const ref of refs) {
       expect(existsSync(join(webRoot, ref)), `missing asset: ${ref}`).toBe(
@@ -99,7 +98,28 @@ describe("tariff paper wrapper", () => {
     const [, rev, date] =
       pill.match(/Revision (\d+) · (\d{4}-\d{2}-\d{2})/) ?? [];
     expect(rev).toBeTruthy();
-    expect(html).toContain(`Revision ${rev}`);
-    expect(html).toContain(date);
+    // Scoped to the rendered title block — the loose full-document
+    // search once passed off the metadata date while the visible
+    // revision line disagreed.
+    const revisionBlock =
+      html.match(/class="axiom-revision"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect(revisionBlock).toContain(`Revision ${rev}`);
+    expect(revisionBlock).toContain(date);
+  });
+
+  it("ships the pinned PDF render, not a stale blob", () => {
+    // Update in lockstep with PAPER_VERSION on every manuscript sync
+    // (recipe in page.tsx). Pin of tariff-rules-paper@1dc3481
+    // build/paper.pdf — the restructured, 2026-08-25, unclipped
+    // render. A forgotten PDF copy fails closed here; r3b shipped a
+    // stale blob precisely because nothing checked this.
+    const PINNED_PDF_SHA256 =
+      "a4681062a6fe5a69dbffc59bdcbfdccb1dab85b193d8a207af0ece71071b984c";
+    const pdf = readFileSync(
+      join(process.cwd(), "public/tariff/paper/web/index.pdf"),
+    );
+    expect(createHash("sha256").update(pdf).digest("hex")).toBe(
+      PINNED_PDF_SHA256,
+    );
   });
 });

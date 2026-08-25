@@ -16,16 +16,19 @@ import type { Metadata } from "next";
  *   rsync -a --delete _extensions/axiom/fonts/ $WEB/_extensions/axiom/fonts/
  *   cp _extensions/axiom/fonts.css $WEB/_extensions/axiom/fonts.css
  *   cp paper.html $WEB/index.html && cp paper.pdf $WEB/index.pdf
- *   # then: rewrite the internal PDF link (paper.pdf -> index.pdf) and
- *   # bump PAPER_VERSION below. rsync --delete, never cp -R: a repeat
- *   # cp -R nests paper_files/paper_files, and the axiom-html render
- *   # needs the _extensions/axiom font bundle beside it.
+ *   # then: rewrite the internal PDF link (paper.pdf -> index.pdf),
+ *   # bump PAPER_VERSION below, and update PINNED_PDF_SHA256 in
+ *   # paper-page.test.tsx to the new render's hash — the test fails
+ *   # closed on a stale or missing PDF. rsync --delete, never cp -R:
+ *   # a repeat cp -R nests paper_files/paper_files, and the
+ *   # axiom-html render needs the _extensions/axiom font bundle
+ *   # beside it.
  *
  * PAPER_VERSION busts CDN and browser caches: it must change on every
  * manuscript revision and be identical on the iframe and every
  * standalone link (a test locks the lockstep).
  */
-export const PAPER_VERSION = "r3b-20260825";
+export const PAPER_VERSION = "r3c-20260825";
 
 // Root-absolute: Next serves this route without a trailing slash, so
 // relative URLs would resolve against /tariff/ and miss the render.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import TariffPaperPage, { PAPER_VERSION } from "./page";
+import TariffPaperPage, { PAPER_VERSION, PINNED_PDF_SHA256 } from "./page";
 
 describe("tariff paper wrapper", () => {
   it("renders header, actions, and the sandboxed embed", () => {
@@ -108,13 +108,10 @@ describe("tariff paper wrapper", () => {
   });
 
   it("ships the pinned PDF render, not a stale blob", () => {
-    // Update in lockstep with PAPER_VERSION on every manuscript sync
-    // (recipe in page.tsx). Pin of tariff-rules-paper@1dc3481
-    // build/paper.pdf — the restructured, 2026-08-25, unclipped
-    // render. A forgotten PDF copy fails closed here; r3b shipped a
-    // stale blob precisely because nothing checked this.
-    const PINNED_PDF_SHA256 =
-      "a4681062a6fe5a69dbffc59bdcbfdccb1dab85b193d8a207af0ece71071b984c";
+    // PINNED_PDF_SHA256 lives beside PAPER_VERSION in page.tsx so the
+    // pair is bumped as one tuple (pin of tariff-rules-paper@1dc3481
+    // build/paper.pdf). A forgotten PDF copy fails closed here; r3b
+    // shipped a stale blob precisely because nothing checked this.
     const pdf = readFileSync(
       join(process.cwd(), "public/tariff/paper/web/index.pdf"),
     );

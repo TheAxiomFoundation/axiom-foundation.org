@@ -534,35 +534,6 @@ export function GraphViewerApp({
     }
     return best;
   }, [graph, closureSizeOf]);
-  // The headline result: ONLY the main node — the computed value
-  // whose rule has the deepest dependency closure, the box the whole
-  // law rolls up into. Every intermediate stays on the canvas, where
-  // the execution layer already paints it; the grid never repeats
-  // them. Purely graph-driven; nothing is declared or curated.
-  // Shared between the results grid and the inspector, which skips
-  // re-printing a value that already sits on a results cell in the
-  // same panel.
-  const resultHeadlineNames = useMemo(() => {
-    if (!runResult) return [] as string[];
-    const ruleByFragment = new Map<
-      string,
-      NonNullable<ReturnType<typeof walkRuleById.get>>
-    >();
-    for (const rule of graph?.rules ?? []) {
-      const fragment = rule.legalId.split("#").pop() ?? "";
-      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
-    }
-    return Object.keys(runResult.outputs)
-      .filter((name) => !name.includes(":"))
-      .map((name) => {
-        const rule = ruleByFragment.get(name);
-        return { name, size: rule ? closureSizeOf(rule.legalId) : 0 };
-      })
-      .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
-      .slice(0, 1)
-      .map((entry) => entry.name);
-  }, [graph, runResult, closureSizeOf]);
-
   const consumersOf = (legalId: string) =>
     (graph?.rules ?? []).filter(
       (rule) =>
@@ -1929,6 +1900,48 @@ export function GraphViewerApp({
     }
     return scope;
   }, [selectedOutputs, structureTraces]);
+  // The headline result: ONLY the main node of whatever the canvas is
+  // currently showing — the computed value whose rule has the deepest
+  // dependency closure. Scope decides which node that is: on the full
+  // graph it's the final answer, and inside a lens it's the rule that
+  // lens is rooted on, because a subtree's root always closes over its
+  // own descendants. Intermediates stay on the canvas, where the
+  // execution layer already paints them; the grid never repeats them.
+  // Purely graph-driven; nothing is declared or curated. Shared with
+  // the inspector, which skips re-printing a value that already sits
+  // on a results cell in the same panel.
+  const resultHeadlineNames = useMemo(() => {
+    if (!runResult) return [] as string[];
+    const ruleByFragment = new Map<
+      string,
+      NonNullable<ReturnType<typeof walkRuleById.get>>
+    >();
+    for (const rule of graph?.rules ?? []) {
+      const fragment = rule.legalId.split("#").pop() ?? "";
+      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
+    }
+    const ranked = Object.keys(runResult.outputs)
+      .filter((name) => !name.includes(":"))
+      .map((name) => {
+        const rule = ruleByFragment.get(name);
+        return {
+          name,
+          legalId: rule?.legalId ?? null,
+          size: rule ? closureSizeOf(rule.legalId) : 0,
+        };
+      })
+      .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name));
+    // A lens narrows the question: answer the graph on screen. If the
+    // run computed nothing inside it, the whole-run summit still beats
+    // an empty panel.
+    const onCanvas = ranked.filter(
+      (entry) => entry.legalId && inScopeIds.has(entry.legalId),
+    );
+    return (onCanvas.length > 0 ? onCanvas : ranked)
+      .slice(0, 1)
+      .map((entry) => entry.name);
+  }, [graph, runResult, closureSizeOf, inScopeIds]);
+
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the lens and re-root on the
   // rule itself.

@@ -140,6 +140,26 @@ export function GraphViewerApp({
   const [resultsStale, setResultsStale] = useState(false);
   const ranScenarioKey = useRef<string | null>(null);
   const [inspected, setInspected] = useState<IrgNodeData | null>(null);
+  // The inspector shares the exec panel's scroll with the results
+  // section — bring it into view when a node is picked, or its card
+  // opens below the fold.
+  const execPanelRef = useRef<HTMLElement | null>(null);
+  const inspectorSectionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!inspected) {
+      // Closing the node card leaves just the results — read them
+      // from the top, not from wherever the card had scrolled to.
+      execPanelRef.current?.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
+    // Instant, not the page's smooth scroll-behavior — the canvas
+    // fly-to runs at the same moment and cancels an animated scroll
+    // midway.
+    inspectorSectionRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: "instant",
+    });
+  }, [inspected]);
   // The rule lens: "how does this rule work?" — a trail of focused
   // rules over the map. Entering saves the map's output selection;
   // the trail's crumbs step back; leaving restores the map exactly.
@@ -299,6 +319,12 @@ export function GraphViewerApp({
       vintage: { engine_release: string };
     } | null;
   } | null>(null);
+  // A fresh run leads with its results — snap the shared panel back to
+  // the top even when a node card was open below.
+  useEffect(() => {
+    if (!runResult) return;
+    execPanelRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [runResult]);
   // Deep-link params, consumed once: ?program=us-co/co-snap selects a
   // program as soon as the registry loads; ?focus=us:statutes/7/2017
   // pre-selects the rules whose fileLegalId sits at or under that
@@ -474,6 +500,34 @@ export function GraphViewerApp({
     () => new Map((graph?.inputs ?? []).map((input) => [input.legalId, input])),
     [graph],
   );
+  // Headline results: the program's own outputs, then the direct
+  // ingredients of the first one (the money chain — for SNAP that
+  // surfaces the monthly allotment). Shared between the results grid
+  // and the inspector, which skips re-printing a value that already
+  // sits on a results cell in the same panel.
+  const resultHeadlineNames = useMemo(() => {
+    if (!runResult) return [] as string[];
+    const names: string[] = [];
+    const push = (fragment: string | undefined) => {
+      if (!fragment) return;
+      if (!(fragment in runResult.outputs)) return;
+      if (!names.includes(fragment)) names.push(fragment);
+    };
+    for (const id of graph?.ownOutputs ?? []) {
+      push(id.split("#").pop());
+    }
+    const first = (graph?.ownOutputs ?? [])[0];
+    const firstRule = first ? walkRuleById.get(first) : null;
+    for (const dep of firstRule?.ruleDeps ?? []) {
+      push(dep.split("#").pop());
+    }
+    if (names.length === 0) {
+      for (const name of Object.keys(runResult.outputs)) {
+        if (!name.includes(":")) push(name);
+      }
+    }
+    return names.slice(0, 8);
+  }, [graph, runResult, walkRuleById]);
   // The summit: the terminal result with the deepest dependency
   // closure — the box the whole law rolls up into (Allotment,
   // Benefit). The easiest handhold for a first look.
@@ -2875,6 +2929,208 @@ export function GraphViewerApp({
           )}
         </div>
 
+        {/* One right-docked panel is the execution home: run results on
+            top, the selected node's card below, sharing one scroll —
+            nothing floats over the graph itself. */}
+        {(runResult || inspected) && (
+          <aside
+            ref={execPanelRef}
+            className="exec-panel"
+            aria-label="Run results and node details"
+          >
+        {runResult && (
+          <section className="results-sheet" role="status">
+            <div className="results-head">
+              <div>
+                <span className="results-eyebrow">Executed</span>
+                <strong>{effectiveProgram?.displayName ?? "Program"}</strong>
+              </div>
+              <button
+                type="button"
+                className="results-close"
+                onClick={() => setRunResult(null)}
+                aria-label="Dismiss results"
+              >
+                ×
+              </button>
+            </div>
+            <div className="results-grid">
+              {(() => {
+                // Every cell is a door to its node on the canvas.
+                return resultHeadlineNames.map((name) => {
+                  const value = runResult.outputs[name];
+                  const rule = (graph?.rules ?? []).find(
+                    (item) => item.name === name,
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={name}
+                      className="results-cell"
+                      disabled={!rule}
+                      title={rule ? "See this on the canvas" : undefined}
+                      onClick={() => {
+                        if (!rule) return;
+                        if (inScopeIds.has(rule.legalId))
+                          flyFromIndex(rule.legalId);
+                        else expandLensTo(rule.legalId);
+                      }}
+                    >
+                      <span className="results-label">{humanize(name)}</span>
+                      <span className="results-value">
+                        {typeof value === "boolean"
+                          ? value
+                            ? "Yes"
+                            : "No"
+                          : typeof value === "number"
+                            ? value.toLocaleString("en-US", { maximumFractionDigits: 6 })
+                            : String(value ?? "—")}
+                      </span>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+            <div className="results-adjust" aria-label="Adjust and run again">
+              {(() => {
+                // Every SELECTED input, editable in place: typed values
+                // show as themselves, untouched picks show their
+                // registry default in the control itself — one list,
+                // not an echo plus a second editor.
+                const names = [...(selectedLevers ?? [])];
+                for (const name of Object.keys(scenario)) {
+                  if (!names.includes(name)) names.push(name);
+                }
+                const answered = names.map(
+                  (name) =>
+                    allScenarioFields.find((field) => field.name === name) ?? {
+                      name,
+                      label: name,
+                      sample: inputMeta.defaults[name] ?? 0,
+                    },
+                );
+                const perPage = 6;
+                const pageCount = Math.max(
+                  1,
+                  Math.ceil(answered.length / perPage),
+                );
+                const page = Math.min(adjustPage, pageCount - 1);
+                const fields = answered.slice(
+                  page * perPage,
+                  page * perPage + perPage,
+                );
+                return (
+                  <>
+              {fields.map((field) => (
+                <label key={field.name} className="results-adjust-field">
+                  <span>
+                    {(() => {
+                      // Link ONLY when the graph has a question of this
+                      // exact name. An abstract knob (Monthly Earnings
+                      // Per Adult) is not a node in the law graph, and
+                      // it must never link to a rule that merely shares
+                      // an alias name.
+                      const input = (graph?.inputs ?? []).find(
+                        (candidate) => candidate.name === field.label,
+                      );
+                      if (!input) return humanize(field.label);
+                      return (
+                        <button
+                          type="button"
+                          className="results-adjust-jump"
+                          title="Find this question on the canvas"
+                          onClick={() =>
+                            goToSearchResult({
+                              legalId: input.legalId,
+                              kind: "input",
+                              inScope: inScopeIds.has(input.legalId),
+                            })
+                          }
+                        >
+                          {humanize(field.label)}
+                        </button>
+                      );
+                    })()}
+                  </span>
+                  <AnswerControl
+                    name={field.name}
+                    value={scenario[field.name]}
+                    meta={inputMeta}
+                    selectClassName="results-adjust-select"
+                    placeholder={`e.g. ${field.sample}`}
+                    onChange={(next) =>
+                      setScenario((current) => {
+                        if (next === undefined) {
+                          const { [field.name]: _gone, ...rest } = current;
+                          return rest;
+                        }
+                        return { ...current, [field.name]: next };
+                      })
+                    }
+                  />
+                </label>
+              ))}
+              {pageCount > 1 && (
+                <div
+                  className="results-adjust-pager"
+                  aria-label="More answered inputs"
+                >
+                  <button
+                    type="button"
+                    disabled={page === 0}
+                    onClick={() => setAdjustPage(page - 1)}
+                    aria-label="Previous inputs"
+                  >
+                    ‹
+                  </button>
+                  <span>
+                    {page + 1}/{pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page === pageCount - 1}
+                    onClick={() => setAdjustPage(page + 1)}
+                    aria-label="More inputs"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+                  </>
+                );
+              })()}
+              {resultsStale && (
+                <p className="results-stale" data-testid="results-stale">
+                  values changed — Run again
+                </p>
+              )}
+              <button
+                type="button"
+                className={`results-rerun ${resultsStale ? "is-stale" : ""}`}
+                disabled={running}
+                onClick={() => void runScenario()}
+              >
+                {running ? "Running…" : "Run again"}
+              </button>
+              <button
+                type="button"
+                className="results-edit-inputs"
+                disabled={running}
+                onClick={() => setRunPanelOpen(true)}
+                title="Reopen the full input list to add or change answers"
+              >
+                Edit inputs
+              </button>
+            </div>
+            <p className="results-note">
+              Computed by the Axiom engine from your scenario — the graph
+              above shows every intermediate value. You answered{" "}
+              {Object.keys(scenario).length} of {inputCatalog.length}{" "}
+              questions; the rest used this program's default values, so
+              a "No" can mean "not asked", not "disqualified".
+            </p>
+          </section>
+        )}
         {inspected &&
           (() => {
             const legalId =
@@ -2956,7 +3212,11 @@ export function GraphViewerApp({
               ? axiomAppUrlForCitation(lawTarget.fileLegalId, lawTarget.citation)
               : null;
             return (
-          <aside className="node-inspector" aria-label="Node details">
+          <section
+            ref={inspectorSectionRef}
+            className="node-inspector"
+            aria-label="Node details"
+          >
             <div className="node-inspector-head">
               <button
                 type="button"
@@ -3002,6 +3262,14 @@ export function GraphViewerApp({
               // constant — repeating it as a "computed" value reads as
               // two different numbers waiting to disagree.
               if (parameterValue) return null;
+              // Same for a headline output: its number already sits on
+              // a results cell in this panel, a few lines up.
+              if (
+                runResult &&
+                liveFragment &&
+                resultHeadlineNames.includes(liveFragment)
+              )
+                return null;
               const cardValue =
                 "value" in inspected &&
                 inspected.value &&
@@ -3403,223 +3671,9 @@ export function GraphViewerApp({
                 Read the law →
               </button>
             ) : null}
-          </aside>
+          </section>
             );
           })()}
-
-        {runResult && (
-          <aside className="results-sheet" role="status">
-            <div className="results-head">
-              <div>
-                <span className="results-eyebrow">Executed</span>
-                <strong>{effectiveProgram?.displayName ?? "Program"}</strong>
-              </div>
-              <button
-                type="button"
-                className="results-close"
-                onClick={() => setRunResult(null)}
-                aria-label="Dismiss results"
-              >
-                ×
-              </button>
-            </div>
-            <div className="results-grid">
-              {(() => {
-                // Headline: the program's own outputs, then the direct
-                // ingredients of the first one (the money chain — for
-                // SNAP that surfaces the monthly allotment). Every cell
-                // is a door to its node on the canvas.
-                const names: string[] = [];
-                const push = (fragment: string | undefined) => {
-                  if (!fragment) return;
-                  if (!(fragment in runResult.outputs)) return;
-                  if (!names.includes(fragment)) names.push(fragment);
-                };
-                for (const id of graph?.ownOutputs ?? []) {
-                  push(id.split("#").pop());
-                }
-                const first = (graph?.ownOutputs ?? [])[0];
-                const firstRule = first ? walkRuleById.get(first) : null;
-                for (const dep of firstRule?.ruleDeps ?? []) {
-                  push(dep.split("#").pop());
-                }
-                if (names.length === 0) {
-                  for (const name of Object.keys(runResult.outputs)) {
-                    if (!name.includes(":")) push(name);
-                  }
-                }
-                return names.slice(0, 8).map((name) => {
-                  const value = runResult.outputs[name];
-                  const rule = (graph?.rules ?? []).find(
-                    (item) => item.name === name,
-                  );
-                  return (
-                    <button
-                      type="button"
-                      key={name}
-                      className="results-cell"
-                      disabled={!rule}
-                      title={rule ? "See this on the canvas" : undefined}
-                      onClick={() => {
-                        if (!rule) return;
-                        if (inScopeIds.has(rule.legalId))
-                          flyFromIndex(rule.legalId);
-                        else expandLensTo(rule.legalId);
-                      }}
-                    >
-                      <span className="results-label">{humanize(name)}</span>
-                      <span className="results-value">
-                        {typeof value === "boolean"
-                          ? value
-                            ? "Yes"
-                            : "No"
-                          : typeof value === "number"
-                            ? value.toLocaleString("en-US", { maximumFractionDigits: 6 })
-                            : String(value ?? "—")}
-                      </span>
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-            <div className="results-adjust" aria-label="Adjust and run again">
-              {(() => {
-                // Every SELECTED input, editable in place: typed values
-                // show as themselves, untouched picks show their
-                // registry default in the control itself — one list,
-                // not an echo plus a second editor.
-                const names = [...(selectedLevers ?? [])];
-                for (const name of Object.keys(scenario)) {
-                  if (!names.includes(name)) names.push(name);
-                }
-                const answered = names.map(
-                  (name) =>
-                    allScenarioFields.find((field) => field.name === name) ?? {
-                      name,
-                      label: name,
-                      sample: inputMeta.defaults[name] ?? 0,
-                    },
-                );
-                const perPage = 6;
-                const pageCount = Math.max(
-                  1,
-                  Math.ceil(answered.length / perPage),
-                );
-                const page = Math.min(adjustPage, pageCount - 1);
-                const fields = answered.slice(
-                  page * perPage,
-                  page * perPage + perPage,
-                );
-                return (
-                  <>
-              {fields.map((field) => (
-                <label key={field.name} className="results-adjust-field">
-                  <span>
-                    {(() => {
-                      // Link ONLY when the graph has a question of this
-                      // exact name. An abstract knob (Monthly Earnings
-                      // Per Adult) is not a node in the law graph, and
-                      // it must never link to a rule that merely shares
-                      // an alias name.
-                      const input = (graph?.inputs ?? []).find(
-                        (candidate) => candidate.name === field.label,
-                      );
-                      if (!input) return humanize(field.label);
-                      return (
-                        <button
-                          type="button"
-                          className="results-adjust-jump"
-                          title="Find this question on the canvas"
-                          onClick={() =>
-                            goToSearchResult({
-                              legalId: input.legalId,
-                              kind: "input",
-                              inScope: inScopeIds.has(input.legalId),
-                            })
-                          }
-                        >
-                          {humanize(field.label)}
-                        </button>
-                      );
-                    })()}
-                  </span>
-                  <AnswerControl
-                    name={field.name}
-                    value={scenario[field.name]}
-                    meta={inputMeta}
-                    selectClassName="results-adjust-select"
-                    placeholder={`e.g. ${field.sample}`}
-                    onChange={(next) =>
-                      setScenario((current) => {
-                        if (next === undefined) {
-                          const { [field.name]: _gone, ...rest } = current;
-                          return rest;
-                        }
-                        return { ...current, [field.name]: next };
-                      })
-                    }
-                  />
-                </label>
-              ))}
-              {pageCount > 1 && (
-                <div
-                  className="results-adjust-pager"
-                  aria-label="More answered inputs"
-                >
-                  <button
-                    type="button"
-                    disabled={page === 0}
-                    onClick={() => setAdjustPage(page - 1)}
-                    aria-label="Previous inputs"
-                  >
-                    ‹
-                  </button>
-                  <span>
-                    {page + 1}/{pageCount}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={page === pageCount - 1}
-                    onClick={() => setAdjustPage(page + 1)}
-                    aria-label="More inputs"
-                  >
-                    ›
-                  </button>
-                </div>
-              )}
-                  </>
-                );
-              })()}
-              {resultsStale && (
-                <p className="results-stale" data-testid="results-stale">
-                  values changed — Run again
-                </p>
-              )}
-              <button
-                type="button"
-                className={`results-rerun ${resultsStale ? "is-stale" : ""}`}
-                disabled={running}
-                onClick={() => void runScenario()}
-              >
-                {running ? "Running…" : "Run again"}
-              </button>
-              <button
-                type="button"
-                className="results-edit-inputs"
-                disabled={running}
-                onClick={() => setRunPanelOpen(true)}
-                title="Reopen the full input list to add or change answers"
-              >
-                Edit inputs
-              </button>
-            </div>
-            <p className="results-note">
-              Computed by the Axiom engine from your scenario — the graph
-              above shows every intermediate value. You answered{" "}
-              {Object.keys(scenario).length} of {inputCatalog.length}{" "}
-              questions; the rest used this program's default values, so
-              a "No" can mean "not asked", not "disqualified".
-            </p>
           </aside>
         )}
       </section>

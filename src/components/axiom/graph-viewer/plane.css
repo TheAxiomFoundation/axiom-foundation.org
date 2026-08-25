@@ -184,34 +184,38 @@
   }
 }
 
-/* ── The elevated results sheet ── */
+/* ── The execution panel ── */
+/* One right-docked card holds both the run results and the selected
+   node's details, sharing a single scroll — the graph itself never
+   sits under a floating sheet. */
 .graph-viewer-root .viewer-panel {
   position: relative;
 }
-.graph-viewer-root .results-sheet {
+.graph-viewer-root .exec-panel {
   position: absolute;
-  left: 60px;
-  bottom: 22px;
-  width: min(560px, calc(100% - 32px));
+  top: 104px;
+  right: 24px;
+  z-index: 13;
+  /* Wide enough for the inspector mini graph's three columns to wrap
+     names instead of truncating them. */
+  width: min(420px, calc(100% - 48px));
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
   border: 1px solid var(--color-rule);
   border-radius: 16px;
   box-shadow:
     0 1px 2px rgba(28, 25, 23, 0.08),
     0 24px 60px -20px rgba(28, 25, 23, 0.35);
-  padding: 16px 18px 14px;
-  animation: sheet-rise 0.4s var(--ease-out, ease) both;
-  z-index: 12;
+  max-height: calc(100% - 128px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  animation: panel-in 0.3s var(--ease-out, ease) both;
 }
-@keyframes sheet-rise {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%);
-  }
+.graph-viewer-root .exec-panel > section {
+  padding: 14px 16px 16px;
+}
+.graph-viewer-root .exec-panel > section + section {
+  border-top: 1px solid var(--color-rule);
 }
 .graph-viewer-root .results-head {
   display: flex;
@@ -276,9 +280,8 @@
   .graph-viewer-root .plane-live .react-flow__edge path {
     animation: none;
   }
-  .graph-viewer-root .results-sheet,
+  .graph-viewer-root .exec-panel,
   .graph-viewer-root .results-value,
-  .graph-viewer-root .node-inspector,
   .graph-viewer-root .outputs-panel,
   .graph-viewer-root .run-panel > *,
   .graph-viewer-root .exec-pill,
@@ -610,29 +613,8 @@
 }
 
 /* ── Node inspector ── */
-.graph-viewer-root .node-inspector {
-  position: absolute;
-  top: 104px;
-  right: 24px;
-  z-index: 13;
-  /* Wide enough for the mini graph's three columns to wrap names
-     instead of truncating them. */
-  width: min(400px, calc(100% - 48px));
-  background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
-  border: 1px solid var(--color-rule);
-  border-radius: 14px;
-  box-shadow:
-    0 1px 2px rgba(28, 25, 23, 0.08),
-    0 22px 50px -18px rgba(28, 25, 23, 0.4);
-  padding: 14px 16px 16px;
-  animation: inspector-in 0.3s var(--ease-out, ease) both;
-  /* Long content (a rule built from a dozen questions) scrolls inside
-     the card — the canvas never clips it. */
-  max-height: calc(100% - 128px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-}
+/* A section of .exec-panel — the panel owns position, card chrome,
+   and the shared scroll. */
 @keyframes inspector-in {
   from { opacity: 0; transform: translateX(10px); }
   to { opacity: 1; transform: none; }
@@ -2256,14 +2238,8 @@
     transform: none;
   }
 }
-.graph-viewer-root .node-inspector {
-  animation: panel-in 0.26s var(--ease-out, ease) both;
-}
 .graph-viewer-root .outputs-panel {
   animation: panel-in 0.2s var(--ease-out, ease) both;
-}
-.graph-viewer-root .results-sheet {
-  animation: panel-in 0.3s var(--ease-out, ease) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .graph-viewer-root .react-flow__node,
@@ -2326,37 +2302,6 @@
   background: var(--color-accent-light, rgba(217, 119, 6, 0.1));
 }
 
-
-/* Center-anchored sheets need their translateX preserved through the
-   entrance — panel-in ends at transform:none and un-centers them. */
-@keyframes corner-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.graph-viewer-root .results-sheet {
-  animation: corner-in 0.3s var(--ease-out, ease) both;
-}
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .graph-viewer-root .results-sheet {
-    animation: none;
-  }
-}
 
 /* Scenario setup inside the launcher card. */
 .graph-viewer-root .journey-scenario-body {

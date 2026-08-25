@@ -18,7 +18,7 @@ import type { Metadata } from "next";
  * manuscript revision and be identical on the iframe and every
  * standalone link (a test locks the lockstep).
  */
-export const PAPER_VERSION = "r1-20260825";
+export const PAPER_VERSION = "r2-20260825";
 
 // Root-absolute: Next serves this route without a trailing slash, so
 // relative URLs would resolve against /tariff/ and miss the render.
@@ -29,7 +29,7 @@ const REPO_URL = "https://github.com/TheAxiomFoundation/tariff-rules-paper";
 export const metadata: Metadata = {
   title: "Executable tariff law — working paper — Axiom Foundation",
   description:
-    "Deterministic derivations and conformance for the 2025–26 trade shock: 13,790 rated lines encoded as cited rules, reconciled against Yale Budget Lab's tracker across 9.9 million cells.",
+    "Deterministic derivations and conformance for the 2025–26 trade shock: 13,790 rated lines encoded as cited rules, reconciled against Yale Budget Lab's tracker across 9.9 million cells with zero unexplained mismatches; the machine-checked certificate's current verdict is no, with the remaining encoding named inside it.",
   openGraph: {
     type: "article",
     title: "Executable tariff law — working paper",
@@ -60,7 +60,7 @@ export default function TariffPaperPage() {
             the manuscript snapshot below.
           </p>
           <p className="mt-4 inline-flex border border-[var(--color-rule)] px-3 py-1 font-mono text-xs text-[var(--color-ink-muted)]">
-            Revision 1 · 2026-08-16 · Max Ghenis, the Axiom Foundation
+            Revision 2 · 2026-08-25 · Max Ghenis, the Axiom Foundation
           </p>
         </header>
 

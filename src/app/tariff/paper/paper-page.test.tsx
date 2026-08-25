@@ -12,7 +12,7 @@ describe("tariff paper wrapper", () => {
       screen.getByRole("heading", { level: 1, name: /Executable tariff law/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Revision 1 · 2026-08-16 · Max Ghenis/),
+      screen.getByText(/Revision 2 · 2026-08-25 · Max Ghenis/),
     ).toBeInTheDocument();
     const iframe = screen.getByTitle(/manuscript/);
     expect(iframe).toHaveAttribute(
@@ -25,21 +25,28 @@ describe("tariff paper wrapper", () => {
     );
   });
 
-  it("keeps the version param in lockstep on the iframe and every manuscript link", () => {
-    render(<TariffPaperPage />);
-    const versioned = [
-      screen.getByTitle(/manuscript/).getAttribute("src"),
-      screen.getByText("Open standalone HTML").getAttribute("href"),
-      screen.getByText("Download PDF").getAttribute("href"),
-      screen.getByText("Open manuscript in a new page").getAttribute("href"),
-    ];
-    for (const url of versioned) {
-      expect(url).toContain(`v=${PAPER_VERSION}`);
-    }
-    // Root-absolute, never cross-origin: the route has no trailing
-    // slash, so relative URLs would resolve against /tariff/.
-    for (const url of versioned) {
+  it("keeps the exact version param on every manuscript URL, discovered dynamically", () => {
+    const { container } = render(<TariffPaperPage />);
+    const urls = [
+      ...[...container.querySelectorAll("a[href]")].map((a) =>
+        a.getAttribute("href"),
+      ),
+      ...[...container.querySelectorAll("iframe[src]")].map((f) =>
+        f.getAttribute("src"),
+      ),
+    ].filter((url): url is string => Boolean(url));
+    const manuscriptUrls = urls.filter((url) =>
+      url.includes("/tariff/paper/web/"),
+    );
+    // The wrapper must actually reference the render (iframe + at
+    // least the two action links + the footer link).
+    expect(manuscriptUrls.length).toBeGreaterThanOrEqual(4);
+    for (const url of manuscriptUrls) {
+      // Root-absolute, never cross-origin: the route has no trailing
+      // slash, so relative URLs would resolve against /tariff/.
       expect(url).toMatch(/^\/tariff\/paper\/web\//);
+      const params = new URL(url, "https://axiom.org").searchParams;
+      expect(params.getAll("v")).toEqual([PAPER_VERSION]);
     }
   });
 
@@ -51,5 +58,8 @@ describe("tariff paper wrapper", () => {
     expect(html).toContain('href="index.pdf"');
     expect(html).not.toContain('href="paper.pdf"');
     expect(html).toContain("Max Ghenis");
+    expect(html).not.toContain("wire into sections");
+    expect(html).not.toContain("Companion-paper authors");
+    expect(html).toContain("its verdict is no");
   });
 });

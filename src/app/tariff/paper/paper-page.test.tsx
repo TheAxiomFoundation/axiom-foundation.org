@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import TariffPaperPage, { PAPER_VERSION } from "./page";
 
@@ -67,5 +67,39 @@ describe("tariff paper wrapper", () => {
     expect(html).toContain("axiom-status");
     expect(html).toContain("burndown named");
     expect(html).toContain("github.com/PolicyEngine/tariff-paper");
+  });
+
+  it("resolves every local asset the committed render references", () => {
+    const webRoot = join(process.cwd(), "public/tariff/paper/web");
+    const html = readFileSync(join(webRoot, "index.html"), "utf8");
+    const refs = [
+      ...html.matchAll(/(?:src|href)="(?!https?|#|mailto|data:)([^"]+)"/g),
+    ]
+      .map((m) => m[1].split("?")[0])
+      .filter((u) => u !== "index.pdf");
+    expect(refs.length).toBeGreaterThanOrEqual(10);
+    for (const ref of refs) {
+      expect(existsSync(join(webRoot, ref)), `missing asset: ${ref}`).toBe(
+        true,
+      );
+    }
+    // The axiom-html font bundle in particular — a vanilla sync once
+    // shipped a render that 404ed its own stylesheet.
+    expect(existsSync(join(webRoot, "_extensions/axiom/fonts.css"))).toBe(true);
+  });
+
+  it("keeps the wrapper pill and the embedded title block on the same revision and date", () => {
+    const html = readFileSync(
+      join(process.cwd(), "public/tariff/paper/web/index.html"),
+      "utf8",
+    );
+    render(<TariffPaperPage />);
+    const pill =
+      screen.getByText(/Revision \d+ · \d{4}-\d{2}-\d{2}/).textContent ?? "";
+    const [, rev, date] =
+      pill.match(/Revision (\d+) · (\d{4}-\d{2}-\d{2})/) ?? [];
+    expect(rev).toBeTruthy();
+    expect(html).toContain(`Revision ${rev}`);
+    expect(html).toContain(date);
   });
 });

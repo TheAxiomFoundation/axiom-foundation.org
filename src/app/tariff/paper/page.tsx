@@ -11,17 +11,21 @@ import type { Metadata } from "next";
  *   quarto render paper.qmd --to axiom-paper-pdf   # never vanilla --to
  *   # html/pdf: those bypass the axiom template partials and drop the
  *   # certification status box
- *   cp paper.html  <axiom.org>/public/tariff/paper/web/index.html
- *   cp paper.pdf   <axiom.org>/public/tariff/paper/web/index.pdf
- *   cp -R paper_files <axiom.org>/public/tariff/paper/web/paper_files
- *   # then: fix the internal PDF link (paper.pdf -> index.pdf) and
- *   # bump PAPER_VERSION below.
+ *   WEB=<axiom.org>/public/tariff/paper/web
+ *   rsync -a --delete paper_files/ $WEB/paper_files/
+ *   rsync -a --delete _extensions/axiom/fonts/ $WEB/_extensions/axiom/fonts/
+ *   cp _extensions/axiom/fonts.css $WEB/_extensions/axiom/fonts.css
+ *   cp paper.html $WEB/index.html && cp paper.pdf $WEB/index.pdf
+ *   # then: rewrite the internal PDF link (paper.pdf -> index.pdf) and
+ *   # bump PAPER_VERSION below. rsync --delete, never cp -R: a repeat
+ *   # cp -R nests paper_files/paper_files, and the axiom-html render
+ *   # needs the _extensions/axiom font bundle beside it.
  *
  * PAPER_VERSION busts CDN and browser caches: it must change on every
  * manuscript revision and be identical on the iframe and every
  * standalone link (a test locks the lockstep).
  */
-export const PAPER_VERSION = "r3-20260825";
+export const PAPER_VERSION = "r3b-20260825";
 
 // Root-absolute: Next serves this route without a trailing slash, so
 // relative URLs would resolve against /tariff/ and miss the render.

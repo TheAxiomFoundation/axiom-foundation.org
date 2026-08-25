@@ -7,7 +7,10 @@ import type { Metadata } from "next";
  * refresh it from the paper repo with:
  *
  *   cd ~/TheAxiomFoundation/tariff-rules-paper
- *   quarto render paper.qmd --to html && quarto render paper.qmd --to pdf
+ *   quarto render paper.qmd --to axiom-html
+ *   quarto render paper.qmd --to axiom-paper-pdf   # never vanilla --to
+ *   # html/pdf: those bypass the axiom template partials and drop the
+ *   # certification status box
  *   cp paper.html  <axiom.org>/public/tariff/paper/web/index.html
  *   cp paper.pdf   <axiom.org>/public/tariff/paper/web/index.pdf
  *   cp -R paper_files <axiom.org>/public/tariff/paper/web/paper_files
@@ -18,7 +21,7 @@ import type { Metadata } from "next";
  * manuscript revision and be identical on the iframe and every
  * standalone link (a test locks the lockstep).
  */
-export const PAPER_VERSION = "r2-20260825";
+export const PAPER_VERSION = "r3-20260825";
 
 // Root-absolute: Next serves this route without a trailing slash, so
 // relative URLs would resolve against /tariff/ and miss the render.
@@ -60,7 +63,7 @@ export default function TariffPaperPage() {
             the manuscript snapshot below.
           </p>
           <p className="mt-4 inline-flex border border-[var(--color-rule)] px-3 py-1 font-mono text-xs text-[var(--color-ink-muted)]">
-            Revision 2 · 2026-08-25 · Max Ghenis, the Axiom Foundation
+            Revision 3 · 2026-08-25 · Max Ghenis, the Axiom Foundation
           </p>
         </header>
 

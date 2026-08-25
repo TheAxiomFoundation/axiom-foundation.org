@@ -12,7 +12,7 @@ describe("tariff paper wrapper", () => {
       screen.getByRole("heading", { level: 1, name: /Executable tariff law/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Revision 2 · 2026-08-25 · Max Ghenis/),
+      screen.getByText(/Revision 3 · 2026-08-25 · Max Ghenis/),
     ).toBeInTheDocument();
     const iframe = screen.getByTitle(/manuscript/);
     expect(iframe).toHaveAttribute(
@@ -60,6 +60,12 @@ describe("tariff paper wrapper", () => {
     expect(html).toContain("Max Ghenis");
     expect(html).not.toContain("wire into sections");
     expect(html).not.toContain("Companion-paper authors");
+    expect(html).not.toContain("hold no certificate");
     expect(html).toContain("its verdict is no");
+    // The axiom-html format's status box — vanilla renders drop it and
+    // leave the manuscript's status-note reference dangling.
+    expect(html).toContain("axiom-status");
+    expect(html).toContain("burndown named");
+    expect(html).toContain("github.com/PolicyEngine/tariff-paper");
   });
 });

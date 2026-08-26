@@ -41,7 +41,7 @@ const PROGRAM: {
     time: "13:30",
     title: "Welcome",
     detail:
-      "Tom Truyts (CAPE, UCLouvain Saint-Louis) and Max Ghenis (PolicyEngine and Axiom).",
+      "Tom Truyts (CAPE, UCLouvain Saint-Louis) and Max Ghenis (Axiom Foundation and PolicyEngine).",
   },
   {
     time: "13:45–14:35",
@@ -52,7 +52,7 @@ const PROGRAM: {
     time: "14:40–15:30",
     title: "From open models to executable law: PolicyEngine and Axiom",
     detail:
-      "Open US and UK models, simulation-ready microdata, and encoding and certifying policy rules — talk and live demo — Max Ghenis, PolicyEngine and Axiom.",
+      "Open US and UK models, simulation-ready microdata, and encoding and certifying policy rules — talk and live demo — Max Ghenis, Axiom Foundation and PolicyEngine.",
   },
   { time: "15:30–16:00", title: "Coffee break" },
   {
@@ -64,7 +64,7 @@ const PROGRAM: {
       "Koen Algoed — Secretary General, Budget and Finance Department, Flemish Region",
       "Jean-Baptiste Traversa — Head of microsimulation modelling, Federal Public Service Finance",
       "Tom Truyts — CAPE, UCLouvain Saint-Louis",
-      "Max Ghenis — PolicyEngine and Axiom",
+      "Max Ghenis — Axiom Foundation and PolicyEngine",
     ],
   },
   { time: "17:00", title: "Walk together to the IARIW reception" },

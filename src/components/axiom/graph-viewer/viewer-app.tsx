@@ -2783,6 +2783,39 @@ export function GraphViewerApp({
               fullscreen) portal into this slot — same frame row, right
               side, never covered by canvas popups. */}
           <div className="graph-controls-slot" ref={setGraphControlsSlot} />
+          {/* The primary action ends the row it belongs to. It sits
+              IN the flex line with the graph's controls rather than
+              floating over the canvas beside it — one band, one
+              baseline, no negative offsets to keep in sync. The slot
+              holds its width so Run → Running… → the live pill swap
+              through without shoving the controls sideways. */}
+          {(runResult && !running) || runAffordanceReady ? (
+            <div className="run-slot">
+              {runResult && !running ? (
+                // A live run owns the row's end — the pill replaces
+                // the Run button until the layer is dismissed.
+                <div className="exec-pill" role="status">
+                  <span className="exec-pill-dot" aria-hidden />
+                  Execution layer · live
+                  <button type="button" onClick={() => setRunResult(null)}>
+                    exit
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={`run-toggle ${resultsStale ? "is-stale" : ""}`}
+                  data-tour="run-scenario"
+                  disabled={running}
+                  onClick={() => setRunPanelOpen((open) => !open)}
+                  aria-expanded={runPanelOpen}
+                  title="Answer the household's questions and execute the law"
+                >
+                  {running ? "Running…" : "Run a scenario"}
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
         <div
           className={`graph-stage ${runResult ? "plane-live" : ""} ${
@@ -2821,29 +2854,6 @@ export function GraphViewerApp({
           >
             <span>Laying out the graph…</span>
           </div>
-          {runResult && !running ? (
-            // A live run owns the top-right slot — the pill replaces
-            // the Run button until the execution layer is dismissed.
-            <div className="exec-pill" role="status">
-              <span className="exec-pill-dot" aria-hidden />
-              Execution layer · live
-              <button type="button" onClick={() => setRunResult(null)}>
-                exit
-              </button>
-            </div>
-          ) : runAffordanceReady ? (
-            <button
-              type="button"
-              className={`run-toggle ${resultsStale ? "is-stale" : ""}`}
-              data-tour="run-scenario"
-              disabled={running}
-              onClick={() => setRunPanelOpen((open) => !open)}
-              aria-expanded={runPanelOpen}
-              title="Answer the household's questions and execute the law"
-            >
-              {running ? "Running…" : "Run a scenario"}
-            </button>
-          ) : null}
           {runPanelOpen && (
             <div
               className="run-panel"

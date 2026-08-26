@@ -3512,10 +3512,10 @@
 /* In-slot (header row) variant: the bar sheds its own chrome — the
    frame row is the chrome. */
 .graph-viewer-root .graph-controls-slot{
+  /* Pushes itself and the Run button that follows it to the row's
+     right end. No reserved margin: the button is a real sibling on
+     this line now, so the flex gap does the spacing. */
   margin-left: auto;
-  /* The "Run a scenario" button floats at the stage's top-right,
-     visually on this row's right end — keep clear of it. */
-  margin-right: 148px;
   display: flex;
   align-items: center;
 }

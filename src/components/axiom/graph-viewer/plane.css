@@ -1626,16 +1626,6 @@
 }
 
 /* Journey re-entry pill beside the Index toggle. */
-/* The frame row's end slot: whichever of the two states is showing,
-   it lands flush right and reserves the same width, so the controls
-   beside it never jump as a run starts and finishes. The floor is the
-   widest state (the live pill). */
-.graph-viewer-root .run-slot {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-width: 208px;
-}
 .graph-viewer-root .run-toggle {
   /* Last item in the frame row — THE primary action on the page, so
      it's the one filled button in the band. Height matches the row's
@@ -1643,7 +1633,11 @@
      edge; the flex row centers it. */
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   height: 32px;
+  /* Holds the width of its longest label so "Running…" doesn't pull
+     the row in behind it — the only reservation the line needs. */
+  min-width: 126px;
   border: none;
   background: var(--color-accent);
   border-radius: 999px;

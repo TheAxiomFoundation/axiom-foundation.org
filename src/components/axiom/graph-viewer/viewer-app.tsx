@@ -3148,12 +3148,12 @@ export function GraphViewerApp({
                 Edit inputs
               </button>
             </div>
+            {/* Just the shape of the run — the canvas already tells
+                the rest of the story. */}
             <p className="results-note">
-              Computed by the Axiom engine from your scenario — the graph
-              above shows every intermediate value. You answered{" "}
-              {Object.keys(scenario).length} of {inputCatalog.length}{" "}
-              questions; the rest used this program's default values, so
-              a "No" can mean "not asked", not "disqualified".
+              {Object.keys(scenario).length === 0
+                ? `All ${inputCatalog.length} inputs on defaults`
+                : `${Object.keys(scenario).length} of ${inputCatalog.length} inputs answered · rest on defaults`}
             </p>
           </section>
         )}

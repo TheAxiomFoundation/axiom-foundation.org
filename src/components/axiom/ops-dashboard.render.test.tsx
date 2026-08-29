@@ -80,6 +80,69 @@ const SCOPE = {
   synced_at: "2026-08-08T00:00:00Z",
 };
 
+describe("OpsDashboard universal queue board", () => {
+  const BOARD = [
+    {
+      queue_id: "us-snap-all-states-2026-07",
+      status: "active",
+      priority: 100,
+      description: "All-state SNAP inventory",
+      counts: { pending: 17780, leased: 2, completed: 1, blocked: 1 },
+    },
+  ];
+
+  it("prefers the live board over git summaries and flags blocked items", () => {
+    render(
+      <OpsDashboard
+        initialStatus={null}
+        encodingError={null}
+        queues={[
+          {
+            queueId: "git-only-queue",
+            description: null,
+            pauseReason: null,
+            total: 5,
+            pending: 5,
+            dispositionCounts: {},
+            jurisdictionCount: 1,
+          },
+        ]}
+        recentScopes={[]}
+        liveBoard={BOARD}
+      />
+    );
+    expect(
+      screen.getByText("us-snap-all-states-2026-07")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("git-only-queue")).toBeNull();
+    expect(screen.getByText(/1 blocked — needs review/)).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("falls back to git summaries when the live board is unavailable", () => {
+    render(
+      <OpsDashboard
+        initialStatus={null}
+        encodingError={null}
+        queues={[
+          {
+            queueId: "git-only-queue",
+            description: "From the repo files",
+            pauseReason: null,
+            total: 5,
+            pending: 3,
+            dispositionCounts: { dispatched: 2 },
+            jurisdictionCount: 1,
+          },
+        ]}
+        recentScopes={[]}
+        liveBoard={null}
+      />
+    );
+    expect(screen.getByText("git-only-queue")).toBeInTheDocument();
+  });
+});
+
 describe("OpsDashboard", () => {
   beforeEach(() => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval"] });

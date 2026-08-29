@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { OpsDashboard } from "@/components/axiom/ops-dashboard";
 import { getEncodingQueues } from "@/lib/axiom/encoding-queues";
+import { listWorkQueueBoard } from "@/lib/axiom/runtime/api";
 import { getEncodingStatus, getRecentCorpusScopes } from "@/lib/corpus-status";
 import { SITE_URL } from "@/lib/urls";
 
@@ -16,16 +17,18 @@ export const metadata: Metadata = {
 };
 
 export default async function OpsPage() {
-  const [encodingStatus, queues, recentScopes] = await Promise.all([
+  const [encodingStatus, queues, recentScopes, liveBoard] = await Promise.all([
     getEncodingStatus(),
     getEncodingQueues(),
     getRecentCorpusScopes(),
+    listWorkQueueBoard(),
   ]);
   return (
     <OpsDashboard
       initialStatus={encodingStatus.value}
       encodingError={encodingStatus.error}
       queues={queues}
+      liveBoard={liveBoard}
       recentScopes={recentScopes}
     />
   );

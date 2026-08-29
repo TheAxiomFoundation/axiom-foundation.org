@@ -20,6 +20,7 @@ import {
   JURISDICTIONS_SEED,
 } from "@/lib/axiom/jurisdictions-seed";
 import type { EncodingQueueSummary } from "@/lib/axiom/encoding-queues";
+import type { WorkQueueBoardEntry } from "@/lib/axiom/runtime/api";
 import type { RecentCorpusScope } from "@/lib/corpus-status";
 import {
   composeGraphViewerUrl,
@@ -54,6 +55,9 @@ interface OpsDashboardProps {
   initialStatus: EncodingOpsStatus | null;
   encodingError: string | null;
   queues: EncodingQueueSummary[];
+  /** Live universal-queue board (axiom-api /v1/queue); null until the
+   *  ops schema + endpoints are deployed — the git summaries render then. */
+  liveBoard?: WorkQueueBoardEntry[] | null;
   recentScopes: RecentCorpusScope[];
 }
 
@@ -199,7 +203,8 @@ export function OpsDashboard({
   encodingError,
   queues,
   recentScopes,
-}: OpsDashboardProps) {
+  liveBoard = null,
+ }: OpsDashboardProps) {
   const [status, setStatus] = useState(initialStatus);
   const [nowMs, setNowMs] = useState<number | null>(null);
 
@@ -268,7 +273,7 @@ export function OpsDashboard({
 
         <div className="mt-14 grid gap-12 md:grid-cols-2 md:gap-10">
           <RecentlyIngested scopes={recentScopes} referenceMs={referenceMs} />
-          <QueuedWork queues={queues} />
+          <QueuedWork queues={queues} liveBoard={liveBoard ?? null} />
         </div>
       </div>
     </div>
@@ -337,22 +342,102 @@ function pluralizeDocumentClass(documentClass: string): string {
 
 /* ── Queued work: what the fleet will encode next ── */
 
-function QueuedWork({ queues }: { queues: EncodingQueueSummary[] }) {
-  if (queues.length === 0) return null;
+/** Status chips worth surfacing on the live board, display order. The
+ *  blocked count is the needs-a-human signal — dead-lettered items the
+ *  dispatcher will not retry. */
+const BOARD_STATUS_ORDER = [
+  "pending",
+  "leased",
+  "completed",
+  "failed",
+  "blocked",
+] as const;
+
+function QueuedWork({
+  queues,
+  liveBoard,
+}: {
+  queues: EncodingQueueSummary[];
+  liveBoard: WorkQueueBoardEntry[] | null;
+}) {
+  const live = liveBoard != null && liveBoard.length > 0;
+  if (!live && queues.length === 0) return null;
   return (
     <Card>
       <CardHeader className="border-b [.border-b]:pb-4">
         <CardTitle>Queued work</CardTitle>
         <CardDescription>
-          Durable encoding queues awaiting dispatch.
+          {live
+            ? "Universal work queue — live claims, leases, and dispositions."
+            : "Durable encoding queues awaiting dispatch."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {queues.map((queue) => (
-          <QueueRow key={queue.queueId} queue={queue} />
-        ))}
+        {live
+          ? liveBoard.map((entry) => (
+              <BoardRow key={entry.queue_id} entry={entry} />
+            ))
+          : queues.map((queue) => (
+              <QueueRow key={queue.queueId} queue={queue} />
+            ))}
       </CardContent>
     </Card>
+  );
+}
+
+function BoardRow({ entry }: { entry: WorkQueueBoardEntry }) {
+  const total = Object.values(entry.counts).reduce((sum, n) => sum + n, 0);
+  const done = entry.counts.completed ?? 0;
+  const fraction = total > 0 ? done / total : 0;
+  return (
+    <div data-testid="board-row">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h3 className="font-mono text-sm text-foreground">
+          {entry.queue_id}
+          <span
+            className={`ml-2 rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+              entry.status === "active"
+                ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {entry.status}
+          </span>
+        </h3>
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {done.toLocaleString("en-US")} of {total.toLocaleString("en-US")}{" "}
+          completed
+        </p>
+      </div>
+      {entry.description && (
+        <p className="mt-1 text-xs text-muted-foreground max-w-[72ch]">
+          {entry.description}
+        </p>
+      )}
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-[var(--color-accent)]"
+          style={{ width: `${Math.round(fraction * 1000) / 10}%` }}
+        />
+      </div>
+      <p className="mt-1.5 text-xs tabular-nums text-muted-foreground">
+        {BOARD_STATUS_ORDER.filter((status) => entry.counts[status]).map(
+          (status, index) => (
+            <span key={status}>
+              {index > 0 && " · "}
+              <span
+                className={
+                  status === "blocked" ? "font-medium text-destructive" : ""
+                }
+              >
+                {(entry.counts[status] ?? 0).toLocaleString("en-US")} {status}
+                {status === "blocked" && " — needs review"}
+              </span>
+            </span>
+          )
+        )}
+      </p>
+    </div>
   );
 }
 

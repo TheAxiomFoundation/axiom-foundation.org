@@ -124,6 +124,28 @@ async function runtimeGet<T>(path: string): Promise<T | null> {
  * routes: the browser gets the upstream `{status, data}` envelope
  * verbatim (the viewer client parses it), the key stays server-side.
  */
+/** One row of the universal work-queue board (axiom-api /v1/queue). */
+export interface WorkQueueBoardEntry {
+  queue_id: string;
+  status: string;
+  priority: number;
+  description: string | null;
+  /** Item counts by status: pending / leased / completed / failed / blocked. */
+  counts: Record<string, number>;
+}
+
+/**
+ * The live universal queue board, or null when the runtime API (or its
+ * queue surface) is not configured — callers fall back to the
+ * git-derived inventory summaries.
+ */
+export async function listWorkQueueBoard(): Promise<
+  WorkQueueBoardEntry[] | null
+> {
+  const data = await runtimeGet<{ queues: WorkQueueBoardEntry[] }>("/queue");
+  return data?.queues ?? null;
+}
+
 export async function runtimeProxyGet(
   path: string
 ): Promise<{ status: number; body: unknown }> {

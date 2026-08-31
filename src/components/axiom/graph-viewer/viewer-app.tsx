@@ -2790,9 +2790,13 @@ export function GraphViewerApp({
           {runResult && !running ? (
             // A live run owns the row's end — the pill replaces the
             // Run button until the execution layer is dismissed.
-            <div className="exec-pill" role="status">
+            <div
+              className="exec-pill"
+              role="status"
+              title="The execution layer is live"
+            >
               <span className="exec-pill-dot" aria-hidden />
-              Execution layer · live
+              Live
               <button type="button" onClick={() => setRunResult(null)}>
                 exit
               </button>

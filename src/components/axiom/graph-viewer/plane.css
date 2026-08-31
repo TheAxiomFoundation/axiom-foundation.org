@@ -569,11 +569,13 @@
 /* ── Execution pill ── */
 .graph-viewer-root .exec-pill {
   /* Replaces the Run button while a run is live — same slot at the
-     row's end, same 32px height, so swapping one for the other never
-     shifts the line. */
+     row's end, same 32px height AND the same 126px footprint as
+     .run-toggle, so swapping one for the other never shifts the
+     controls sitting left of it on the line. */
   display: inline-flex;
   align-items: center;
   height: 32px;
+  min-width: 126px;
   gap: 8px;
   border: 1px solid rgba(22, 101, 52, 0.3);
   background: color-mix(in srgb, var(--color-paper-elevated) 97%, transparent);
@@ -596,6 +598,8 @@
   50% { box-shadow: 0 0 0 5px rgba(22, 101, 52, 0); }
 }
 .graph-viewer-root .exec-pill button {
+  /* Exit hugs the pill's far end; the dot + label cluster left. */
+  margin-left: auto;
   border: 1px solid var(--color-rule);
   background: var(--color-paper-elevated);
   border-radius: 999px;

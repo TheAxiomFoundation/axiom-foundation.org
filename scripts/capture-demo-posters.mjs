@@ -41,35 +41,37 @@ let failures = 0;
 
 for (const [name, url] of SURFACES) {
   const page = await context.newPage();
-  // Never overwrite a good poster with an error capture: skip the
-  // surface on navigation failure or an HTTP error status. Only an
-  // idle timeout proceeds — the document loaded, the network just
-  // stayed chatty.
+  // Never overwrite a good poster with an error capture: the
+  // navigation itself must produce a 2xx document, fail-closed on
+  // anything else — timeouts included, since a timeout here means
+  // the document never loaded. Only the separate settle-to-idle wait
+  // below may time out and still capture: by then the document is
+  // loaded and the network is merely chatty.
+  let response;
   try {
-    const response = await page.goto(url, {
-      waitUntil: "networkidle",
+    response = await page.goto(url, {
+      waitUntil: "domcontentloaded",
       timeout: 45000,
     });
-    if (response && !response.ok()) {
-      console.error(
-        `${name}: HTTP ${response.status()} from ${url} — keeping the existing poster`,
-      );
-      failures += 1;
-      await page.close();
-      continue;
-    }
   } catch (err) {
-    if (err?.name === "TimeoutError") {
-      console.warn(`${name}: network never idled; capturing anyway`);
-    } else {
-      console.error(
-        `${name}: navigation failed (${err?.message ?? err}) — keeping the existing poster`,
-      );
-      failures += 1;
-      await page.close();
-      continue;
-    }
+    console.error(
+      `${name}: navigation failed (${err?.message ?? err}) — keeping the existing poster`,
+    );
+    failures += 1;
+    await page.close();
+    continue;
   }
+  if (!response || !response.ok()) {
+    console.error(
+      `${name}: ${response ? `HTTP ${response.status()}` : "no document response"} from ${url} — keeping the existing poster`,
+    );
+    failures += 1;
+    await page.close();
+    continue;
+  }
+  await page
+    .waitForLoadState("networkidle", { timeout: 30000 })
+    .catch(() => console.warn(`${name}: network never idled; capturing anyway`));
   await page.waitForTimeout(6000);
   if (name === "app") {
     // The first-visit tour modal covers the graph; dismiss via its

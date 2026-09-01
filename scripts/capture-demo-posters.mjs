@@ -58,7 +58,7 @@ for (const [name, url] of SURFACES) {
       `${name}: navigation failed (${err?.message ?? err}) — keeping the existing poster`,
     );
     failures += 1;
-    await page.close();
+    await page.close().catch(() => {});
     continue;
   }
   if (!response || !response.ok()) {
@@ -66,32 +66,46 @@ for (const [name, url] of SURFACES) {
       `${name}: ${response ? `HTTP ${response.status()}` : "no document response"} from ${url} — keeping the existing poster`,
     );
     failures += 1;
-    await page.close();
+    await page.close().catch(() => {});
     continue;
   }
-  await page
-    .waitForLoadState("networkidle", { timeout: 30000 })
-    .catch(() => console.warn(`${name}: network never idled; capturing anyway`));
-  await page.waitForTimeout(6000);
-  if (name === "app") {
-    // The first-visit tour modal covers the graph; dismiss via its
-    // skip control, falling back to Escape.
-    const dismissed = await page
-      .getByText(/skip/i)
-      .first()
-      .click({ timeout: 5000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!dismissed) await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-    if (await page.getByText("Welcome to the graph").isVisible().catch(() => false)) {
-      console.warn("app: tour modal still visible — poster will include it");
+  try {
+    // Only idle expiry may proceed to capture here — any other
+    // rejection (page crash, close, frame detachment) is a failed
+    // surface, and so is a failure anywhere in the capture tail:
+    // one bad surface must not abort the rest of the batch.
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 30000 });
+    } catch (err) {
+      if (err?.name !== "TimeoutError") throw err;
+      console.warn(`${name}: network never idled; capturing anyway`);
     }
+    await page.waitForTimeout(6000);
+    if (name === "app") {
+      // The first-visit tour modal covers the graph; dismiss via its
+      // skip control, falling back to Escape.
+      const dismissed = await page
+        .getByText(/skip/i)
+        .first()
+        .click({ timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!dismissed) await page.keyboard.press("Escape");
+      await page.waitForTimeout(3000);
+      if (await page.getByText("Welcome to the graph").isVisible().catch(() => false)) {
+        console.warn("app: tour modal still visible — poster will include it");
+      }
+    }
+    const file = path.join(outDir, `${name}.png`);
+    await page.screenshot({ path: file });
+    console.log(`${name}: ${url} -> ${file}`);
+  } catch (err) {
+    console.error(
+      `${name}: capture failed (${err?.message ?? err}) — keeping the existing poster`,
+    );
+    failures += 1;
   }
-  const file = path.join(outDir, `${name}.png`);
-  await page.screenshot({ path: file });
-  console.log(`${name}: ${url} -> ${file}`);
-  await page.close();
+  await page.close().catch(() => {});
 }
 
 await browser.close();

@@ -25,13 +25,14 @@ interface Env {
 
 const PHONE: Env = { hover: false, finePointer: false, wide: false, anyPointerCoarse: true, maxTouchPoints: 5 }
 const DESKTOP: Env = { hover: true, finePointer: true, wide: true, anyPointerCoarse: false, maxTouchPoints: 0 }
-// A wide touchscreen laptop: primary pointer is the trackpad (fine,
-// hover, wide all match) but the screen is still touch-capable.
-const HYBRID: Env = { hover: true, finePointer: true, wide: true, anyPointerCoarse: true, maxTouchPoints: 10 }
 
 function installEnv(initial: Env) {
   const env = { ...initial }
-  const listeners = new Set<() => void>()
+  // One listener registry PER query string, so a test can prove the
+  // component subscribed to a specific MediaQueryList: change() only
+  // dispatches the listeners of queries whose result actually
+  // flipped, the way real MQL change events behave.
+  const registries = new Map<string, Set<() => void>>()
   const evaluate = (query: string): boolean => {
     let ok = true
     if (query.includes('(hover: hover)')) ok &&= env.hover
@@ -49,18 +50,22 @@ function installEnv(initial: Env) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     configurable: true,
-    value: (query: string) => ({
-      get matches() {
-        return evaluate(query)
-      },
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: (_: string, cb: () => void) => listeners.add(cb),
-      removeEventListener: (_: string, cb: () => void) => listeners.delete(cb),
-      dispatchEvent: () => false,
-    }),
+    value: (query: string) => {
+      const listeners = registries.get(query) ?? new Set<() => void>()
+      registries.set(query, listeners)
+      return {
+        get matches() {
+          return evaluate(query)
+        },
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_: string, cb: () => void) => listeners.add(cb),
+        removeEventListener: (_: string, cb: () => void) => listeners.delete(cb),
+        dispatchEvent: () => false,
+      }
+    },
   })
   Object.defineProperty(navigator, 'maxTouchPoints', {
     configurable: true,
@@ -69,10 +74,22 @@ function installEnv(initial: Env) {
 
   return {
     change(next: Env) {
+      const before = new Map(
+        [...registries.keys()].map((q) => [q, evaluate(q)]),
+      )
       Object.assign(env, next)
-      act(() => listeners.forEach((cb) => cb()))
+      act(() => {
+        for (const [query, listeners] of registries) {
+          if (before.get(query) !== evaluate(query)) {
+            listeners.forEach((cb) => cb())
+          }
+        }
+      })
     },
-    listenerCount: () => listeners.size,
+    totalListeners: () =>
+      [...registries.values()].reduce((n, s) => n + s.size, 0),
+    queriesSubscribed: () =>
+      [...registries.entries()].filter(([, s]) => s.size > 0).length,
     restore() {
       Object.defineProperty(window, 'matchMedia', {
         writable: true,
@@ -97,6 +114,13 @@ describe('DemoThumb', () => {
     return handle
   }
 
+  const expectPosterOnly = (env: Env) => {
+    withEnv(env)
+    const { container } = render(<DemoThumb {...PROPS} />)
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(container.querySelector('img')).toHaveAttribute('src', PROPS.poster)
+  }
+
   it('server-renders the poster and never the iframe', () => {
     // No effects run here, so this pins the pre-hydration default —
     // the markup a crashed or scriptless client is left with.
@@ -106,25 +130,32 @@ describe('DemoThumb', () => {
   })
 
   it('serves only the poster on a phone', () => {
-    withEnv(PHONE)
-    const { container } = render(<DemoThumb {...PROPS} />)
-    expect(container.querySelector('img')).toHaveAttribute('src', PROPS.poster)
-    expect(container.querySelector('iframe')).toBeNull()
+    expectPosterOnly(PHONE)
   })
 
-  it('serves only the poster on a wide touch-capable hybrid', () => {
-    // The crash guard's invariant: no live embed on ANY touch-capable
-    // device, even one whose primary pointer is fine and hovering.
-    withEnv(HYBRID)
-    const { container } = render(<DemoThumb {...PROPS} />)
-    expect(container.querySelector('iframe')).toBeNull()
-    expect(container.querySelector('img')).toHaveAttribute('src', PROPS.poster)
+  // Each condition of the desktop query is individually load-bearing:
+  // an env failing exactly one of them must stay on the poster, so a
+  // predicate weakened to any subset of the conditions fails a test.
+  it('serves only the poster without hover capability', () => {
+    expectPosterOnly({ ...DESKTOP, hover: false })
+  })
+
+  it('serves only the poster without a fine primary pointer', () => {
+    expectPosterOnly({ ...DESKTOP, finePointer: false })
   })
 
   it('serves only the poster on a narrow desktop window', () => {
-    withEnv({ ...DESKTOP, wide: false })
-    const { container } = render(<DemoThumb {...PROPS} />)
-    expect(container.querySelector('iframe')).toBeNull()
+    expectPosterOnly({ ...DESKTOP, wide: false })
+  })
+
+  // The two touch safeguards are also individually load-bearing: a
+  // hybrid can report touch through either channel alone.
+  it('serves only the poster when any pointer is coarse, even with zero touch points', () => {
+    expectPosterOnly({ ...DESKTOP, anyPointerCoarse: true })
+  })
+
+  it('serves only the poster with touch points, even with no coarse pointer', () => {
+    expectPosterOnly({ ...DESKTOP, maxTouchPoints: 10 })
   })
 
   it('upgrades to the live iframe on a pure desktop, keeping the poster underneath', () => {
@@ -138,21 +169,32 @@ describe('DemoThumb', () => {
     expect(container.querySelector('img')).toHaveAttribute('src', PROPS.poster)
   })
 
-  it('drops the iframe when the environment stops qualifying', () => {
+  it('drops the iframe when only the coarse-pointer query flips', () => {
+    // Dispatches only the (any-pointer: coarse) listeners — the test
+    // fails unless the component subscribed to that query too.
     const handle = withEnv(DESKTOP)
     const { container } = render(<DemoThumb {...PROPS} />)
     expect(container.querySelector('iframe')).not.toBeNull()
-    handle.change(HYBRID)
+    handle.change({ ...DESKTOP, anyPointerCoarse: true })
     expect(container.querySelector('iframe')).toBeNull()
     expect(container.querySelector('img')).not.toBeNull()
   })
 
-  it('removes its media listeners on unmount', () => {
+  it('drops the iframe when only the desktop query flips', () => {
+    const handle = withEnv(DESKTOP)
+    const { container } = render(<DemoThumb {...PROPS} />)
+    expect(container.querySelector('iframe')).not.toBeNull()
+    handle.change({ ...DESKTOP, wide: false })
+    expect(container.querySelector('iframe')).toBeNull()
+  })
+
+  it('subscribes to both queries and removes both subscriptions on unmount', () => {
     const handle = withEnv(DESKTOP)
     const { unmount } = render(<DemoThumb {...PROPS} />)
-    expect(handle.listenerCount()).toBeGreaterThan(0)
+    expect(handle.queriesSubscribed()).toBe(2)
+    expect(handle.totalListeners()).toBe(2)
     unmount()
-    expect(handle.listenerCount()).toBe(0)
+    expect(handle.totalListeners()).toBe(0)
   })
 
   it('keeps the thumb decorative', () => {

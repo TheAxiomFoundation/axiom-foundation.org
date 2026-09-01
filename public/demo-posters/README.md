@@ -17,4 +17,6 @@ The script (`scripts/capture-demo-posters.mjs`) records the capture
 parameters — 1440x810 viewport at deviceScaleFactor 0.5 (720x405
 output), network idle + 6s settle, tour modal dismissed on the app
 surface — and the source URL for each poster. Current set captured
-2026-09-01 from the then-live deployments.
+2026-09-01 from the then-live deployments. The URLs are mutable
+production surfaces, so a poster records whatever was deployed at
+capture time; there is no pinned source revision to reproduce from.

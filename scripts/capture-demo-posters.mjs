@@ -37,12 +37,38 @@ const context = await browser.newContext({
   deviceScaleFactor: 0.5,
 });
 
+let failures = 0;
+
 for (const [name, url] of SURFACES) {
   const page = await context.newPage();
+  // Never overwrite a good poster with an error capture: skip the
+  // surface on navigation failure or an HTTP error status. Only an
+  // idle timeout proceeds — the document loaded, the network just
+  // stayed chatty.
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 45000 });
-  } catch {
-    console.warn(`${name}: network never idled; capturing anyway`);
+    const response = await page.goto(url, {
+      waitUntil: "networkidle",
+      timeout: 45000,
+    });
+    if (response && !response.ok()) {
+      console.error(
+        `${name}: HTTP ${response.status()} from ${url} — keeping the existing poster`,
+      );
+      failures += 1;
+      await page.close();
+      continue;
+    }
+  } catch (err) {
+    if (err?.name === "TimeoutError") {
+      console.warn(`${name}: network never idled; capturing anyway`);
+    } else {
+      console.error(
+        `${name}: navigation failed (${err?.message ?? err}) — keeping the existing poster`,
+      );
+      failures += 1;
+      await page.close();
+      continue;
+    }
   }
   await page.waitForTimeout(6000);
   if (name === "app") {
@@ -67,3 +93,8 @@ for (const [name, url] of SURFACES) {
 }
 
 await browser.close();
+
+if (failures > 0) {
+  console.error(`${failures} surface(s) skipped — their posters are unchanged`);
+  process.exit(1);
+}

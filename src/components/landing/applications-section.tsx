@@ -1,12 +1,14 @@
 import { ArrowRightIcon } from "@/components/icons";
+import { DemoThumb } from "./demo-thumb";
 import { Reveal, RevealGroup, RevealItem } from "./reveal";
 
 /**
- * Each use-case card carries a live proof: a scaled iframe preview of
- * the matching demo (the shell gallery's thumb pattern), deep-linked
- * into /demos?d=<id> so a click lands in the gallery with that demo
- * open. The public card links straight to the Axiom app — the app is
- * the demo.
+ * Each use-case card carries a proof: a preview of the matching demo
+ * (the shell gallery's thumb pattern), deep-linked into /demos?d=<id>
+ * so a click lands in the gallery with that demo open. The public card
+ * links straight to the Axiom app — the app is the demo. The preview
+ * is a live scaled iframe only on desktop; elsewhere DemoThumb serves
+ * the static poster, because live thumbs crash-loop mobile Safari.
  */
 const APPLICATIONS = [
   {
@@ -19,6 +21,7 @@ const APPLICATIONS = [
       label: "SNAP workflow checker",
       href: "/demos?d=workflow",
       src: "https://co-snap-workflow-checker.vercel.app/",
+      poster: "/demo-posters/workflow.png",
     },
   },
   {
@@ -31,6 +34,7 @@ const APPLICATIONS = [
       label: "A grounded assistant",
       href: "/demos?d=chatbot",
       src: "https://axiom.org/chatbot",
+      poster: "/demo-posters/chatbot.png",
     },
   },
   {
@@ -43,6 +47,7 @@ const APPLICATIONS = [
       label: "Reform SNAP live",
       href: "/demos?d=snap",
       src: "https://axiom-co-snap.vercel.app/",
+      poster: "/demo-posters/snap.png",
     },
   },
   {
@@ -55,6 +60,7 @@ const APPLICATIONS = [
       label: "Explore the law",
       href: "https://app.axiom-foundation.org",
       src: "https://app.axiom-foundation.org",
+      poster: "/demo-posters/app.png",
     },
   },
 ];
@@ -112,14 +118,11 @@ export function ApplicationsSection() {
                 className="group/demo mt-auto pt-4 block no-underline"
                 aria-label={`Open demo: ${app.demo.label}`}
               >
-                <span className="landing-demo-thumb" aria-hidden>
-                  <iframe
-                    src={app.demo.src}
-                    title={`${app.demo.label} — preview`}
-                    loading="lazy"
-                    tabIndex={-1}
-                  />
-                </span>
+                <DemoThumb
+                  src={app.demo.src}
+                  poster={app.demo.poster}
+                  title={`${app.demo.label} — preview`}
+                />
                 <span className="mt-2.5 inline-flex items-center gap-2 font-mono text-[0.58rem] tracking-[0.16em] uppercase text-[var(--color-accent)] group-hover/demo:text-[var(--color-accent-hover)] transition-colors">
                   Explore
                   <ArrowRightIcon className="w-3 h-3" />

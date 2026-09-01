@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { DemoThumb } from "@/components/landing/demo-thumb";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 
 export const metadata: Metadata = {
@@ -136,7 +137,8 @@ export default function AboutPage() {
           </RevealGroup>
 
           {/* Demos highlight — a two-column card: the pitch on the
-              left, a live thumb of the gallery on the right. */}
+              left, a thumb of the gallery on the right (live iframe on
+              desktop only — see DemoThumb). */}
           <Reveal className="mt-8">
             <Link
               href="/demos"
@@ -157,14 +159,11 @@ export default function AboutPage() {
                   Open the demo gallery &rarr;
                 </span>
               </div>
-              <span className="landing-demo-thumb" aria-hidden>
-                <iframe
-                  src="https://axiom-demo-shell.vercel.app/demos/"
-                  title="Demo gallery — preview"
-                  loading="lazy"
-                  tabIndex={-1}
-                />
-              </span>
+              <DemoThumb
+                src="https://axiom-demo-shell.vercel.app/demos/"
+                poster="/demo-posters/gallery.png"
+                title="Demo gallery — preview"
+              />
             </Link>
           </Reveal>
         </Reveal>

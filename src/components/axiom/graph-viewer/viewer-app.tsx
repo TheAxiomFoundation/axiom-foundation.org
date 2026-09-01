@@ -631,9 +631,6 @@ export function GraphViewerApp({
   );
   const [composedFiles, setComposedFiles] = useState<LegalId[]>([]);
   const [composedTruncated, setComposedTruncated] = useState(false);
-  // Standalone definitions hidden from the composed canvas (the
-  // isolated-node filter) — reported honestly in top-meta.
-  const [composedHiddenCount, setComposedHiddenCount] = useState(0);
   // Run-by-root, feature-detected: the API is gaining POST /calculate
   // with `{ root, facts }`. Until the probe confirms the deployment
   // answers that shape, compose mode shows no run affordance at all —
@@ -701,7 +698,6 @@ export function GraphViewerApp({
     setSelectedOutputs([]);
     setComposedFiles([]);
     setComposedTruncated(false);
-    setComposedHiddenCount(0);
     setComposeFocus(target);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -727,7 +723,6 @@ export function GraphViewerApp({
     setComposeFocus(null);
     setComposedFiles([]);
     setComposedTruncated(false);
-    setComposedHiddenCount(0);
     setComposeRunReady(null);
     setRunBlocked(null);
     setRunResult(null);
@@ -1570,12 +1565,9 @@ export function GraphViewerApp({
         if (cancelled) return;
         // Standalone-definition filter: rules nothing feeds and
         // nothing consumes are wallpaper on a composed canvas — hide
-        // them, count them honestly (top-meta reports the count).
-        const { graph: filteredGraph, hiddenCount } = filterStandaloneRules(
-          composed.graph,
-        );
+        // them. The count no longer announces itself on the canvas.
+        const { graph: filteredGraph } = filterStandaloneRules(composed.graph);
         setGraph(filteredGraph);
-        setComposedHiddenCount(hiddenCount);
         setComposedFiles(composed.files);
         setComposedTruncated(composed.truncated);
         // No package registry backs a composed view; the graph's own
@@ -1909,17 +1901,23 @@ export function GraphViewerApp({
   // execution layer already paints them; the grid never repeats them.
   // Purely graph-driven; nothing is declared or curated. Shared with
   // the inspector, which skips re-printing a value that already sits
-  // on a results cell in the same panel.
-  const resultHeadlineNames = useMemo(() => {
-    if (!runResult) return [] as string[];
-    const ruleByFragment = new Map<
+  // on a results cell in the same panel. Run outputs are keyed by the
+  // rule's legal-id fragment, which is not always its display name —
+  // so the headline carries the legalId and every consumer resolves
+  // the rule through it.
+  const ruleByFragment = useMemo(() => {
+    const byFragment = new Map<
       string,
       NonNullable<ReturnType<typeof walkRuleById.get>>
     >();
     for (const rule of graph?.rules ?? []) {
       const fragment = rule.legalId.split("#").pop() ?? "";
-      if (!ruleByFragment.has(fragment)) ruleByFragment.set(fragment, rule);
+      if (!byFragment.has(fragment)) byFragment.set(fragment, rule);
     }
+    return byFragment;
+  }, [graph]);
+  const resultHeadline = useMemo(() => {
+    if (!runResult) return null;
     const ranked = Object.keys(runResult.outputs)
       .filter((name) => !name.includes(":"))
       .map((name) => {
@@ -1934,13 +1932,11 @@ export function GraphViewerApp({
     // A lens narrows the question: answer the graph on screen. If the
     // run computed nothing inside it, the whole-run summit still beats
     // an empty panel.
-    const onCanvas = ranked.filter(
+    const onCanvas = ranked.find(
       (entry) => entry.legalId && inScopeIds.has(entry.legalId),
     );
-    return (onCanvas.length > 0 ? onCanvas : ranked)
-      .slice(0, 1)
-      .map((entry) => entry.name);
-  }, [graph, runResult, closureSizeOf, inScopeIds]);
+    return onCanvas ?? ranked[0] ?? null;
+  }, [runResult, ruleByFragment, closureSizeOf, inScopeIds]);
 
   // Take me there — wherever "there" is: in-scope results fly in
   // place; out-of-scope results leave the lens and re-root on the
@@ -2779,7 +2775,7 @@ export function GraphViewerApp({
                   : "Loading graph"}
             </span>
           )}
-          {/* The graph's own controls (zoom, detail, expand/collapse,
+          {/* The graph's own controls (detail level, expand/collapse,
               fullscreen) portal into this slot — same frame row, right
               side, never covered by canvas popups. */}
           <div className="graph-controls-slot" ref={setGraphControlsSlot} />
@@ -2986,16 +2982,14 @@ export function GraphViewerApp({
             </div>
             <div className="results-grid">
               {(() => {
-                // Every cell is a door to its node on the canvas.
-                return resultHeadlineNames.map((name) => {
-                  const value = runResult.outputs[name];
-                  const rule = (graph?.rules ?? []).find(
-                    (item) => item.name === name,
-                  );
-                  return (
+                // The cell is a door to its node on the canvas.
+                if (!resultHeadline) return null;
+                const { name, legalId: headlineId } = resultHeadline;
+                const value = runResult.outputs[name];
+                const rule = headlineId ? walkRuleById.get(headlineId) : undefined;
+                return (
                     <button
                       type="button"
-                      key={name}
                       className="results-cell"
                       disabled={!rule}
                       title={rule ? "See this on the canvas" : undefined}
@@ -3017,8 +3011,7 @@ export function GraphViewerApp({
                             : String(value ?? "—")}
                       </span>
                     </button>
-                  );
-                });
+                );
               })()}
             </div>
             <div className="results-adjust" aria-label="Adjust and run again">
@@ -3171,9 +3164,8 @@ export function GraphViewerApp({
             const input = legalId ? (walkInputById.get(legalId) ?? null) : null;
             const consumers = inspectedConsumers;
             const meta = "meta" in inspected ? inspected.meta : undefined;
-            // The rule carries the FULL formula; node meta holds the
-            // 140-char one-liner cut for the card — never show the cut
-            // one when the real thing is available.
+            // Node meta is built from the same graph, so the two agree;
+            // the rule is simply present on more inspection paths.
             const formula = rule?.formula ?? meta?.formula ?? null;
             const rawCitation =
               meta?.citation ??
@@ -3292,13 +3284,9 @@ export function GraphViewerApp({
               // constant — repeating it as a "computed" value reads as
               // two different numbers waiting to disagree.
               if (parameterValue) return null;
-              // Same for a headline output: its number already sits on
-              // a results cell in this panel, a few lines up.
-              if (
-                runResult &&
-                liveFragment &&
-                resultHeadlineNames.includes(liveFragment)
-              )
+              // Same for the headline output: its number already sits on
+              // the results cell in this panel, a few lines up.
+              if (runResult && legalId && resultHeadline?.legalId === legalId)
                 return null;
               const cardValue =
                 "value" in inspected &&

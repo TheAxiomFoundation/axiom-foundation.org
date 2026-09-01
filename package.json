@@ -1,7 +1,9 @@
 {
   "name": "axiom-foundation",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "version": "0.0.1",
   "type": "module",
   "scripts": {
@@ -14,7 +16,8 @@
     "test:coverage": "bun run build:ui && vitest run --coverage",
     "sync:rulespec-index": "bun scripts/sync-rulespec-index.mjs",
     "build:tariff-schedule": "bun scripts/build-tariff-schedule-data.ts",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "posters:capture": "bun scripts/capture-demo-posters.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -52,7 +55,8 @@
     "puppeteer-core": "^25.4.0",
     "tailwindcss": "^4.2.4",
     "typescript": "~6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "playwright": "^1.58.0"
   },
   "engines": {
     "node": ">=22 <25"

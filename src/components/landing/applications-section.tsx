@@ -7,8 +7,9 @@ import { Reveal, RevealGroup, RevealItem } from "./reveal";
  * (the shell gallery's thumb pattern), deep-linked into /demos?d=<id>
  * so a click lands in the gallery with that demo open. The public card
  * links straight to the Axiom app — the app is the demo. The preview
- * is a live scaled iframe only on desktop; elsewhere DemoThumb serves
- * the static poster, because live thumbs crash-loop mobile Safari.
+ * is a live scaled iframe only on desktop-class devices; elsewhere
+ * DemoThumb serves the static poster (iPhone visitors reported
+ * forced-reload loops on these surfaces — see DemoThumb).
  */
 const APPLICATIONS = [
   {

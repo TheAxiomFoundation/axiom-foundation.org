@@ -616,6 +616,17 @@ canvas[aria-hidden] {
   transform: scale(var(--preview-scale));
   transform-origin: 0 0;
 }
+/* Static poster served instead of the live iframe off desktop (see
+   DemoThumb): same 16:9 frame, anchored top-left like the iframe. */
+.landing-demo-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  pointer-events: none;
+}
 
 /* The counting status: a small pulsing tag riding inline beside the
    first layer's digits while any reel still rolls. Gated to

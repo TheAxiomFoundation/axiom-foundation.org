@@ -69,8 +69,10 @@ export default async function DemosPage({ searchParams }: PageProps) {
           </h2>
           {/* The shell doesn't fit an embedded frame on small screens
               (and some demos error inside it) — below md we link out
-              instead. The iframe is lazy, so the hidden container
-              never loads it on mobile. */}
+              instead. lazy + display:none makes the hidden iframe
+              unlikely to load below md, but that's best-effort, and
+              from md up this still embeds the gallery's six live
+              demos — tap-to-load facades are axiom-demo-shell#7. */}
           <div className="hidden md:block border border-[var(--color-rule)] rounded-md overflow-hidden bg-[var(--color-paper-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.08)]">
             <iframe
               src={gallerySrc}

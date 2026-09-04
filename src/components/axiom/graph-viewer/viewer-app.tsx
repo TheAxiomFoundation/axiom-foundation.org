@@ -3122,36 +3122,40 @@ export function GraphViewerApp({
                   </>
                 );
               })()}
-              {resultsStale && (
-                <p className="results-stale" data-testid="results-stale">
-                  values changed — Run again
-                </p>
-              )}
-              <button
-                type="button"
-                className={`results-rerun ${resultsStale ? "is-stale" : ""}`}
-                disabled={running}
-                onClick={() => void runScenario()}
-              >
-                {running ? "Running…" : "Run again"}
-              </button>
-              <button
-                type="button"
-                className="results-edit-inputs"
-                disabled={running}
-                onClick={() => setRunPanelOpen(true)}
-                title="Reopen the full input list to add or change answers"
-              >
-                Edit inputs
-              </button>
+              {/* The actions own a row of their own — the pager above
+                  never pushes Run again around as pages come and go. */}
+              <div className="results-actions">
+                {resultsStale && (
+                  <p className="results-stale" data-testid="results-stale">
+                    values changed — Run again
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className={`results-rerun ${resultsStale ? "is-stale" : ""}`}
+                  disabled={running}
+                  onClick={() => void runScenario()}
+                >
+                  {running ? "Running…" : "Run again"}
+                </button>
+                <button
+                  type="button"
+                  className="results-edit-inputs"
+                  disabled={running}
+                  onClick={() => setRunPanelOpen(true)}
+                  title="Reopen the full input list to add or change answers"
+                >
+                  Edit inputs
+                </button>
+              </div>
             </div>
-            {/* Just the shape of the run — the canvas already tells
-                the rest of the story. */}
-            <p className="results-note">
-              {Object.keys(scenario).length === 0
-                ? `All ${inputCatalog.length} inputs on defaults`
-                : `${Object.keys(scenario).length} of ${inputCatalog.length} inputs answered · rest on defaults`}
-            </p>
+            {/* Only when something was answered — a run on pure defaults
+                needs no caption; the headline says it all. */}
+            {Object.keys(scenario).length > 0 && (
+              <p className="results-note">
+                {`${Object.keys(scenario).length} of ${inputCatalog.length} inputs answered · rest on defaults`}
+              </p>
+            )}
           </section>
         )}
         {inspected &&

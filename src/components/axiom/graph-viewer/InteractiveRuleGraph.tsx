@@ -559,8 +559,12 @@ export function InteractiveRuleGraph({
     >
       <ReactFlowProvider>
         {(() => {
+          // The browser paints only the fullscreen element's subtree, so
+          // while .irg-wrap is fullscreen the bar has to live inside it —
+          // otherwise every control, the exit button included, vanishes.
+          const slot = isFullscreen ? null : controlsSlot;
           const controlsBar = (
-        <div className={`irg-controls-bar ${controlsSlot ? "irg-controls-inline" : ""}`}>
+        <div className={`irg-controls-bar ${slot ? "irg-controls-inline" : ""}`}>
           <div className="irg-toolbar">
             <div className="irg-toolbar-segment" role="tablist" aria-label="Detail level">
               <button
@@ -632,7 +636,7 @@ export function InteractiveRuleGraph({
           </button>
         </div>
           );
-          return controlsSlot ? createPortal(controlsBar, controlsSlot) : controlsBar;
+          return slot ? createPortal(controlsBar, slot) : controlsBar;
         })()}
         <div className="irg-canvas">
         <ReactFlow

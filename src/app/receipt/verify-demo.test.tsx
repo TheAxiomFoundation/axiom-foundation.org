@@ -24,6 +24,12 @@ import {
 const attack = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
 
+// A row's classes as whole tokens. The colour checks below look for the whole
+// text-colour token, not the variable inside it: a class that carried the same
+// variable into a border or a background would pass a substring check and
+// colour nothing the reader reads.
+const classes = (row: Element): string[] => row.className.split(/\s+/);
+
 const pin = (action: string) =>
   fireEvent.click(screen.getByRole("button", { name: action }));
 
@@ -334,10 +340,10 @@ describe("the transcript colouring", () => {
   // is invisible, so the tones have to come from the code palette.
   it("renders each transcript line in the class its tone names", () => {
     const PALETTE: Record<string, string> = {
-      plain: "var(--color-code-text)",
-      ok: "var(--color-code-text)",
-      dim: "var(--color-code-comment)",
-      fail: "var(--color-code-keyword)",
+      plain: "text-[var(--color-code-text)]",
+      ok: "text-[var(--color-code-text)]",
+      dim: "text-[var(--color-code-comment)]",
+      fail: "text-[var(--color-code-keyword)]",
     };
 
     const { container } = render(<VerifyDemo />);
@@ -364,7 +370,7 @@ describe("the transcript colouring", () => {
         // so receipt's columns (markers at two spaces, their detail lines at
         // nine) live in the style rather than in the text, and a line with
         // nothing left is a single space.
-        expect(row.className, at).toContain(PALETTE[toned[i]]);
+        expect(classes(row), at).toContain(PALETTE[toned[i]]);
         expect(row.textContent, at).toBe(line.slice(indent) || " ");
         expect(row.style.paddingLeft, at).toBe(indent ? `${indent}ch` : "");
       });
@@ -468,9 +474,9 @@ describe("the clone pane", () => {
   // and holds the marks to the one thing each clone differs in. The listing
   // is written out here as the reader should see it, a marked row starred.
   it("renders every clone row in order, in its indent and the class its mark names", () => {
-    const CHANGED = "var(--color-code-keyword)";
-    const PLAIN = "var(--color-code-text)";
-    const DIM = "var(--color-code-comment)";
+    const CHANGED = "text-[var(--color-code-keyword)]";
+    const PLAIN = "text-[var(--color-code-text)]";
+    const DIM = "text-[var(--color-code-comment)]";
 
     const listing = (id: AttackId): string[] => {
       const stems = CLONES[id].manifests.map((name) =>
@@ -538,8 +544,8 @@ describe("the clone pane", () => {
         const row = rendered[i];
         expect(row.textContent, at).toBe(line.slice(indent));
         expect(row.style.paddingLeft, at).toBe(indent ? `${indent}ch` : "");
-        expect(row.className, at).toContain(marked ? CHANGED : PLAIN);
-        if (!marked) expect(row.className, at).not.toContain(CHANGED);
+        expect(classes(row), at).toContain(marked ? CHANGED : PLAIN);
+        if (!marked) expect(classes(row), at).not.toContain(CHANGED);
       });
 
       // A clone differs in one thing, or in nothing: the marks say which.
@@ -557,7 +563,7 @@ describe("the clone pane", () => {
       const blank = rendered[expected.length];
       expect(blank.textContent, `${id} separator`).toBe(" ");
       rendered.slice(expected.length + 1).forEach((row, i) => {
-        expect(row.className, `${id} auditor row ${i + 1}`).toContain(DIM);
+        expect(classes(row), `${id} auditor row ${i + 1}`).toContain(DIM);
       });
     }
   });

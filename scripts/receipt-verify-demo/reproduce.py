@@ -4,6 +4,10 @@ capture.py captures in-process (so an argparse SystemExit is catchable). The dem
 prints the command as `receipt verify ...`, which is only honest if the console
 script in a real subprocess writes the same bytes. This runs every captured
 invocation that way and diffs stdout, stderr and the exit code.
+
+The pull request's argument for the demo rests on the mismatch count this
+prints, so a run that checked nothing must not be mistakable for a run that
+checked everything: it refuses unless it re-ran exactly EXPECTED captures.
 """
 
 from __future__ import annotations
@@ -16,6 +20,9 @@ import sys
 
 CAPTURES = pathlib.Path(sys.argv[1]).resolve()
 RECEIPT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "/tmp/receipt060/bin/receipt")
+# capture.py writes one file per run: 01-21, six scenarios plus the per-scenario
+# `--base-ref` refusals. Raise this alongside any scenario added there.
+EXPECTED = 21
 
 failures = 0
 checked = 0
@@ -48,4 +55,6 @@ print(
     f"{checked} captures re-run through the console script; "
     f"{failures} mismatch(es)"
 )
-raise SystemExit(1 if failures else 0)
+if checked != EXPECTED:
+    print(f"expected {EXPECTED} captures in {CAPTURES}, re-ran {checked}")
+raise SystemExit(1 if failures or checked != EXPECTED else 0)

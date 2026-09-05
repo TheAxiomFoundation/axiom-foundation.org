@@ -31,6 +31,7 @@ import io
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import sys
@@ -109,7 +110,10 @@ def capture(name: str, repo: pathlib.Path, *extra: str) -> str:
         except SystemExit as refusal:  # argparse refuses before the command runs
             code = refusal.code
     body = (
-        f"$ python -m receipt.cli {' '.join(argv)}\n"
+        # shlex.join, not ' '.join: reproduce.py reads this line back with
+        # shlex.split, so a work directory whose path contains whitespace has to
+        # round-trip to the same argv rather than splitting into more tokens.
+        f"$ python -m receipt.cli {shlex.join(argv)}\n"
         f"--- exit: {code}\n"
         f"--- stdout ---\n{out.getvalue()}"
         f"--- stderr ---\n{err.getvalue()}"
@@ -400,9 +404,9 @@ capture("16-dropgate-base-ref", dropgate_repo, "--commit", "HEAD",
 # --- the new 0.6.0 argument rule, per scenario ------------------------------
 #
 # `--base-ref` names a history to bind against, which is only meaningful once
-# the revision under test is pinned; 0.6.0 refuses the pair at parsing rather
-# than verifying against a moving target. Captured per scenario rather than
-# assumed identical.
+# the revision under test is pinned; 0.6.0 refuses the pair on the arguments,
+# after parsing them, rather than verifying against a moving target. Captured
+# per scenario rather than assumed identical.
 
 for name, repo_path, base in (
     ("17-hand-edit-base-ref-unpinned", rewrite, genesis),

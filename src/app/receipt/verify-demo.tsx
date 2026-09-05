@@ -19,10 +19,10 @@ import {
 //
 // That also means the pass order is not simulated here — the transcripts
 // carry it. `receipt verify` runs history (only when --base-ref is supplied)
-// → custody → binding → declaration, stops at the first failure and prints
-// `not reached` for the rest, so a failing verdict never reports a later
-// pass's result. The left-hand pane is the corpus each run was of, abridged
-// to what the attack touched.
+// → custody → binding → declaration, stops at the first failure, prints
+// `not reached` for the next pass and omits the rest, so a failing verdict
+// never reports a later pass's result. The left-hand pane is the corpus each
+// run was of, abridged to what the attack touched.
 
 const ATTACKS: { id: AttackId; label: string; did: string }[] = [
   {
@@ -38,7 +38,7 @@ const ATTACKS: { id: AttackId; label: string; did: string }[] = [
   {
     id: "reencode",
     label: "re-encode the fix",
-    did: "The same correction, taken through the pipeline instead: a third release, appended to the journal, re-signed and re-witnessed.",
+    did: "The same correction, taken through the pipeline instead: a third release, appended to the journal, signed and witnessed.",
   },
   {
     id: "swapkey",
@@ -57,9 +57,9 @@ const ATTACKS: { id: AttackId; label: string; did: string }[] = [
   },
 ];
 
-// How much the auditor pinned before running. `--base-ref` alone is refused at
-// argument parsing in 0.6.0: a history to bind against means nothing until the
-// revision under test is itself pinned.
+// How much the auditor pinned before running. `--base-ref` alone is refused on
+// the arguments in 0.6.0, after parsing them: a history to bind against means
+// nothing until the revision under test is itself pinned.
 const PINS: { id: Pin; next?: Pin; action?: string }[] = [
   {
     id: "none",
@@ -149,7 +149,7 @@ export function tones(lines: string[]): Tone[] {
 
   return lines.map((line) => {
     if (/^receipt \d/.test(line)) return "plain";
-    // A refusal from argument parsing, before any pass runs.
+    // A refusal on the arguments, before any pass runs.
     if (/^receipt verify: /.test(line)) return "fail";
     if (/^ {2}\[ok {2}\] /.test(line)) {
       marker = "ok";
@@ -292,7 +292,8 @@ export function VerifyDemo() {
       <p className="mt-5 font-mono text-[0.72rem] uppercase tracking-wider text-[var(--color-ink-muted)]">
         every verdict line is receipt {RECEIPT_VERSION}&apos;s own output over
         the package&apos;s own signed corpus fixture &middot; amber marks what
-        this clone differs in &middot; passes stop at the first failure
+        this clone differs in, and every refusal &middot; passes stop at the
+        first failure
       </p>
     </div>
   );

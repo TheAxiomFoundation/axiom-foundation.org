@@ -24,7 +24,7 @@ rm -rf /tmp/receipt-demo && mkdir -p /tmp/receipt-demo captures
 /tmp/receipt-venv/bin/python scripts/receipt-verify-demo/generate.py \
   "$PWD/captures" "$PWD/src/app/receipt/verify-transcripts.ts"
 
-bun run test
+bun run test:run
 ```
 
 `openssl` and `git` must be on `PATH`: the fixture issues two real certificate
@@ -33,11 +33,14 @@ inside a fresh git repository.
 
 ## What each script does
 
-- **`capture.py`** builds the published corpus, then a private clone per attack —
-  a hand edit, a re-encode, a substituted signing key, a wholesale regeneration,
-  a corpus that never declares a required gate — and runs `receipt verify` over
-  each one at three levels of auditor pinning: nothing, `--base-ref` alone, and
-  `--base-ref` with `--expect-commit`. It writes one capture file per run.
+- **`capture.py`** builds the published corpus, then a private clone per attack
+  that mutates one — a hand edit, a re-encode, a substituted signing key, a
+  wholesale regeneration — plus the pristine clone, left alone, and a second
+  corpus published from its own genesis under the same producer key and the same
+  two authorities that never declares a required gate. It runs `receipt verify`
+  over each at three levels of auditor pinning: nothing, `--base-ref` alone, and
+  `--base-ref` with `--expect-commit`, and writes one capture file per run — 21
+  in all, the count `reproduce.py` requires.
 - **`reproduce.py`** re-runs every captured invocation through the installed
   `receipt` console script in a real subprocess and requires byte-identical
   stdout, stderr and exit code. `capture.py` runs the CLI in-process so that an

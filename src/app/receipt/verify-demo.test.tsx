@@ -28,8 +28,8 @@ const pin = (action: string) =>
   fireEvent.click(screen.getByRole("button", { name: action }));
 
 // The attack buttons, in the order the demo offers them. Every id here indexes
-// TRANSCRIPTS and CLONES, so a renamed scenario fails to compile rather than
-// silently dropping out of the loops below.
+// TRANSCRIPTS and CLONES and every label is clicked, so a renamed scenario
+// throws out of the loops below rather than quietly dropping out of them.
 const ATTACKS: { id: AttackId; label: string }[] = [
   { id: "pristine", label: "pristine clone" },
   { id: "rewrite", label: "hand-edit the fix" },

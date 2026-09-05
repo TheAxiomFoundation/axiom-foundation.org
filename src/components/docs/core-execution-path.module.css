@@ -80,7 +80,7 @@
 .owner {
   min-height: 2rem;
   margin: 0 0 0.35rem;
-  color: var(--color-ink-tertiary);
+  color: var(--color-ink-muted);
   font-family: var(--f-mono);
   font-size: 0.66rem;
   line-height: 1.5;
@@ -114,7 +114,7 @@
 
 .boundary {
   margin: 1rem 0 0;
-  color: var(--color-ink-tertiary);
+  color: var(--color-ink-muted);
   font-family: var(--f-mono);
   font-size: 0.66rem;
   line-height: 1.7;

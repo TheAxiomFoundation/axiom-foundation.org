@@ -50,8 +50,9 @@ describe("receipt verify demo", () => {
       screen.getByText("VERDICT: PASS — custody and corpus binding"),
     ).toBeInTheDocument();
     // 0.6.0's header names the subject of the verdict, not just the root.
-    expect(screen.getByText(/^commit [0-9a-f]{40} \(tree [0-9a-f]{40}\)$/))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText(/^commit [0-9a-f]{40} \(tree [0-9a-f]{40}\)$/),
+    ).toBeInTheDocument();
     expect(screen.getByText("names portable")).toBeInTheDocument();
     expect(screen.getByText("objects not requested")).toBeInTheDocument();
     expect(screen.getByText(/^sha256 [0-9a-f]{64}$/)).toBeInTheDocument();
@@ -320,9 +321,10 @@ describe("the transcript colouring", () => {
 
     // A rule no captured line reached is a rule this test did not check.
     for (const [shape, count] of Object.entries(seen)) {
-      expect(count, `no captured line had the shape "${shape}"`).toBeGreaterThan(
-        0,
-      );
+      expect(
+        count,
+        `no captured line had the shape "${shape}"`,
+      ).toBeGreaterThan(0);
     }
   });
 
@@ -344,21 +346,24 @@ describe("the transcript colouring", () => {
       const lines = run.text.split("\n");
       const toned = tones(lines);
       // The verdict pane, after the invocation and the blank line above it.
-      const rendered = Array.from(container.querySelectorAll("pre")[1].children);
+      const rendered = Array.from(
+        container.querySelectorAll("pre")[1].children,
+      );
       expect(rendered, where).toHaveLength(lines.length + 2);
       lines.forEach((line, i) => {
         const at = `${where} line ${i + 1}: ${JSON.stringify(line)}`;
         const row = rendered[i + 2] as HTMLElement;
         const indent = line.length - line.trimStart().length;
-        // All three together, or none of them is worth checking: the tones are
-        // computed from the same array the pane renders and applied by index,
-        // so a pane that printed receipt's lines in an order receipt never
-        // printed would carry every class to the same row. What pins the class
-        // to the line the reader sees is the rest of the row — its text and
-        // its indent. ConsoleLine renders the line trimmed of its indent and
-        // hangs that indent on padding instead, so receipt's columns (markers
-        // at two spaces, their detail lines at nine) live in the style rather
-        // than in the text, and a line with nothing left is a single space.
+        // The class alone is not enough. The tones are computed from the array
+        // the pane renders, so a pane that reordered its rows whole, text and
+        // tone together, did fail a class-only check; what passed it was a
+        // pane that moved the text and left each class on the row it was
+        // already on. What pins the class to the line the reader sees is the
+        // rest of the row — its text and its indent. ConsoleLine renders the
+        // line trimmed of its indent and hangs that indent on padding instead,
+        // so receipt's columns (markers at two spaces, their detail lines at
+        // nine) live in the style rather than in the text, and a line with
+        // nothing left is a single space.
         expect(row.className, at).toContain(PALETTE[toned[i]]);
         expect(row.textContent, at).toBe(line.slice(indent) || " ");
         expect(row.style.paddingLeft, at).toBe(indent ? `${indent}ch` : "");
@@ -390,7 +395,11 @@ describe("the clone pane", () => {
         // A regenerated chain is marked whole; a re-encode marks only the
         // release that carries the correction.
         const note =
-          id === "rewitness" ? " re-witnessed" : i >= 2 ? " the correction" : "";
+          id === "rewitness"
+            ? " re-witnessed"
+            : i >= 2
+              ? " the correction"
+              : "";
         expect(
           screen.getByText(`${stem}${note}`),
           `${id} release ${i}`,
@@ -448,6 +457,108 @@ describe("the clone pane", () => {
         ),
         id,
       ).toBeInTheDocument();
+    }
+  });
+
+  // The two tests above find rows by their text, so a pane that printed the
+  // right rows in the wrong order, or printed a changed row in the ordinary
+  // colour, passed them both. The clone pane is the one presentation code on
+  // the page with no transcript behind it, so this holds every row of every
+  // clone, in order, to its text, its indent and the class its mark names,
+  // and holds the marks to the one thing each clone differs in. The listing
+  // is written out here as the reader should see it, a marked row starred.
+  it("renders every clone row in order, in its indent and the class its mark names", () => {
+    const CHANGED = "var(--color-code-keyword)";
+    const PLAIN = "var(--color-code-text)";
+    const DIM = "var(--color-code-comment)";
+
+    const listing = (id: AttackId): string[] => {
+      const stems = CLONES[id].manifests.map((name) =>
+        name.replace(/\.json$/, ""),
+      );
+      const corrected = id === "rewrite" || id === "reencode";
+      const releases = stems.flatMap((stem, i) => {
+        const note =
+          id === "rewitness"
+            ? "  re-witnessed"
+            : i >= 2
+              ? "  the correction"
+              : "";
+        const star = note ? "*" : "";
+        return [
+          `${star}  ${stem}${note}`,
+          `${star}    .json .producer.sig`,
+          `${star}    .alpha.tsr .beta.tsr`,
+        ];
+      });
+      return [
+        "rules/",
+        corrected
+          ? "*  tax/rate.yaml          value: 0.17"
+          : "  tax/rate.yaml          value: 0.15",
+        "  tax/rate.test.yaml",
+        "  benefit/amount.yaml",
+        ".axiom/",
+        "  toolchain.toml         attested, not content",
+        "receipt/",
+        "  corpus-journal.jsonl   append-only, witnessed",
+        id === "dropgate"
+          ? "*    rulespec/compile     never declared"
+          : "    rulespec/compile     outcome: pass",
+        "  immutable-prefix.json  sealed at genesis",
+        "releases/manifests/",
+        ...releases,
+        "releases/anchors/",
+        id === "swapkey"
+          ? "*  producer-ed25519.pub   substituted key"
+          : "  producer-ed25519.pub",
+        "  alpha-root.pem",
+        "  beta-root.pem",
+      ];
+    };
+    // The auditor's block (a heading and four pins) follows a blank row;
+    // every line of it is dim.
+    const auditorRows = 5;
+
+    const { container } = render(<VerifyDemo />);
+
+    for (const { id, label } of ATTACKS) {
+      attack(label);
+      const expected = listing(id);
+      const rendered = Array.from(
+        container.querySelectorAll("pre")[0].children,
+      ) as HTMLElement[];
+      expect(rendered, id).toHaveLength(expected.length + 1 + auditorRows);
+
+      expected.forEach((entry, i) => {
+        const marked = entry.startsWith("*");
+        const line = marked ? entry.slice(1) : entry;
+        const indent = line.length - line.trimStart().length;
+        const at = `${id} row ${i + 1}: ${JSON.stringify(line)}`;
+        const row = rendered[i];
+        expect(row.textContent, at).toBe(line.slice(indent));
+        expect(row.style.paddingLeft, at).toBe(indent ? `${indent}ch` : "");
+        expect(row.className, at).toContain(marked ? CHANGED : PLAIN);
+        if (!marked) expect(row.className, at).not.toContain(CHANGED);
+      });
+
+      // A clone differs in one thing, or in nothing: the marks say which.
+      const marks = expected.filter((entry) => entry.startsWith("*")).length;
+      expect(marks, `${id} marked rows`).toBe(
+        id === "pristine"
+          ? 0
+          : id === "rewitness"
+            ? 6
+            : id === "reencode"
+              ? 4
+              : 1,
+      );
+
+      const blank = rendered[expected.length];
+      expect(blank.textContent, `${id} separator`).toBe(" ");
+      rendered.slice(expected.length + 1).forEach((row, i) => {
+        expect(row.className, `${id} auditor row ${i + 1}`).toContain(DIM);
+      });
     }
   });
 

@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { VerifyDemo, tones } from "./verify-demo";
-import { RECEIPT_VERSION, TRANSCRIPTS } from "./verify-transcripts";
+import {
+  CLONES,
+  CORPUS,
+  RECEIPT_VERSION,
+  TRANSCRIPTS,
+  type AttackId,
+} from "./verify-transcripts";
 
 // These assert the *shape* of receipt's verdict, never a digest or an OID:
 // the transcripts are regenerated against each release and every commit,
@@ -19,6 +25,18 @@ const attack = (name: string) =>
 
 const pin = (action: string) =>
   fireEvent.click(screen.getByRole("button", { name: action }));
+
+// The attack buttons, in the order the demo offers them. Every id here indexes
+// TRANSCRIPTS and CLONES, so a renamed scenario fails to compile rather than
+// silently dropping out of the loops below.
+const ATTACKS: { id: AttackId; label: string }[] = [
+  { id: "pristine", label: "pristine clone" },
+  { id: "rewrite", label: "hand-edit the fix" },
+  { id: "reencode", label: "re-encode the fix" },
+  { id: "swapkey", label: "swap the signing key" },
+  { id: "rewitness", label: "regenerate everything" },
+  { id: "dropgate", label: "drop a gate declaration" },
+];
 
 describe("receipt verify demo", () => {
   it("opens on the passing clone, with 0.6.0's header and verdict", () => {
@@ -329,5 +347,101 @@ describe("the transcript colouring", () => {
     paneMatches(TRANSCRIPTS.pristine.none, "pristine.none");
     attack("swap the signing key");
     paneMatches(TRANSCRIPTS.swapkey.none, "swapkey.none");
+  });
+});
+
+// The clone pane is the one pane the demo writes rather than replays, so it is
+// the one place the page could drift from the corpus the transcripts are of.
+// These hold it to CLONES and CORPUS, and cross-check it against the run
+// printed beside it.
+describe("the clone pane", () => {
+  it("lists each clone's real releases, ending at the head its run names", () => {
+    render(<VerifyDemo />);
+
+    for (const { id, label } of ATTACKS) {
+      attack(label);
+
+      const { manifests } = CLONES[id];
+      expect(manifests.length, id).toBeGreaterThan(0);
+      manifests.forEach((name, i) => {
+        const stem = name.replace(/\.json$/, "");
+        // A regenerated chain is marked whole; a re-encode marks only the
+        // release that carries the correction.
+        const note =
+          id === "rewitness" ? " re-witnessed" : i >= 2 ? " the correction" : "";
+        expect(
+          screen.getByText(`${stem}${note}`),
+          `${id} release ${i}`,
+        ).toBeInTheDocument();
+      });
+
+      const head = TRANSCRIPTS[id].none.text.match(
+        /HEAD (\d{4}-[0-9a-f]+\.json)/,
+      );
+      if (head) {
+        expect(head[1], `${id} head`).toBe(manifests[manifests.length - 1]);
+      } else {
+        // swapkey is the one clone whose custody pass refuses before it can
+        // report a head, so its run names none to cross-check against.
+        expect(id).toBe("swapkey");
+        expect(TRANSCRIPTS[id].none.text).toMatch(/\[FAIL\] custody/);
+      }
+    }
+  });
+
+  it("marks exactly what each clone differs in", () => {
+    render(<VerifyDemo />);
+
+    for (const { id, label } of ATTACKS) {
+      attack(label);
+
+      // The correction is the same two bytes either way; only how it arrived
+      // differs, which is the whole point of the pair.
+      const corrected = id === "rewrite" || id === "reencode";
+      expect(
+        screen.getByText(`tax/rate.yaml value: ${corrected ? "0.17" : "0.15"}`),
+        id,
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          `tax/rate.yaml value: ${corrected ? "0.15" : "0.17"}`,
+        ),
+        id,
+      ).not.toBeInTheDocument();
+
+      expect(
+        screen.getByText(
+          id === "swapkey"
+            ? "producer-ed25519.pub substituted key"
+            : "producer-ed25519.pub",
+        ),
+        id,
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByText(
+          id === "dropgate"
+            ? "rulespec/compile never declared"
+            : "rulespec/compile outcome: pass",
+        ),
+        id,
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("prints the auditor's pins out of the corpus the runs are of", () => {
+    render(<VerifyDemo />);
+
+    expect(
+      screen.getByText("the auditor's own repo — out of the producer's reach"),
+    ).toBeInTheDocument();
+    // Abbreviated, but abbreviated from the real anchors: a key or a spec the
+    // page invented would not match the corpus the transcripts were run over.
+    expect(
+      screen.getByText(`producer SPKI ${CORPUS.producerSpki.slice(0, 16)}…`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`sha256 ${CORPUS.specSha256.slice(0, 16)}…`),
+    ).toBeInTheDocument();
   });
 });

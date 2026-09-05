@@ -337,10 +337,21 @@ describe("the transcript colouring", () => {
       const rendered = Array.from(container.querySelectorAll("pre")[1].children);
       expect(rendered, where).toHaveLength(lines.length + 2);
       lines.forEach((line, i) => {
-        expect(
-          rendered[i + 2].className,
-          `${where} line ${i + 1}: ${JSON.stringify(line)}`,
-        ).toContain(PALETTE[toned[i]]);
+        const at = `${where} line ${i + 1}: ${JSON.stringify(line)}`;
+        const row = rendered[i + 2] as HTMLElement;
+        const indent = line.length - line.trimStart().length;
+        // All three together, or none of them is worth checking: the tones are
+        // computed from the same array the pane renders and applied by index,
+        // so a pane that printed receipt's lines in an order receipt never
+        // printed would carry every class to the same row. What pins the class
+        // to the line the reader sees is the rest of the row — its text and
+        // its indent. ConsoleLine renders the line trimmed of its indent and
+        // hangs that indent on padding instead, so receipt's columns (markers
+        // at two spaces, their detail lines at nine) live in the style rather
+        // than in the text, and a line with nothing left is a single space.
+        expect(row.className, at).toContain(PALETTE[toned[i]]);
+        expect(row.textContent, at).toBe(line.slice(indent) || " ");
+        expect(row.style.paddingLeft, at).toBe(indent ? `${indent}ch` : "");
       });
     };
 

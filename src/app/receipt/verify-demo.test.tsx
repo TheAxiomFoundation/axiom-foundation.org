@@ -24,11 +24,14 @@ import {
 const attack = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
 
-// A row's classes as whole tokens. The colour checks below look for the whole
-// text-colour token, not the variable inside it: a class that carried the same
-// variable into a border or a background would pass a substring check and
-// colour nothing the reader reads.
-const classes = (row: Element): string[] => row.className.split(/\s+/);
+// A row's classes as the tokens the browser sees. The colour checks below
+// look for the whole text-colour token, not the variable inside it: a class
+// that carried the same variable into a border or a background would pass a
+// substring check and colour nothing the reader reads. The tokens come from
+// classList, which splits on ASCII whitespace the way the stylesheet does;
+// splitting className on JavaScript whitespace would also split on a
+// non-breaking space, and a token with one glued on matches no selector.
+const classes = (row: Element): string[] => Array.from(row.classList);
 
 const pin = (action: string) =>
   fireEvent.click(screen.getByRole("button", { name: action }));

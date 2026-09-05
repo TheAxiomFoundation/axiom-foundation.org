@@ -49,7 +49,7 @@ const planned = [
   {
     title: "Admission and publication",
     description:
-      "Apply admission policy, sign accepted artifacts, and select what is published.",
+      "Record and sign admission decisions, then select the builds to publish.",
   },
 ];
 

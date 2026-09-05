@@ -8,6 +8,7 @@ import {
   RECEIPT_VERSION,
   TRANSCRIPTS,
   type AttackId,
+  type Pin,
 } from "./verify-transcripts";
 
 // These assert the *shape* of receipt's verdict, never a digest or an OID:
@@ -443,5 +444,68 @@ describe("the clone pane", () => {
     expect(
       screen.getByText(`sha256 ${CORPUS.specSha256.slice(0, 16)}…`),
     ).toBeInTheDocument();
+  });
+});
+
+// Six attacks by three levels of pinning is eighteen reachable states, and the
+// PR's own argument — that history refuses before custody can — lives in the
+// states an attack reaches only after the auditor pins. This walks all of them.
+describe("the auditor's pins", () => {
+  const STEPS: { id: Pin; action: string }[] = [
+    { id: "none", action: "add --base-ref from the auditor's records" },
+    { id: "baseRef", action: "pin --expect-commit as well" },
+    { id: "pinned", action: "clear the auditor's pins" },
+  ];
+
+  it("runs every attack at every level of pinning, to its own exit and stream", () => {
+    render(<VerifyDemo />);
+    let walked = 0;
+
+    for (const { id, label } of ATTACKS) {
+      attack(label);
+
+      for (const step of STEPS) {
+        const where = `${id}.${step.id}`;
+        const run = TRANSCRIPTS[id][step.id];
+
+        expect(screen.getByText(`$ ${run.command}`), where).toBeInTheDocument();
+        expect(
+          screen.getByText(run.text.split("\n")[0]),
+          where,
+        ).toBeInTheDocument();
+        // receipt writes a passing verdict to stdout and a refusal to stderr;
+        // the caption says which happened, so it has to say the captured one.
+        expect(
+          screen.getByText(
+            new RegExp(
+              `^exit ${run.exitCode} .*this one went to ${run.stream}$`,
+            ),
+          ),
+          where,
+        ).toBeInTheDocument();
+
+        if (step.id === "pinned") {
+          expect(run.command, where).toContain("--expect-commit");
+          expect(run.command, where).toContain("--base-ref");
+        }
+
+        walked += 1;
+        fireEvent.click(screen.getByRole("button", { name: step.action }));
+      }
+
+      // Clearing is the only way out of the fully pinned state, and it lands
+      // back on first contact rather than on some fourth state.
+      expect(
+        screen.getByText(TRANSCRIPTS[id].none.text.split("\n")[0]),
+        `${id} cleared`,
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: STEPS[0].action }),
+      ).toBeInTheDocument();
+    }
+
+    // A state the loop skipped is a state nothing above checked.
+    expect(walked).toBe(ATTACKS.length * STEPS.length);
+    expect(walked).toBe(18);
   });
 });

@@ -143,7 +143,7 @@ const AUDITOR: Line[] = [
 ];
 
 /** Colour one transcript by the line shapes receipt itself prints. */
-function tones(lines: string[]): Tone[] {
+export function tones(lines: string[]): Tone[] {
   let marker: "ok" | "fail" | null = null;
   let block: "failed" | "proves" | null = null;
 

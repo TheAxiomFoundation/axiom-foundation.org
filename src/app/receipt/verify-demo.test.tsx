@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { VerifyDemo } from "./verify-demo";
+import { VerifyDemo, tones } from "./verify-demo";
 import { RECEIPT_VERSION, TRANSCRIPTS } from "./verify-transcripts";
 
 // These assert the *shape* of receipt's verdict, never a digest or an OID:
@@ -175,5 +175,159 @@ describe("receipt verify demo", () => {
 
     expect(command.startsWith("receipt verify ")).toBe(true);
     expect(screen.getByText(`$ ${command}`)).toBeInTheDocument();
+  });
+});
+
+// Every state the demo can reach, so a regenerated transcript is held to the
+// same rules the shipped one is.
+const RUNS = Object.entries(TRANSCRIPTS).flatMap(([attackId, pins]) =>
+  Object.entries(pins).map(([pinId, run]) => ({
+    where: `${attackId}.${pinId}`,
+    run,
+  })),
+);
+
+describe("the transcript colouring", () => {
+  // tones() is the only thing on this page that decides what a reader sees
+  // as a refusal, and it decides it from receipt's own line shapes. This
+  // classifies every line of every captured run rather than a sample: a
+  // release that reshapes a marker, a detail line or the verdict block fails
+  // here instead of quietly recolouring the page.
+  it("tones every line of every captured transcript by its shape", () => {
+    expect(RUNS).toHaveLength(18);
+
+    const seen = {
+      header: 0,
+      headerBody: 0,
+      refusal: 0,
+      okMarker: 0,
+      failMarker: 0,
+      okDetail: 0,
+      failDetail: 0,
+      failedHeading: 0,
+      failedBody: 0,
+      verdictPass: 0,
+      verdictFail: 0,
+      provesTail: 0,
+      heading: 0,
+    };
+
+    for (const { where, run } of RUNS) {
+      const lines = run.text.split("\n");
+      const toned = tones(lines);
+      expect(toned, where).toHaveLength(lines.length);
+
+      let marker: "ok" | "fail" | null = null;
+      let block: "failed" | "proves" | null = null;
+
+      lines.forEach((line, i) => {
+        const at = `${where} line ${i + 1}: ${JSON.stringify(line)}`;
+        const tone = toned[i];
+
+        // `receipt 0.6.0 — receipt test corpus`, and the run's own header body.
+        if (/^receipt \d/.test(line)) {
+          expect(tone, at).toBe("plain");
+          seen.header += 1;
+          return;
+        }
+        // Both lines of an argument refusal, before any pass runs.
+        if (/^receipt verify: /.test(line)) {
+          expect(tone, at).toBe("fail");
+          seen.refusal += 1;
+          return;
+        }
+        if (/^ {2}\[ok {2}\] /.test(line)) {
+          expect(tone, at).toBe("ok");
+          marker = "ok";
+          seen.okMarker += 1;
+          return;
+        }
+        if (/^ {2}\[FAIL\] /.test(line)) {
+          expect(tone, at).toBe("fail");
+          marker = "fail";
+          seen.failMarker += 1;
+          return;
+        }
+        // A pass's detail line takes the colour of the marker above it, so
+        // `not reached` reads as part of the refusal it follows.
+        if (/^ {9}/.test(line)) {
+          expect(marker, at).not.toBeNull();
+          expect(tone, at).toBe(marker === "fail" ? "fail" : "dim");
+          if (marker === "fail") seen.failDetail += 1;
+          else seen.okDetail += 1;
+          return;
+        }
+        if (/^FAILED: /.test(line)) {
+          expect(tone, at).toBe("fail");
+          block = "failed";
+          seen.failedHeading += 1;
+          return;
+        }
+        if (/^VERDICT: FAIL/.test(line)) {
+          expect(tone, at).toBe("fail");
+          seen.verdictFail += 1;
+          return;
+        }
+        if (/^VERDICT: PASS/.test(line)) {
+          expect(tone, at).toBe("plain");
+          block = "proves";
+          seen.verdictPass += 1;
+          return;
+        }
+        // Indented prose: the repeated refusal under FAILED: is amber, the
+        // "what this proves" tail after a passing verdict is not.
+        if (/^ {2}/.test(line)) {
+          expect(tone, at).toBe(block === "failed" ? "fail" : "dim");
+          if (block === "failed") seen.failedBody += 1;
+          else if (block === "proves") seen.provesTail += 1;
+          else seen.headerBody += 1;
+          return;
+        }
+        // ESTABLISHED OFFLINE…, PASSES, DECLARED IN THE WITNESSED JOURNAL…
+        expect(tone, at).toBe("plain");
+        seen.heading += 1;
+      });
+    }
+
+    // A rule no captured line reached is a rule this test did not check.
+    for (const [shape, count] of Object.entries(seen)) {
+      expect(count, `no captured line had the shape "${shape}"`).toBeGreaterThan(
+        0,
+      );
+    }
+  });
+
+  // ConsoleLine feeds a tone into nothing but a className, so the loop above
+  // only matters if the class it produces is the one the reader sees. The
+  // panes render over the site's dark code block, where the page's ink scale
+  // is invisible, so the tones have to come from the code palette.
+  it("renders each transcript line in the class its tone names", () => {
+    const PALETTE: Record<string, string> = {
+      plain: "var(--color-code-text)",
+      ok: "var(--color-code-text)",
+      dim: "var(--color-code-comment)",
+      fail: "var(--color-code-keyword)",
+    };
+
+    const { container } = render(<VerifyDemo />);
+
+    const paneMatches = (run: { text: string }, where: string) => {
+      const lines = run.text.split("\n");
+      const toned = tones(lines);
+      // The verdict pane, after the invocation and the blank line above it.
+      const rendered = Array.from(container.querySelectorAll("pre")[1].children);
+      expect(rendered, where).toHaveLength(lines.length + 2);
+      lines.forEach((line, i) => {
+        expect(
+          rendered[i + 2].className,
+          `${where} line ${i + 1}: ${JSON.stringify(line)}`,
+        ).toContain(PALETTE[toned[i]]);
+      });
+    };
+
+    // A passing run carries every tone but `fail`; the refusal carries it.
+    paneMatches(TRANSCRIPTS.pristine.none, "pristine.none");
+    attack("swap the signing key");
+    paneMatches(TRANSCRIPTS.swapkey.none, "swapkey.none");
   });
 });

@@ -73,7 +73,7 @@ describe("receipt verify demo", () => {
     expect(screen.getByText(/\[ok +\] history/)).toBeInTheDocument();
   });
 
-  it("stops at the first failing pass, marking the rest not reached", () => {
+  it("stops at the first failing pass, marking the next not reached and omitting the rest", () => {
     render(<VerifyDemo />);
     attack("swap the signing key");
 
@@ -217,7 +217,6 @@ describe("the transcript colouring", () => {
 
     const seen = {
       header: 0,
-      headerBody: 0,
       refusal: 0,
       okMarker: 0,
       failMarker: 0,
@@ -227,7 +226,8 @@ describe("the transcript colouring", () => {
       failedBody: 0,
       verdictPass: 0,
       verdictFail: 0,
-      provesTail: 0,
+      dimIndented: 0,
+      blank: 0,
       heading: 0,
     };
 
@@ -237,13 +237,15 @@ describe("the transcript colouring", () => {
       expect(toned, where).toHaveLength(lines.length);
 
       let marker: "ok" | "fail" | null = null;
-      let block: "failed" | "proves" | null = null;
+      let block: "failed" | null = null;
 
       lines.forEach((line, i) => {
         const at = `${where} line ${i + 1}: ${JSON.stringify(line)}`;
         const tone = toned[i];
 
-        // `receipt 0.6.0 — receipt test corpus`, and the run's own header body.
+        // `receipt 0.6.0 — receipt test corpus`. The run's own header body is
+        // indented, so it falls to the `/^ {2}/` rule, the ninth and last of
+        // the shape rules, eight branches below this one.
         if (/^receipt \d/.test(line)) {
           expect(tone, at).toBe("plain");
           seen.header += 1;
@@ -289,17 +291,25 @@ describe("the transcript colouring", () => {
         }
         if (/^VERDICT: PASS/.test(line)) {
           expect(tone, at).toBe("plain");
-          block = "proves";
           seen.verdictPass += 1;
           return;
         }
-        // Indented prose: the repeated refusal under FAILED: is amber, the
-        // "what this proves" tail after a passing verdict is not.
+        // Indented prose: FAILED: is the one block that recolours it, so the
+        // run's own header body and the "what this proves" tail after a passing
+        // verdict are the same dim — one rule, one bucket.
         if (/^ {2}/.test(line)) {
           expect(tone, at).toBe(block === "failed" ? "fail" : "dim");
           if (block === "failed") seen.failedBody += 1;
-          else if (block === "proves") seen.provesTail += 1;
-          else seen.headerBody += 1;
+          else seen.dimIndented += 1;
+          return;
+        }
+        // A blank line matches no shape and falls through to the same default
+        // the headings take. Counting them apart is what leaves the heading
+        // bucket a real check: blank lines outnumber the headings two to one,
+        // so together they would satisfy it with every heading gone.
+        if (line.trim() === "") {
+          expect(tone, at).toBe("plain");
+          seen.blank += 1;
           return;
         }
         // ESTABLISHED OFFLINE…, PASSES, DECLARED IN THE WITNESSED JOURNAL…
@@ -407,8 +417,8 @@ describe("the clone pane", () => {
     for (const { id, label } of ATTACKS) {
       attack(label);
 
-      // The correction is the same two bytes either way; only how it arrived
-      // differs, which is the whole point of the pair.
+      // The correction is the same one byte either way — 0.15 to 0.17 — and
+      // only how it arrived differs, which is the whole point of the pair.
       const corrected = id === "rewrite" || id === "reencode";
       expect(
         screen.getByText(`tax/rate.yaml value: ${corrected ? "0.17" : "0.15"}`),
@@ -475,9 +485,25 @@ describe("the auditor's pins", () => {
     for (const { id, label } of ATTACKS) {
       attack(label);
 
+      // PLACEMENT in generate.py maps capture files to (attack, pin) by hand
+      // and deliberately out of numeric order, so a transposition is an easy
+      // edit — and every other assertion below reads the transcript the
+      // placement chose, so it would follow the swap. All three runs of an
+      // attack are runs over that attack's own clone and so name the same
+      // --root; taking it from the `none` command — which the tests above hold
+      // to this attack, the clone pane by cross-checking its HEAD against
+      // CLONES and each scenario by its own verdict — anchors the other two.
+      // The `--base-ref` refusals need it most: all six are word for word
+      // identical in text, exit code and stream, and for five of the six the
+      // --root is the only token in the invocation that differs.
+      const root = TRANSCRIPTS[id].none.command.match(/--root (\S+) /)?.[1];
+      expect(root, `${id} root`).toBeTruthy();
+
       for (const step of STEPS) {
         const where = `${id}.${step.id}`;
         const run = TRANSCRIPTS[id][step.id];
+
+        expect(run.command, where).toContain(`--root ${root} `);
 
         expect(screen.getByText(`$ ${run.command}`), where).toBeInTheDocument();
         expect(
@@ -496,15 +522,21 @@ describe("the auditor's pins", () => {
         ).toBeInTheDocument();
 
         if (step.id === "pinned") {
-          expect(run.command, where).toContain("--expect-commit");
           expect(run.command, where).toContain("--base-ref");
+          // A pinned run also carries the commit it was pinned to, and that is
+          // this clone's own — a second anchor against the same transposition,
+          // read off CLONES rather than off the transcript.
+          expect(run.command, where).toContain(
+            `--expect-commit ${CLONES[id].commit}`,
+          );
         }
 
         walked += 1;
         fireEvent.click(screen.getByRole("button", { name: step.action }));
       }
 
-      // Clearing is the only way out of the fully pinned state, and it lands
+      // Clearing is the only way out of the fully pinned state without
+      // changing attack — picking another resets the pins too — and it lands
       // back on first contact rather than on some fourth state.
       expect(
         screen.getByText(TRANSCRIPTS[id].none.text.split("\n")[0]),

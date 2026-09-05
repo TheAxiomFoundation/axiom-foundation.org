@@ -1,10 +1,13 @@
 """Drive `receipt verify` over every scenario the /receipt demo offers.
 
 Builds the receipt package's own two-authority signed corpus fixture
-(`tests/corpus_fixture.py` in the receipt repository at the tag under test),
-mutates a private clone of it per scenario, and captures stdout, stderr and the
-exit code of each `receipt verify` run. Nothing the demo prints is written by
-hand; it all comes from here.
+(`tests/corpus_fixture.py` in the receipt repository at the tag under test).
+Four scenarios mutate a private clone of it — a hand edit, a re-encode, a
+substituted signing key, a wholesale regeneration; pristine is that clone left
+alone; and the undeclared-gate corpus is not a clone at all but a second corpus
+published from its own genesis under the same producer key and the same two
+authorities. It captures stdout, stderr and the exit code of each `receipt
+verify` run. Nothing the demo prints is written by hand; it all comes from here.
 
 Two things a naive driver gets wrong, and this one does not:
 
@@ -107,7 +110,7 @@ def capture(name: str, repo: pathlib.Path, *extra: str) -> str:
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         try:
             code = main(argv)
-        except SystemExit as refusal:  # argparse refuses before the command runs
+        except SystemExit as refusal:  # a refusal that exits rather than returns
             code = refusal.code
     body = (
         # shlex.join, not ' '.join: reproduce.py reads this line back with
@@ -296,7 +299,11 @@ corpus_fixture.build_local_tsa = reuse_authorities(origin_workspace)
 clones: dict[str, object] = {}
 facts: dict[str, object] = {
     "receipt": version("receipt"),
-    "fixture": "TheAxiomFoundation/receipt @ v0.6.0 tests/corpus_fixture.py",
+    # The installed distribution's version, which is the fixture's tag only
+    # because the README's recipe pins both to $version: the fixture directory
+    # itself is a free argument, and this does not go and check it. A literal
+    # here would be worse — it would outlive the release it was written for.
+    "fixture": f"TheAxiomFoundation/receipt @ v{version('receipt')} tests/corpus_fixture.py",
     "genesis_commit": genesis,
     "published_commit": published,
     "published_tree": git(origin_repo, "rev-parse", "HEAD^{tree}"),

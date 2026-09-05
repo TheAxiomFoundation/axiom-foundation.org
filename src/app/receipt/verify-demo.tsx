@@ -145,7 +145,10 @@ const AUDITOR: Line[] = [
 /** Colour one transcript by the line shapes receipt itself prints. */
 export function tones(lines: string[]): Tone[] {
   let marker: "ok" | "fail" | null = null;
-  let block: "failed" | "proves" | null = null;
+  // The only block that recolours the indented prose under it: the header body
+  // before any verdict and the "what this proves" tail after a passing one are
+  // both dim, so a passing verdict leaves this alone.
+  let block: "failed" | null = null;
 
   return lines.map((line) => {
     if (/^receipt \d/.test(line)) return "plain";
@@ -166,10 +169,7 @@ export function tones(lines: string[]): Tone[] {
       return "fail";
     }
     if (/^VERDICT: FAIL/.test(line)) return "fail";
-    if (/^VERDICT: PASS/.test(line)) {
-      block = "proves";
-      return "plain";
-    }
+    if (/^VERDICT: PASS/.test(line)) return "plain";
     if (/^ {2}/.test(line)) return block === "failed" ? "fail" : "dim";
     // ESTABLISHED OFFLINE…, PASSES, DECLARED IN THE WITNESSED JOURNAL…
     return "plain";

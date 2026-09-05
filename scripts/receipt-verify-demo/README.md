@@ -11,18 +11,20 @@ signed corpus.
 ```bash
 version=0.6.0
 
-uv venv /tmp/receipt-venv
+uv venv --clear /tmp/receipt-venv
 uv pip install --python /tmp/receipt-venv/bin/python "receipt==$version"
+rm -rf /tmp/receipt-src
 git clone --depth 1 --branch "v$version" \
   https://github.com/TheAxiomFoundation/receipt /tmp/receipt-src
 
-rm -rf /tmp/receipt-demo && mkdir -p /tmp/receipt-demo captures
+rm -rf /tmp/receipt-demo /tmp/receipt-captures
+mkdir -p /tmp/receipt-demo /tmp/receipt-captures
 /tmp/receipt-venv/bin/python scripts/receipt-verify-demo/capture.py \
-  "$PWD/captures" /tmp/receipt-demo /tmp/receipt-src/tests
+  /tmp/receipt-captures /tmp/receipt-demo /tmp/receipt-src/tests
 /tmp/receipt-venv/bin/python scripts/receipt-verify-demo/reproduce.py \
-  "$PWD/captures" /tmp/receipt-venv/bin/receipt
+  /tmp/receipt-captures /tmp/receipt-venv/bin/receipt
 /tmp/receipt-venv/bin/python scripts/receipt-verify-demo/generate.py \
-  "$PWD/captures" "$PWD/src/app/receipt/verify-transcripts.ts"
+  /tmp/receipt-captures "$PWD/src/app/receipt/verify-transcripts.ts"
 
 bun run test:run
 ```
@@ -39,18 +41,24 @@ inside a fresh git repository.
   corpus published from its own genesis under the same producer key and the same
   two authorities that never declares a required gate. It runs `receipt verify`
   over each at three levels of auditor pinning: nothing, `--base-ref` alone, and
-  `--base-ref` with `--expect-commit`, and writes one capture file per run — 21
-  in all, the count `reproduce.py` requires.
+  `--base-ref` with `--expect-commit`, and writes one capture file per run. Six
+  scenarios at three levels is eighteen runs, the ones the demo shows; it
+  captures three more of the pristine clone that it does not —
+  `04-pristine-spec-pinned` (`--expect-spec-sha256`), `05-pristine-fully-pinned`
+  (spec, commit and tree pinned, with `--verify-objects`) and `06-pristine-json`
+  (`--json`) — for 21 in all, the count `reproduce.py` requires.
 - **`reproduce.py`** re-runs every captured invocation through the installed
   `receipt` console script in a real subprocess and requires byte-identical
-  stdout, stderr and exit code. `capture.py` runs the CLI in-process so that an
-  argparse refusal is catchable; this proves the demo may print the command as
-  `receipt verify …`.
+  stdout, stderr and exit code. `capture.py` runs the CLI in-process, where a
+  refusal that exits rather than returns is still caught and recorded; this
+  proves the demo may print the command as `receipt verify …`.
 - **`generate.py`** emits the TypeScript module, each transcript as a template
   literal holding the stream's exact text.
 
-The capture files themselves are working evidence, not source: keep them out of
-the repository and quote them in the pull request instead.
+The capture files themselves are working evidence, not source. The recipe above
+writes them under `/tmp` for that reason; quote them in the pull request rather
+than committing them. A root `captures/` is gitignored as well, so pointing the
+scripts at the working tree still cannot leave them staged.
 
 ## When the output shape changes
 

@@ -1,9 +1,10 @@
 """Re-prove every capture through the installed `receipt` console script.
 
-capture.py captures in-process (so an argparse SystemExit is catchable). The demo
-prints the command as `receipt verify ...`, which is only honest if the console
-script in a real subprocess writes the same bytes. This runs every captured
-invocation that way and diffs stdout, stderr and the exit code.
+capture.py drives the CLI in process, where a refusal that exits rather than
+returns is still caught and recorded. The demo prints the command as `receipt
+verify ...`, which is only honest if the console script in a real subprocess
+writes the same bytes. This runs every captured invocation that way and diffs
+stdout, stderr and the exit code.
 
 The pull request's argument for the demo rests on the mismatch count this
 prints, so a run that checked nothing must not be mistakable for a run that
@@ -15,13 +16,28 @@ from __future__ import annotations
 import os
 import pathlib
 import shlex
+import shutil
 import subprocess
 import sys
 
+if len(sys.argv) < 3:
+    raise SystemExit(
+        "usage: reproduce.py <captures-dir> <installed receipt console script>\n"
+        "README.md's recipe builds one at /tmp/receipt-venv/bin/receipt."
+    )
+
 CAPTURES = pathlib.Path(sys.argv[1]).resolve()
-RECEIPT = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "/tmp/receipt060/bin/receipt")
-# capture.py writes one file per run: 01-21, six scenarios plus the per-scenario
-# `--base-ref` refusals. Raise this alongside any scenario added there.
+# shutil.which, not a bare path check: it accepts the README's absolute path and
+# a name on PATH alike, and it refuses a file that is not executable — which is
+# the failure this guard exists to name rather than leave to subprocess.
+RECEIPT = shutil.which(sys.argv[2])
+if RECEIPT is None:
+    raise SystemExit(f"no executable receipt console script at {sys.argv[2]}")
+
+# capture.py writes one file per run, 01-21: the eighteen the demo shows — six
+# scenarios at three levels of auditor pinning — plus three runs of the pristine
+# clone it does not show, `04-pristine-spec-pinned`, `05-pristine-fully-pinned`
+# and `06-pristine-json`. Raise this alongside any run added there.
 EXPECTED = 21
 
 failures = 0
@@ -37,7 +53,7 @@ for capture in sorted(CAPTURES.glob("*.txt")):
     environment = os.environ.copy()
     environment["PYTHONIOENCODING"] = "utf-8"
     done = subprocess.run(
-        [str(RECEIPT), *argv[3:]], capture_output=True, text=True, env=environment
+        [RECEIPT, *argv[3:]], capture_output=True, text=True, env=environment
     )
     problems = []
     if done.returncode != int(code):

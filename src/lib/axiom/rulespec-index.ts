@@ -62,10 +62,15 @@ export async function fetchIndexedRuleSpecCandidates(
     if (error) return null;
 
     if (!data || data.length === 0) {
-      // Distinguish "no match" from "index not populated yet".
-      const { count, error: countError } = await supabaseEncodings
-        .from("rulespec_files")
-        .select("citation_path", { count: "exact", head: true });
+      // Distinguish "no match" from "index not populated yet" — asked of
+      // the rows this reader may actually return, so an index holding
+      // nothing but gated rows still reads as unpopulated and the caller
+      // falls back rather than answering an authoritative empty.
+      const { count, error: countError } = await excludeGatedRows(
+        supabaseEncodings
+          .from("rulespec_files")
+          .select("citation_path", { count: "exact", head: true })
+      );
       if (countError || !count) return null;
       return [];
     }

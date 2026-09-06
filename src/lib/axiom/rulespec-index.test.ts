@@ -107,12 +107,20 @@ describe("fetchIndexedRuleSpecCandidates", () => {
 
   it("distinguishes an unpopulated index (null) from a true no-match ([])", async () => {
     // No matches, but the table has rows → genuine empty result.
+    const probe = fakeBuilder({ count: 42, error: null });
     mockFrom
       .mockReturnValueOnce(fakeBuilder({ data: [], error: null }))
-      .mockReturnValueOnce(fakeBuilder({ count: 42, error: null }));
+      .mockReturnValueOnce(probe);
     expect(
       await fetchIndexedRuleSpecCandidates(["zzz"], new Set(), null)
     ).toEqual([]);
+    // The populated-ness probe counts only rows this reader may return,
+    // so an index holding nothing but gated rows still reads as empty
+    // and the caller falls back instead of answering authoritatively.
+    expect(probe.not.mock.calls).toEqual([
+      ["citation_path", "like", "il/%"],
+      ["citation_path", "like", "il-%"],
+    ]);
 
     // No matches and the table is empty → index not synced yet.
     mockFrom

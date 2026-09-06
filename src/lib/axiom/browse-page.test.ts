@@ -8,7 +8,7 @@ vi.mock("@/lib/axiom/tree-node-loader", () => ({
   loadTreeNodes: loadTreeNodesMock,
 }));
 
-import { getBrowsePageData } from "./browse-page";
+import { browseTitle, getBrowsePageData } from "./browse-page";
 
 describe("getBrowsePageData", () => {
   beforeEach(() => {
@@ -53,5 +53,18 @@ describe("getBrowsePageData", () => {
   it("reports backend failures as unavailable, not nonexistence", async () => {
     loadTreeNodesMock.mockRejectedValue(new Error("db down"));
     expect(await getBrowsePageData(["us"])).toBe("unavailable");
+  });
+});
+
+describe("browseTitle", () => {
+  it("names a jurisdiction from the seed, falling back to the raw slug", () => {
+    // browseTitle reads resolveAxiomPath().jurisdiction?.label, which comes
+    // from JURISDICTIONS_SEED, so a seeded slug is the difference between
+    // "Israel \u00b7 Axiom" and "il \u00b7 Axiom" in the browser tab.
+    expect(browseTitle(["il"])).toBe("Israel");
+    expect(browseTitle(["us-il"])).toBe("Illinois");
+    expect(browseTitle(["il", "statute"])).toBe("Statutes \u00b7 Israel");
+    // An unseeded, unsynthesisable slug still renders, unlabelled.
+    expect(browseTitle(["zz"])).toBe("zz");
   });
 });

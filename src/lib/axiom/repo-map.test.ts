@@ -39,6 +39,18 @@ describe("RULESPEC_COUNTRY_SLUGS", () => {
       );
     }
   });
+
+  it("leaves the gated Israel pilot repo out of the read list", () => {
+    // rulespec-il resolves as a family (landing tile, drift-check
+    // placement) while the pilot is gated app_visibility =
+    // "experimental". discoverRoots() skips gated repos, so a
+    // RULESPEC_REPOS entry would fail scripts/check-rulespec-drift.mjs
+    // ("listed in RULESPEC_REPOS but discovery found no encodings").
+    // Promote it here only once rulespec-il is public and populated.
+    expect(RULESPEC_REPOS).not.toContain("rulespec-il");
+    expect(RULESPEC_COUNTRY_SLUGS).not.toContain("il");
+    expect(getRuleSpecRepoForJurisdiction("il")).toBe("rulespec-il");
+  });
 });
 
 describe("getRuleSpecRepoForJurisdiction", () => {
@@ -61,10 +73,22 @@ describe("getRuleSpecRepoForJurisdiction", () => {
       "be-dg": "rulespec-be",
       ca: "rulespec-ca",
       nz: "rulespec-nz",
+      il: "rulespec-il",
     };
     for (const [slug, repo] of Object.entries(expected)) {
       expect(getRuleSpecRepoForJurisdiction(slug)).toBe(repo);
     }
+  });
+
+  it("keeps Israel (il) and Illinois (us-il) on separate families", () => {
+    // ``il`` is ISO 3166-1 Israel; Illinois is the ``us-il`` state slug.
+    // A prefix mix-up here would route Illinois encodings at rulespec-il.
+    expect(getRuleSpecRepoForJurisdiction("il")).toBe("rulespec-il");
+    expect(getRuleSpecRepoForJurisdiction("us-il")).toBe("rulespec-us");
+    expect(getRuleSpecRepoLocation("us-il")).toEqual({
+      repo: "rulespec-us",
+      prefix: "us-il",
+    });
   });
 
   it("returns null for jurisdictions outside a published repo family", () => {
@@ -92,6 +116,20 @@ describe("getRuleSpecRepoLocation", () => {
       repo: "rulespec-be",
       prefix: "be-bru",
     });
+  });
+
+  it("gives Israel the jurisdiction-dir prefix its monorepo uses", () => {
+    // rulespec-il is scaffolded like rulespec-nz: buckets under ``il/``.
+    expect(getRuleSpecRepoLocation("il")).toEqual({
+      repo: "rulespec-il",
+      prefix: "il",
+    });
+    expect(ruleSpecRepoTreeUrl("il")).toBe(
+      "https://github.com/TheAxiomFoundation/rulespec-il/tree/main/il"
+    );
+    expect(ruleSpecRawFileUrl("il", "statutes/income-tax-ordinance/121.yaml")).toBe(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-il/main/il/statutes/income-tax-ordinance/121.yaml"
+    );
   });
 
   it("returns an empty prefix for root-layout single-jurisdiction repos", () => {

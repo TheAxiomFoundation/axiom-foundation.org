@@ -76,6 +76,17 @@ function repoForJurisdiction(jurisdiction: string): string | null {
   if (jurisdiction === "nz" || jurisdiction.startsWith("nz-")) {
     return "rulespec-nz";
   }
+  // Israel: jurisdiction-dir monorepo (``il/``), same layout as NZ.
+  // Deliberately absent from ``RULESPEC_REPOS`` below while the pilot
+  // repo is gated ``app_visibility = "experimental"`` — discovery skips
+  // gated repos, so listing it there would fail
+  // ``scripts/check-rulespec-drift.mjs``. Mapping the family here is
+  // enough for the landing tile ("pending" until encodings land) and
+  // for the drift check's "discovered jurisdiction has no family" rule
+  // the day the repo goes public.
+  if (jurisdiction === "il" || jurisdiction.startsWith("il-")) {
+    return "rulespec-il";
+  }
   return null;
 }
 

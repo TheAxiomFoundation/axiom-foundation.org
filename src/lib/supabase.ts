@@ -4,7 +4,10 @@ import {
   isAppReadableJurisdiction,
   ruleSpecRawFileUrlForLocation,
 } from '@/lib/axiom/repo-map'
-import { isGatedJurisdiction } from '@/lib/axiom/rulespec/index-visibility'
+import {
+  isGatedCitationPath,
+  isGatedJurisdiction,
+} from '@/lib/axiom/rulespec/index-visibility'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 import { listEncodedFiles } from '@/lib/axiom/rulespec/repo-listing'
 import { ruleSpecReadLocation } from '@/lib/axiom/rulespec/visibility'
@@ -438,6 +441,29 @@ export async function getRuleEncoding(ruleId: string): Promise<RuleEncodingData 
       .single()
     if (error || !data) return null
     rule = data
+  }
+
+  // Registered ``app_visibility`` gate, applied to the resolved rule
+  // identity BEFORE any encoding lookup. ``fetchRuleSpecFromGitHub``
+  // refuses a gated family, but that is the LAST step here: a
+  // populated ``encoding_runs`` row — left behind by a run that
+  // predates the gate, or written by an encoder pointed at the pilot
+  // — returns before the fallback is ever reached, and both id forms
+  // (a corpus provision id whose jurisdiction resolves to a gated
+  // family, and ``github:il/…``) hit that path. ``getSectionEncoding``
+  // already refuses the same provision, so the legacy rail
+  // (``RuleDetailPanel`` → ``useEncoding`` → here) must refuse it too
+  // or the v1 reader serves what the v2 reader will not.
+  //
+  // Both the row's ``jurisdiction`` column and its citation path are
+  // checked: they normally agree, but the column is the corpus row's
+  // own claim and the path is what every downstream candidate is built
+  // from, so a disagreement must fail closed on either.
+  if (
+    isGatedJurisdiction(rule.jurisdiction) ||
+    isGatedCitationPath(rule.citation_path)
+  ) {
+    return null
   }
 
   // Match citation_path to encoding_runs.file_path

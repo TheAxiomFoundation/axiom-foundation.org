@@ -836,6 +836,178 @@ describe('supabase lib', () => {
       expect(fetchMock).not.toHaveBeenCalled()
       vi.unstubAllGlobals()
     })
+
+    // ---- Registered ``app_visibility`` gate, BEFORE the run lookup ----
+    // The test above only proves the GitHub *fallback* refuses a gated
+    // family. That fallback is the last step of ``getRuleEncoding``: a
+    // populated ``encoding_runs`` row returns first, so a row left by a
+    // run that predates the gate (or by an encoder pointed at the pilot
+    // repo) served pilot YAML through the legacy rail while
+    // ``getSectionEncoding`` refused the same provision. These cases
+    // pin the gate at the top, where neither id form can reach the
+    // table.
+
+    /** A populated pilot run row — content, not telemetry. */
+    const ISRAEL_RUN_ROW = {
+      id: 'enc-il',
+      citation: 'il/statute/income-tax-ordinance/section-121',
+      session_id: 'sess-il',
+      file_path: 'statutes/income-tax-ordinance/section-121.yaml',
+      rulespec_content: 'format: rulespec/v1\nmodule:\n  name: il.pilot\n',
+      final_scores: null,
+    }
+
+    /**
+     * ``current_provisions`` + populated ``encoding_runs``, recording
+     * every table the reader actually touched.
+     */
+    function mockPopulatedRun(
+      provision: {
+        citation_path: string | null
+        jurisdiction: string
+      },
+      row: Record<string, unknown> = ISRAEL_RUN_ROW
+    ): string[] {
+      const tables: string[] = []
+      mockFrom.mockImplementation((table: string) => {
+        tables.push(table)
+        if (table === 'current_provisions') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () =>
+                  Promise.resolve({
+                    data: { ...provision, rulespec_path: null, has_rulespec: true },
+                    error: null,
+                  }),
+              }),
+            }),
+          }
+        }
+        return mockEncodingRunsChain({ data: [row], error: null })
+      })
+      return tables
+    }
+
+    it('refuses a populated encoding_runs row for a gated family (corpus provision id)', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      const tables = mockPopulatedRun({
+        citation_path: 'il/statute/income-tax-ordinance/section-121',
+        jurisdiction: 'il',
+      })
+
+      const result = await getRuleEncoding('rule-il')
+
+      expect(result).toBeNull()
+      // Gated BEFORE the lookup — the run table is never queried, so a
+      // bounded window or an RLS slip cannot leak the row either.
+      expect(tables).toEqual(['current_provisions'])
+      expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('refuses a populated encoding_runs row for a gated family (github: id)', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      const tables: string[] = []
+      mockFrom.mockImplementation((table: string) => {
+        tables.push(table)
+        return mockEncodingRunsChain({ data: [ISRAEL_RUN_ROW], error: null })
+      })
+
+      const result = await getRuleEncoding(
+        'github:il/statute/income-tax-ordinance/section-121'
+      )
+
+      expect(result).toBeNull()
+      expect(tables).toEqual([])
+      expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('refuses a gated family sub-jurisdiction synth id', async () => {
+      const tables: string[] = []
+      mockFrom.mockImplementation((table: string) => {
+        tables.push(table)
+        return mockEncodingRunsChain({ data: [ISRAEL_RUN_ROW], error: null })
+      })
+
+      // ``il-tlv`` has no family entry of its own; it inherits the
+      // Israel family's experimental marker.
+      const result = await getRuleEncoding('github:il-tlv/statute/arnona/section-1')
+      expect(result).toBeNull()
+      expect(tables).toEqual([])
+    })
+
+    it('refuses a row whose citation path is gated even when its jurisdiction column is not', async () => {
+      // The column is the corpus row's own claim; the citation path is
+      // what every candidate below is built from. Disagreement fails
+      // closed on either side.
+      const tables = mockPopulatedRun({
+        citation_path: 'il/statute/income-tax-ordinance/section-121',
+        jurisdiction: 'us',
+      })
+
+      expect(await getRuleEncoding('rule-mislabelled')).toBeNull()
+      expect(tables).toEqual(['current_provisions'])
+    })
+
+    it('refuses a row whose jurisdiction column is gated even when its citation path is not', async () => {
+      const tables = mockPopulatedRun({
+        citation_path: 'us/statute/26/1',
+        jurisdiction: 'il',
+      })
+
+      expect(await getRuleEncoding('rule-mislabelled-2')).toBeNull()
+      expect(tables).toEqual(['current_provisions'])
+    })
+
+    it('still serves a populated encoding_runs row for a family the app reads', async () => {
+      // The control for the four refusals above: same harness, same
+      // populated row, ungated family — the gate denies exactly the
+      // registered experimental families and nothing else.
+      const tables = mockPopulatedRun(
+        { citation_path: 'us/statute/26/1', jurisdiction: 'us' },
+        {
+          id: 'enc-us',
+          citation: '26 USC 1',
+          session_id: 'sess-us',
+          file_path: 'statutes/26/1.yaml',
+          rulespec_content: 'format: rulespec/v1\nmodule:\n  name: us.tax\n',
+          final_scores: null,
+        }
+      )
+
+      const result = await getRuleEncoding('rule-us')
+      expect(result?.encoding_run_id).toBe('enc-us')
+      expect(result?.rulespec_content).toContain('us.tax')
+      expect(tables).toEqual(['current_provisions', 'encoding_runs'])
+    })
+
+    it('still serves a populated encoding_runs row for an ungated synth id', async () => {
+      const tables: string[] = []
+      mockFrom.mockImplementation((table: string) => {
+        tables.push(table)
+        return mockEncodingRunsChain({
+          data: [
+            {
+              id: 'enc-us-synth',
+              citation: 'us/statute/26/3101/a',
+              session_id: null,
+              file_path: 'statutes/26/3101/a.yaml',
+              rulespec_content: 'format: rulespec/v1\n',
+              final_scores: null,
+            },
+          ],
+          error: null,
+        })
+      })
+
+      const result = await getRuleEncoding('github:us/statute/26/3101/a')
+      expect(result?.encoding_run_id).toBe('enc-us-synth')
+      expect(tables).toEqual(['encoding_runs'])
+    })
   })
 
   describe('searchRules', () => {

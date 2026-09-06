@@ -135,6 +135,23 @@ function statusFor(count: number | null) {
 }
 
 /**
+ * Tile status for a jurisdiction. A pilot country is pending because
+ * the app *registers* it that way, not because a count came back zero:
+ * its encodings are deliberately unread, so no stats value — a missing
+ * one included — can make it look open.
+ *
+ * Deriving the state from the count alone lost that whenever the stats
+ * RPC failed or timed out. ``getAxiomStats`` resolves ``null`` on
+ * error rather than throwing, and a missing landing count is ``null``,
+ * which ``statusFor`` reads as "loading": Israel then rendered with a
+ * "0 rules total" tooltip instead of the pilot one, and its corpus
+ * card became an enabled link to ``/il``.
+ */
+function statusForCountry(slug: string, count: number | null) {
+  return isPilotCountry(slug) ? ("pending" as const) : statusFor(count);
+}
+
+/**
  * Hero + scoped chips. The national/federal set acts as a tab
  * selector across the top — picking one scopes the chip wall underneath
  * to that jurisdiction family's sub-jurisdictions. Selecting a country
@@ -251,7 +268,7 @@ function FederalTab({
   active: boolean;
   onSelect: () => void;
 }) {
-  const status = statusFor(total ?? item.count);
+  const status = statusForCountry(item.slug, total ?? item.count);
   const isPending = status === "pending";
   const countryLabel = federalCountryLabel(item);
   return (
@@ -300,7 +317,7 @@ function SelectionPanel({
   children: JurisdictionItem[];
   onNavigateHref?: (href: string) => void;
 }) {
-  const status = statusFor(parent.count);
+  const status = statusForCountry(parent.slug, parent.count);
   const isPending = status === "pending";
   const childLabel =
     parent.slug === "us" ? "states & territories" : "sub-jurisdictions";
@@ -357,7 +374,7 @@ function FederalCorpusCard({
   parent: JurisdictionItem;
   onNavigateHref?: (href: string) => void;
 }) {
-  const status = statusFor(parent.count);
+  const status = statusForCountry(parent.slug, parent.count);
   const isPending = status === "pending";
   const href = `/${parent.slug}`;
   const body = (
@@ -420,7 +437,9 @@ function ChipPill({
   item: JurisdictionItem;
   onNavigateHref?: (href: string) => void;
 }) {
-  const isPending = statusFor(item.count) === "pending";
+  // Sub-jurisdiction chips take the same registered gate, so a pilot
+  // family's child slug can never render as an open link either.
+  const isPending = statusForCountry(item.slug, item.count) === "pending";
   const inner = (
     <>
       <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]">

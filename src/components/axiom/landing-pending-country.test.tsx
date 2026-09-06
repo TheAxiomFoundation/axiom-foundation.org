@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
 /**
@@ -13,8 +13,12 @@ import { describe, it, expect, vi } from "vitest";
  * disabled, unlabelled "IL Israel" chip in the anonymous "Other"
  * section, with no pending text and no tooltip.
  */
+const { getAxiomStatsMock } = vi.hoisted(() => ({
+  getAxiomStatsMock: vi.fn(),
+}));
+
 vi.mock("@/lib/supabase", () => ({
-  getAxiomStats: vi.fn(),
+  getAxiomStats: getAxiomStatsMock,
 }));
 
 // The chips use next/link; a plain anchor keeps hrefs in the DOM.
@@ -58,6 +62,32 @@ const PILOT_TOOLTIP =
 function renderLanding() {
   render(<AxiomStats initialStats={US_STATS_NO_ISRAEL} />);
   return within(screen.getByTestId("axiom-stats-pills"));
+}
+
+/** Assert the whole pilot presentation on an already-rendered landing. */
+function expectIsraelPresentedAsPilot(
+  pills: ReturnType<typeof within>
+): void {
+  const israel = pills.getByRole("tab", { name: /Israel/i });
+  expect(israel).toHaveTextContent("pilot · pending");
+  expect(israel).toHaveAttribute("title", PILOT_TOOLTIP);
+
+  fireEvent.click(israel);
+
+  expect(
+    pills.getByText(
+      /Israel is a pilot encoding in progress — nothing is published to the app yet\./
+    )
+  ).toBeInTheDocument();
+  // The country's own corpus card is a disabled div, not a link.
+  const card = pills
+    .getAllByTitle(PILOT_TOOLTIP)
+    .find((el) => el.getAttribute("aria-disabled") === "true");
+  expect(card).toBeDefined();
+  expect(pills.queryByRole("link", { name: /Israel/i })).toBeNull();
+  expect(
+    pills.queryAllByRole("link").map((link) => link.getAttribute("href"))
+  ).not.toContain("/il");
 }
 
 describe("landing presentation for a country outside the read list", () => {
@@ -126,5 +156,43 @@ describe("landing presentation for a country outside the read list", () => {
     expect(pills.getByRole("tab", { name: /Israel/i })).not.toContainElement(
       illinois
     );
+  });
+});
+
+
+/**
+ * The pilot presentation must not depend on landing statistics.
+ * ``getAxiomStats`` resolves ``null`` on an RPC failure (it logs and
+ * returns; it does not throw), and the supported server timeout leaves
+ * the same state — so a country's count is ``null``, which the
+ * count-derived status reads as "loading" rather than "pending". That
+ * turned Israel's tile back into "0 rules total" with an enabled
+ * ``/il`` link exactly when the site was already degraded.
+ */
+describe("landing presentation for a pilot country without stats", () => {
+  it("keeps Israel pending while the stats request is still outstanding", () => {
+    // The supported server timeout: nothing ever resolves.
+    getAxiomStatsMock.mockReturnValue(new Promise(() => {}));
+
+    render(<AxiomStats initialStats={null} />);
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+
+    expectIsraelPresentedAsPilot(pills);
+    // Registration-derived, not a blanket fallback: a public country
+    // with no count is still in its ordinary loading state.
+    expect(
+      pills.getByRole("tab", { name: /United States/i })
+    ).not.toHaveTextContent("pilot");
+  });
+
+  it("keeps Israel pending when the stats RPC comes back empty", async () => {
+    getAxiomStatsMock.mockResolvedValue(null);
+
+    render(<AxiomStats initialStats={null} />);
+    // Flush the resolved RPC so the assertions see the settled tree.
+    await act(async () => {});
+    const pills = within(screen.getByTestId("axiom-stats-pills"));
+
+    expectIsraelPresentedAsPilot(pills);
   });
 });

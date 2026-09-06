@@ -9,7 +9,10 @@ import {
   type Program,
   type ProgramAnchor,
 } from "@/lib/axiom/programs";
-import { gitHubApiHeaders } from "@/lib/axiom/repo-map";
+import {
+  gitHubApiHeaders,
+  ruleSpecRepoAppVisibility,
+} from "@/lib/axiom/repo-map";
 import { parseTreeEntries, type EncodedFile } from "@/lib/axiom/rulespec/repo-listing";
 import {
   parseRuleSpec,
@@ -824,6 +827,13 @@ async function rootsFromRepo(repo: GitHubRepo): Promise<RuleSpecSearchRoot[]> {
   // Archived repos are read-only parked lanes, never app surfaces —
   // same skip the index sync applies (scripts/lib/rulespec-discovery.mjs).
   if (repo.archived) return [];
+  // A repo the app itself registers as gated is skipped without asking
+  // GitHub. ``fetchAppVisibility`` below fails OPEN (a hiccup must not
+  // hide a live country), which is right for repos the map doesn't
+  // know but would leak a registered pilot the one time raw.github is
+  // unreachable. Unregistered repos still discover normally, so a new
+  // country needs no repo-map entry to become searchable.
+  if (ruleSpecRepoAppVisibility(repo.name) === "experimental") return [];
   if ((await fetchAppVisibility(repo)) === "experimental") return [];
   const tree = await githubJson<GitHubTreeResponse>(
     `https://api.github.com/repos/${GITHUB_ORG}/${repo.name}/git/trees/${repo.default_branch}`

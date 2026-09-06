@@ -816,6 +816,26 @@ describe('supabase lib', () => {
       const result = await getRuleEncoding('github:')
       expect(result).toBeNull()
     })
+
+    it('refuses the GitHub fallback for a repo the app must not read', async () => {
+      // rulespec-il is mapped (Israel gets a pending landing tile) but
+      // gated app_visibility = "experimental". The rule-detail rail
+      // must not serve its pilot YAML before promotion, so the
+      // fallback fetcher never leaves the process.
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => 'format: rulespec/v1\n',
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await getRuleEncoding(
+        'github:il/statute/income-tax-ordinance/section-121'
+      )
+      expect(result).toBeNull()
+      expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
   })
 
   describe('searchRules', () => {

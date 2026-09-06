@@ -257,6 +257,42 @@ rules:
     });
   });
 
+  it("never searches a repo the app registers as a gated pilot", async () => {
+    // rulespec-il is public on GitHub and holds an il/ tree, but its
+    // .axiom/registry.toml gates it and repo-map.ts registers that
+    // gate. fetchAppVisibility fails OPEN by design, so the registered
+    // check has to be the one that holds when raw.githubusercontent is
+    // unreachable — otherwise a pilot encoding becomes searchable the
+    // one time GitHub hiccups.
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/orgs/TheAxiomFoundation/repos")) {
+        return jsonResponse([
+          { name: "rulespec-il", default_branch: "main" },
+        ]);
+      }
+      if (url.includes("/.axiom/registry.toml")) {
+        // The fail-open path: the marker cannot be read at all.
+        return Promise.resolve(new Response("nope", { status: 500 }));
+      }
+      if (url.endsWith("/repos/TheAxiomFoundation/rulespec-il/git/trees/main")) {
+        return jsonResponse(tree([{ path: "il", type: "tree" }]));
+      }
+      if (url.includes("/rulespec-il/git/trees/main:il?recursive=1")) {
+        return jsonResponse(
+          tree([{ path: "statutes/income-tax-ordinance/section-121.yaml" }])
+        );
+      }
+      return jsonResponse(tree([]));
+    });
+
+    expect(await searchEncodedRuleSpecs("income tax")).toEqual([]);
+    expect(
+      mockFetch.mock.calls.some(([url]: [string]) =>
+        String(url).includes("rulespec-il/git/trees")
+      )
+    ).toBe(false);
+  });
+
   it("returns empty grouped results for blank queries without hitting backends", async () => {
     const results = await searchAxiom("   ");
 

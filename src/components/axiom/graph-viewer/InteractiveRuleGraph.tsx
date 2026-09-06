@@ -263,6 +263,25 @@ export function InteractiveRuleGraph({
   );
 
   const canExposeInputs = !!onExposeInput;
+  // Which question cards will carry an answer box, a members line or
+  // a default chip — the layout reserves room only for rows that
+  // render. Keyed as a string so the memo only re-lays-out when the
+  // set of rows actually changes, not on every keystroke's new Set.
+  const editCtx = useContext(InputEditContext);
+  const sizeHintsKey = [
+    editCtx.onChange ? Object.keys(editCtx.values).sort().join(",") : "",
+    [...editCtx.answered].sort().join(","),
+    Object.keys(editCtx.memberValues ?? {}).sort().join(","),
+  ].join("|");
+  const sizeHints = useMemo<SizeHints>(
+    () => ({
+      answerable: new Set(editCtx.onChange ? Object.keys(editCtx.values) : []),
+      answered: new Set(editCtx.answered),
+      members: new Set(Object.keys(editCtx.memberValues ?? {})),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sizeHintsKey],
+  );
   const { nodes, edges } = useMemo(
     () =>
       buildGraph(
@@ -275,6 +294,11 @@ export function InteractiveRuleGraph({
         canExposeInputs,
         parameterRules,
         selectedOutputIds,
+        // The canvas's shape steers how far apart the columns sit —
+        // read at build time; the wrap is mounted by the time fonts
+        // are ready (the loading shell shares the ref).
+        stageAspectOf(wrapRef.current),
+        sizeHints,
       ),
     [
       spec,
@@ -287,6 +311,7 @@ export function InteractiveRuleGraph({
       parameterRules,
       selectedOutputIds,
       fontsReady,
+      sizeHints,
     ],
   );
 
@@ -353,12 +378,11 @@ export function InteractiveRuleGraph({
   // pin that lasts while the info card is open.
   const activeHighlightId = highlightNodeId ?? hoverNodeId ?? pinnedNodeId;
 
-  const highlightSet = useMemo(() => {
-    if (!activeHighlightId) return null;
-    const startKind = kindById.get(activeHighlightId);
+  const lineageOf = useCallback((startId: string): Set<string> | null => {
+    const startKind = kindById.get(startId);
     if (!startKind) return null;
 
-    const seen = new Set<string>([activeHighlightId]);
+    const seen = new Set<string>([startId]);
     const walkAll = (start: string, adj: Map<string, string[]>) => {
       const queue = [start];
       while (queue.length > 0) {
@@ -387,22 +411,33 @@ export function InteractiveRuleGraph({
           }
         }
       };
-      walkThrough(activeHighlightId, adjacency.incoming);
-      walkThrough(activeHighlightId, adjacency.outgoing);
+      walkThrough(startId, adjacency.incoming);
+      walkThrough(startId, adjacency.outgoing);
       return seen;
     }
 
     if (startKind === "input") {
       // Inputs flow rightward — descendants are the only meaningful chain.
-      walkAll(activeHighlightId, adjacency.outgoing);
+      walkAll(startId, adjacency.outgoing);
       return seen;
     }
 
     // Outputs and intermediate sub-rules: ancestors only — the chain
     // that contributes to the hovered node.
-    walkAll(activeHighlightId, adjacency.incoming);
+    walkAll(startId, adjacency.incoming);
     return seen;
-  }, [activeHighlightId, adjacency, kindById]);
+  }, [adjacency, kindById]);
+  const highlightSet = useMemo(
+    () => (activeHighlightId ? lineageOf(activeHighlightId) : null),
+    [activeHighlightId, lineageOf],
+  );
+  // The pinned card's lineage is what a click frames: the camera
+  // fits the whole highlighted chain, not just the card, so the
+  // shape of what feeds it (or what it feeds) is on screen at once.
+  const pinnedFrame = useMemo(
+    () => (pinnedNodeId ? lineageOf(pinnedNodeId) : null),
+    [pinnedNodeId, lineageOf],
+  );
 
   // Apply the highlight by tagging each node and edge with a className
   // reflecting whether it's on the lineage. CSS handles the dim/emphasize
@@ -464,9 +499,15 @@ export function InteractiveRuleGraph({
   }, [edges, executedIds]);
 
 
+  // Cards that survive a rebuild glide from where they were to where
+  // the new layout puts them; the wires follow because the positions
+  // React Flow sees are the tweened ones.
+  const { positions: tweened, entering } = useLayoutTween(nodes, wrapRef);
   const displayNodes = useMemo(() => {
     let out = nodes.map((n) => {
       const d = n.data as IrgNodeData;
+      const slid = tweened?.get(n.id);
+      if (slid) n = { ...n, position: slid };
       const legalId =
         "legalId" in d && d.legalId ? d.legalId : ("meta" in d ? d.meta?.legalId : undefined);
       const bucket = legalId?.split(":")[1]?.split("/")[0];
@@ -481,6 +522,7 @@ export function InteractiveRuleGraph({
         // The card whose info panel is open — run mode keeps it lit
         // even when the execution layer would recede it.
         n.id === pinnedNodeId ? "irg-inspected" : "",
+        entering?.has(n.id) ? "irg-entering" : "",
       ]
         .filter(Boolean)
         .join(" ");
@@ -507,7 +549,7 @@ export function InteractiveRuleGraph({
         highlightSet.has(n.id) ? "irg-rf-on-path" : "irg-rf-dimmed"
       }`.trim(),
     }));
-  }, [nodes, highlightSet, executionActive, executedIds, pinnedNodeId]);
+  }, [nodes, tweened, entering, highlightSet, executionActive, executedIds, pinnedNodeId]);
 
   const displayEdges = useMemo(() => {
     let out = edges;
@@ -533,14 +575,15 @@ export function InteractiveRuleGraph({
 
   // Coarse geometry fingerprint — changes whenever a relayout moves
   // nodes, which is what the survey camera needs to chase.
+  // From the target layout, not the sliding positions — a tween's
+  // every frame would otherwise read as a fresh relayout and restart
+  // the camera each time.
   const layoutSig = useMemo(
     () =>
-      displayNodes.length +
+      nodes.length +
       ":" +
-      Math.round(
-        displayNodes.reduce((sum, n) => sum + n.position.x + n.position.y, 0),
-      ),
-    [displayNodes],
+      Math.round(nodes.reduce((sum, n) => sum + n.position.x + n.position.y, 0)),
+    [nodes],
   );
 
   if (!fontsReady) {
@@ -646,7 +689,10 @@ export function InteractiveRuleGraph({
           edgeTypes={EDGE_TYPES}
           elevateEdgesOnSelect={false}
           fitView
-          fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.4 }}
+          // The first view is the whole map. A zoom floor here cut tall
+          // graphs off at the bottom with nothing to say so — a tower of
+          // questions needs ~0.1 to fit a laptop canvas.
+          fitViewOptions={{ padding: 0.08, minZoom: 0.05, maxZoom: 1.4 }}
           minZoom={0.01}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
@@ -736,6 +782,8 @@ export function InteractiveRuleGraph({
             target={flyTo ?? null}
             layoutSig={layoutSig}
             nodes={displayNodes}
+            frame={pinnedFrame}
+            onLens={onLens}
           />
 
           <GraphMiniMap />
@@ -890,10 +938,135 @@ function flightDuration(
   return Math.min(1700, Math.max(600, Math.round(screenDistance * 0.6)));
 }
 
+/** How long a relayout slide takes. The camera glides for the same
+ *  span so both arrive together. */
+const TWEEN_MS = 480;
+/** Below this share of surviving cards the new layout is a different
+ *  scene, not a rearrangement — cut to it instead of sliding a few
+ *  stragglers across a canvas of strangers. */
+const TWEEN_MIN_SURVIVORS = 0.3;
+
+/**
+ * Slide surviving cards from their previous positions to the new
+ * layout's. Returns the in-flight positions (by id) while sliding,
+ * null at rest. Marks the wrap with data-tweening for the duration so
+ * the scene-cut fade stays out of the way and the camera glides.
+ */
+function useLayoutTween(
+  nodes: Node[],
+  wrapRef: React.RefObject<HTMLDivElement | null>,
+): {
+  positions: Map<string, { x: number; y: number }> | null;
+  /** Cards that just joined the canvas — rendered transparent for
+   *  one frame so their opacity transition fades them in. A class and
+   *  a timer, not a CSS animation: a hidden document's animation
+   *  clock never advances, and the cards would stay invisible. */
+  entering: Set<string> | null;
+} {
+  const previous = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const [override, setOverride] = useState<Map<
+    string,
+    { x: number; y: number }
+  > | null>(null);
+  const [entering, setEntering] = useState<Set<string> | null>(null);
+  useLayoutEffect(() => {
+    const before = previous.current;
+    const after = new Map(
+      nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
+    );
+    previous.current = after;
+    if (before.size === 0 || nodes.length === 0) return;
+    const fresh = new Set(nodes.filter((n) => !before.has(n.id)).map((n) => n.id));
+    // Always resettled here: a lens rebuilds the graph twice in quick
+    // succession (selection, then fold state), and a stale tag from
+    // the first pass would keep cards transparent for good.
+    setEntering(fresh.size > 0 ? fresh : null);
+    if (fresh.size > 0) window.setTimeout(() => setEntering(null), 30);
+    let survivors = 0;
+    const movers: Array<{
+      id: string;
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+    }> = [];
+    for (const n of nodes) {
+      const was = before.get(n.id);
+      if (!was) continue;
+      survivors++;
+      if (Math.abs(was.x - n.position.x) > 0.5 || Math.abs(was.y - n.position.y) > 0.5) {
+        movers.push({ id: n.id, from: was, to: { ...n.position } });
+      }
+    }
+    // The enter tag's timer is never cancelled by a later rebuild —
+    // that rebuild resets the tag state itself, above.
+    if (movers.length === 0 || survivors < nodes.length * TWEEN_MIN_SURVIVORS) {
+      return;
+    }
+    const wrap = wrapRef.current;
+    wrap?.setAttribute("data-tweening", "1");
+    const start = performance.now();
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    let frame: number | null = null;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (frame !== null) cancelAnimationFrame(frame);
+      wrap?.removeAttribute("data-tweening");
+      setOverride(null);
+    };
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / TWEEN_MS);
+      if (t >= 1) {
+        finish();
+        return;
+      }
+      const k = ease(t);
+      const at = new Map<string, { x: number; y: number }>();
+      for (const m of movers) {
+        at.set(m.id, {
+          x: m.from.x + (m.to.x - m.from.x) * k,
+          y: m.from.y + (m.to.y - m.from.y) * k,
+        });
+      }
+      setOverride(at);
+      frame = requestAnimationFrame(tick);
+    };
+    // First frame before paint: the cards start where they were.
+    tick(start);
+    // A hidden canvas never gets a frame — land the cards anyway.
+    const safety = window.setTimeout(finish, TWEEN_MS + 150);
+    return () => {
+      window.clearTimeout(safety);
+      finish();
+    };
+  }, [nodes, wrapRef]);
+  return { positions: override, entering };
+}
+
+/** Zoom floor for framing a lineage. Chains in this left-to-right
+ *  layout run from the leftmost questions to the card, so a frame is
+ *  often as wide as the map; the floor only guards against a chain
+ *  so large that even its shape would vanish. Below the floor the
+ *  camera anchors on the card instead. */
+const FRAME_MIN_ZOOM = 0.06;
+/** Zoom ceiling for framing: a three-card lineage shouldn't fill
+ *  the screen with one giant card. */
+const FRAME_MAX_ZOOM = 1.1;
+const FRAME_PADDING = 0.12;
+/** Below this zoom a framed chain is a smear of pills. A plain card
+ *  click on such a chain isolates the rule instead — the lens lays
+ *  the chain out on its own, where it has a chance of being read. */
+const ISOLATE_BELOW_ZOOM = 0.5;
+/** A chain that is (nearly) the whole map gains nothing from a lens;
+ *  frame it and leave the map alone. */
+const ISOLATE_MAX_SHARE = 0.8;
+
 function FlyToController({
   target,
   layoutSig,
   nodes,
+  frame,
+  onLens,
 }: {
   target: {
     legalId: string;
@@ -903,8 +1076,18 @@ function FlyToController({
   } | null;
   layoutSig: string;
   nodes: Node[];
+  /** Node ids to keep in view around the target — the pinned
+   *  lineage. Null frames nothing: the camera just centers. */
+  frame: Set<string> | null;
+  /** Isolate a rule (open the lens on it) — the escape hatch when a
+   *  chain is too wide to frame legibly. */
+  onLens?: (legalId: string) => void;
 }) {
   const flow = useReactFlow();
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+  const onLensRef = useRef(onLens);
+  onLensRef.current = onLens;
   const last = useRef(0);
   const chaseUntil = useRef(0);
   const chaseId = useRef<string | null>(null);
@@ -941,46 +1124,222 @@ function FlyToController({
     setArmed((tick) => tick + 1);
   }, [target]);
   const lastSigChangeAt = useRef(0);
-  const centerOf = (id: string) => {
-    const match = nodesRef.current.find(
-      (node) =>
-        (node.data as IrgNodeData & { legalId?: string }).legalId === id,
+  /** Move the camera to a viewport. Animated moves run on frames; a
+   *  backgrounded or hidden canvas gets none, and the camera would
+   *  sit at its start forever. If the viewport hasn't budged by the
+   *  time the flight should be over, land it outright. */
+  const land = (
+    target: { x: number; y: number; zoom: number },
+    opts: { duration: number; interpolate?: "smooth" | "linear" },
+  ) => {
+    const from = flow.getViewport();
+    void flow.setViewport(target, opts);
+    if (opts.duration <= 0) return;
+    window.setTimeout(() => {
+      const now = flow.getViewport();
+      const stalled =
+        Math.abs(now.x - from.x) < 0.5 &&
+        Math.abs(now.y - from.y) < 0.5 &&
+        Math.abs(now.zoom - from.zoom) < 1e-4;
+      const arrived =
+        Math.abs(now.x - target.x) < 0.5 &&
+        Math.abs(now.y - target.y) < 0.5 &&
+        Math.abs(now.zoom - target.zoom) < 1e-4;
+      if (stalled && !arrived) void flow.setViewport(target);
+    }, opts.duration + 150);
+  };
+  /** The viewport that puts a layout point at the canvas center. */
+  const viewportAt = (cx: number, cy: number, zoom: number) => {
+    const canvas = document.querySelector<HTMLElement>(
+      ".graph-viewer-root .irg-canvas",
     );
+    const cw = canvas?.clientWidth ?? window.innerWidth;
+    const ch = canvas?.clientHeight ?? window.innerHeight;
+    return { x: cw / 2 - cx * zoom, y: ch / 2 - cy * zoom, zoom };
+  };
+  /** Fit the whole map from the layout's own geometry. React Flow's
+   *  fitView needs every card measured first, and right after a
+   *  graph swap (leaving a lens) nothing is — it fits empty bounds
+   *  and lands at max zoom on nothing. The layout already knows each
+   *  card's box, so the viewport is plain arithmetic. */
+  const fitAll = (opts: {
+    duration: number;
+    interpolate?: "smooth" | "linear";
+  }) => {
+    const all = nodesRef.current;
+    const canvas = document.querySelector<HTMLElement>(
+      ".graph-viewer-root .irg-canvas",
+    );
+    const cw = canvas?.clientWidth ?? 0;
+    const ch = canvas?.clientHeight ?? 0;
+    if (all.length === 0 || cw === 0 || ch === 0) {
+      void flow.fitView({ ...opts, padding: 0.1, minZoom: 0.01 });
+      return;
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of all) {
+      const w = node.measured?.width ?? node.width ?? 220;
+      const h = node.measured?.height ?? node.height ?? 90;
+      minX = Math.min(minX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxX = Math.max(maxX, node.position.x + w);
+      maxY = Math.max(maxY, node.position.y + h);
+    }
+    const pad = 0.1;
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const zoom = Math.min(
+      1.4,
+      Math.max(0.01, Math.min(cw / (bw * (1 + 2 * pad)), ch / (bh * (1 + 2 * pad)))),
+    );
+    land(
+      {
+        x: (cw - bw * zoom) / 2 - minX * zoom,
+        y: (ch - bh * zoom) / 2 - minY * zoom,
+        zoom,
+      },
+      opts,
+    );
+  };
+  const nodeFor = (legalId: string) =>
+    nodesRef.current.find(
+      (node) =>
+        (node.data as IrgNodeData & { legalId?: string }).legalId === legalId,
+    ) ?? null;
+  const centerOf = (id: string) => {
+    const match = nodeFor(id);
     if (!match) return null;
     return {
-      x: match.position.x + (match.measured?.width ?? 220) / 2,
-      y: match.position.y + (match.measured?.height ?? 90) / 2,
+      x: match.position.x + (match.measured?.width ?? match.width ?? 220) / 2,
+      y: match.position.y + (match.measured?.height ?? match.height ?? 90) / 2,
     };
+  };
+  /** Move the camera to a card. With a pinned lineage around it, fit
+   *  the whole chain — the answer to "what does this depend on?" is
+   *  the shape, and a card-tight zoom cut it off at the screen edge.
+   *  A chain too big to read even at the floor zoom anchors on the
+   *  card instead, zoomed out to the floor. */
+  const moveTo = (
+    legalId: string,
+    opts: { duration: number; interpolate?: "smooth" | "linear" },
+  ) => {
+    const anchor = nodeFor(legalId);
+    if (!anchor) return false;
+    const ids = frameRef.current;
+    const members =
+      ids && ids.size > 1 && ids.has(anchor.id)
+        ? nodesRef.current.filter((node) => ids.has(node.id))
+        : null;
+    // The execution panel docks over the canvas's right edge; the
+    // region it covers doesn't count as "in view". Fit into what's
+    // left and slide the target left by half the covered width.
+    const canvas = document.querySelector<HTMLElement>(
+      ".graph-viewer-root .irg-canvas",
+    );
+    const panel = document.querySelector<HTMLElement>(
+      ".graph-viewer-root .exec-panel",
+    );
+    let covered = 0;
+    if (canvas && panel) {
+      const cr = canvas.getBoundingClientRect();
+      const pr = panel.getBoundingClientRect();
+      const overlapsRows = pr.bottom > cr.top && pr.top < cr.bottom;
+      if (overlapsRows) {
+        covered = Math.max(
+          0,
+          Math.min(cr.right, pr.right) - Math.max(cr.left, pr.left),
+        );
+      }
+    }
+    const shiftFor = (zoom: number) => covered / 2 / zoom;
+    if (members) {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const node of members) {
+        const w = node.measured?.width ?? node.width ?? 220;
+        const h = node.measured?.height ?? node.height ?? 90;
+        minX = Math.min(minX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxX = Math.max(maxX, node.position.x + w);
+        maxY = Math.max(maxY, node.position.y + h);
+      }
+      const cw = (canvas?.clientWidth ?? 0) - covered;
+      const ch = canvas?.clientHeight ?? 0;
+      const fitZoom =
+        cw > 0 && ch > 0
+          ? Math.min(
+              cw / ((maxX - minX) * (1 + 2 * FRAME_PADDING)),
+              ch / ((maxY - minY) * (1 + 2 * FRAME_PADDING)),
+            )
+          : 0;
+      // A plain click on a chain that would only fit as a smear:
+      // hand the rule to the lens instead. Its own dissection lays
+      // the chain out compactly; the trail brings the map back.
+      // Chains that are the whole map stay on the map — a lens
+      // would just redraw it.
+      if (
+        immediate.current &&
+        !soft.current &&
+        fitZoom < ISOLATE_BELOW_ZOOM &&
+        members.length < nodesRef.current.length * ISOLATE_MAX_SHARE &&
+        onLensRef.current
+      ) {
+        onLensRef.current(legalId);
+        return true;
+      }
+      if (fitZoom >= FRAME_MIN_ZOOM) {
+        // Center on the chain's box at the zoom that fits it — one
+        // setCenter, the same primitive every other flight uses.
+        const zoom = Math.min(FRAME_MAX_ZOOM, fitZoom);
+        land(
+          viewportAt((minX + maxX) / 2 + shiftFor(zoom), (minY + maxY) / 2, zoom),
+          opts,
+        );
+        return true;
+      }
+      const center = centerOf(legalId)!;
+      land(
+        viewportAt(center.x + shiftFor(FRAME_MIN_ZOOM), center.y, FRAME_MIN_ZOOM),
+        opts,
+      );
+      return true;
+    }
+    const center = centerOf(legalId)!;
+    const zoom = Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2);
+    land(viewportAt(center.x + shiftFor(zoom), center.y, zoom), opts);
+    return true;
   };
   const cutTo = () => {
     if (!chaseId.current || Date.now() > chaseUntil.current) return;
     // A soft chase glides through the relayout's commit (small unfolds
     // like clicking a question in the flow panel); a hard cut is for
-    // scene-scale changes.
-    const duration = soft.current ? 500 : 0;
+    // scene-scale changes — unless the cards themselves are sliding
+    // into the new layout, in which case the camera glides with them.
+    const wrapEl = document.querySelector<HTMLElement>(
+      ".graph-viewer-root .irg-wrap",
+    );
+    const sliding = wrapEl?.hasAttribute("data-tweening") ?? false;
+    const duration = soft.current ? 500 : sliding ? TWEEN_MS : 0;
     if (chaseId.current === "*") {
-      void flow.fitView({ duration, padding: 0.1, minZoom: 0.01 });
-    } else {
-      const center = centerOf(chaseId.current);
-      if (!center) return;
-      void flow.setCenter(center.x, center.y, {
-        duration,
-        zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
-      });
+      fitAll({ duration });
+    } else if (!moveTo(chaseId.current, { duration })) {
+      return;
     }
     cutMode.current = true;
     // Keep the chase briefly alive so a second measured layout pass
     // re-cuts to the final geometry, then let it die.
     chaseUntil.current = Date.now() + 700;
-    if (!faded.current && !soft.current) {
+    if (!faded.current && !soft.current && !sliding) {
       faded.current = true;
-      const wrap = document.querySelector<HTMLElement>(
-        ".graph-viewer-root .irg-wrap",
-      );
-      if (wrap) {
-        wrap.classList.remove("irg-scene-cut");
-        void wrap.offsetWidth;
-        wrap.classList.add("irg-scene-cut");
+      if (wrapEl) {
+        wrapEl.classList.remove("irg-scene-cut");
+        void wrapEl.offsetWidth;
+        wrapEl.classList.add("irg-scene-cut");
       }
     }
   };
@@ -1003,20 +1362,14 @@ function FlyToController({
     const timer = window.setTimeout(() => {
       if (cutMode.current || !chaseId.current) return;
       if (chaseId.current === "*") {
-        void flow.fitView({
-          duration: 900,
-          padding: 0.1,
-          minZoom: 0.01,
-          interpolate: "smooth",
-        });
+        fitAll({ duration: 900, interpolate: "smooth" });
         return;
       }
       const center = centerOf(chaseId.current);
       if (center) {
-        void flow.setCenter(center.x, center.y, {
+        moveTo(chaseId.current, {
           duration: flightDuration(flow, center.x, center.y),
           interpolate: "smooth",
-          zoom: Math.min(Math.max(flow.getViewport().zoom, 0.9), 1.2),
         });
         // The destination is reached — later unrelated relayouts must
         // not yank the camera back.
@@ -1391,10 +1744,22 @@ const InputNode = ({ data }: NodeProps) => {
       className={`irg-node irg-input irg-input-${d.source} ${d.canExpose ? "irg-can-expose" : ""} ${isAnswered ? "is-answered" : ""}`}
     >
       <HandleSource />
-      <div className="irg-eyebrow">
-        Question · <span className={`irg-status irg-status-${d.source}`}>{d.source === "user" ? "asked" : "not asked"}</span>
+      {/* No eyebrow row on a question — the pill shape already says
+          "question", and the state lives in a dot beside the title.
+          One line less per card is the tower's biggest saving. */}
+      <div className="irg-label irg-q-title">
+        <span
+          className={`irg-q-dot irg-status-${d.source}`}
+          title={
+            isAnswered
+              ? "Question · answered"
+              : d.source === "user"
+                ? "Question · asked"
+                : "Question · not asked"
+          }
+        />
+        {softBreak(humanizeLabel(d.label))}
       </div>
-      <div className="irg-label">{softBreak(humanizeLabel(d.label))}</div>
       <InlineAnswer legalId={d.legalId} />
       <MemberAnswers name={inputName} />
       {!answerPopulated && d.showValues && d.value && (
@@ -1613,6 +1978,8 @@ function buildGraph(
   canExposeInputs: boolean = false,
   parameterRules?: ParameterRule[],
   selectedOutputIds?: Set<string>,
+  stageAspect?: number,
+  sizeHints?: SizeHints,
 ): BuildResult {
   // Index parameter rules by bare name so the formula walker can resolve
   // identifiers that aren't in the trace (parameters get inlined as
@@ -1653,7 +2020,10 @@ function buildGraph(
     const isExpanded = !collapsed.has(binding.legalId);
     const canExpand = Boolean(outputTrace.formula);
     if (!nodeIds.has(outputId)) {
-      const id = nextId();
+      // The dedup key IS the id: a card keeps its identity across
+      // rebuilds, so a re-dissection (entering a lens, unfolding a
+      // door) can slide it to its new place instead of remounting it.
+      const id = outputId;
       nodeIds.set(outputId, id);
       outputNodeIdByLegalId.set(binding.legalId, id);
       nodes.push({
@@ -1736,11 +2106,11 @@ function buildGraph(
   // edges are merged.
   if (detail === "wires") {
     const result = collapseOperators(nodes, edges);
-    layout(result.nodes, result.edges);
+    layout(result.nodes, result.edges, stageAspect, sizeHints);
     return result;
   }
 
-  layout(nodes, edges);
+  layout(nodes, edges, stageAspect, sizeHints);
   return { nodes, edges };
 }
 
@@ -2243,7 +2613,8 @@ function ensureNode(
   spec: { type: keyof typeof NODE_TYPES; data: IrgNodeData },
 ): string {
   if (ctx.nodeIds.has(dedupKey)) return ctx.nodeIds.get(dedupKey)!;
-  const id = ctx.nextId();
+  // Stable across rebuilds — see the output node's comment.
+  const id = dedupKey;
   ctx.nodeIds.set(dedupKey, id);
   ctx.nodes.push({
     id,
@@ -2312,44 +2683,212 @@ function edgeColorVar(cls: string): string {
 // Layout (dagre)
 // ─────────────────────────────────────────────────────────────────────────
 
-function layout(nodes: Node[], edges: Edge[]) {
+/** What a question card will actually render besides its title, so
+ *  the layout reserves room for exactly those rows and no more. Keyed
+ *  by the input's bare registry name. */
+type SizeHints = {
+  /** Inputs whose card carries an inline answer box (run mode). */
+  answerable: ReadonlySet<string>;
+  /** Inputs the user has answered — no "default" chip on those. */
+  answered: ReadonlySet<string>;
+  /** Inputs with a per-member answers line. */
+  members: ReadonlySet<string>;
+};
+const NO_HINTS: SizeHints = {
+  answerable: new Set(),
+  answered: new Set(),
+  members: new Set(),
+};
+
+/** Bare registry name of an input node: `#input.<name>` in package
+ *  graphs, `#<name>` in composed ones. */
+function inputNameOf(legalId: string): string | null {
+  const fragment = legalId.split("#").pop() ?? "";
+  return fragment.startsWith("input.")
+    ? fragment.slice("input.".length)
+    : fragment || null;
+}
+
+/** The canvas's width / height, or the default when it isn't measurable. */
+function stageAspectOf(el: HTMLElement | null): number {
+  if (!el) return DEFAULT_STAGE_ASPECT;
+  const { clientWidth, clientHeight } = el;
+  if (clientWidth < 200 || clientHeight < 200) return DEFAULT_STAGE_ASPECT;
+  return Math.min(2.6, Math.max(0.8, clientWidth / clientHeight));
+}
+
+/** Stage aspect (width / height) when the canvas can't be measured —
+ *  a typical laptop viewport. */
+const DEFAULT_STAGE_ASPECT = 1.6;
+
+function layout(
+  nodes: Node[],
+  edges: Edge[],
+  stageAspect = DEFAULT_STAGE_ASPECT,
+  hints: SizeHints = NO_HINTS,
+) {
   const dense = nodes.length > 250;
+  const sizes = new Map(nodes.map((n) => [n.id, nodeSize(n, hints)]));
   const run = (ranksep: number, nodesep: number) => {
     const g = new dagre.graphlib.Graph();
     g.setGraph({ rankdir: "LR", nodesep, ranksep, marginx: 24, marginy: 24 });
     g.setDefaultEdgeLabel(() => ({}));
-    for (const n of nodes) g.setNode(n.id, nodeSize(n));
-    for (const e of edges) g.setEdge(e.source, e.target);
+    // Leaves that feed the same rule go into dagre two at a time as
+    // one wide box, so the tower of questions is half as tall; after
+    // the layout the box splits into a staggered pair (see pairLeaves).
+    const pairs = pairLeaves(nodes, edges, sizes, nodesep);
+    const memberOf = new Map<string, LeafPair>();
+    for (const pair of pairs) {
+      memberOf.set(pair.a, pair);
+      memberOf.set(pair.b, pair);
+      g.setNode(pair.id, { width: pair.width, height: pair.height });
+    }
+    for (const n of nodes) {
+      if (!memberOf.has(n.id)) g.setNode(n.id, sizes.get(n.id)!);
+    }
+    const seenEdges = new Set<string>();
+    for (const e of edges) {
+      const source = memberOf.get(e.source)?.id ?? e.source;
+      const target = memberOf.get(e.target)?.id ?? e.target;
+      const key = `${source}→${target}`;
+      if (seenEdges.has(key)) continue;
+      seenEdges.add(key);
+      g.setEdge(source, target);
+    }
     dagre.layout(g);
+    let minX = Infinity;
+    let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
+    let maxRank = 0;
+    const place = (n: Node, x: number, y: number, w: number, h: number, rank: number) => {
+      n.position = { x, y };
+      (n as Node).width = w;
+      (n as Node).height = h;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x + w);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y + h);
+      maxRank = Math.max(maxRank, rank);
+    };
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    for (const pair of pairs) {
+      const info = g.node(pair.id);
+      if (!info) continue;
+      const rank = (info as { rank?: number }).rank ?? 0;
+      const left = info.x - info.width / 2;
+      const top = info.y - info.height / 2;
+      const a = byId.get(pair.a)!;
+      const b = byId.get(pair.b)!;
+      const sa = sizes.get(pair.a)!;
+      const sb = sizes.get(pair.b)!;
+      place(a, left, top, sa.width, sa.height, rank);
+      place(b, left + sa.width + PAIR_GAP, top + pair.pitch / 2, sb.width, sb.height, rank);
+    }
     for (const n of nodes) {
+      if (memberOf.has(n.id)) continue;
       const info = g.node(n.id);
       if (!info) continue;
-      n.position = {
-        x: info.x - info.width / 2,
-        y: info.y - info.height / 2,
-      };
-      (n as Node).width = info.width;
-      (n as Node).height = info.height;
-      minY = Math.min(minY, n.position.y);
-      maxY = Math.max(maxY, n.position.y + info.height);
+      const rank = (info as { rank?: number }).rank ?? 0;
+      place(n, info.x - info.width / 2, info.y - info.height / 2, info.width, info.height, rank);
     }
-    return maxY - minY;
+    return { width: maxX - minX, height: maxY - minY, aisles: maxRank };
   };
-  // Tall towers need wider aisles: when the layout runs long top to
-  // bottom, pull the columns further apart so the rails and lanes
-  // have room — gently, scaled to the height.
-  const baseRank = dense ? 68 : 92;
-  const baseNode = dense ? 14 : 24;
-  const height = run(baseRank, baseNode);
-  const stretch = Math.min(1.7, Math.max(1, height / 4200));
-  if (stretch > 1.08) {
-    run(Math.round(baseRank * stretch), baseNode + 2);
+  // First pass at the tightest comfortable spacing, then widen the
+  // aisles toward the stage's shape: a graph that fits by height on
+  // a wide screen leaves both wings of the canvas empty while its
+  // columns crowd the middle. Spread the columns until the layout's
+  // aspect approaches the stage's, within a cap — aisles wider than
+  // this read as disconnected columns, not one graph.
+  const baseRank = dense ? 80 : 120;
+  const baseNode = dense ? 16 : 28;
+  const first = run(baseRank, baseNode);
+  const maxRank = dense ? 220 : 300;
+  if (first.aisles > 0 && first.height > 0) {
+    const wanted = stageAspect * first.height;
+    if (wanted > first.width) {
+      // Each aisle between adjacent ranks gets an equal share of the
+      // missing width; dagre's ranksep is exactly that aisle.
+      const extraPerAisle = (wanted - first.width) / first.aisles;
+      const ranksep = Math.min(maxRank, Math.round(baseRank + extraPerAisle));
+      if (ranksep - baseRank >= 12) run(ranksep, baseNode);
+    }
   }
 
   packComponents(nodes, edges);
   chooseEdgeRoutes(nodes, edges);
+}
+
+/** Gutter between the two cards of a staggered pair. */
+const PAIR_GAP = 28;
+/** A rule needs at least this many private leaves before they pair
+ *  up — two questions side by side read as a grid only once there
+ *  are a few rows of them. */
+const PAIR_MIN_GROUP = 4;
+
+type LeafPair = {
+  id: string;
+  a: string;
+  b: string;
+  width: number;
+  height: number;
+  /** Row pitch the stagger is built on: the taller card plus the
+   *  layout's node gap. B sits half a pitch below A. */
+  pitch: number;
+};
+
+/**
+ * Pair up leaves (cards with nothing feeding them) that feed the same
+ * rule. Each pair becomes one dagre box two cards wide; after layout
+ * the left card A sits at the box's top and the right card B half a
+ * pitch lower. The stagger is what keeps A's wire clean: it leaves A
+ * at mid-height and runs right to the rail, and B's top edge starts
+ * below that line — the wire passes through the gap above B, never
+ * through a card. Two columns is the limit: a third column would put
+ * cards in the way of the outer column's wires.
+ */
+function pairLeaves(
+  nodes: Node[],
+  edges: Edge[],
+  sizes: Map<string, { width: number; height: number }>,
+  nodesep: number,
+): LeafPair[] {
+  const hasIncoming = new Set(edges.map((e) => e.target));
+  const primaryTarget = new Map<string, string>();
+  for (const e of edges) {
+    if (!primaryTarget.has(e.source)) primaryTarget.set(e.source, e.target);
+  }
+  const groups = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const kind = (n.data as IrgNodeData).kind;
+    if (kind === "operator" || kind === "ifGate" || kind === "literal") continue;
+    if (hasIncoming.has(n.id)) continue;
+    const target = primaryTarget.get(n.id);
+    if (!target) continue;
+    const group = groups.get(target);
+    if (group) group.push(n);
+    else groups.set(target, [n]);
+  }
+  const pairs: LeafPair[] = [];
+  for (const group of groups.values()) {
+    if (group.length < PAIR_MIN_GROUP) continue;
+    for (let i = 0; i + 1 < group.length; i += 2) {
+      const a = group[i]!;
+      const b = group[i + 1]!;
+      const sa = sizes.get(a.id)!;
+      const sb = sizes.get(b.id)!;
+      const pitch = Math.max(sa.height, sb.height) + nodesep;
+      pairs.push({
+        id: `pair:${a.id}:${b.id}`,
+        a: a.id,
+        b: b.id,
+        width: sa.width + PAIR_GAP + sb.width,
+        height: Math.max(sa.height, pitch / 2 + sb.height),
+        pitch,
+      });
+    }
+  }
+  return pairs;
 }
 
 /**
@@ -2563,14 +3102,14 @@ function packComponents(nodes: Node[], edges: Edge[]) {
  * accordingly. The width stays fixed (so columns stay aligned in the LR
  * layout) but tall/wrappy labels push the box vertically.
  */
-function nodeSize(n: Node): { width: number; height: number } {
+function nodeSize(n: Node, hints: SizeHints): { width: number; height: number } {
   const data = n.data as IrgNodeData;
   const labelText = "label" in data ? data.label : "";
   switch (data.kind) {
     case "output":
     case "input":
     case "ruleRef":
-      return labelledNodeSize(labelText, data, 220);
+      return labelledNodeSize(labelText, data, hints);
     case "ifGate":
       return { width: 140, height: 76 };
     case "operator":
@@ -2578,15 +3117,61 @@ function nodeSize(n: Node): { width: number; height: number } {
     case "literal":
       return { width: 80, height: 40 };
     case "unknown":
-      return labelledNodeSize(labelText, data, 200, /* small */ true);
+      return labelledNodeSize(labelText, data, hints, /* small */ true);
   }
 }
 
-/** Estimate height for a label-bearing node by guessing line wrap. */
+/* Heights of the optional rows a card may stack under its title —
+   each mirrors the CSS of the element it stands for. */
+const ROW_VALUE = 24; // .irg-value: 13px display line + 4px margin (+ rounding)
+const ROW_ACTION = 26; // .irg-action: border + 5/2 padding + 8px margin
+const ROW_ANSWER = 34; // .irg-answer: 26px number box + 6px margin
+const ROW_MEMBERS = 20; // .irg-members: one 10px mono line + 4px margin
+const ROW_DEFAULT_CHIP = 26; // .irg-default-chip: pill + 6px margin
+
+/** The rows a card renders below its title, in px — the same
+ *  conditions the node components branch on, so a card's box is the
+ *  size of what it shows: a bare question is a title in a pill, a
+ *  live one grows for its answer box. */
+function extraRowsPx(data: IrgNodeData, hints: SizeHints): number {
+  let px = 0;
+  switch (data.kind) {
+    case "input": {
+      const name = inputNameOf(data.legalId);
+      const answerable = Boolean(name && hints.answerable.has(name));
+      const answered = Boolean(name && hints.answered.has(name));
+      if (answerable) px += ROW_ANSWER;
+      if (name && hints.members.has(name)) px += ROW_MEMBERS;
+      if (data.showValues && data.value) px += ROW_VALUE;
+      if (data.showValues && answerable && !answered) px += ROW_DEFAULT_CHIP;
+      if (data.canExpose || data.source === "user") px += ROW_ACTION;
+      return px;
+    }
+    case "output":
+    case "ruleRef": {
+      if (data.showValues && data.value) px += ROW_VALUE;
+      if (data.canExpand && !data.isExpanded) px += ROW_ACTION;
+      return px;
+    }
+    default:
+      return px;
+  }
+}
+
+/** One width for every titled card. Columns read as columns and the
+ *  eye compares cards by height alone — a mix of widths looked like
+ *  noise. Wide enough for most titles in two lines and for the
+ *  question eyebrow ("Question · not asked") on one. */
+const CARD_WIDTH = 240;
+/** The label's line height in px — must match `.irg-label`. */
+const LABEL_LINE_PX = 17;
+
+/** Size a label-bearing node: pick the card width from its title,
+ *  then measure the wrapped title for the height. */
 function labelledNodeSize(
   label: string,
   data: IrgNodeData,
-  width: number,
+  hints: SizeHints,
   small = false,
 ): { width: number; height: number } {
   // Measure the actual rendered height of the label by inserting it
@@ -2597,30 +3182,28 @@ function labelledNodeSize(
   // Per-kind horizontal padding must match CSS or the measured wrap
   // points will diverge from the rendered ones. Inputs get extra side
   // padding because their pill shape eats into the corners.
-  const horizontalPaddingPx = data.kind === "input" ? 40 : 28;
-  const usableWidth = width - horizontalPaddingPx;
-  const labelBlockHeight = label
-    ? measureLabelHeight(softBreak(humanizeLabel(label)), usableWidth)
-    : 16;
+  // Padding plus the borders — the 3px source seam on the left and
+  // 1px on the right. Measuring a hair narrower than the paint can
+  // only round UP to an extra line, never leave the card short. A
+  // question's title also shares its first line with the state dot
+  // (8px + 8px gap).
+  const horizontalPaddingPx = (data.kind === "input" ? 40 + 16 : 32) + 4;
+  const text = label ? softBreak(humanizeLabel(label)) : "";
+  const width = CARD_WIDTH;
+  const labelBlockHeight = text
+    ? measureLabelHeight(text, width - horizontalPaddingPx)
+    : LABEL_LINE_PX;
 
-  // Per-kind chrome (padding + eyebrow + value/action rows). Generous
-  // buffers since these are still estimated — but their content is
-  // small and predictable so error here is bounded.
-  let chrome: number;
-  if (small) {
-    chrome = 50;
-  } else if (data.kind === "input") {
-    chrome = 110; // padding + eyebrow + inline answer + divider row
-  } else if (data.kind === "output") {
-    const outputRows = data.canExpand ? 1 : 0;
-    chrome = 50 + outputRows * 22;
-  } else if (data.kind === "ruleRef") {
-    const actionRows = data.canExpand ? 1 : 0;
-    chrome = 50 + actionRows * 22;
-  } else {
-    chrome = 56;
-  }
-  return { width, height: chrome + labelBlockHeight };
+  // Chrome every titled card carries: padding top and bottom, the
+  // eyebrow line and its 5px margin (steps and results only — a
+  // question has no eyebrow and 10px padding), plus a small buffer
+  // since the rows below are estimates. Then only the rows this card
+  // will actually render.
+  const chrome = small ? 56 : data.kind === "input" ? 32 : 58;
+  return {
+    width,
+    height: chrome + labelBlockHeight + extraRowsPx(data, hints),
+  };
 }
 
 /**
@@ -2640,8 +3223,8 @@ function getMeasureEl(): HTMLDivElement {
     "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   el.style.fontSize = "11px";
   el.style.fontWeight = "500";
-  el.style.lineHeight = "16px";
-  el.style.letterSpacing = "0.04em";
+  el.style.lineHeight = `${LABEL_LINE_PX}px`;
+  el.style.letterSpacing = "0.02em";
   el.style.whiteSpace = "normal";
   el.style.overflowWrap = "anywhere";
   el.style.wordBreak = "break-word";

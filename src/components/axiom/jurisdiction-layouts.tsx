@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatCompact, jurisdictionDisplay } from "./axiom-stats";
-import { RULESPEC_COUNTRY_SLUGS } from "@/lib/axiom/repo-map";
+import {
+  RULESPEC_COUNTRY_SLUGS,
+  ruleSpecFamilyAppVisibility,
+} from "@/lib/axiom/repo-map";
 
 export type JurisdictionItem = {
   slug: string;
@@ -29,10 +32,34 @@ const FEDERAL_COUNTRY_LABEL: Record<string, string> = {
   be: "Belgium",
   ca: "Canada",
   nz: "New Zealand",
+  il: "Israel",
 };
 
 function federalCountryLabel(item: JurisdictionItem): string {
   return FEDERAL_COUNTRY_LABEL[item.slug] ?? item.label;
+}
+
+/**
+ * A country the repo map knows whose encodings the app deliberately
+ * does not read yet — its ``rulespec-*`` repo carries
+ * ``app_visibility = "experimental"``. It gets a real country tile
+ * (not an anonymous "Other" chip) that says what is actually true:
+ * encoding is under way, nothing is published to the app.
+ */
+function isPilotCountry(slug: string): boolean {
+  return ruleSpecFamilyAppVisibility(slug) === "experimental";
+}
+
+/**
+ * Why a country tile is showing no rules. Pilot countries are pending
+ * *because encoding is in progress*; every other pending country is
+ * waiting on corpus ingestion. Saying which is the difference between
+ * an honest tile and a dead one.
+ */
+function pendingTooltip(label: string, slug: string): string {
+  return isPilotCountry(slug)
+    ? `${label} — pilot encoding in progress, not yet published to the app`
+    : `${label} — pending ingestion`;
 }
 
 /**
@@ -235,7 +262,7 @@ function FederalTab({
       onClick={onSelect}
       title={
         isPending
-          ? `${countryLabel} — pending ingestion`
+          ? pendingTooltip(countryLabel, item.slug)
           : `${countryLabel} — ${(total ?? 0).toLocaleString()} rules total`
       }
       className={`group flex h-full w-full flex-col items-start gap-3 rounded-md border p-4 text-left transition-all focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] focus-visible:outline-offset-2 ${
@@ -254,7 +281,11 @@ function FederalTab({
         <span className="font-heading text-base tabular-nums text-[var(--color-ink)]">
           {isPending ? "—" : formatCompact(total ?? 0)}
         </span>
-        {isPending ? "pending" : "rules total"}
+        {isPending
+          ? isPilotCountry(item.slug)
+            ? "pilot · pending"
+            : "pending"
+          : "rules total"}
       </span>
     </button>
   );
@@ -302,7 +333,9 @@ function SelectionPanel({
         ) : (
           <div className="flex h-full items-center rounded-md border border-dashed border-[var(--color-rule)] bg-transparent px-4 py-6 font-body text-sm text-[var(--color-ink-secondary)]">
             {isPending
-              ? `${parent.label} has no indexed rules or ${childLabel} yet.`
+              ? isPilotCountry(parent.slug)
+                ? `${parent.label} is a pilot encoding in progress — nothing is published to the app yet.`
+                : `${parent.label} has no indexed rules or ${childLabel} yet.`
               : `No ${childLabel} ingested for ${parent.label}.`}
           </div>
         )}
@@ -357,6 +390,7 @@ function FederalCorpusCard({
     return (
       <div
         aria-disabled="true"
+        title={pendingTooltip(parent.label, parent.slug)}
         className="rounded-md border border-dashed border-[var(--color-rule)] bg-transparent p-5 opacity-70"
       >
         {body}

@@ -60,10 +60,10 @@ describe("browseTitle", () => {
   it("names a jurisdiction from the seed, falling back to the raw slug", () => {
     // browseTitle reads resolveAxiomPath().jurisdiction?.label, which comes
     // from JURISDICTIONS_SEED, so a seeded slug is the difference between
-    // "Israel \u00b7 Axiom" and "il \u00b7 Axiom" in the browser tab.
+    // "Israel · Axiom" and "il · Axiom" in the browser tab.
     expect(browseTitle(["il"])).toBe("Israel");
     expect(browseTitle(["us-il"])).toBe("Illinois");
-    expect(browseTitle(["il", "statute"])).toBe("Statutes \u00b7 Israel");
+    expect(browseTitle(["il", "statute"])).toBe("Statutes · Israel");
     // An unseeded, unsynthesisable slug still renders, unlabelled.
     expect(browseTitle(["zz"])).toBe("zz");
   });

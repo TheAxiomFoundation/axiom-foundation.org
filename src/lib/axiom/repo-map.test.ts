@@ -127,8 +127,10 @@ describe("getRuleSpecRepoLocation", () => {
     expect(ruleSpecRepoTreeUrl("il")).toBe(
       "https://github.com/TheAxiomFoundation/rulespec-il/tree/main/il"
     );
-    expect(ruleSpecRawFileUrl("il", "statutes/income-tax-ordinance/121.yaml")).toBe(
-      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-il/main/il/statutes/income-tax-ordinance/121.yaml"
+    expect(
+      ruleSpecRawFileUrl("il", "statutes/income-tax-ordinance/section-121.yaml")
+    ).toBe(
+      "https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-il/main/il/statutes/income-tax-ordinance/section-121.yaml"
     );
   });
 

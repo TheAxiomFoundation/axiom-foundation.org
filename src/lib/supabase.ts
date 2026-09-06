@@ -4,6 +4,7 @@ import {
   isAppReadableJurisdiction,
   ruleSpecRawFileUrlForLocation,
 } from '@/lib/axiom/repo-map'
+import { isGatedJurisdiction } from '@/lib/axiom/rulespec/index-visibility'
 import { cachedRawFetch } from '@/lib/axiom/rulespec/raw-cache'
 import { listEncodedFiles } from '@/lib/axiom/rulespec/repo-listing'
 import { ruleSpecReadLocation } from '@/lib/axiom/rulespec/visibility'
@@ -763,6 +764,13 @@ async function getRuleSpecJurisdictionCounts(
 ): Promise<AxiomJurisdictionCount[]> {
   const rows = await Promise.all(
     jurisdictions.map(async (jurisdiction) => {
+      // A gated pilot family is never counted from the index. A leaked
+      // or pre-gating row would otherwise light its landing tile with
+      // a rule count and a live link to a page that serves nothing —
+      // the GitHub fallback below has refused it since
+      // isGitHubRuleSpecStatsFallbackJurisdiction.
+      if (isGatedJurisdiction(jurisdiction)) return null
+
       const { count, error } = await supabaseEncodings
         .from('rulespec_files')
         .select('citation_path', { count: 'exact', head: true })

@@ -27,6 +27,11 @@ import {
   type TokenImplication,
 } from "@/lib/axiom/search-lexicon";
 import { fetchIndexedRuleSpecCandidates } from "@/lib/axiom/rulespec-index";
+import {
+  isGatedJurisdiction,
+  readableJurisdictionHints,
+  withoutGatedRows,
+} from "@/lib/axiom/rulespec/index-visibility";
 
 export interface AxiomSearchOptions {
   jurisdiction?: string;
@@ -520,19 +525,29 @@ function fiscalYearBoost(file: EncodedFile): number {
  * List candidate files for scoring — from the database index when it
  * is populated (one query, YAML included), otherwise by crawling the
  * rulespec-* repos on GitHub at request time.
+ *
+ * Both branches are gated on the registered ``app_visibility``: the
+ * crawl through ``rootsFromRepo`` below, and the index rows through
+ * ``rulespec/index-visibility.ts``. The filter is repeated here rather
+ * than trusted to the index reader because this is the single funnel
+ * every encoded search passes through — a future candidate source
+ * wired in beside these two inherits the gate instead of re-opening
+ * the hole.
  */
 async function listEncodedFileCandidates(
   tokens: string[],
   hintedJurisdictions: Set<string>,
   bucket: string | null
 ): Promise<EncodedFileCandidate[]> {
+  const readableHints = readableJurisdictionHints(hintedJurisdictions);
+  if (readableHints === null) return [];
   const indexed = await fetchIndexedRuleSpecCandidates(
     tokens,
-    hintedJurisdictions,
+    new Set(readableHints),
     bucket
   );
   if (indexed !== null) {
-    return indexed.map((row) => ({
+    return withoutGatedRows(indexed, (row) => row.citationPath).map((row) => ({
       filePath: row.filePath,
       citationPath: row.citationPath,
       bucket: row.bucket,
@@ -542,16 +557,22 @@ async function listEncodedFileCandidates(
   }
 
   const roots = await discoverRuleSpecSearchRoots();
-  const candidateRoots =
-    hintedJurisdictions.size > 0
-      ? roots.filter((root) => hintedJurisdictions.has(root.jurisdiction))
+  const hintedRoots =
+    readableHints.length > 0
+      ? roots.filter((root) => readableHints.includes(root.jurisdiction))
       : roots;
-  return dedupeEncodedFileCandidates(
-    (
-      await Promise.all(
-        candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
-      )
-    ).flat()
+  const candidateRoots = hintedRoots.filter(
+    (root) => !isGatedJurisdiction(root.jurisdiction)
+  );
+  return withoutGatedRows(
+    dedupeEncodedFileCandidates(
+      (
+        await Promise.all(
+          candidateRoots.map((root) => listEncodedFileCandidatesFromRoot(root))
+        )
+      ).flat()
+    ),
+    (file) => file.citationPath
   );
 }
 

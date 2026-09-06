@@ -1650,7 +1650,21 @@ export function GraphViewerApp({
           ? [root, ...picked.filter((id) => id !== root)]
           : picked;
         graphJustLoaded.current = true;
-        setSelectedOutputs(ordered);
+        // A ?focus= deep link names one rule inside the composed law.
+        // It opens as a LENS on that rule — the same state an in-app
+        // isolation produces (and writes to the URL), so a reload or a
+        // shared link lands with the "← Map" crumb that brings the
+        // whole section back. Scoping the selection silently would
+        // leave the rest of the section unreachable.
+        const focus = pendingFocusRef.current;
+        if (focus && rulesById.has(focus)) {
+          pendingFocusRef.current = null;
+          savedSelection.current = { outputs: ordered, folded: new Set() };
+          setLensTrail([focus]);
+          setSelectedOutputs([focus]);
+        } else {
+          setSelectedOutputs(ordered);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(String(err));
@@ -1997,7 +2011,13 @@ export function GraphViewerApp({
   useEffect(() => {
     if (!graphJustLoaded.current || selectedOutputs.length === 0) return;
     graphJustLoaded.current = false;
-    const summit = summitOutput ?? selectedOutputs[0];
+    // The summit only counts when it's on the canvas: a ?focus= view
+    // scoped to one rule opens on that rule, not on a terminal the
+    // selection left out.
+    const summit =
+      summitOutput && selectedOutputs.includes(summitOutput)
+        ? summitOutput
+        : selectedOutputs[0];
     if (launcherRef.current === "open") {
       // Never move the camera behind the launcher — it reads as a
       // random zoom through the backdrop. Fly when the fade ends.
@@ -2022,7 +2042,9 @@ export function GraphViewerApp({
     const key =
       Object.keys(structureTraces).sort().join("|") +
       "::" +
-      (lensTrail.length > 0 ? "always" : "auto");
+      // A lens shows the chain the user asked for — it folds only
+      // when the subtree is genuinely large, same rule as the map.
+      "auto";
     if (foldedInitialized.current !== key) {
       foldedInitialized.current = key;
       if (restoreFoldedRef.current) {
@@ -2037,12 +2059,7 @@ export function GraphViewerApp({
         surveyRef.current = false;
         setFolded((current) => (current.size === 0 ? current : new Set()));
       } else {
-        setFolded(
-          initialCollapse(
-            structureTraces,
-            lensTrail.length > 0 ? "always" : "auto",
-          ),
-        );
+        setFolded(initialCollapse(structureTraces, "auto"));
       }
     }
   }, [structureTraces, lensTrail.length]);
@@ -2932,7 +2949,7 @@ export function GraphViewerApp({
               showValues={Boolean(runResult)}
               executionActive={Boolean(runResult)}
               executedLegalIds={effectiveExecuted}
-              dissect={lensFocusId ? "always" : "auto"}
+              dissect="auto"
               collapsed={folded}
               onCollapsedChange={setFolded}
               flyTo={flyTarget}
@@ -3258,11 +3275,26 @@ export function GraphViewerApp({
                 ×
               </button>
             </div>
-            {lensTrail.length > 1 && (
+            {/* A click can land here on its own (a chain too wide to
+                frame isolates itself), so the way back must be in
+                plain sight from the first level: the map, then every
+                isolation step. */}
+            {lensTrail.length > 0 && (
               <nav
                 className="lens-bar lens-bar-docked"
                 aria-label="Isolation trail"
               >
+                <button
+                  type="button"
+                  className="lens-crumb lens-crumb-map"
+                  onClick={() => {
+                    closeLens();
+                    setInspected(null);
+                  }}
+                  title="Leave isolation and show the whole map"
+                >
+                  ← Map
+                </button>
                 {lensTrail.map((id, index) => (
                   <button
                     type="button"

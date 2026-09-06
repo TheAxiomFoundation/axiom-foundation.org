@@ -822,6 +822,12 @@ describe('supabase lib', () => {
       // gated app_visibility = "experimental". The rule-detail rail
       // must not serve its pilot YAML before promotion, so the
       // fallback fetcher never leaves the process.
+      //
+      // Since the registered gate moved to the top of getRuleEncoding
+      // (below), a gated family now short-circuits BEFORE the fallback
+      // — so this case pins the end-state promise and no longer
+      // exercises ``fetchRuleSpecFromGitHub``'s own location guard.
+      // The two cases after it keep that guard pinned.
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -834,6 +840,71 @@ describe('supabase lib', () => {
       )
       expect(result).toBeNull()
       expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('refuses the GitHub fallback for a jurisdiction the repo map does not claim', async () => {
+      // ``fetchRuleSpecFromGitHub``'s own guard, reached by a route the
+      // registered gate deliberately lets through: the gate is a
+      // DENY-list on registered experimental families, so a slug no
+      // family claims passes it. ``ruleSpecReadLocation`` then answers
+      // null and nothing leaves the process.
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      mockFrom.mockImplementation(() =>
+        mockEncodingRunsChain({ data: [], error: null })
+      )
+
+      expect(await getRuleEncoding('github:zz/statute/1')).toBeNull()
+      expect(fetchMock).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('refuses the GitHub fallback for a mapped repo that gates itself upstream', async () => {
+      // The LIVE half of the two-layer gate, which no other case in
+      // this file reaches through getRuleEncoding: rulespec-us is
+      // registered public, so only its own .axiom/registry.toml can
+      // close it. The registry read happens; the YAML read does not.
+      const fetchMock = vi.fn().mockImplementation((url: string) =>
+        Promise.resolve(
+          url.endsWith('/.axiom/registry.toml')
+            ? {
+                ok: true,
+                status: 200,
+                text: async () =>
+                  '[registry]\napp_visibility = "experimental"\n',
+              }
+            : { ok: true, status: 200, text: async () => 'format: rulespec/v1\n' }
+        )
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'current_provisions') {
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () =>
+                  Promise.resolve({
+                    data: {
+                      citation_path: 'us/statute/26/1',
+                      jurisdiction: 'us',
+                      rulespec_path: null,
+                      has_rulespec: true,
+                    },
+                    error: null,
+                  }),
+              }),
+            }),
+          }
+        }
+        return mockEncodingRunsChain({ data: [], error: null })
+      })
+
+      expect(await getRuleEncoding('rule-us-self-gated')).toBeNull()
+      const urls = fetchMock.mock.calls.map((call: unknown[]) => call[0])
+      expect(urls).toEqual([
+        'https://raw.githubusercontent.com/TheAxiomFoundation/rulespec-us/main/.axiom/registry.toml',
+      ])
       vi.unstubAllGlobals()
     })
 
